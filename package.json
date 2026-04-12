@@ -6,7 +6,10 @@
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
-    "lint": "eslint"
+    "lint": "eslint",
+    "crawl": "tsx --env-file=.env.local src/lib/respond-io/crawl.ts full",
+    "crawl:incremental": "tsx --env-file=.env.local src/lib/respond-io/crawl.ts incremental",
+    "crawl:conversations": "tsx --env-file=.env.local src/lib/respond-io/crawl-conversations.ts"
   },
   "dependencies": {
     "next": "16.2.1",
@@ -21,7 +24,9 @@
     "babel-plugin-react-compiler": "1.0.0",
     "eslint": "^9",
     "eslint-config-next": "16.2.1",
+    "playwright": "^1.59.1",
     "tailwindcss": "^4",
+    "tsx": "^4.21.0",
     "typescript": "^5"
   }
 }
