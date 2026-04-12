@@ -1,6 +1,17 @@
 import { writeFileSync, existsSync, readFileSync } from "fs";
 import type { RespondIOContact, CrawlResult } from "./types";
 
+interface ConversationData {
+  conversationOpenedBy: string | null;
+  adPlatform: string | null;
+  adName: string | null;
+  adId: string | null;
+  referral: string | null;
+  refererURL: string | null;
+  packageName: string | null;
+  packagePrice: number | null;
+}
+
 interface FlatContact {
   id: number;
   firstName: string;
@@ -15,6 +26,14 @@ interface FlatContact {
   assignee_email: string | null;
   tags: string;
   created_at: string;
+  conversation_opened_by: string | null;
+  ad_platform: string | null;
+  ad_name: string | null;
+  ad_id: string | null;
+  ad_referral: string | null;
+  ad_referer_url: string | null;
+  subscribed_package: string | null;
+  subscribed_price: number | null;
   installation_address: string | null;
   selected_package: string | null;
   package_type: string | null;
@@ -27,7 +46,10 @@ interface FlatContact {
   ads_source: string | null;
 }
 
-function flattenContact(contact: RespondIOContact): FlatContact {
+function flattenContact(
+  contact: RespondIOContact,
+  convData?: ConversationData
+): FlatContact {
   const customFieldMap: Record<string, string | null> = {};
   for (const cf of contact.custom_fields) {
     customFieldMap[cf.name] = cf.value;
@@ -51,6 +73,14 @@ function flattenContact(contact: RespondIOContact): FlatContact {
     assignee_email: contact.assignee?.email ?? null,
     tags: contact.tags.join(", "),
     created_at: new Date(contact.created_at * 1000).toISOString(),
+    conversation_opened_by: convData?.conversationOpenedBy ?? null,
+    ad_platform: convData?.adPlatform ?? null,
+    ad_name: convData?.adName ?? null,
+    ad_id: convData?.adId ?? null,
+    ad_referral: convData?.referral ?? null,
+    ad_referer_url: convData?.refererURL ?? null,
+    subscribed_package: convData?.packageName ?? null,
+    subscribed_price: convData?.packagePrice ?? null,
     installation_address: customFieldMap.installation_address ?? null,
     selected_package: customFieldMap.selected_package ?? null,
     package_type: customFieldMap.package_type ?? null,
@@ -64,6 +94,37 @@ function flattenContact(contact: RespondIOContact): FlatContact {
   };
 }
 
+export function loadConversationMap(
+  dataDir: string
+): Map<number, ConversationData> {
+  const map = new Map<number, ConversationData>();
+  const dateStr = new Date().toISOString().split("T")[0];
+  const convPath = `${dataDir}/conversations-${dateStr}.json`;
+
+  if (!existsSync(convPath)) return map;
+
+  try {
+    const data = JSON.parse(readFileSync(convPath, "utf-8"));
+    for (const r of data.results ?? []) {
+      map.set(r.contactId, {
+        conversationOpenedBy: r.conversationOpenedBy ?? null,
+        adPlatform: r.adPlatform ?? null,
+        adName: r.adName ?? null,
+        adId: r.adId ?? null,
+        referral: r.referral ?? null,
+        refererURL: r.refererURL ?? null,
+        packageName: r.packageName ?? null,
+        packagePrice: r.packagePrice ?? null,
+      });
+    }
+    console.log(`Loaded ${map.size} conversation records for merge`);
+  } catch {
+    console.log("No conversation data found to merge");
+  }
+
+  return map;
+}
+
 function escapeCsvField(value: string | null | boolean | number): string {
   if (value === null || value === undefined) return "";
   const str = String(value);
@@ -75,9 +136,10 @@ function escapeCsvField(value: string | null | boolean | number): string {
 
 export function exportToCsv(
   contacts: RespondIOContact[],
-  outputPath: string
+  outputPath: string,
+  convMap?: Map<number, ConversationData>
 ): void {
-  const flat = contacts.map(flattenContact);
+  const flat = contacts.map((c) => flattenContact(c, convMap?.get(c.id)));
   if (flat.length === 0) {
     console.log("No contacts to export.");
     return;

@@ -4,6 +4,7 @@ import {
   exportToJson,
   loadLastCrawlTimestamp,
   saveLastCrawlTimestamp,
+  loadConversationMap,
 } from "./export";
 import type { CrawlResult } from "./types";
 import path from "path";
@@ -71,7 +72,8 @@ async function runFull(startTime: number) {
   };
 
   const dateStr = new Date().toISOString().split("T")[0];
-  exportToCsv(contacts, path.join(DATA_DIR, `contacts-full-${dateStr}.csv`));
+  const convMap = loadConversationMap(DATA_DIR);
+  exportToCsv(contacts, path.join(DATA_DIR, `contacts-full-${dateStr}.csv`), convMap);
   exportToJson(result, path.join(DATA_DIR, `contacts-full-${dateStr}.json`));
   saveLastCrawlTimestamp(META_PATH, nowTimestamp);
 

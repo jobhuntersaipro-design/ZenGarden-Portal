@@ -9,12 +9,14 @@
     "lint": "eslint",
     "crawl": "tsx --env-file=.env.local src/lib/respond-io/crawl.ts full",
     "crawl:incremental": "tsx --env-file=.env.local src/lib/respond-io/crawl.ts incremental",
-    "crawl:conversations": "tsx --env-file=.env.local src/lib/respond-io/crawl-conversations.ts"
+    "crawl:conversations": "tsx --env-file=.env.local src/lib/respond-io/crawl-conversations.ts",
+    "crawl:all": "npm run crawl:conversations && npm run crawl"
   },
   "dependencies": {
     "next": "16.2.1",
     "react": "19.2.4",
-    "react-dom": "19.2.4"
+    "react-dom": "19.2.4",
+    "recharts": "^3.8.1"
   },
   "devDependencies": {
     "@tailwindcss/postcss": "^4",

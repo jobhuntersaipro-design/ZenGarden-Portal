@@ -1,10 +1,40 @@
 import { chromium } from "playwright";
 import { readFileSync, writeFileSync, existsSync } from "fs";
 import path from "path";
+import { normalizePackageName, lookupPackagePrice } from "./pricing";
 
 const DATA_DIR = path.resolve(process.cwd(), "data");
-const OUTPUT_CSV = path.join(DATA_DIR, `conversations-${new Date().toISOString().split("T")[0]}.csv`);
-const OUTPUT_JSON = path.join(DATA_DIR, `conversations-${new Date().toISOString().split("T")[0]}.json`);
+const DATE_STR = new Date().toISOString().split("T")[0];
+const OUTPUT_CSV = path.join(DATA_DIR, `conversations-${DATE_STR}.csv`);
+const OUTPUT_JSON = path.join(DATA_DIR, `conversations-${DATE_STR}.json`);
+const LIFECYCLE_JSON = path.join(DATA_DIR, `lifecycle-events-${DATE_STR}.json`);
+
+const LIFECYCLE_MAP: Record<number, string> = {
+  678125: "New Lead",
+  678126: "Plan Selected",
+  678127: "Supporting Document Pending",
+  678128: "Installation Done",
+  678129: "Cold Lead",
+  678626: "Supporting Document Submitted",
+  686914: "Closing Script Agreed - Pending Human",
+  686915: "Pending Installation",
+  714695: "Pending Demand",
+  722885: "Pending Transfer Request",
+  741711: "Installation Done - Pending Free Gift",
+  741712: "Installation Done - Free Gift Done",
+  766841: "Follow Up",
+};
+
+interface LifecycleEventRaw {
+  contactId: number;
+  lifecycleId: number;
+  lifecycleName: string;
+  previousLifecycleId: number | null;
+  previousLifecycleName: string | null;
+  timestamp: number;
+  date: string;
+  source: string | null;
+}
 
 const SPACE_ID = process.env.RESPOND_IO_SPACE_ID ?? "379161";
 const ORG_ID = "373287";
@@ -19,6 +49,13 @@ interface ConversationOpenedEvent {
   firstIncomingMessage: string | null;
   timestamp: number;
   lifecycleId: number | null;
+  adPlatform: string | null;
+  adName: string | null;
+  adId: string | null;
+  referral: string | null;
+  refererURL: string | null;
+  packageName: string | null;
+  packagePrice: number | null;
 }
 
 interface ChatActivityItem {
@@ -36,6 +73,91 @@ interface ChatActivityItem {
   };
 }
 
+function extractPackageFromMessages(
+  activities: ChatActivityItem[]
+): string | null {
+  const outgoingTexts: string[] = [];
+
+  for (const a of activities) {
+    if (a.type !== "message") continue;
+    const msg = a.payload as Record<string, unknown>;
+    const message = msg.message as Record<string, unknown> | undefined;
+    if (!message) continue;
+
+    const text =
+      (message.text as string) ??
+      (message.attachment as Record<string, unknown>)?.description ??
+      "";
+    if (!text) continue;
+
+    // Priority 1: Formal closing script "Package to be subscribed"
+    const packageMatch = text.match(
+      /[Pp]ackage\s+to\s+be\s+subscribed\s*[:：]\s*(.+?)(?:\n|$)/
+    );
+    if (packageMatch) {
+      return packageMatch[1].trim();
+    }
+
+    const traffic = (a as unknown as Record<string, unknown>).traffic;
+    if (traffic === "outgoing") {
+      outgoingTexts.push(text);
+    }
+  }
+
+  // Speed pattern reused across all tiers
+  const speedRe = /(\d+)\s*(?:mbps|gbps|gb|mb)/i;
+
+  // Priority 2: Confirmation messages with speed mentions
+  const confirmPatterns = [
+    // "saya lock/confirm/setkan/simpan/note/submit... Unifi XXXMbps"
+    /(?:saya\s+(?:lock|confirm|setkan|simpan|note|submit|dah)|submit\s+order|dah\s+terima|proceed).*?(?:unifi\s+(?:\w+\s+)?)?(\d+\s*(?:mbps|gbps|gb|mb))/i,
+    // "you pilih/ambil/confirm... XXXMbps"
+    /(?:you\s+(?:pilih|ambil|confirm|nak)).*?(\d+\s*(?:mbps|gbps|gb|mb))/i,
+    // "package/pelan daftar XXXMbps"
+    /(?:package|pelan|plan).*?(?:daftar|register|ni).*?(\d+\s*(?:mbps|gbps|gb|mb))/i,
+    // "daftar/pasang XXXMbps"
+    /(?:daftar|pasang|pemasangan).*?(\d+\s*(?:mbps|gbps|gb|mb))/i,
+  ];
+
+  for (const text of outgoingTexts) {
+    for (const pattern of confirmPatterns) {
+      const m = text.match(pattern);
+      if (m) {
+        const speed = m[1].trim();
+        const isBiz = text.toLowerCase().includes("business") || text.toLowerCase().includes("biz");
+        return isBiz ? `Unifi Business ${speed}` : `Unifi ${speed}`;
+      }
+    }
+  }
+
+  // Priority 3: Outgoing messages with "Unifi [Home/Business/Biz] XXXMbps" + price
+  for (const text of outgoingTexts) {
+    const m = text.match(
+      /unifi\s+(?:home\s+|business\s+|biz\s+)?(\d+\s*(?:mbps|gbps|gb|mb)).*?(?:rm\s*\d+|bulanan|sebulan|\/bulan)/i
+    );
+    if (m) {
+      const isBiz = text.toLowerCase().includes("business") || text.toLowerCase().includes("biz");
+      return isBiz ? `Unifi Business ${m[1].trim()}` : `Unifi ${m[1].trim()}`;
+    }
+  }
+
+  // Priority 4: Any outgoing message with speed + RM price nearby
+  for (const text of outgoingTexts) {
+    const m = text.match(
+      /(\d+)\s*(?:mbps|gbps|gb|mb)\s*(?:\S+\s+){0,5}rm\s*\d+/i
+    );
+    if (m && speedRe.test(text)) {
+      const speedM = text.match(speedRe);
+      if (speedM) {
+        const isBiz = text.toLowerCase().includes("business") || text.toLowerCase().includes("biz");
+        return isBiz ? `Unifi Business ${speedM[0].trim()}` : `Unifi ${speedM[0].trim()}`;
+      }
+    }
+  }
+
+  return null;
+}
+
 function extractConversationOpened(
   contactId: number,
   activities: ChatActivityItem[]
@@ -45,15 +167,57 @@ function extractConversationOpened(
   );
   if (!openEvent) return null;
 
+  const source = openEvent.payload.source ?? "unknown";
+  const isContactSource = source === "contact";
+
+  const rawPackage = extractPackageFromMessages(activities);
+  const pkgName = rawPackage ? normalizePackageName(rawPackage) : null;
+  const pkgPrice = pkgName ? lookupPackagePrice(pkgName) : null;
+
   return {
     contactId,
     conversationId: openEvent.conversationId,
-    source: openEvent.payload.source ?? "unknown",
+    source,
     channelId: openEvent.payload.channelId ?? null,
     firstIncomingMessage: openEvent.payload.firstIncomingMessage ?? null,
     timestamp: openEvent.timestamp,
     lifecycleId: openEvent.payload.lifecycleId ?? null,
+    adPlatform: (openEvent.payload.adPlatform as string) ?? (isContactSource ? "Google Ads" : null),
+    adName: (openEvent.payload.adName as string) ?? (isContactSource ? "Google Ads" : null),
+    adId: (openEvent.payload.adId as string) ?? null,
+    referral: (openEvent.payload.referral as string) ?? (isContactSource ? "Google Ads" : null),
+    refererURL: (openEvent.payload.refererURL as string) ?? null,
+    packageName: pkgName,
+    packagePrice: pkgPrice,
   };
+}
+
+function extractLifecycleEvents(
+  contactId: number,
+  activities: ChatActivityItem[]
+): LifecycleEventRaw[] {
+  return activities
+    .filter(
+      (a) =>
+        a.eventType === "on_contact_lifecycle_created" ||
+        a.eventType === "on_contact_lifecycle_updated"
+    )
+    .map((a) => {
+      const lcId = a.payload.lifecycleId as number;
+      const prevId = (a.payload.previousLifecycleId as number) ?? null;
+      return {
+        contactId,
+        lifecycleId: lcId,
+        lifecycleName: LIFECYCLE_MAP[lcId] ?? `Unknown (${lcId})`,
+        previousLifecycleId: prevId,
+        previousLifecycleName: prevId
+          ? (LIFECYCLE_MAP[prevId] ?? `Unknown (${prevId})`)
+          : null,
+        timestamp: a.timestamp,
+        date: new Date(a.timestamp).toISOString().split("T")[0],
+        source: (a.payload.source as string) ?? null,
+      };
+    });
 }
 
 async function getIdToken(page: import("playwright").Page): Promise<string> {
@@ -62,35 +226,64 @@ async function getIdToken(page: import("playwright").Page): Promise<string> {
   return token;
 }
 
-async function fetchChatActivity(
+async function fetchChatActivityWithPagination(
   page: import("playwright").Page,
   contactId: number,
   idToken: string
 ): Promise<ChatActivityItem[]> {
   const result = await page.evaluate(
     async ({ contactId, idToken, spaceId, orgId }) => {
-      const resp = await fetch(
-        `/api/v2/chat-activity/chat?contactId=${contactId}`,
-        {
-          headers: {
-            Authorization: `Bearer ${idToken}`,
-            botid: spaceId,
-            orgid: orgId,
-            timezone: "Asia/Kuala_Lumpur",
-            "x-requested-with": "XMLHttpRequest",
-            Accept: "application/json",
-          },
-        }
-      );
-      if (!resp.ok) return { error: resp.status, data: [] };
-      const json = await resp.json();
-      return json;
+      const headers = {
+        Authorization: `Bearer ${idToken}`,
+        botid: spaceId,
+        orgid: orgId,
+        timezone: "Asia/Kuala_Lumpur",
+        "x-requested-with": "XMLHttpRequest",
+        Accept: "application/json",
+      };
+
+      let lastId: string | null = null;
+      const allItems: unknown[] = [];
+      let pages = 0;
+      const MAX_PAGES = 30;
+
+      while (pages < MAX_PAGES) {
+        const apiUrl: string = lastId
+          ? `/api/v2/chat-activity/chat?contactId=${contactId}&lastChatActivityId=${lastId}`
+          : `/api/v2/chat-activity/chat?contactId=${contactId}`;
+
+        const resp = await fetch(apiUrl, { headers });
+        if (!resp.ok) return { status: "error", data: allItems };
+
+        const json = await resp.json();
+        const items = json.data || [];
+        pages++;
+
+        if (items.length === 0) break;
+
+        allItems.push(...items);
+
+        // Check if we found the conversation opened event
+        const openEvent = items.find(
+          (e: { eventType?: string }) =>
+            e.eventType === "on_conversation_opened"
+        );
+        if (openEvent) break;
+
+        // Get first (oldest) item ID for next page
+        lastId = items[0].id;
+
+        // If fewer than 50 items, we've reached the beginning
+        if (items.length < 50) break;
+      }
+
+      return { status: "success", data: allItems };
     },
     { contactId, idToken, spaceId: SPACE_ID, orgId: ORG_ID }
   );
 
   if (result.status === "success" && Array.isArray(result.data)) {
-    return result.data;
+    return result.data as ChatActivityItem[];
   }
   return [];
 }
@@ -192,6 +385,7 @@ async function run() {
 
   // Fetch chat activity for each contact
   const results: ConversationOpenedEvent[] = [];
+  const allLifecycleEvents: LifecycleEventRaw[] = [];
   const errors: { contactId: number; error: string }[] = [];
   const batchSize = 5;
 
@@ -201,13 +395,15 @@ async function run() {
     const batchResults = await Promise.all(
       batch.map(async (contactId) => {
         try {
-          const activities = await fetchChatActivity(page, contactId, idToken);
+          const activities = await fetchChatActivityWithPagination(page, contactId, idToken);
           const opened = extractConversationOpened(contactId, activities);
-          return { contactId, opened, error: null };
+          const lcEvents = extractLifecycleEvents(contactId, activities);
+          return { contactId, opened, lcEvents, error: null };
         } catch (err) {
           return {
             contactId,
             opened: null,
+            lcEvents: [] as LifecycleEventRaw[],
             error: String(err),
           };
         }
@@ -225,6 +421,7 @@ async function run() {
           error: "No conversation_opened event found",
         });
       }
+      allLifecycleEvents.push(...r.lcEvents);
     }
 
     const progress = Math.min(i + batchSize, contactIds.length);
@@ -269,6 +466,13 @@ async function run() {
       phone: (contact as { phone?: string })?.phone ?? "",
       lifecycle: (contact as { lifecycle?: string })?.lifecycle ?? "",
       conversationOpenedBy: r.source,
+      adPlatform: r.adPlatform,
+      adName: r.adName,
+      adId: r.adId,
+      referral: r.referral,
+      refererURL: r.refererURL,
+      packageName: r.packageName,
+      packagePrice: r.packagePrice,
       channelId: r.channelId,
       firstMessage: r.firstIncomingMessage,
       conversationTimestamp: new Date(r.timestamp).toISOString(),
@@ -287,6 +491,13 @@ async function run() {
     "phone",
     "lifecycle",
     "conversationOpenedBy",
+    "adPlatform",
+    "adName",
+    "adId",
+    "referral",
+    "refererURL",
+    "packageName",
+    "packagePrice",
     "channelId",
     "firstMessage",
     "conversationTimestamp",
@@ -313,10 +524,25 @@ async function run() {
   writeFileSync(OUTPUT_JSON, JSON.stringify(jsonOutput, null, 2), "utf-8");
   console.log(`Exported JSON to ${OUTPUT_JSON}`);
 
+  // Export lifecycle events
+  const lcOutput = {
+    crawledAt: new Date().toISOString(),
+    totalEvents: allLifecycleEvents.length,
+    events: allLifecycleEvents,
+  };
+  writeFileSync(LIFECYCLE_JSON, JSON.stringify(lcOutput, null, 2), "utf-8");
+  console.log(
+    `Exported ${allLifecycleEvents.length} lifecycle events to ${LIFECYCLE_JSON}`
+  );
+
   // Summary
   const sourceCounts: Record<string, number> = {};
+  const adNameCounts: Record<string, number> = {};
   for (const r of results) {
     sourceCounts[r.source] = (sourceCounts[r.source] ?? 0) + 1;
+    if (r.adName) {
+      adNameCounts[r.adName] = (adNameCounts[r.adName] ?? 0) + 1;
+    }
   }
 
   console.log(`\n[conversation crawler] Done in ${Date.now() - startTime}ms`);
@@ -328,6 +554,14 @@ async function run() {
     (a, b) => b[1] - a[1]
   )) {
     console.log(`    ${source}: ${count}`);
+  }
+  if (Object.keys(adNameCounts).length > 0) {
+    console.log(`\n  By Meta Ad:`);
+    for (const [adName, count] of Object.entries(adNameCounts).sort(
+      (a, b) => b[1] - a[1]
+    )) {
+      console.log(`    ${adName}: ${count}`);
+    }
   }
 }
 
