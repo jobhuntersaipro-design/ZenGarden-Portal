@@ -69,6 +69,17 @@ Example v4 configuration:
 - Tailwind CSS for all styling
 - Use shadcn/ui components where applicable
 - No inline styles
+- **Design system is mandatory.** All colors, type, radii, spacing, and shadows
+  come from the `@theme` tokens in `src/app/globals.css`. Never invent a hex
+  value, a px font size, or an arbitrary Tailwind value (`bg-[#292d34]`,
+  `text-[15px]`) — if a token is missing, add it to `@theme` first.
+- Read `context/design-system.md` (ClickUp design system) before building or
+  restyling any UI. Key rules: primary CTA is the dark `bg-ink` pill at
+  `rounded-pill`, never purple; `#7612fa` only ever appears inside
+  `bg-brand-gradient`, never as a flat fill; `brand-link` lavender is a
+  text/border color, never a button background; shadows are indigo-tinted, not
+  gray; display type is Plus Jakarta Sans (`font-display`) and body is Inter —
+  never crossed.
 
 ## Database
 

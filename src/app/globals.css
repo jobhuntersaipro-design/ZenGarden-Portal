@@ -1,7 +1,185 @@
 @import "tailwindcss";
 
+/*
+ * Design tokens — ClickUp design system (see context/design-system.md).
+ * Every color, font, radius and spacing value used in the UI must come from
+ * here. Do not write raw hex values, px font sizes or arbitrary values in
+ * components.
+ */
 @theme {
+  /* Brand */
+  --color-primary: #7612fa;
+  --color-primary-deep: #4a2fff;
+  --color-primary-soft: #b38cff;
+  --color-brand-link: #7b68ee;
+  --color-brand-pink: #fa24ce;
+  --color-brand-pink-deep: #ff02f0;
+  --color-brand-orange: #f76808;
+  --color-brand-coral: #fc6d7b;
+  --color-brand-amber: #fd9a46;
+  --color-brand-sky: #4fb9fa;
+
+  /* Accents — status chips and in-product labels */
+  --color-accent-blue: #0091ff;
+  --color-accent-purple: #6647f0;
+  --color-accent-magenta: #a43cb4;
+  --color-accent-green: #078d3b;
+  --color-accent-red: #f0382d;
+
+  /* Surfaces */
+  --color-canvas: #ffffff;
+  --color-surface: #f8f9fa;
+  --color-surface-soft: #e9ebf0;
+  --color-hairline: #e8e8e8;
+  --color-hairline-strong: #d9d9d9;
+
+  /* Ink ramp */
+  --color-ink: #292d34;
+  --color-ink-deep: #202020;
+  --color-ink-darkest: #090c1d;
+  --color-ink-secondary: #646464;
+  --color-ink-tertiary: #838383;
+  --color-ink-disabled: #b4b4b4;
+
+  /* Shadow tints — ClickUp shadows echo the brand purple, never neutral gray */
+  --color-shadow-indigo: #122ba5;
+  --color-shadow-navy: #1b1754;
+
+  /* Font families */
+  --font-display: var(--font-plus-jakarta-sans), ui-sans-serif, sans-serif;
+  --font-sans: var(--font-inter), ui-sans-serif, sans-serif;
+  --font-mono: var(--font-sometype-mono), ui-monospace, monospace;
+
+  /* Display type — Plus Jakarta Sans, weight 650-700, negative tracking */
+  --text-display-3xl: 76px;
+  --text-display-3xl--line-height: 1.05;
+  --text-display-3xl--letter-spacing: -3.04px;
+  --text-display-3xl--font-weight: 700;
+
+  --text-display-2xl: 60px;
+  --text-display-2xl--line-height: 1.1;
+  --text-display-2xl--letter-spacing: -2.1px;
+  --text-display-2xl--font-weight: 650;
+
+  --text-display-xl: 48px;
+  --text-display-xl--line-height: 1.25;
+  --text-display-xl--letter-spacing: -1.68px;
+  --text-display-xl--font-weight: 650;
+
+  --text-display-lg: 40px;
+  --text-display-lg--line-height: 1.2;
+  --text-display-lg--letter-spacing: -1.6px;
+  --text-display-lg--font-weight: 650;
+
+  --text-display-md: 34px;
+  --text-display-md--line-height: 1.2;
+  --text-display-md--letter-spacing: -1.36px;
+  --text-display-md--font-weight: 650;
+
+  --text-heading-md: 26px;
+  --text-heading-md--line-height: 1.25;
+  --text-heading-md--letter-spacing: -0.91px;
+  --text-heading-md--font-weight: 650;
+
+  --text-heading-sm: 18px;
+  --text-heading-sm--line-height: 1.33;
+  --text-heading-sm--letter-spacing: -0.54px;
+  --text-heading-sm--font-weight: 650;
+
+  /* Body type — Inter, weight 400-600 */
+  --text-body-lg: 18px;
+  --text-body-lg--line-height: 1.33;
+  --text-body-lg--letter-spacing: -0.36px;
+  --text-body-lg--font-weight: 500;
+
+  --text-body-md: 16px;
+  --text-body-md--line-height: 1.375;
+  --text-body-md--letter-spacing: -0.32px;
+  --text-body-md--font-weight: 400;
+
+  --text-body-sm: 14px;
+  --text-body-sm--line-height: 1.43;
+  --text-body-sm--letter-spacing: -0.15px;
+  --text-body-sm--font-weight: 400;
+
+  --text-button-md: 14px;
+  --text-button-md--line-height: 1.43;
+  --text-button-md--letter-spacing: -0.15px;
+  --text-button-md--font-weight: 600;
+
+  /* Eyebrow — Sometype Mono uppercase, the only mono surface */
+  --text-eyebrow: 14px;
+  --text-eyebrow--line-height: 1.29;
+  --text-eyebrow--letter-spacing: 0px;
+  --text-eyebrow--font-weight: 500;
+
+  --text-caption: 12px;
+  --text-caption--line-height: 1.5;
+  --text-caption--letter-spacing: -0.12px;
+  --text-caption--font-weight: 400;
+
+  /* Radius — eight tiers, each with its own lane */
+  --radius-xxs: 4px;
+  --radius-sm: 9px;
+  --radius-md: 12px;
+  --radius-lg: 14px;
+  --radius-pill: 20px;
+  --radius-xl: 25px;
+  --radius-xxl: 35px;
+
+  /* Spacing — 10px base rhythm */
+  --spacing-xxs: 4px;
+  --spacing-xs: 8px;
+  --spacing-sm: 12px;
+  --spacing-md: 20px;
+  --spacing-lg: 24px;
+  --spacing-xl: 40px;
+  --spacing-xxl: 60px;
+  --spacing-section: 100px;
+  --spacing-hero: 150px;
+
+  /* Elevation — tinted, never neutral gray */
+  --shadow-xs: 0 4px 12px rgb(18 43 165 / 0.08);
+  --shadow-sm: 0 10px 25px rgb(18 43 165 / 0.1);
+  --shadow-md: 0 20px 60px rgb(18 43 165 / 0.12);
+  --shadow-lg: 0 16px 78px rgb(27 23 84 / 0.14);
+  --shadow-xl: 0 34px 54px rgb(27 23 84 / 0.16);
+
+  /* Layout */
+  --container-page: 1160px;
+
   --animate-fade-in-up: fade-in-up 1s ease-out both;
+}
+
+/*
+ * The brand gradient. ClickUp's identity is this 263deg sweep, not a flat
+ * purple fill — use `bg-brand-gradient` for gradient CTAs and never
+ * `bg-primary` as a section background.
+ */
+@utility bg-brand-gradient {
+  background-image: linear-gradient(
+    263deg,
+    #fa12e3 -35%,
+    #7612fa 41%,
+    #12d0fa 135%
+  );
+}
+
+@layer base {
+  body {
+    background-color: var(--color-canvas);
+    color: var(--color-ink);
+    font-family: var(--font-sans);
+  }
+
+  h1,
+  h2,
+  h3,
+  h4,
+  h5,
+  h6 {
+    font-family: var(--font-display);
+  }
 }
 
 @keyframes fade-in-up {
