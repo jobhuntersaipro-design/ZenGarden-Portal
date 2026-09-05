@@ -1,52 +1,34 @@
 # Current Feature
 
-Phase 08 — Products (`docs/specs/08-products.md`)
+Phase 09 — Admin (`docs/specs/09-admin.md`)
 
 ## Status
 
-Complete except the image editor. Merged to `main` 2026-09-06.
-
-**Deferred, by decision on 2026-09-06:** product image upload, the 1600px WebP
-derivative, drag-to-reorder and delete. All of it needs R2, which still holds
-placeholder credentials, so none of it could be run — including the manual
-check the spec asks for (a 4000px PNG resizing to 1600px under 300 KB).
-Building it blind would have stacked a second unverified surface on Phase 03's
-upload path, which is unverified for the same reason. Acceptance criteria 5 and
-the super-admin half of 10 are **not met** rather than merely unverified. Do it
-in one pass once `docs/specs/SETUP-CHECKLIST.md` §2 is done.
+In progress. Branch `feature/admin`. Phase 08 merged 2026-09-06.
 
 ## Goals
 
-- `twelveMonthWindow(now)` exported once and passed to every caller, so the
-  KPI tiles, the table, the footer summary and the order history can never
-  read different windows
-- `productStats`, `priceTrend` (gaps, not zeros), `whoBuysIt`,
-  `boughtTogether`, `needsAttention` — pure and unit tested
-- Catalog: KPI row over all products, quick-filter chips, clickable
-  Needs-attention breakdown, grid and list views with the preference in
-  `localStorage` behind the URL
-- Product detail: gallery, facts, six stat tiles, price trend with the list
-  reference line, who buys it, bought together, order history
-- `ProductSheet` for super admins; members are read-only and the actions
-  enforce it rather than the UI
-- Product images through the Phase 03 presign/complete pattern, with a 1600px
-  WebP derivative
+- `(admin)` shell with its own top bar; the Phase 02 proxy already 404s
+  non-super-admins and the layout calls `requireSuperAdmin()` as well
+- Pending access requests with approve / decline, wired to the Phase 02 emails
+- Users table with status derivation, filters and the reset-password split:
+  a Google-only user gets an explanation, not a dead link
+- `UserDrawer` with create, update, set password and soft delete
+- The safety rules: no self-demote, no self-disable, never the last active
+  super admin, and delete gated on typing the exact email
 
 ## Notes
 
 - Read `docs/specs/00-master.md` before this phase file.
-- **One dataset, one window.** The catalog KPI row describes all products and
-  the footer summary describes the active filter; with no filter on they must
-  read identically. The named bug to prevent is tiles reading "RM 0.00" beside
-  a footer reading RM 15.5M, and an order-history table drifting to 367 days
-  against tiles on 365.
-- The sort control and the table headers share one piece of sort state — the
-  reuse case `DataTable`'s `onSortChange` was refactored for in Phase 05.
-- **Blocked on owner setup:** image upload, the WebP derivative and the gallery
-  all need R2, which still holds placeholder credentials. Acceptance criteria 5
-  and 10's super-admin half cannot be verified until it is set.
-- New dependency: `@dnd-kit/core` and `@dnd-kit/sortable` for image reordering,
-  named in `00-master.md` §3 for this phase.
+- Pending and Invited are **neutral text inside an amber ring**, deliberately
+  distinct from the amber-*text* "Needs review" badge used for PO work (G2).
+- Disabling and setting a password both bump `sessionVersion`, which the Phase
+  02 `jwt` callback compares — that is what actually ends the session.
+- Deletion is a soft delete: the row stays so uploads and stage events keep
+  their attribution.
+- **Inherited, unchanged:** `R2_ACCOUNT_ID` and `ANTHROPIC_API_KEY` are still
+  placeholders. Nothing in this phase depends on either, but Phase 08's image
+  editor remains unbuilt for that reason.
 
 ## History
 
