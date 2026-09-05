@@ -8,6 +8,8 @@ import {
   KpiTile,
 } from "@/components/dashboard/KpiTile";
 import { AttentionTile } from "@/components/products/AttentionTile";
+import { ProductSheet } from "@/components/products/ProductSheet";
+import { Button } from "@/components/ui/button";
 import { ProductCard } from "@/components/products/ProductCard";
 import { ProductsList } from "@/components/products/ProductsList";
 import {
@@ -103,7 +105,9 @@ export default async function ProductsPage({
         eyebrow="Catalog"
         title="Products"
         action={
-          user?.role === Role.SUPER_ADMIN ? null : (
+          user?.role === Role.SUPER_ADMIN ? (
+            <ProductSheet trigger={<Button>+ New product</Button>} />
+          ) : (
             <span className="rounded-full bg-surface-soft px-sm py-xxs text-[length:var(--text-caption)] text-ink-secondary">
               View only · ask a super admin to change products
             </span>

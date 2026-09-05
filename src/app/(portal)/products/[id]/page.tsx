@@ -7,6 +7,8 @@ import { KpiTile } from "@/components/dashboard/KpiTile";
 import { OrderHistoryTable } from "@/components/products/OrderHistoryTable";
 import { PriceTrendChart, type TrendMode } from "@/components/products/PriceTrendChart";
 import { ProductGallery } from "@/components/products/ProductGallery";
+import { ProductSheet } from "@/components/products/ProductSheet";
+import { Button } from "@/components/ui/button";
 import { WhatTheyBuy } from "@/components/buyers/WhatTheyBuy";
 import { getSessionUser } from "@/lib/auth-guards";
 import { formatDate, formatDateTime } from "@/lib/dates";
@@ -109,7 +111,21 @@ export default async function ProductPage({
             >
               {data.product.active ? "Active" : "Inactive"}
             </span>
-            {isSuperAdmin ? null : (
+            {isSuperAdmin ? (
+              <ProductSheet
+                product={{
+                  id: data.product.id,
+                  name: data.product.name,
+                  sku: data.product.sku,
+                  category: data.product.category as never,
+                  unit: data.product.unit,
+                  listPrice: data.product.listPrice.toFixed(2),
+                  description: data.product.description,
+                  active: data.product.active,
+                }}
+                trigger={<Button>Edit product</Button>}
+              />
+            ) : (
               <span className="rounded-full bg-surface-soft px-sm py-xxs text-[length:var(--text-caption)] text-ink-secondary">
                 View only
               </span>
