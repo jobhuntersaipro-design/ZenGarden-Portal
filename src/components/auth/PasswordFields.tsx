@@ -1,7 +1,7 @@
 "use client";
 
-import { Input } from "@/components/ui/input";
 import { FieldLabel } from "@/components/auth/FieldLabel";
+import { PasswordInput } from "@/components/auth/PasswordInput";
 
 /** The rule, stated where the user is typing rather than only on failure. */
 export const PASSWORD_HINT =
@@ -25,15 +25,13 @@ export function PasswordField({
   return (
     <div className="flex flex-col gap-xxs">
       <FieldLabel htmlFor={id}>{label}</FieldLabel>
-      <Input
+      <PasswordInput
         id={id}
-        name={id}
-        type="password"
+        label={label}
         autoComplete={autoComplete}
-        required
         value={value}
-        onChange={(event) => onChange(event.target.value)}
-        aria-describedby={hint ? `${id}-hint` : undefined}
+        onChange={onChange}
+        describedBy={hint ? `${id}-hint` : undefined}
       />
       {hint ? (
         <p

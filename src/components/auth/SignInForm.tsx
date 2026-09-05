@@ -7,6 +7,7 @@ import { signIn } from "next-auth/react";
 import { Input } from "@/components/ui/input";
 import { FieldLabel } from "@/components/auth/FieldLabel";
 import { GoogleMark } from "@/components/auth/GoogleMark";
+import { PasswordInput } from "@/components/auth/PasswordInput";
 import { Notice } from "@/components/auth/Notice";
 import { Button } from "@/components/ui/button";
 
@@ -80,14 +81,11 @@ export function SignInForm({ next }: { next: string }) {
           >
             Password
           </FieldLabel>
-          <Input
+          <PasswordInput
             id="password"
-            name="password"
-            type="password"
             autoComplete="current-password"
-            required
             value={password}
-            onChange={(event) => setPassword(event.target.value)}
+            onChange={setPassword}
           />
         </div>
 
