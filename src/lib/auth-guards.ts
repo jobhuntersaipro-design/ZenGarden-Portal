@@ -1,4 +1,5 @@
 import { Role } from "@/generated/prisma/enums";
+import { auth } from "@/lib/auth";
 
 /**
  * Thrown by the guards and caught by Server Actions, which turn it into
@@ -15,20 +16,32 @@ export type SessionUser = {
   id: string;
   email: string;
   name: string;
+  image: string | null;
   role: Role;
   mustChangePassword: boolean;
 };
 
 /**
- * Phase 01 stub. Auth.js replaces this in Phase 02; the signature is what
- * callers depend on, so nothing above it changes when the real session lands.
+ * The session as the rest of the app wants it. `auth()` runs the `jwt`
+ * callback in `src/lib/auth.ts`, so a disabled, deleted or signed-out-
+ * everywhere user resolves to null here even while their cookie is still warm.
  */
-async function getSession(): Promise<SessionUser | null> {
-  return null;
+export async function getSessionUser(): Promise<SessionUser | null> {
+  const session = await auth();
+  const user = session?.user;
+  if (!user?.id || !user.email) return null;
+  return {
+    id: user.id,
+    email: user.email,
+    name: user.name ?? user.email,
+    image: user.image ?? null,
+    role: user.role,
+    mustChangePassword: user.mustChangePassword,
+  };
 }
 
 export async function requireUser(): Promise<SessionUser> {
-  const user = await getSession();
+  const user = await getSessionUser();
   if (!user) throw new UnauthorizedError();
   return user;
 }

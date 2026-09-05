@@ -1,16 +1,18 @@
 "use client";
 
+import { signOut } from "next-auth/react";
 import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { Avatar, AvatarFallback } from "@/components/ui/avatar";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 
 export type UserMenuProps = {
   name: string;
   email: string;
+  image?: string | null;
   collapsed?: boolean;
 };
 
@@ -23,8 +25,12 @@ const initials = (name: string) =>
     .join("")
     .toUpperCase();
 
-/** Hard-coded user until Phase 02; sign-out is a no-op for now. */
-export function UserMenu({ name, email, collapsed = false }: UserMenuProps) {
+export function UserMenu({
+  name,
+  email,
+  image = null,
+  collapsed = false,
+}: UserMenuProps) {
   return (
     <DropdownMenu>
       <DropdownMenuTrigger
@@ -32,6 +38,7 @@ export function UserMenu({ name, email, collapsed = false }: UserMenuProps) {
         className="flex w-full items-center gap-xs rounded-sm p-xs text-left transition-colors duration-[0.25s] ease-[cubic-bezier(0.5,0,0.5,1)] hover:bg-canvas focus-visible:outline-2 focus-visible:outline-primary"
       >
         <Avatar className="size-8 shrink-0">
+          {image ? <AvatarImage src={image} alt="" /> : null}
           <AvatarFallback className="bg-surface-soft text-[length:var(--text-caption)] text-ink">
             {initials(name)}
           </AvatarFallback>
@@ -51,7 +58,9 @@ export function UserMenu({ name, email, collapsed = false }: UserMenuProps) {
         )}
       </DropdownMenuTrigger>
       <DropdownMenuContent align="start" className="w-56">
-        <DropdownMenuItem disabled>Sign out</DropdownMenuItem>
+        <DropdownMenuItem onSelect={() => signOut({ redirectTo: "/signin" })}>
+          Sign out
+        </DropdownMenuItem>
       </DropdownMenuContent>
     </DropdownMenu>
   );
