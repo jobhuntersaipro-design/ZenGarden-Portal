@@ -141,11 +141,27 @@
      (design reference §3.1). Added in Phase 02. */
   --spacing-control-oauth: 48px;
 
+  /* The dashboard donut (Phase 06): 168px ring, per design reference §3.2. */
+  --spacing-donut: 168px;
+
   /* Review screen (Phase 04). The source column's resting height, so the
      skeleton, the PDF loader and the poller all reserve the same space; and
      the minimum the line-item table needs before it scrolls horizontally. */
   --spacing-preview: 600px;
   --spacing-line-items: 720px;
+
+  /* Share palette — the donuts' six categorical hues, in rank order.
+     Deliberately NOT named `--color-chart-*` or reusing `--color-primary`:
+     shadcn's `@theme inline` block below rebinds both of those to its own
+     tokens, so a chart drawn with them silently renders in ink instead of the
+     hues that were validated. Validated with the dataviz script: worst
+     adjacent CVD ΔE 11.0 (deutan), normal-vision floor ΔE 22.6. */
+  --color-share-1: #7612fa;
+  --color-share-2: #0091ff;
+  --color-share-3: #f76808;
+  --color-share-4: #a43cb4;
+  --color-share-5: #078d3b;
+  --color-share-6: #7b68ee;
 
   /* Stage palette — six categorical hues in stage order. Fills and dots only,
      never text. See docs/specs/design/…-design.md "Stage palette". */
