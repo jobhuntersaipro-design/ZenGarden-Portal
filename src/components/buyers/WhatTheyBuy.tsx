@@ -69,9 +69,14 @@ function HBarList({
 export function WhatTheyBuy({
   slices,
   measure,
+  heading = "What they buy",
+  showMeasureToggle = true,
 }: {
   slices: ShareSlice[];
   measure: MixMeasure;
+  /** The product page reuses this card as "Who buys it". */
+  heading?: string;
+  showMeasureToggle?: boolean;
 }) {
   const router = useRouter();
   const pathname = usePathname();
@@ -88,7 +93,7 @@ export function WhatTheyBuy({
       <div className="mb-md flex flex-wrap items-start justify-between gap-md">
         <div>
           <p className="font-mono text-[length:var(--text-eyebrow)] text-ink-tertiary">
-            What they buy
+            {heading}
           </p>
           <p className="text-[length:var(--text-caption)] text-ink-tertiary">
             {measure === "value"
@@ -96,7 +101,9 @@ export function WhatTheyBuy({
               : "Share of units bought in this range"}
           </p>
         </div>
-        <div className="flex overflow-hidden rounded-sm border border-hairline">
+        <div
+          className={`flex overflow-hidden rounded-sm border border-hairline ${showMeasureToggle ? "" : "hidden"}`}
+        >
           {(
             [
               ["value", "Value (RM)"],
