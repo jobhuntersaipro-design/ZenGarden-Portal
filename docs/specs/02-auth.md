@@ -127,7 +127,7 @@ one letter and one digit. Same schema for admin-set, reset and change.
 | `TemporaryPassword` | user | Phase 09 create user with password | the password in mono, "you'll be asked to change it" |
 
 All use `src/emails/Layout.tsx`. Subject lines are plain: "Access request from
-Daniel Tan", "Reset your ZenGarden Portal password", etc.
+Daniel Tan", "Reset your Loving Hands Portal password", etc.
 
 ## 6. Sidebar user row
 
@@ -148,7 +148,7 @@ initials avatar (`Avatar` primitive) when `image` is null. "Sign out" calls
 1. Google sign-in with `SEED_SUPER_ADMIN_EMAIL` lands on `/`. A different
    Google account lands on `/signin/pending`, an `AccessRequest` row exists,
    and the super admin receives the email (check Resend logs).
-2. Password sign-in with `aisha@zengarden.my / Password123!` forces a password
+2. Password sign-in with `aisha@lovinghands.my / Password123!` forces a password
    change, then works with the new password.
 3. Six wrong passwords in a row show the rate-limit message; the sixth is
    refused even with the correct password.

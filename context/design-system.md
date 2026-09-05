@@ -348,7 +348,7 @@ components:
 ## Overview
 
 > **Read this first.** This file documents ClickUp's marketing design system as
-> captured. The ZenGarden Portal follows it with one deliberate exception —
+> captured. The Loving Hands Portal follows it with one deliberate exception —
 > eyebrows, field labels and table column headers are **sentence case**, not
 > uppercase — and adds product-level conventions of its own (the status colour
 > palette, truncation recovery, and the rule that a KPI never renders zero on
@@ -441,7 +441,7 @@ The geometry contrast is deliberate: chips are nearly square (4px), tiles are so
 
 ## Do's and Don'ts
 
-> **Project override — ZenGarden Portal, 2026-09-05.** One rule below is
+> **Project override — Loving Hands Portal, 2026-09-05.** One rule below is
 > deliberately not followed. ClickUp's eyebrow is Sometype Mono **uppercase**;
 > in this product, eyebrows, field labels and table column headers keep the
 > mono family, size and tertiary colour but are set in **sentence case**. A

@@ -120,7 +120,7 @@ Shape is the design reference §5, restated as rules:
 
 - Seeded RNG (mulberry32, seed `20260904`) so re-running produces identical data.
 - Users: `SEED_SUPER_ADMIN_EMAIL` as SUPER_ADMIN named from the local part of the
-  email; plus "Aisha Rahman" `aisha@zengarden.my` MEMBER with `passwordHash` of
+  email; plus "Aisha Rahman" `aisha@lovinghands.my` MEMBER with `passwordHash` of
   `Password123!` and `mustChangePassword = true`. Both get `image = null`.
 - 11 buyers and 12 products with the names, categories, units, base prices and
   drift from the design reference §5. Three products have no images. Each

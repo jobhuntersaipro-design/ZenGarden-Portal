@@ -1,10 +1,10 @@
-# ZenGarden Portal — Master Spec
+# Loving Hands Portal — Master Spec
 
 Version 1.0 — 2026-09-04. Owner: Chris Lam. Audience: AI coders.
 
 **How to use this spec set.** Read this file completely, then read the one
 phase file named in `context/current-feature.md`. Read
-`docs/specs/design/zengarden-portal-design.md` (the "design reference") for
+`docs/specs/design/loving-hands-portal-design.md` (the "design reference") for
 the screen you are building and open the Claude Design canvas linked in
 `CLAUDE.md` for the pixels. Do not read other phase files unless yours points
 to them. Every phase is one branch, one PR, one entry in the history table of
@@ -20,7 +20,7 @@ acceptance criteria, the design reference wins for copy and component detail.
 
 | | |
 |---|---|
-| Name | ZenGarden Portal |
+| Name | Loving Hands Portal |
 | Users | Internal ops staff, one org, roles `MEMBER` and `SUPER_ADMIN` |
 | Job | Get customer POs out of attachments into a queryable database without retyping, then track fulfillment and see sales, buyer and product trends |
 | Buyer | The customer who issued the PO. Called "buyer" everywhere |
@@ -48,12 +48,12 @@ detail, Admin.
 | Unknown Google email | Creates an `AccessRequest`; super admins get an email; approval in `/admin`. Optional `AUTO_APPROVE_DOMAIN` admits a Workspace domain instantly as Member |
 | Duplicate PO (same buyer + PO number) | Warn on the review screen, allow override by ticking "This is a revised PO". Saved as a new row with `revision = n+1` and `revisionOfId` pointing at the previous row. Dashboards count only the latest revision |
 | Old `/dashboard` and Respond.io crawler | Retired in Phase 01 (files deleted, scripts removed) |
-| Email | Resend from `portal@zengarden.my` (custom domain, verified). `EMAIL_FROM` env var |
+| Email | Resend from `portal@lovinghands.my` (custom domain, verified). `EMAIL_FROM` env var |
 | UI primitives | shadcn (base-nova preset, Radix) re-skinned to the `@theme` tokens. No shadcn default colours survive |
 | Charts | Recharts 3 for the line chart and stacked bar chart. CSS/SVG hand-written for donuts, horizontal bars, sparklines, status bars, stepper |
 | Validation | Zod 4 at every boundary: Server Action input, route handler body, Claude output, env |
 | Nav model (2026-09-05) | Upload left the sidebar. It is an action, reached by the "Upload PO" primary button, not a fifth destination |
-| Dashboard order (2026-09-05) | Work queue first and heaviest, then a compact KPI row, then one trend, then the status bars. Market share, In this range, churn and drift sit behind a "More analytics" disclosure |
+| Dashboard order (2026-09-05) | A compact three-tile KPI row, then one trend (Fulfillment by default, Sales a click away), then the status bars. Market share, In this range, churn and drift sit behind a "More analytics" disclosure. A separate work-queue strip was drawn and cut the same day: it duplicated the status bar's counts |
 | Confirm gate (2026-09-05) | A PO whose computed total disagrees with the document cannot be confirmed until the numbers agree or the reviewer explicitly acknowledges the difference, which is written to the activity log |
 | Tests | Vitest for `src/lib/analytics/**`, `src/lib/po-stages.ts`, `src/lib/money.ts`, extraction schema. Playwright smoke test for sign-in and upload in Phase 04 |
 
@@ -461,7 +461,7 @@ APP_URL=http://localhost:3000            # public origin, used in emails and R2 
 AUTH_SECRET=                             # openssl rand -base64 32
 AUTH_GOOGLE_ID=
 AUTH_GOOGLE_SECRET=
-AUTO_APPROVE_DOMAIN=                     # optional, e.g. zengarden.my
+AUTO_APPROVE_DOMAIN=                     # optional, e.g. lovinghands.my
 SEED_SUPER_ADMIN_EMAIL=                  # your Google email; seed creates this user as SUPER_ADMIN
 
 # Neon
@@ -472,11 +472,11 @@ DIRECT_URL=                              # direct connection string, migrations 
 R2_ACCOUNT_ID=
 R2_ACCESS_KEY_ID=
 R2_SECRET_ACCESS_KEY=
-R2_BUCKET=zengarden-portal
+R2_BUCKET=loving-hands-portal
 
 # Resend
 RESEND_API_KEY=
-EMAIL_FROM="ZenGarden Portal <portal@zengarden.my>"
+EMAIL_FROM="Loving Hands Portal <portal@lovinghands.my>"
 
 # Anthropic
 ANTHROPIC_API_KEY=
