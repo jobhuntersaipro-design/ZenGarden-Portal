@@ -137,6 +137,9 @@
   --spacing-control-lg: 52px;
   --spacing-control-md: 44px;
   --spacing-control-sm: 36px;
+  /* The OAuth button on the sign-in card sits between md and lg on the canvas
+     (design reference §3.1). Added in Phase 02. */
+  --spacing-control-oauth: 48px;
 
   /* Stage palette — six categorical hues in stage order. Fills and dots only,
      never text. See docs/specs/design/…-design.md "Stage palette". */
@@ -167,6 +170,8 @@
 
   /* Layout */
   --container-page: 1160px;
+  /* The auth card — sign in, access requested, forgot, reset, change password. */
+  --container-auth-card: 480px;
 
   --animate-fade-in-up: fade-in-up 1s ease-out both;
 }

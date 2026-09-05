@@ -38,9 +38,11 @@ function isActive(pathname: string, href: string): boolean {
 export function Sidebar({
   userName,
   userEmail,
+  userImage = null,
 }: {
   userName: string;
   userEmail: string;
+  userImage?: string | null;
 }) {
   const pathname = usePathname();
 
@@ -85,7 +87,7 @@ export function Sidebar({
         })}
       </nav>
 
-      <UserMenu name={userName} email={userEmail} />
+      <UserMenu name={userName} email={userEmail} image={userImage} />
     </aside>
   );
 }

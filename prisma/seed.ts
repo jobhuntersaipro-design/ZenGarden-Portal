@@ -87,7 +87,7 @@ async function main() {
       name: "Aisha Rahman",
       image: null,
       role: Role.MEMBER,
-      passwordHash: hashSync("Password123!", 10),
+      passwordHash: hashSync("Password123!", 12),
       mustChangePassword: true,
       emailVerified: now,
     },

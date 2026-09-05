@@ -39,6 +39,11 @@ yarn-error.log*
 # crawl data & browser sessions
 /data/
 .playwright-mcp/
+/.scratch/
+
+# playwright
+/test-results/
+/playwright-report/
 
 # vercel
 .vercel
