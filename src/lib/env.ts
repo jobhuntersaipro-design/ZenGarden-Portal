@@ -4,14 +4,19 @@ import { z } from "zod";
  * Parsed once at import time; a missing key fails the build rather than
  * surfacing as undefined at runtime. Keys mirror docs/specs/00-master.md §6.
  */
+const emptyAsUndefined = <T extends z.ZodTypeAny>(inner: T) =>
+  z.preprocess((value) => (value === "" ? undefined : value), inner.optional());
+
 const schema = z.object({
   // App
-  APP_URL: z.string().url(),
+  APP_URL: z.url(),
   AUTH_SECRET: z.string().min(1),
   AUTH_GOOGLE_ID: z.string().min(1),
   AUTH_GOOGLE_SECRET: z.string().min(1),
-  AUTO_APPROVE_DOMAIN: z.string().optional(),
-  SEED_SUPER_ADMIN_EMAIL: z.string().email().optional(),
+  // .env.example ships these blank, and "" is not absent to Zod, so an unset
+  // optional would otherwise fail validation on a fresh clone.
+  AUTO_APPROVE_DOMAIN: emptyAsUndefined(z.string()),
+  SEED_SUPER_ADMIN_EMAIL: emptyAsUndefined(z.email()),
 
   // Neon
   DATABASE_URL: z.string().min(1),

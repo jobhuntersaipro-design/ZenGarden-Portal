@@ -88,7 +88,7 @@ Twelve artboards, desktop 1440 wide. Content column `max-w-[--container-page]`
 
 - **Left sidebar** — 240px, `bg-surface`, 1px `border-hairline` on the
   right, full viewport height, `p-lg` vertical / `p-md` horizontal.
-  Top: wordmark "Loving Hands" with the "Zen" in `bg-brand-gradient` text clip.
+  Top: wordmark "Loving Hands" with "Loving" in `bg-brand-gradient` text clip.
   Below: nav rows *Dashboard · Purchase orders · Buyers · Products* — each 44px,
   `rounded-sm`, stroke icon + label at `text-body-sm` weight 500. Inactive
   `text-ink-secondary`; hover `bg-canvas text-ink`; active `bg-surface-soft
