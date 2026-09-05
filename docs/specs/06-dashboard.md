@@ -30,43 +30,35 @@ queries (current range, previous period, buyer full history for churn,
 extraction counts for the intake bar and failure rate) and calls the library.
 Only latest revisions.
 
-**The work queue is deliberately outside the range.** `loadDashboard` also
-returns `workQueue` — counts of `Extraction` rows in `SUCCEEDED` (awaiting
-review), `FAILED` and `RUNNING` (extracting now) — computed with **no date
-filter at all**, whatever `?from`/`?to` say. It is what needs doing now, not
-what happened in a window. Keep it in its own query so nobody accidentally
-threads the range through it. Every other figure on the page follows the
-range.
+**Every figure on this page follows the range**, including the intake counts
+in the status bar. A range-independent "work queue" strip was specified and
+then cut on 2026-09-05 — it repeated the three counts the status bar already
+carries, and a number shown twice is a number that can disagree with itself.
+The backlog is surfaced by the status bar here and by the counted *Needs
+review* chip on `/purchase-orders` (see `05-purchase-orders.md`); do not
+reintroduce a second copy of those counts on the dashboard.
 
 ## 2. Page order and components
 
 The page reads, top to bottom, in exactly this order:
 
-1. **Work queue** — full width, first, and the heaviest thing on the page.
-   Three columns divided by a coloured left border, each with a count at
-   `text-display-lg`, a label and a one-line definition: **Awaiting review**
-   (`brand-amber`, "Extracted and waiting for a person", action "Open review
-   queue"), **Failed extractions** (`accent-red`, "Couldn't be read — retry or
-   fill by hand", action "Open failed uploads"), **Extracting now**
-   (`accent-blue`, "Claude is reading these", action "Watch the queue"). A
-   zero count renders `ink-disabled`. The strip **ignores the date range**;
-   its caption says so — "Always current — not affected by the date range".
-   Actions link into `/purchase-orders?status=needs-review|failed|extracting`.
-2. **KPI row, compact** — three tiles only: **Total sales**, **Purchase
-   orders**, **Top buyer**. There is no "Awaiting review" tile; the work queue
-   owns that number. Largest PO, New buyers, Top-3 concentration, Items per
-   PO, Extraction failures and Open pipeline all live in the disclosure at 5.
-3. **One trend** — a single card. **Fulfillment trend (`StackedStageChart`) is
+1. **KPI row, compact** — three tiles only: **Total sales**, **Purchase
+   orders**, **Top buyer**. There is no "Awaiting review" tile: the status
+   bars below report that count beside Extracting and Failed. Largest PO, New
+   buyers, Top-3 concentration, Items per PO, Extraction failures and Open
+   pipeline all live in the disclosure at 4.
+2. **One trend** — a single card. **Fulfillment trend (`StackedStageChart`) is
    the default**; a segmented control in the card header switches it to **Sales
    over time** (`SalesLineChart`), state in `?trend=fulfillment|sales`. Only
    one chart renders at a time — never both stacked down the page.
-4. **Status breakdown and stage bars** — the two `StatusBar`s, directly under
-   the trend, because they explain the queue above.
-5. **"More analytics" disclosure** — a collapsed-by-default section (state in
+3. **Status breakdown and stage bars** — the two `StatusBar`s, directly under
+   the trend. The intake bar is where the backlog is read: Needs review,
+   Extracting and Failed each carry a count beside Confirmed.
+4. **"More analytics" disclosure** — a collapsed-by-default section (state in
    `?more=1`, `aria-expanded`, no content mounted until opened) holding Market
    share by buyer, Market share by product, In this range, Buyer churn and
    Product price drift. **The donuts are not in the default view.**
-6. **Purchase orders in range** — the table, last.
+5. **Purchase orders in range** — the table, last.
 
 Components:
 
@@ -77,9 +69,6 @@ Components:
   segmented control stays but is visually secondary — tertiary label, smaller,
   right of the chips. Writes `?from=&to=&agg=`. Chips highlight only when the
   dates equal a preset exactly.
-- `WorkQueue` (server): the three-column strip from 1, fed by
-  `loadDashboard().workQueue`. Counts keep their text labels; colour is never
-  the only signal (G2).
 - `KpiTile` + `useCountUp` (rAF, 900 ms ease-out cubic). **The animation must
   never be the initial render state**: the tile renders its final value on
   first paint and the count-up, if it runs at all, only animates from that
@@ -128,14 +117,13 @@ folding into Other.
 
 ## 5. Acceptance criteria
 
-1. The page renders in this order: work queue, three KPI tiles, one trend
-   card, the two status bars, the collapsed "More analytics" disclosure, the
-   in-range table. No "Awaiting review" KPI tile exists, and no donut is
-   visible before the disclosure is opened.
-2. The work queue counts do **not** change when the range chips or custom
-   dates change, and its caption says it ignores the range; every other card
-   does change. A zero column renders in `ink-disabled` and still shows its
-   label and definition.
+1. The page renders in this order: three KPI tiles, one trend card, the two
+   status bars, the collapsed "More analytics" disclosure, the in-range table.
+   No "Awaiting review" KPI tile exists, no work-queue strip exists, and no
+   donut is visible before the disclosure is opened.
+2. The intake status bar shows Confirmed, Needs review, Extracting and Failed
+   with counts, each segment labelled, and those counts are the only place the
+   dashboard reports the backlog.
 3. Changing a chip, a date or the aggregation redraws every range-driven card
    and updates the URL; a shared URL reproduces the view, including the trend
    selection and whether the disclosure is open.

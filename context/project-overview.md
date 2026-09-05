@@ -1,6 +1,6 @@
-# Project Overview — ZenGarden Portal
+# Project Overview — Loving Hands Portal
 
-ZenGarden sells landscaping products (stone, plants, timber, water features) to
+Loving Hands sells landscaping products (stone, plants, timber, water features) to
 business buyers in Malaysia. Buyers send purchase orders as PDF or image
 attachments. The portal turns those attachments into structured records and
 gives the ops team sales, fulfillment, buyer and product views on top of them.

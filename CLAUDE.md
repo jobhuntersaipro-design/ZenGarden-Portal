@@ -1,5 +1,5 @@
-# ZenGarden Portal
-Purchase-order intake portal for ZenGarden's ops team: upload a customer PO (PDF/image),
+# Loving Hands Portal
+Purchase-order intake portal for Loving Hands' ops team: upload a customer PO (PDF/image),
 Claude extracts the fields, a person reviews and confirms, the record lands in Neon with the
 original file in R2, and the dashboards read confirmed POs as sales and fulfillment trends.
 
@@ -13,11 +13,11 @@ Read the following to get the full context of the project:
 ## Web Design (source of truth for every screen)
 
 The approved visual design lives in Claude Design:
-https://claude.ai/code/artifact/43c584c8-b4b6-4479-8d0f-391ab44299ae?via=auto_preview
+https://claude.ai/code/artifact/43c584c8-b4b6-4479-8d0f-391ab44299ae?org=a2177e54-d854-4d2e-a8f5-d482dfd63d88
 
 Every screen, state and interaction is drawn there. Build what the canvas shows; if the
 canvas and a spec file disagree, the canvas wins for visuals and the spec wins for data
-and behaviour. The written companion is `docs/specs/design/zengarden-portal-design.md`; coders start at `docs/specs/00-master.md`.
+and behaviour. The written companion is `docs/specs/design/loving-hands-portal-design.md`; coders start at `docs/specs/00-master.md`.
 
 ## Design System
 

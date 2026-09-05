@@ -50,7 +50,7 @@ so nothing is ever rounded twice.
   (`source: { type: "base64", media_type: "application/pdf", data }`) for PDFs
   or an `image` block for PNG/JPEG, followed by a text block "Extract this
   purchase order."
-- The system prompt states: ZenGarden is the seller and the buyer is the
+- The system prompt states: Loving Hands is the seller and the buyer is the
   party issuing the PO; dates are output as ISO; money is numeric without
   currency symbols; line amounts should equal quantity × unit price unless
   the document says otherwise; confidence is the model's honest estimate per

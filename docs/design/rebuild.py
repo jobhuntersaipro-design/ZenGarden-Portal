@@ -1,8 +1,8 @@
 #!/usr/bin/env python3
-"""Rebuild the ZenGarden Portal artifact HTML from the edited canvas/ files."""
+"""Rebuild the Loving Hands Portal artifact HTML from the edited canvas/ files."""
 import json, sys, os
-SRC="zengarden-portal-canvas.html"   # the published bundle doubles as the shell
-OUT="zengarden-portal-canvas.html"
+SRC="loving-hands-portal-canvas.html"   # the published bundle doubles as the shell
+OUT="loving-hands-portal-canvas.html"
 def load_shell(src=SRC):
     s=open(src,encoding="utf-8").read()
     start=s.index('<script type="application/json" id="appifact-doc">')

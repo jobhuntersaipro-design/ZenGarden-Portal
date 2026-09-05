@@ -1,7 +1,7 @@
-# ZenGarden Portal — Design Spec
+# Loving Hands Portal — Design Spec
 
-Purchase-order intake portal. **Customers send purchase orders to ZenGarden**
-(ZenGarden is the seller; a PO's total is revenue). Users sign in with Google,
+Purchase-order intake portal. **Customers send purchase orders to Loving Hands**
+(Loving Hands is the seller; a PO's total is revenue). Users sign in with Google,
 upload a PO (PDF or image), the system extracts the structured data, the user
 reviews and confirms, and the record lands in Neon with the original file kept
 in R2. The dashboard then reads the confirmed POs as a sales trend.
@@ -11,7 +11,7 @@ for implementation. Visual language is the ClickUp design system in
 `context/design-system.md` — every token referenced below is from
 `src/app/globals.css`.
 
-Status: **Design reference v12 — 2026-09-05** (screens and states only). v12 applies the design review: Upload left the sidebar, the dashboard leads with the work queue, a totals mismatch locks Confirm, one status palette, sentence-case labels, truncation recovery, and KPIs that never render zero. Product-wide rules live in `../00-master.md` §4 (six-hue stage palette after two ramps proved too hard to read; per-field extraction confidence; Confirmed by in the PO list; every table sorts on every column; v10 Buyers tab with a triage roster at `/buyers`; document preview on PO detail and a file-type chip in the PO list; v9 buyer detail: order trend as a line chart, product order trend with product picker, what-they-buy donut; v8 PO lifecycle: six fulfillment stages with a stepper and advance action on PO detail, stage history, fulfillment trend + stage breakdown + open pipeline on the dashboard)
+Status: **Design reference v12 — 2026-09-05** (screens and states only). v12 applies the design review: Upload left the sidebar, the dashboard leads with a compact KPI row and one trend, a totals mismatch locks Confirm, one status palette, sentence-case labels, truncation recovery, and KPIs that never render zero. Product-wide rules live in `../00-master.md` §4 (six-hue stage palette after two ramps proved too hard to read; per-field extraction confidence; Confirmed by in the PO list; every table sorts on every column; v10 Buyers tab with a triage roster at `/buyers`; document preview on PO detail and a file-type chip in the PO list; v9 buyer detail: order trend as a line chart, product order trend with product picker, what-they-buy donut; v8 PO lifecycle: six fulfillment stages with a stepper and advance action on PO detail, stage history, fulfillment trend + stage breakdown + open pipeline on the dashboard)
 
 ---
 
@@ -19,7 +19,7 @@ Status: **Design reference v12 — 2026-09-05** (screens and states only). v12 a
 
 | | |
 |---|---|
-| Name | ZenGarden Portal |
+| Name | Loving Hands Portal |
 | Users | Internal ops staff (small team, one org) |
 | Job | Get customer POs out of email attachments and into a queryable database, fast, without retyping — then see the sales trend |
 | Buyer | The customer who issued the PO. Called "buyer" everywhere in UI and schema. |
@@ -88,7 +88,7 @@ Twelve artboards, desktop 1440 wide. Content column `max-w-[--container-page]`
 
 - **Left sidebar** — 240px, `bg-surface`, 1px `border-hairline` on the
   right, full viewport height, `p-lg` vertical / `p-md` horizontal.
-  Top: wordmark "ZenGarden" with the "Zen" in `bg-brand-gradient` text clip.
+  Top: wordmark "Loving Hands" with the "Zen" in `bg-brand-gradient` text clip.
   Below: nav rows *Dashboard · Purchase orders · Buyers · Products* — each 44px,
   `rounded-sm`, stroke icon + label at `text-body-sm` weight 500. Inactive
   `text-ink-secondary`; hover `bg-canvas text-ink`; active `bg-surface-soft
@@ -117,7 +117,7 @@ Centered card on `bg-surface` canvas.
 
 - Card: `rounded-xxl` (35px), canvas bg, hairline border, `p-xxl` (60px),
   `shadow-md` (indigo-tinted), 480px wide.
-- Wordmark large, then `h1` "Sign in to ZenGarden" at `text-display-lg`.
+- Wordmark large, then `h1` "Sign in to Loving Hands" at `text-display-lg`.
 - Sub copy `text-body-md text-ink-secondary`: "Purchase-order intake for the
   ops team."
 - **The card signposts two paths**, because a first-time visitor could not
@@ -144,7 +144,7 @@ Centered card on `bg-surface` canvas.
 **Access requested — `/signin/pending`** (own artboard). What a Google
 sign-in from an email that is not yet a user lands on. Same card: eyebrow
 "Access requested", `h1` "You're on the list", copy "We've sent your request
-to a ZenGarden admin. You'll get an email at the address below once it's
+to a Loving Hands admin. You'll get an email at the address below once it's
 approved — usually within a working day." Then a `bg-surface` row with the
 Google avatar, name, "daniel.tan@gmail.com · via Google" and a `brand-amber`
 "Pending" badge. One `button-secondary` "Use a different account". No dark
@@ -165,7 +165,7 @@ admin if you think that's a mistake."
    the request with `status ACTIVE`, the request is marked approved, and the
    requester gets "You're in" with a sign-in link. **Decline** marks it
    declined (kept for audit, hidden from the list) and optionally emails.
-3. Optional shortcut, off by default: `AUTO_APPROVE_DOMAIN=zengarden.my`
+3. Optional shortcut, off by default: `AUTO_APPROVE_DOMAIN=lovinghands.my`
    approves Workspace-domain emails instantly as Members, so only outside
    Gmail addresses ever queue.
 
@@ -177,25 +177,29 @@ sets on an existing user.
 
 ### 3.2 Dashboard — `/`
 
-Sales overview **and the day's work list**. Every number on the page is driven
-by one **date range** and one **aggregation** setting, with one deliberate
-exception: the work queue at the top ignores the range, because it is what
-needs doing now rather than what happened in a window.
+Sales overview. Every number on the page is driven by one **date range** and one
+**aggregation** setting; changing either redraws everything below the controls.
 
 **Page order** — this is load-bearing. The review found analytics of equal
-weight burying the only urgent thing on the page, so the order is now:
+weight burying the state of the business, so the order is now:
 
-1. **Work queue** — full width, first, heaviest type on the page.
-2. **KPI row** — three compact tiles.
-3. **One trend** — Fulfillment by default, Sales a click away in the same card.
-4. **Status breakdown and stage bars** — they explain the queue, so they sit
-   with it rather than below the analytics.
-5. **"More analytics"** — a collapsed disclosure holding market share, In this
+1. **KPI row** — three compact tiles.
+2. **One trend** — Fulfillment by default, Sales a click away in the same card.
+3. **Status breakdown and stage bars** — the intake and stage split, directly
+   under the trend. This is where the backlog is read: *Needs review*,
+   *Extracting* and *Failed* are three of its four segments, each with its
+   count.
+4. **"More analytics"** — a collapsed disclosure holding market share, In this
    range, buyer churn and price drift.
-6. **Purchase orders in range** — the table, last.
+5. **Purchase orders in range** — the table, last.
 
-Nothing above the fold is a donut. Changing the range or the aggregation
-redraws everything below the work queue.
+Nothing above the fold is a donut.
+
+A dedicated "work queue" strip was drawn and then removed on 2026-09-05: it
+repeated the three counts the Status breakdown bar already carries, and one
+number in two places is a number that can disagree with itself. The backlog is
+read from the status bar and worked from `/purchase-orders`, whose *Needs
+review* chip carries its own count (§3.5).
 
 **Header** — eyebrow "Overview", `h1` "Dashboard", right slot: `button-primary`
 "Upload PO".
@@ -218,27 +222,10 @@ redraws everything below the work queue.
 Range state lives in the URL (`?from=&to=&agg=`) so a view can be shared, along
 with the trend tab and the disclosure (`?trend=&more=`).
 
-**Work queue** — full-width `card-feature`, directly under the controls and
-before anything else. Eyebrow "Work queue" with the caption "Everything waiting
-on a person · not filtered by the range above". Three equal columns, each with a
-3px coloured left border, a count at `text-display-lg` (deliberately larger than
-the KPI tiles below), a `text-body-lg` weight-600 label, a one-line definition
-in `text-caption text-ink-tertiary`, and a `button-tertiary` action:
-
-| Column | Count | Definition | Action |
-|---|---|---|---|
-| Awaiting review (`brand-amber`) | extractions succeeded, not yet confirmed | "Read by Claude, waiting for a person to confirm" | Open review queue |
-| Failed extractions (`accent-red`) | extractions that failed | "Couldn't be read — retry, or fill them in by hand" | Open failed uploads |
-| Extracting now (`accent-blue`) | extractions running | "Claude is reading these — usually under a minute" | Watch the queue |
-
-A count of zero renders `text-ink-disabled` with an `border-hairline` left
-border, so an empty category does not shout. The counts come from the whole
-backlog, not the selected range — a work queue that changes when you move a
-date filter hides work.
-
 **KPI row** — 3 `card-tile`s (`rounded-md` 12px, hairline, `p-md`). All
-computed over the selected range. "Awaiting review" used to be the fourth tile;
-it moved into the work queue above, where it can be acted on:
+computed over the selected range. There were four; "Awaiting review" was
+dropped, because the Status breakdown bar below already reports the same count
+alongside Extracting and Failed:
 
 | Tile | Value | Caption |
 |---|---|---|
@@ -311,8 +298,9 @@ Empty state: "No confirmed purchase orders in this range."
 
 **Status breakdown** — full-width `card-feature`, two bars separated by a
 hairline. It sits **directly under the trend card and above the "More
-analytics" disclosure**, not with the analytics: it is the breakdown of the
-work queue, so it belongs with it. *Intake* (eyebrow "Status breakdown · intake", caption "26 purchase
+analytics" disclosure**, not with the analytics: three of its four intake
+segments — Needs review, Extracting, Failed — are the backlog, so this is the
+one place on the dashboard that reports work outstanding. *Intake* (eyebrow "Status breakdown · intake", caption "26 purchase
 orders"): one 14px stacked bar with 2px gaps, segments in fixed order
 *Confirmed · Needs review · Extracting · Failed* using the §4 status colors
 (the only place a status color is used as a fill — it is the legend swatch,
@@ -326,8 +314,8 @@ of the range. Each bar has a legend row below: 10px swatch, label, count
 table, sits behind one disclosure: a centred `button-secondary` reading "More analytics" on a hairline
 rule, **collapsed by default**, opening to reveal market share, In this range,
 buyer churn and product price drift. They answer "how are we doing", which is a
-question you go looking for; the work queue answers "what do I do now", which
-has to be in front of you. The label becomes "Hide analytics" when open.
+question you go looking for; the status bars above answer "what is
+outstanding", which has to be in front of you. The label becomes "Hide analytics" when open.
 
 **Market share by buyer · Market share by product** — two `card-feature`s
 side by side, each a 168px **donut** (CSS `conic-gradient`, 26px ring) with
@@ -750,10 +738,10 @@ bar, `shadow-md`, hairline left edge. Fields:
 
 Rules: a super admin cannot delete or demote themselves; the last super
 admin cannot be demoted; **deleting a user is typed-confirmation only**: a dialog headed "Delete Priya
-Kumar?", body copy saying their uploads and stage history stay in ZenGarden
+Kumar?", body copy saying their uploads and stage history stay in Loving Hands
 attributed to a deleted user and that they lose access immediately, then the
 label "Type their email to confirm" over a `text-input` and the caption "Must
-match priya@zengarden.my exactly." The Delete button renders disabled
+match priya@lovinghands.my exactly." The Delete button renders disabled
 (`bg-surface-soft text-ink-disabled`) until the string matches, with the caption
 "Delete unlocks when the email matches." The dialog is `card` geometry at
 440–520px; `accent-red` appears in the title only, never as a fill. New user with a password shows the
@@ -937,7 +925,7 @@ smaller slices stay readable.
   what to follow up on before the customer chases. The card header carries a
   `button-tertiary` **"Upload PO"** with the caption "Opens the upload screen
   with this buyer preselected" — the signal is only useful if acting on it is
-  one click away, and the label has to name what actually happens: ZenGarden is
+  one click away, and the label has to name what actually happens: Loving Hands is
   the seller, so nothing here is being bought.
 - *Details* — contact, email, phone, delivery address, payment terms, "buyer
   since". Fields that have values show them. Fields that do not are **not**

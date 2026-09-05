@@ -68,7 +68,7 @@ Zod in `src/lib/validation/users.ts`:
   ends at its next JWT refresh (Phase 02 compares it).
 - `deleteUser(id)`: confirm dialog copy from §3.7, **gated on typing the
   user's email**. The dialog holds an input and the caption "Type
-  priya@zengarden.my to confirm"; the Delete button stays `disabled` until the
+  priya@lovinghands.my to confirm"; the Delete button stays `disabled` until the
   typed string matches the user's email exactly (trimmed, case-insensitive
   compare on the address; no partial or paste-around shortcut). Cannot delete
   yourself or the last super admin. Deletion is a soft delete: set `disabledAt`, blank
@@ -94,7 +94,7 @@ seeded pending request and sign in as that user.
    ends it immediately.
 6. Users table filters and sorts; the drawer narrows the content column without overlap.
 7. The delete dialog's Delete button is disabled until the user's email is
-   typed exactly; a near-miss ("priya@zengarden.m") leaves it disabled, and
+   typed exactly; a near-miss ("priya@lovinghands.m") leaves it disabled, and
    the caption names the address to type.
 8. A Google-only user's row shows "Password managed by Google" with an
    explanatory `title` and no reset action; a user with a password still shows
