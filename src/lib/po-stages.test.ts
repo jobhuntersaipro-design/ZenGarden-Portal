@@ -4,6 +4,7 @@ import {
   PO_STAGES,
   isFinalStage,
   nextStage,
+  prevStage,
   stageColorVar,
   stageIndex,
   stageLabel,
@@ -66,5 +67,23 @@ describe("stagesUpTo", () => {
     expect(stagesUpTo(PoStage.ORDER_PLACED)).toHaveLength(1);
     expect(stagesUpTo(PoStage.DELIVERED)).toHaveLength(6);
     expect(stageIndex(PoStage.DELIVERED)).toBe(5);
+  });
+});
+
+describe("prevStage", () => {
+  it("walks back one stage", () => {
+    expect(prevStage(PoStage.QC_PASSED)).toBe(PoStage.IN_PRODUCTION);
+    expect(prevStage(PoStage.DELIVERED)).toBe(PoStage.DELIVERING);
+  });
+
+  it("has nowhere to go from the first stage", () => {
+    expect(prevStage(PoStage.ORDER_PLACED)).toBeNull();
+  });
+
+  it("is the inverse of nextStage everywhere it is defined", () => {
+    for (const stage of PO_STAGES) {
+      const next = nextStage(stage);
+      if (next) expect(prevStage(next)).toBe(stage);
+    }
   });
 });

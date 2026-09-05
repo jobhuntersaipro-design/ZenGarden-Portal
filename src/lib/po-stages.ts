@@ -51,6 +51,12 @@ export function nextStage(stage: PoStage): PoStage | null {
   return next ?? null;
 }
 
+/** The stage a super admin's "Move back" returns to, or null at the first. */
+export function prevStage(stage: PoStage): PoStage | null {
+  const index = stageIndex(stage);
+  return index > 0 ? PO_STAGES[index - 1] : null;
+}
+
 /** Stages already reached, inclusive — what the stepper fills in. */
 export function stagesUpTo(stage: PoStage): PoStage[] {
   return PO_STAGES.slice(0, stageIndex(stage) + 1);
