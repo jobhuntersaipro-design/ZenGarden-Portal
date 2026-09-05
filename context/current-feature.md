@@ -1,40 +1,52 @@
 # Current Feature
 
-Phase 07 — Buyers (`docs/specs/07-buyers.md`)
+Phase 08 — Products (`docs/specs/08-products.md`)
 
 ## Status
 
-Complete. Merged to `main` 2026-09-06.
+Complete except the image editor. Merged to `main` 2026-09-06.
+
+**Deferred, by decision on 2026-09-06:** product image upload, the 1600px WebP
+derivative, drag-to-reorder and delete. All of it needs R2, which still holds
+placeholder credentials, so none of it could be run — including the manual
+check the spec asks for (a 4000px PNG resizing to 1600px under 300 KB).
+Building it blind would have stacked a second unverified surface on Phase 03's
+upload path, which is unverified for the same reason. Acceptance criteria 5 and
+the super-admin half of 10 are **not met** rather than merely unverified. Do it
+in one pass once `docs/specs/SETUP-CHECKLIST.md` §2 is done.
 
 ## Goals
 
-- Analytics additions: `reorder`, `buyer-status`, `product-mix`,
-  `product-trend`, `sparkline` — pure and unit tested like Phase 06's
-- `listBuyers(range, filter, q, sort, page)` computing status, cadence,
-  overdue count and sparkline per buyer; sort in memory after the derived
-  columns exist, then paginate
-- Roster: range chips, KPI row, `AttentionStrip` where the counts and the
-  table filter are **one control**, `BuyersTable` with a sparkline cell
-- Buyer detail: KPI row of five, order trend, product trend with a picker
-  capped at six, what-they-buy donut and bars, reorder signals, details card,
-  intake bar, their POs
-- Buyer names everywhere become links to `/buyers/[id]`
+- `twelveMonthWindow(now)` exported once and passed to every caller, so the
+  KPI tiles, the table, the footer summary and the order history can never
+  read different windows
+- `productStats`, `priceTrend` (gaps, not zeros), `whoBuysIt`,
+  `boughtTogether`, `needsAttention` — pure and unit tested
+- Catalog: KPI row over all products, quick-filter chips, clickable
+  Needs-attention breakdown, grid and list views with the preference in
+  `localStorage` behind the URL
+- Product detail: gallery, facts, six stat tiles, price trend with the list
+  reference line, who buys it, bought together, order history
+- `ProductSheet` for super admins; members are read-only and the actions
+  enforce it rather than the UI
+- Product images through the Phase 03 presign/complete pattern, with a 1600px
+  WebP derivative
 
 ## Notes
 
 - Read `docs/specs/00-master.md` before this phase file.
-- Overdue is red at 1 or more, an em dash at zero, never amber and never blue.
-  The design reference §3.8 still carries a stale "`brand-amber` above 2" line
-  in its table paragraph; the paragraph below it and the phase file both
-  supersede that, and the phase file wins for behaviour.
-- "New" is a neutral badge. Blue means a process in flight; a new buyer is a
-  standing fact.
-- Cadence and reorder come from **full** history, not the range — both are
-  predictions about a buyer's rhythm.
-- **Inherited blockers:** `R2_ACCOUNT_ID` and `ANTHROPIC_API_KEY` are still
-  placeholders. Nothing in this phase depends on either.
-- Known and untouched from Phase 06: `--ring` resolves to ink rather than the
-  design system's purple, affecting every focus ring in the app.
+- **One dataset, one window.** The catalog KPI row describes all products and
+  the footer summary describes the active filter; with no filter on they must
+  read identically. The named bug to prevent is tiles reading "RM 0.00" beside
+  a footer reading RM 15.5M, and an order-history table drifting to 367 days
+  against tiles on 365.
+- The sort control and the table headers share one piece of sort state — the
+  reuse case `DataTable`'s `onSortChange` was refactored for in Phase 05.
+- **Blocked on owner setup:** image upload, the WebP derivative and the gallery
+  all need R2, which still holds placeholder credentials. Acceptance criteria 5
+  and 10's super-admin half cannot be verified until it is set.
+- New dependency: `@dnd-kit/core` and `@dnd-kit/sortable` for image reordering,
+  named in `00-master.md` §3 for this phase.
 
 ## History
 
@@ -44,6 +56,7 @@ Complete. Merged to `main` 2026-09-06.
 - 2026-09-05: Design review applied to the canvas and to every spec. Upload left the sidebar; the dashboard leads with a work queue and folds its analytics away; a totals mismatch locks Confirm on the review screen; one status palette; sentence-case labels; truncation recovery; KPIs render their real value on first paint. Canvas sources now live in `docs/design/`.
 - 2026-09-05: Renamed ZenGarden to Loving Hands across the specs, context files and all twelve artboards; seed addresses moved to `@lovinghandsportal.com` and the canvas bundle and design spec became `loving-hands-*`. Business, data model and product catalogue unchanged. Fixed two latent clipping bugs surfaced by the new name: every wordmark variant used `line-height: 1`, which cropped the descender of "Loving" under `background-clip: text` (the sidebar mark also moved up to the on-system `heading-md` 26px), and the Main/Buyer chart x-axis labels were clipped to their own flex cell instead of overflowing into the empty neighbouring ones.
 - 2026-09-05: Phase 01 §1 — Respond.io crawler, `/dashboard`, `src/lib/dashboard` and the four `crawl*` scripts deleted. `recharts` kept for Phase 06.
+- 2026-09-06: Phase 08 merged, image editor deferred — `twelveMonthWindow` exported once so the KPI row, the cards, the footer summary and a product's order history cannot read different windows; `productStats`, `priceTrend`, `whoBuysIt`, `boughtTogether`, `needsAttention`; the catalog with a clickable Needs-attention breakdown driving the quick-filter chips; product detail with six stat tiles, price trend against the list line, who buys it, bought together and order history; `ProductSheet` for create/edit/archive with `ProductPrice` appended only when the price moves. Verified: the unfiltered KPI row and footer read identically, the Orders tile matches the history row count on two products (139 and 134), the below-list highlight carries both figures in `title` and `aria-label`, and editing a list price left the old value in history. Four defects fixed: the KPI row and footer differed by 9.3e-10 because float addition is not associative and the footer sums a sorted copy; the footer offered "10 per page" beside twelve cards; images that failed before hydration kept a broken icon because `onError` is never replayed; and my product categories were invented rather than taken from the seed, so four of seven did not exist. **The image editor is deferred** — see the status note above.
 - 2026-09-06: Phase 07 complete and merged — the buyer analytics (`reorder`, `buyer-status`, `product-mix`, `product-trend`, `sparkline`) with 25 tests, the roster whose attention counts and table filter are one control, and buyer detail (five KPIs, order trend, product trend with a six-product picker, what-they-buy donut and bars, reorder signals linking to a preselected upload, a details card that renders no blank rows, intake bar, their POs). Buyer names became links everywhere. Three defects found and fixed: `listBuyers` pulled every line item's quantity, amount and product name when the roster needs product ids alone, costing 2.1s against 0.28s; the product picker assigned colour by position in the selected array, so deselecting the first product repainted the survivors — the URL now keeps freed slots (`?products=,b,c`) so an assignment survives a deselect; and a five-tile KPI row whose first tile spans two columns wrapped its last tile onto its own line.
 - 2026-09-05: Phase 06 complete and merged — the pure analytics library (`buckets`, `range`, `sales`, `fulfillment`, `share`, `churn`, `price-drift`) with 70 tests, `loadDashboard` at 422 ms for Last year daily, and the page in its specified order: three KPI tiles, one trend card, the two status bars, the collapsed disclosure, the table last. KPI figures cross-checked against independent raw SQL — 400 orders, RM 8,161,352.29, 11 buyers. Three defects found and fixed: `buckets.startOf` never truncated the time for daily aggregation, so Last 30 days ending now drew 31 columns; the donut and line-chart palettes reached for `--color-primary`, which shadcn's `@theme inline` block rebinds to ink, so the validated hues were never the rendered ones (now unshadowed `--color-share-1..6`); and Recharts' default bar animation meant a screenshot caught an empty plot, the same failure the KPI count-up rule exists to prevent. **Known, not fixed:** `--ring` is set from `--color-primary` and is therefore ink rather than the purple the design system specifies — a Phase 01 issue affecting every focus ring in the app.
 - 2026-09-05: Phase 05 complete and merged — the shared table machinery (`DataTable` taking `onSortChange`, `TablePagination`, `parsePagination`/`parseSort`, status and stage badges), the merged list over `PurchaseOrder` and `Extraction` as a parameter-bound `UNION ALL`, the filter row with live chip counts, and the detail page (breadcrumb, Lifecycle card, `StageStepper` with the breathing loop, document/data split, Activity, revisions, edit sheet). `advanceStage`/`revertStage` guard the update on the stage the caller last saw. Verified against the seeded data: advance, super-admin move back with a required note, and an edit appearing in Activity — all rolled back afterwards. **Criterion 4 is unverified** (R2 placeholder) and criterion 8 is covered by unit tests rather than two real tabs. The database caught three things the types could not: Postgres refuses an `ORDER BY` over a `UNION` that uses an expression rather than a result column name; "Confirmed by" ascending sorted the backlog to the bottom because ASC defaults to NULLS LAST, not NULLS FIRST as my comment claimed; and clearing the filters left the search text in the box. Two review findings from the first half were also fixed before shipping: `DataTable` hardwired its own URL writing, which would have stopped Phase 08's segmented control sharing sort state, and `StatusDot` took a `text-*` class where a background was needed. The edit sheet deliberately omits money and line items — editing totals after confirmation would bypass the Phase 04 totals gate and its audit entry.
