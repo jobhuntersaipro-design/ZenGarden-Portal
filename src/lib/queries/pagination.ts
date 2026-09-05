@@ -26,11 +26,13 @@ export function firstParam(
  * Page and size out of the URL, clamped to something the database can serve.
  * A hand-edited `?size=100000` must not become an unbounded query.
  */
-export function parsePagination(params: SearchParams): Pagination {
+export function parsePagination(
+  params: SearchParams,
+  /** Grid views offer smaller pages than tables; cards are cheaper to scan. */
+  allowed: readonly number[] = PAGE_SIZES,
+): Pagination {
   const rawSize = Number.parseInt(firstParam(params, "size") ?? "", 10);
-  const size = (PAGE_SIZES as readonly number[]).includes(rawSize)
-    ? rawSize
-    : DEFAULT_PAGE_SIZE;
+  const size = allowed.includes(rawSize) ? rawSize : (allowed[0] ?? DEFAULT_PAGE_SIZE);
 
   const rawPage = Number.parseInt(firstParam(params, "page") ?? "", 10);
   const page = Number.isFinite(rawPage) && rawPage > 0 ? rawPage : 1;

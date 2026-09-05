@@ -8,10 +8,13 @@ export function TablePagination({
   page,
   size,
   total,
+  sizes = PAGE_SIZES,
 }: {
   page: number;
   size: number;
   total: number;
+  /** Must match what the page actually paginates by, or the footer lies. */
+  sizes?: readonly number[];
 }) {
   const router = useRouter();
   const pathname = usePathname();
@@ -47,7 +50,7 @@ export function TablePagination({
           onChange={(event) => go({ size: event.target.value, page: null })}
           className="h-control-sm rounded-sm border border-hairline-strong bg-transparent px-xs text-[length:var(--text-body-sm)] text-ink focus-visible:border-primary focus-visible:outline-2 focus-visible:outline-primary"
         >
-          {PAGE_SIZES.map((option) => (
+          {sizes.map((option) => (
             <option key={option} value={option}>
               {option} per page
             </option>
