@@ -13,11 +13,18 @@ export function KpiTile({
   value,
   caption,
   wide = false,
+  compact = false,
 }: {
   label: string;
   value: ReactNode;
   caption: ReactNode;
   wide?: boolean;
+  /**
+   * A step down to `heading-md`. Four money tiles across a row cannot hold a
+   * full MYR figure at display size, and "RM 741,941.12" broken over two lines
+   * is not a number any more.
+   */
+  compact?: boolean;
 }) {
   return (
     <div
@@ -26,7 +33,13 @@ export function KpiTile({
       <p className="font-mono text-[length:var(--text-eyebrow)] text-ink-tertiary">
         {label}
       </p>
-      <p className="mt-xxs font-display text-[length:var(--text-display-md)] font-[650] tracking-[-1.36px] text-ink tabular-nums">
+      <p
+        className={`mt-xxs font-display font-[650] text-ink tabular-nums ${
+          compact
+            ? "text-[length:var(--text-heading-md)] tracking-[-0.91px]"
+            : "text-[length:var(--text-display-md)] tracking-[-1.36px]"
+        }`}
+      >
         {value}
       </p>
       <p className="mt-xxs text-[length:var(--text-caption)] text-ink-secondary">
