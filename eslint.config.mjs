@@ -12,6 +12,8 @@ const eslintConfig = defineConfig([
     "out/**",
     "build/**",
     "next-env.d.ts",
+    // Design-canvas tooling: plain Node scripts, not application source.
+    "docs/design/**",
   ]),
 ]);
 
