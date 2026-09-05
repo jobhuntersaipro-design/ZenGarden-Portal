@@ -1,14 +1,24 @@
+import type { Metadata } from "next";
 import { PageHeader } from "@/components/portal/PageHeader";
+import { UploadWorkspace } from "@/components/upload/UploadWorkspace";
 
-export default function Page() {
+export const metadata: Metadata = {
+  title: "Upload purchase orders · Loving Hands Portal",
+};
+
+export default async function UploadPage({
+  searchParams,
+}: {
+  searchParams: Promise<Record<string, string | string[] | undefined>>;
+}) {
+  const params = await searchParams;
+  const buyer = params.buyer;
+  const hintBuyerId = Array.isArray(buyer) ? buyer[0] : buyer;
+
   return (
     <>
-      <PageHeader eyebrow="Intake" title="Upload PO" />
-      <section className="rounded-lg border border-hairline bg-canvas p-lg">
-        <p className="text-[length:var(--text-body-sm)] text-ink-secondary">
-          This screen arrives in a later phase.
-        </p>
-      </section>
+      <PageHeader eyebrow="Intake" title="Upload purchase orders" />
+      <UploadWorkspace hintBuyerId={hintBuyerId} />
     </>
   );
 }

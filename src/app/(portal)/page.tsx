@@ -1,5 +1,5 @@
-import { Button } from "@/components/ui/button";
 import { PageHeader } from "@/components/portal/PageHeader";
+import { UploadPoButton } from "@/components/portal/UploadPoButton";
 import { prisma } from "@/lib/prisma";
 
 /** Counts are read per request; the dashboard is never statically cached. */
@@ -22,7 +22,7 @@ export default async function DashboardPage() {
       <PageHeader
         eyebrow="Overview"
         title="Dashboard"
-        action={<Button>Upload PO</Button>}
+        action={<UploadPoButton />}
       />
       <section className="rounded-lg border border-hairline bg-canvas p-lg">
         <p className="text-[length:var(--text-body-md)] text-ink">
