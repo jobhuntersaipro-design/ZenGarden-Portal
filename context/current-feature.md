@@ -1,46 +1,44 @@
 # Current Feature
 
-Phase 04 — Claude extraction and review (`docs/specs/04-extraction-review.md`)
+Phase 05 — Purchase orders list and detail (`docs/specs/05-purchase-orders.md`)
 
 ## Status
 
-Complete. Merged to `main` 2026-09-05. Criterion 1 (live extraction) and the
-source column remain unverified until the two placeholder keys are set.
+In progress. Branch `feature/purchase-orders`. Phase 04 merged 2026-09-05.
 
 ## Goals
 
-- `PoExtractionSchema` + system prompt + `extractPurchaseOrder(bytes, mimeType)`
-  over `client.messages.parse` with `zodOutputFormat`, 90 s timeout
-- `/api/upload/complete` runs extraction inline: RUNNING → SUCCEEDED with
-  `rawJson`, `draftJson`, confidence, model, tokens, `Document.pageCount`; or
-  FAILED with the error
-- `/review/[id]`: source on the left (`react-pdf` or `<img>`), draft form on the
-  right, buyer on its own full-width row, per-field confidence
-- Line-item editing with amount recompute, product and buyer comboboxes,
-  800 ms debounced `saveDraft`
-- **Totals gate**: computed `subtotal + tax` vs the document's printed total,
-  compared as Decimal strings at 2 dp. Persistent banner above the split,
-  Confirm locked, exactly two ways out — fix the numbers, or acknowledge (which
-  writes an auditable `PoStageEvent { kind: EDIT }`). Re-checked server-side.
-- Duplicate check on buyer + PO number, revision numbering on override
-- `confirmPurchaseOrder` writes the PO, line items and stage event in one
-  transaction; discard and retry actions
+- Shared table machinery, reused by phases 06–09: `DataTable` (every column
+  sortable, first-click direction per type), `TablePagination` (10/30/50),
+  `parsePagination` / `parseSort`, `StatusBadge` and `StageBadge`
+- List: one merged row model over confirmed POs *and* in-flight extractions,
+  via a parameter-bound `UNION ALL` in raw SQL — sorting and paginating across
+  two tables is not expressible in Prisma's query API
+- Filters all AND-ed from the URL: `q` (PO number or any line-item
+  description), buyer, uploader, status chip, stage, date range; every change
+  resets to page 1
+- The "Needs review" chip carries its count from the same query that feeds the
+  table, never a separate figure; zero shows no number
+- Detail: breadcrumb, header, Lifecycle card, `StageStepper` with the breathing
+  loop (CSS keyframes gated by `prefers-reduced-motion`), document beside data,
+  Activity list, revision links
+- `advanceStage` / `revertStage` with a `where: { id, stage }` guard so two
+  people clicking at once cannot double-advance; Move back is super-admin only,
+  a real secondary button, with a required note
+- `updatePurchaseOrder` through an edit sheet, appending an EDIT activity entry
 
 ## Notes
 
 - Read `docs/specs/00-master.md` before this phase file.
-- Low confidence is a warning only. It never blocks Confirm and plays no part
-  in the totals gate.
-- `PoExtractionSchema` takes the model's JSON **numbers**; the draft keeps
-  money as **strings** from the first render so nothing is rounded twice.
-- **Blocked on owner setup, and this phase inherits both:**
-  - `ANTHROPIC_API_KEY` is `PLACEHOLDER_setup_step_5`, so no live extraction
-    can run. Acceptance criterion 1 is unverifiable until it is set.
-  - `R2_ACCOUNT_ID` is still a placeholder (see Phase 03), so `DocumentPreview`
-    cannot fetch a presigned GET and the source column stays empty.
-  - Everything else — the totals gate, the duplicate check, revision numbering,
-    the confirm transaction — is provable against the seeded Neon database with
-    a mocked Anthropic client, and is being tested that way.
+- `prevStage` does not exist yet in `src/lib/po-stages.ts`; Phase 01 shipped
+  `nextStage`, `stageIndex`, `stagesUpTo` and `isFinalStage`.
+- The raw SQL is the one deliberate exception to "Server Components fetch with
+  Prisma directly". Parameters are bound, never interpolated.
+- **Still blocked on owner setup, inherited from Phases 03 and 04:**
+  `R2_ACCOUNT_ID` is a placeholder, so the detail page's document column cannot
+  load a presigned GET; `ANTHROPIC_API_KEY` likewise, so no new extraction can
+  be produced. The seeded backlog still exercises the list, the filters, the
+  lifecycle and the activity log.
 
 ## History
 
