@@ -1,39 +1,40 @@
 # Current Feature
 
-Phase 06 — Dashboard (`docs/specs/06-dashboard.md`)
+Phase 07 — Buyers (`docs/specs/07-buyers.md`)
 
 ## Status
 
-Complete. Merged to `main` 2026-09-05.
+In progress. Branch `feature/buyers`. Phase 06 merged 2026-09-05.
 
 ## Goals
 
-- `src/lib/analytics/` — pure, unit-tested: `buckets`, `range`, `sales`,
-  `fulfillment`, `share`, `churn`, `price-drift`. No Prisma in the folder
-- `loadDashboard(range, agg)` runs the queries and calls the library
-- Page order, exactly: three KPI tiles → one trend card → the two status bars →
-  the collapsed "More analytics" disclosure → the in-range table
-- `RangeControls` with preset chips primary, custom dates behind a toggle,
-  aggregation secondary; state in `?from=&to=&agg=&trend=&more=`
-- KPI tiles render their real value on first paint; the count-up animates from
-  there and never replays on a range, trend or disclosure change
-- `SalesLineChart`, `StackedStageChart`, `StatusBar` ×2, the two donuts
+- Analytics additions: `reorder`, `buyer-status`, `product-mix`,
+  `product-trend`, `sparkline` — pure and unit tested like Phase 06's
+- `listBuyers(range, filter, q, sort, page)` computing status, cadence,
+  overdue count and sparkline per buyer; sort in memory after the derived
+  columns exist, then paginate
+- Roster: range chips, KPI row, `AttentionStrip` where the counts and the
+  table filter are **one control**, `BuyersTable` with a sparkline cell
+- Buyer detail: KPI row of five, order trend, product trend with a picker
+  capped at six, what-they-buy donut and bars, reorder signals, details card,
+  intake bar, their POs
+- Buyer names everywhere become links to `/buyers/[id]`
 
 ## Notes
 
 - Read `docs/specs/00-master.md` before this phase file.
-- The `dataviz` skill is loaded. The six-stage categorical palette re-validated
-  clean: worst adjacent CVD ΔE 9.1 (protan), normal-vision floor ΔE 16.3. The
-  contrast WARN on three stage fills is discharged by the legend, the direct
-  labels and the 2px surface gaps — not dismissed.
-- No dual-axis chart anywhere; categorical hues in fixed stage order, never
-  cycled; colours read from CSS variables, never hex literals in components.
-- The range-independent work-queue strip was cut on 2026-09-05 and must not
-  come back: it repeated counts the status bar already carries.
+- Overdue is red at 1 or more, an em dash at zero, never amber and never blue.
+  The design reference §3.8 still carries a stale "`brand-amber` above 2" line
+  in its table paragraph; the paragraph below it and the phase file both
+  supersede that, and the phase file wins for behaviour.
+- "New" is a neutral badge. Blue means a process in flight; a new buyer is a
+  standing fact.
+- Cadence and reorder come from **full** history, not the range — both are
+  predictions about a buyer's rhythm.
 - **Inherited blockers:** `R2_ACCOUNT_ID` and `ANTHROPIC_API_KEY` are still
-  placeholders. The dashboard reads confirmed POs, so the seeded 400 exercise
-  nearly all of it; only the extraction-failure figure depends on real
-  extractions.
+  placeholders. Nothing in this phase depends on either.
+- Known and untouched from Phase 06: `--ring` resolves to ink rather than the
+  design system's purple, affecting every focus ring in the app.
 
 ## History
 
