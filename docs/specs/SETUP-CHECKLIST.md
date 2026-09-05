@@ -100,7 +100,8 @@ project settings for Preview and Production.
 ## 7. Local first run (after Phase 01 is merged)
 
 ```
-cp .env.example .env.local     # fill in every value above
+cp -n .env.example .env.local  # -n: never clobber an existing .env.local
+                               # then fill in every value above
 npm install
 npm run db:migrate             # creates the schema on Neon
 npm run db:seed                # ~400 POs, 11 buyers, 12 products, you as super admin
