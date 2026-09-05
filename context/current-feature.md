@@ -1,52 +1,35 @@
 # Current Feature
 
-Phase 08 — Products (`docs/specs/08-products.md`)
+Phase 09 — Admin (`docs/specs/09-admin.md`)
 
 ## Status
 
-Complete except the image editor. Merged to `main` 2026-09-06.
-
-**Deferred, by decision on 2026-09-06:** product image upload, the 1600px WebP
-derivative, drag-to-reorder and delete. All of it needs R2, which still holds
-placeholder credentials, so none of it could be run — including the manual
-check the spec asks for (a 4000px PNG resizing to 1600px under 300 KB).
-Building it blind would have stacked a second unverified surface on Phase 03's
-upload path, which is unverified for the same reason. Acceptance criteria 5 and
-the super-admin half of 10 are **not met** rather than merely unverified. Do it
-in one pass once `docs/specs/SETUP-CHECKLIST.md` §2 is done.
+Complete. Merged to `main` 2026-09-06. **Phase 09 is the last phase in the
+spec set** — all nine are now merged.
 
 ## Goals
 
-- `twelveMonthWindow(now)` exported once and passed to every caller, so the
-  KPI tiles, the table, the footer summary and the order history can never
-  read different windows
-- `productStats`, `priceTrend` (gaps, not zeros), `whoBuysIt`,
-  `boughtTogether`, `needsAttention` — pure and unit tested
-- Catalog: KPI row over all products, quick-filter chips, clickable
-  Needs-attention breakdown, grid and list views with the preference in
-  `localStorage` behind the URL
-- Product detail: gallery, facts, six stat tiles, price trend with the list
-  reference line, who buys it, bought together, order history
-- `ProductSheet` for super admins; members are read-only and the actions
-  enforce it rather than the UI
-- Product images through the Phase 03 presign/complete pattern, with a 1600px
-  WebP derivative
+- `(admin)` shell with its own top bar; the Phase 02 proxy already 404s
+  non-super-admins and the layout calls `requireSuperAdmin()` as well
+- Pending access requests with approve / decline, wired to the Phase 02 emails
+- Users table with status derivation, filters and the reset-password split:
+  a Google-only user gets an explanation, not a dead link
+- `UserDrawer` with create, update, set password and soft delete
+- The safety rules: no self-demote, no self-disable, never the last active
+  super admin, and delete gated on typing the exact email
 
 ## Notes
 
 - Read `docs/specs/00-master.md` before this phase file.
-- **One dataset, one window.** The catalog KPI row describes all products and
-  the footer summary describes the active filter; with no filter on they must
-  read identically. The named bug to prevent is tiles reading "RM 0.00" beside
-  a footer reading RM 15.5M, and an order-history table drifting to 367 days
-  against tiles on 365.
-- The sort control and the table headers share one piece of sort state — the
-  reuse case `DataTable`'s `onSortChange` was refactored for in Phase 05.
-- **Blocked on owner setup:** image upload, the WebP derivative and the gallery
-  all need R2, which still holds placeholder credentials. Acceptance criteria 5
-  and 10's super-admin half cannot be verified until it is set.
-- New dependency: `@dnd-kit/core` and `@dnd-kit/sortable` for image reordering,
-  named in `00-master.md` §3 for this phase.
+- Pending and Invited are **neutral text inside an amber ring**, deliberately
+  distinct from the amber-*text* "Needs review" badge used for PO work (G2).
+- Disabling and setting a password both bump `sessionVersion`, which the Phase
+  02 `jwt` callback compares — that is what actually ends the session.
+- Deletion is a soft delete: the row stays so uploads and stage events keep
+  their attribution.
+- **Inherited, unchanged:** `R2_ACCOUNT_ID` and `ANTHROPIC_API_KEY` are still
+  placeholders. Nothing in this phase depends on either, but Phase 08's image
+  editor remains unbuilt for that reason.
 
 ## History
 
@@ -56,6 +39,7 @@ in one pass once `docs/specs/SETUP-CHECKLIST.md` §2 is done.
 - 2026-09-05: Design review applied to the canvas and to every spec. Upload left the sidebar; the dashboard leads with a work queue and folds its analytics away; a totals mismatch locks Confirm on the review screen; one status palette; sentence-case labels; truncation recovery; KPIs render their real value on first paint. Canvas sources now live in `docs/design/`.
 - 2026-09-05: Renamed ZenGarden to Loving Hands across the specs, context files and all twelve artboards; seed addresses moved to `@lovinghandsportal.com` and the canvas bundle and design spec became `loving-hands-*`. Business, data model and product catalogue unchanged. Fixed two latent clipping bugs surfaced by the new name: every wordmark variant used `line-height: 1`, which cropped the descender of "Loving" under `background-clip: text` (the sidebar mark also moved up to the on-system `heading-md` 26px), and the Main/Buyer chart x-axis labels were clipped to their own flex cell instead of overflowing into the empty neighbouring ones.
 - 2026-09-05: Phase 01 §1 — Respond.io crawler, `/dashboard`, `src/lib/dashboard` and the four `crawl*` scripts deleted. `recharts` kept for Phase 06.
+- 2026-09-06: Phase 09 complete and merged, closing the spec set — the `(admin)` shell with its own top bar and a `requireSuperAdmin()` check behind the Phase 02 proxy rewrite, pending access requests with approve/decline wired to the Phase 02 emails, the users table with status derivation and the reset-password split, and `UserDrawer` with create, update, set password and soft delete. Verified against the seeded database: approving a pending request created the user as MEMBER, marked the request APPROVED with the decider and timestamp, and hid the empty section; the delete dialog stayed disabled for a near miss and a prefix and enabled only on the exact address (case-insensitive, trimmed); Pending and Invited render as neutral text in amber rings, distinct from the amber-text "Needs review" badge; a Google-only user shows "Password managed by Google" with an explanatory title and no reset link. All test data was removed afterwards. 19 tests cover the safety rules — no self-demote, no self-disable, never the last *active* super admin, `sessionVersion` bumped on disable and on set-password, and soft delete keeping the row so uploads and stage events stay attributed.
 - 2026-09-06: Phase 08 merged, image editor deferred — `twelveMonthWindow` exported once so the KPI row, the cards, the footer summary and a product's order history cannot read different windows; `productStats`, `priceTrend`, `whoBuysIt`, `boughtTogether`, `needsAttention`; the catalog with a clickable Needs-attention breakdown driving the quick-filter chips; product detail with six stat tiles, price trend against the list line, who buys it, bought together and order history; `ProductSheet` for create/edit/archive with `ProductPrice` appended only when the price moves. Verified: the unfiltered KPI row and footer read identically, the Orders tile matches the history row count on two products (139 and 134), the below-list highlight carries both figures in `title` and `aria-label`, and editing a list price left the old value in history. Four defects fixed: the KPI row and footer differed by 9.3e-10 because float addition is not associative and the footer sums a sorted copy; the footer offered "10 per page" beside twelve cards; images that failed before hydration kept a broken icon because `onError` is never replayed; and my product categories were invented rather than taken from the seed, so four of seven did not exist. **The image editor is deferred** — see the status note above.
 - 2026-09-06: Phase 07 complete and merged — the buyer analytics (`reorder`, `buyer-status`, `product-mix`, `product-trend`, `sparkline`) with 25 tests, the roster whose attention counts and table filter are one control, and buyer detail (five KPIs, order trend, product trend with a six-product picker, what-they-buy donut and bars, reorder signals linking to a preselected upload, a details card that renders no blank rows, intake bar, their POs). Buyer names became links everywhere. Three defects found and fixed: `listBuyers` pulled every line item's quantity, amount and product name when the roster needs product ids alone, costing 2.1s against 0.28s; the product picker assigned colour by position in the selected array, so deselecting the first product repainted the survivors — the URL now keeps freed slots (`?products=,b,c`) so an assignment survives a deselect; and a five-tile KPI row whose first tile spans two columns wrapped its last tile onto its own line.
 - 2026-09-05: Phase 06 complete and merged — the pure analytics library (`buckets`, `range`, `sales`, `fulfillment`, `share`, `churn`, `price-drift`) with 70 tests, `loadDashboard` at 422 ms for Last year daily, and the page in its specified order: three KPI tiles, one trend card, the two status bars, the collapsed disclosure, the table last. KPI figures cross-checked against independent raw SQL — 400 orders, RM 8,161,352.29, 11 buyers. Three defects found and fixed: `buckets.startOf` never truncated the time for daily aggregation, so Last 30 days ending now drew 31 columns; the donut and line-chart palettes reached for `--color-primary`, which shadcn's `@theme inline` block rebinds to ink, so the validated hues were never the rendered ones (now unshadowed `--color-share-1..6`); and Recharts' default bar animation meant a screenshot caught an empty plot, the same failure the KPI count-up rule exists to prevent. **Known, not fixed:** `--ring` is set from `--color-primary` and is therefore ink rather than the purple the design system specifies — a Phase 01 issue affecting every focus ring in the app.

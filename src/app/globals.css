@@ -145,6 +145,8 @@
   --spacing-donut: 168px;
   /* The buyer page's product picker panel (Phase 07), per §3.9. */
   --spacing-picker: 360px;
+  /* The admin shell's top bar (Phase 09), per design reference §3.7. */
+  --spacing-topbar: 60px;
 
   /* Review screen (Phase 04). The source column's resting height, so the
      skeleton, the PDF loader and the poller all reserve the same space; and
