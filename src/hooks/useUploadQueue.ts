@@ -6,41 +6,22 @@ import type {
   PresignedFile,
 } from "@/app/api/upload/presign/route";
 import type { CompleteResponse } from "@/app/api/upload/complete/route";
+import { retryExtraction } from "@/actions/purchase-orders";
 import { MAX_FILES_PER_CALL, rejectionReason } from "@/lib/validation/upload";
+import {
+  READY_STATUS,
+  isActiveStatus as isActive,
+  type UploadRow,
+  type UploadStatus,
+} from "@/components/upload/queue-types";
 
-export type UploadStatus =
-  | "queued"
-  | "presigning"
-  | "uploading"
-  | "completing"
-  | "uploaded"
-  | "failed";
-
-export type UploadRow = {
-  /** Client-side identity; the row exists before the server knows about it. */
-  id: string;
-  file: File | null;
-  name: string;
-  size: number;
-  status: UploadStatus;
-  /** 0-100, only meaningful while `uploading`. */
-  progress: number;
-  /** Plain language, shown under the filename. Always set on `failed`. */
-  reason?: string;
-  documentId?: string;
-  extractionId?: string;
-};
+export type { UploadRow, UploadStatus };
+export { READY_STATUS };
 
 /** Three at a time; the rest wait (docs/specs/03-upload.md §2). */
 const CONCURRENCY = 3;
 /** Ten per presign call, and no reason to let the queue grow without bound. */
 const MAX_ROWS = MAX_FILES_PER_CALL * 10;
-
-/** The queue's terminal success state in this phase. Phase 04 moves it on. */
-export const READY_STATUS: UploadStatus = "uploaded";
-
-const isActive = (status: UploadStatus) =>
-  status === "presigning" || status === "uploading" || status === "completing";
 
 let counter = 0;
 const nextId = () => `row-${Date.now()}-${counter++}`;
@@ -148,7 +129,7 @@ export function useUploadQueue(hintBuyerId?: string) {
         });
         await putToR2(row, presigned);
 
-        patch(row.id, { status: "completing", progress: 100 });
+        patch(row.id, { status: "extracting", progress: 100 });
         const completeResponse = await fetch("/api/upload/complete", {
           method: "POST",
           headers: { "content-type": "application/json" },
@@ -164,8 +145,26 @@ export function useUploadQueue(hintBuyerId?: string) {
           fail(row.id, body?.error ?? "The upload didn't finish");
           return;
         }
-        const { extractionId } = (await completeResponse.json()) as CompleteResponse;
-        patch(row.id, { status: "uploaded", progress: 100, extractionId });
+        const body = (await completeResponse.json()) as CompleteResponse;
+        // The upload succeeded but the read may not have. A row that says
+        // "Ready to review" when Claude could not read the document would put
+        // it in the footer's count and promise a review that cannot happen.
+        if (body.status === "FAILED") {
+          patch(row.id, {
+            status: "failed",
+            progress: 100,
+            extractionId: body.extractionId,
+            reason:
+              body.error ??
+              "We couldn't read that document — open it to fill it in by hand",
+          });
+          return;
+        }
+        patch(row.id, {
+          status: "ready",
+          progress: 100,
+          extractionId: body.extractionId,
+        });
       } catch (cause) {
         const message = cause instanceof Error ? cause.message : String(cause);
         // An abort is the user removing the row; that row is already gone.
@@ -258,12 +257,37 @@ export function useUploadQueue(hintBuyerId?: string) {
   const retry = useCallback(
     (id: string) => {
       const row = queue.current.find((candidate) => candidate.id === id);
+      if (!row) return;
+
+      // The bytes are already in R2 and only the reading failed, so this asks
+      // for another read rather than another upload. Re-uploading a file that
+      // arrived intact would waste the transfer and orphan the first document.
+      if (row.extractionId) {
+        patch(id, { status: "extracting", progress: 100, reason: undefined });
+        void retryExtraction(row.extractionId).then((result) => {
+          if (!result.success) {
+            fail(id, result.error);
+            return;
+          }
+          if (result.data.status === "FAILED") {
+            fail(
+              id,
+              result.data.error ??
+                "We still couldn't read that document — open it to fill it in by hand",
+            );
+            return;
+          }
+          patch(id, { status: "ready", progress: 100, reason: undefined });
+        });
+        return;
+      }
+
       // A row rejected before it ever held a File has nothing to retry.
-      if (!row?.file) return;
+      if (!row.file) return;
       patch(id, { status: "queued", progress: 0, reason: undefined });
       pump();
     },
-    [patch, pump],
+    [fail, patch, pump],
   );
 
   const busy = rows.some(

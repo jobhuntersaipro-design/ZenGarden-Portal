@@ -1,7 +1,7 @@
 "use client";
 
 import { FileText, Image as ImageIcon, X } from "lucide-react";
-import type { UploadRow, UploadStatus } from "@/hooks/useUploadQueue";
+import type { UploadRow, UploadStatus } from "@/components/upload/queue-types";
 import { formatBytes } from "@/lib/validation/upload";
 
 /**
@@ -10,7 +10,29 @@ import { formatBytes } from "@/lib/validation/upload";
  * the states — a taller or differently-rounded bar reads as a different kind
  * of progress (docs/specs/03-upload.md §2, design reference §3.3).
  */
-function ProgressBar({ value, fill }: { value: number; fill: string }) {
+function ProgressBar({
+  value,
+  fill,
+  indeterminate = false,
+}: {
+  value: number;
+  fill: string;
+  indeterminate?: boolean;
+}) {
+  // Extraction reports no fraction, so the bar reports motion instead. Same
+  // track, same height, same radius — only the fill differs (G2).
+  if (indeterminate) {
+    return (
+      <div
+        className="h-1 w-full overflow-hidden rounded-pill bg-surface-soft"
+        role="progressbar"
+        aria-label="Reading the document"
+      >
+        <div className={`h-full w-2/5 rounded-pill animate-indeterminate ${fill}`} />
+      </div>
+    );
+  }
+
   return (
     <div
       className="h-1 w-full overflow-hidden rounded-pill bg-surface-soft"
@@ -32,18 +54,31 @@ const LABEL: Record<UploadStatus, string> = {
   queued: "Waiting",
   presigning: "Starting",
   uploading: "Uploading",
-  completing: "Finishing",
-  uploaded: "Uploaded",
+  extracting: "Extracting",
+  ready: "Ready to review",
   failed: "Failed",
 };
 
+/**
+ * One status palette (00-master.md §4). `accent-blue` means a process is
+ * running right now; `brand-amber` means this needs a person.
+ */
 const TONE: Record<UploadStatus, string> = {
   queued: "text-ink-tertiary",
   presigning: "text-accent-blue",
   uploading: "text-accent-blue",
-  completing: "text-accent-blue",
-  uploaded: "text-accent-green",
+  extracting: "text-accent-blue",
+  ready: "text-brand-amber",
   failed: "text-accent-red",
+};
+
+const FILL: Record<UploadStatus, string> = {
+  queued: "bg-surface-soft",
+  presigning: "bg-ink",
+  uploading: "bg-ink",
+  extracting: "bg-accent-blue",
+  ready: "bg-brand-amber",
+  failed: "bg-accent-red",
 };
 
 export function UploadQueue({
@@ -92,7 +127,7 @@ export function UploadQueue({
                 {LABEL[row.status]}
                 {row.status === "uploading" ? ` ${row.progress}%` : null}
               </span>
-              {row.status === "failed" && row.file ? (
+              {row.status === "failed" && (row.file || row.extractionId) ? (
                 <button
                   type="button"
                   onClick={() => onRetry(row.id)}
@@ -111,8 +146,9 @@ export function UploadQueue({
               </button>
             </div>
             <ProgressBar
-              value={row.status === "uploaded" ? 100 : row.progress}
-              fill={row.status === "uploaded" ? "bg-accent-green" : "bg-ink"}
+              value={row.status === "ready" ? 100 : row.progress}
+              fill={FILL[row.status]}
+              indeterminate={row.status === "extracting"}
             />
           </li>
         );

@@ -20,6 +20,15 @@ export type DateInput = Date | string;
 const toKL = (value: DateInput): TZDate =>
   new TZDate(typeof value === "string" ? new Date(value) : value, TIME_ZONE);
 
+/**
+ * `2026-09-17` for today in Kuala Lumpur — what a date input wants as its
+ * value. Not `new Date().toISOString()`: between midnight and 08:00 KL that is
+ * still yesterday in UTC, so a form defaulted from it pre-fills the wrong day.
+ */
+export function todayISO(): string {
+  return format(new TZDate(new Date(), TIME_ZONE), "yyyy-MM-dd");
+}
+
 /** `5 Aug 2026` — the format the canvas uses in tables and headers. */
 export function formatDate(value: DateInput): string {
   return format(toKL(value), "d MMM yyyy");

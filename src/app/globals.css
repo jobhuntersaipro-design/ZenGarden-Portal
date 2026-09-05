@@ -141,6 +141,12 @@
      (design reference §3.1). Added in Phase 02. */
   --spacing-control-oauth: 48px;
 
+  /* Review screen (Phase 04). The source column's resting height, so the
+     skeleton, the PDF loader and the poller all reserve the same space; and
+     the minimum the line-item table needs before it scrolls horizontally. */
+  --spacing-preview: 600px;
+  --spacing-line-items: 720px;
+
   /* Stage palette — six categorical hues in stage order. Fills and dots only,
      never text. See docs/specs/design/…-design.md "Stage palette". */
   --color-stage-1: #4a3aa7;   /* Order placed   — violet */
@@ -174,6 +180,9 @@
   --container-auth-card: 480px;
 
   --animate-fade-in-up: fade-in-up 1s ease-out both;
+  /* The indeterminate extraction bar: a short fill sliding across its track.
+     Length is unknown, so the bar reports motion, never a fraction. */
+  --animate-indeterminate: indeterminate 1.4s cubic-bezier(0.5, 0, 0.5, 1) infinite;
 }
 
 /*
@@ -211,6 +220,24 @@
   }
   html {
     @apply font-sans;
+  }
+}
+
+@keyframes indeterminate {
+  from {
+    transform: translateX(-100%);
+  }
+  to {
+    transform: translateX(350%);
+  }
+}
+
+/* The only animation rule the app needs beyond the tokens: a moving bar is
+   exactly what prefers-reduced-motion is asking us not to do. */
+@media (prefers-reduced-motion: reduce) {
+  .animate-indeterminate {
+    animation: none;
+    width: 100%;
   }
 }
 

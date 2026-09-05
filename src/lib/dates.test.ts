@@ -1,5 +1,11 @@
-import { describe, expect, it } from "vitest";
-import { bucketStart, formatDate, formatDateTime, rangeFromPreset } from "@/lib/dates";
+import { afterEach, describe, expect, it, vi } from "vitest";
+import {
+  bucketStart,
+  formatDate,
+  formatDateTime,
+  rangeFromPreset,
+  todayISO,
+} from "@/lib/dates";
 
 describe("formatDate", () => {
   it("renders the canvas format", () => {
@@ -46,5 +52,25 @@ describe("rangeFromPreset", () => {
   it("runs ytd from 1 January", () => {
     const { from } = rangeFromPreset("ytd", "2026-09-03T06:00:00Z");
     expect(formatDate(from)).toBe("1 Jan 2026");
+  });
+});
+
+describe("todayISO", () => {
+  afterEach(() => {
+    vi.useRealTimers();
+  });
+
+  it("gives today's date in Kuala Lumpur, not UTC", () => {
+    vi.useFakeTimers();
+    // 23:30 UTC on 5 Sep is 07:30 on 6 Sep in KL. A UTC-derived default would
+    // pre-fill yesterday for anyone working before 08:00.
+    vi.setSystemTime(new Date("2026-09-05T23:30:00Z"));
+    expect(todayISO()).toBe("2026-09-06");
+  });
+
+  it("agrees with UTC in the middle of the KL day", () => {
+    vi.useFakeTimers();
+    vi.setSystemTime(new Date("2026-09-17T04:00:00Z"));
+    expect(todayISO()).toBe("2026-09-17");
   });
 });
