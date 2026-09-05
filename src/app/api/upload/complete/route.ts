@@ -2,14 +2,21 @@ import { NextResponse } from "next/server";
 import { ExtractionStatus } from "@/generated/prisma/enums";
 import { UnauthorizedError, requireUser } from "@/lib/auth-guards";
 import { prisma } from "@/lib/prisma";
+import { extractPurchaseOrder } from "@/lib/extraction/extract-po";
+import { runExtraction } from "@/lib/extraction/run";
 import { findOwnedDocument } from "@/lib/queries/documents";
-import { deleteObject, headObject } from "@/lib/r2";
+import { deleteObject, getObjectBytes, headObject } from "@/lib/r2";
 import { completeRequestSchema } from "@/lib/validation/upload";
 
 /** Phase 04 runs extraction inline here; the budget is reserved now. */
 export const maxDuration = 120;
 
-export type CompleteResponse = { extractionId: string };
+export type CompleteResponse = {
+  extractionId: string;
+  status: ExtractionStatus;
+  /** Set when the status is FAILED: the reason the queue row displays. */
+  error: string | null;
+};
 
 /**
  * The presigned URL proves what the client *declared*. This proves what
@@ -47,8 +54,14 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: "Not found." }, { status: 404 });
   }
   if (document.extraction) {
+    const existing = await prisma.extraction.findUniqueOrThrow({
+      where: { id: document.extraction.id },
+      select: { status: true, error: true },
+    });
     return NextResponse.json({
       extractionId: document.extraction.id,
+      status: existing.status,
+      error: existing.error,
     } satisfies CompleteResponse);
   }
 
@@ -76,8 +89,8 @@ export async function POST(request: Request) {
     data: {
       documentId: document.id,
       status: ExtractionStatus.PENDING,
-      // Carried from buyer detail's "Upload PO" so the review screen in Phase
-      // 04 can preselect the buyer the user came from.
+      // Carried from buyer detail's "Upload PO" so the review screen can
+      // preselect the buyer the user came from.
       ...(parsed.data.hintBuyerId
         ? { draftJson: { buyerId: parsed.data.hintBuyerId } }
         : {}),
@@ -85,7 +98,21 @@ export async function POST(request: Request) {
     select: { id: true },
   });
 
+  // Inline, inside this request's 120 s budget. `runExtraction` never throws —
+  // a failure is a state the reviewer can act on, so the response is the same
+  // shape either way and the queue row reads it to decide its own label.
+  const outcome = await runExtraction({
+    extractionId: extraction.id,
+    documentId: document.id,
+    r2Key: document.r2Key,
+    mimeType: document.mimeType,
+    getBytes: getObjectBytes,
+    extract: extractPurchaseOrder,
+  });
+
   return NextResponse.json({
     extractionId: extraction.id,
+    status: outcome.status,
+    error: outcome.error,
   } satisfies CompleteResponse);
 }
