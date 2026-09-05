@@ -68,7 +68,7 @@ Zod in `src/lib/validation/users.ts`:
   ends at its next JWT refresh (Phase 02 compares it).
 - `deleteUser(id)`: confirm dialog copy from §3.7, **gated on typing the
   user's email**. The dialog holds an input and the caption "Type
-  priya@lovinghands.my to confirm"; the Delete button stays `disabled` until the
+  priya@lovinghandsportal.com to confirm"; the Delete button stays `disabled` until the
   typed string matches the user's email exactly (trimmed, case-insensitive
   compare on the address; no partial or paste-around shortcut). Cannot delete
   yourself or the last super admin. Deletion is a soft delete: set `disabledAt`, blank

@@ -48,7 +48,7 @@ detail, Admin.
 | Unknown Google email | Creates an `AccessRequest`; super admins get an email; approval in `/admin`. Optional `AUTO_APPROVE_DOMAIN` admits a Workspace domain instantly as Member |
 | Duplicate PO (same buyer + PO number) | Warn on the review screen, allow override by ticking "This is a revised PO". Saved as a new row with `revision = n+1` and `revisionOfId` pointing at the previous row. Dashboards count only the latest revision |
 | Old `/dashboard` and Respond.io crawler | Retired in Phase 01 (files deleted, scripts removed) |
-| Email | Resend from `portal@lovinghands.my` (custom domain, verified). `EMAIL_FROM` env var |
+| Email | Resend from `portal@lovinghandsportal.com` (custom domain, verified). `EMAIL_FROM` env var |
 | UI primitives | shadcn (base-nova preset, Radix) re-skinned to the `@theme` tokens. No shadcn default colours survive |
 | Charts | Recharts 3 for the line chart and stacked bar chart. CSS/SVG hand-written for donuts, horizontal bars, sparklines, status bars, stepper |
 | Validation | Zod 4 at every boundary: Server Action input, route handler body, Claude output, env |
@@ -461,7 +461,7 @@ APP_URL=http://localhost:3000            # public origin, used in emails and R2 
 AUTH_SECRET=                             # openssl rand -base64 32
 AUTH_GOOGLE_ID=
 AUTH_GOOGLE_SECRET=
-AUTO_APPROVE_DOMAIN=                     # optional, e.g. lovinghands.my
+AUTO_APPROVE_DOMAIN=                     # optional, e.g. lovinghandsportal.com
 SEED_SUPER_ADMIN_EMAIL=                  # your Google email; seed creates this user as SUPER_ADMIN
 
 # Neon
@@ -476,7 +476,7 @@ R2_BUCKET=loving-hands-portal
 
 # Resend
 RESEND_API_KEY=
-EMAIL_FROM="Loving Hands Portal <portal@lovinghands.my>"
+EMAIL_FROM="Loving Hands Portal <portal@lovinghandsportal.com>"
 
 # Anthropic
 ANTHROPIC_API_KEY=

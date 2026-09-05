@@ -12,8 +12,12 @@ project settings for Preview and Production.
    → `DATABASE_URL`.
 3. Toggle "Connection pooling" off in the same dialog → copy the **direct**
    string → `DIRECT_URL`.
-4. Create a second branch `dev` for local work if you want production data
-   untouched; use its strings locally.
+4. Create a second branch `development` as a child of `production` for local
+   work. Use its pooled + direct strings in `.env.local`; keep the
+   `production` pair for Vercel only. Never point `.env.local` at
+   `production` — `npm run db:seed` writes ~400 demo POs.
+   Refresh it later with `neon branches reset development --parent`
+   (this discards the branch's data, so re-seed afterwards).
 
 ## 2. Cloudflare R2
 
@@ -29,7 +33,7 @@ project settings for Preview and Production.
 ```json
 [
   {
-    "AllowedOrigins": ["http://localhost:3000", "https://portal.lovinghands.my", "https://*.vercel.app"],
+    "AllowedOrigins": ["http://localhost:3000", "https://lovinghandsportal.com", "https://*.vercel.app"],
     "AllowedMethods": ["GET", "PUT", "HEAD"],
     "AllowedHeaders": ["Content-Type", "Content-Length"],
     "ExposeHeaders": ["ETag"],
@@ -55,19 +59,19 @@ project settings for Preview and Production.
 4. `AUTH_SECRET` = output of `openssl rand -base64 32`. Different value per environment.
 5. `SEED_SUPER_ADMIN_EMAIL` = the Google email you will sign in with. The seed
    creates this user as SUPER_ADMIN so you are never locked out.
-6. Optional: `AUTO_APPROVE_DOMAIN=lovinghands.my` to admit Workspace emails
+6. Optional: `AUTO_APPROVE_DOMAIN=lovinghandsportal.com` to admit Workspace emails
    without approval.
 
 ## 4. Resend
 
-1. resend.com → Domains → Add domain `lovinghands.my` (or a subdomain like
-   `mail.lovinghands.my`), region closest to Singapore.
+1. resend.com → Domains → Add domain `lovinghandsportal.com` (or a subdomain like
+   `mail.lovinghandsportal.com`), region closest to Singapore.
 2. Add the DNS records Resend shows (MX + TXT for SPF on the `send`
    subdomain, three DKIM CNAMEs, optional tracking CNAME) at your DNS
    provider. Wait for "Verified".
 3. API Keys → Create → *Sending access*, restricted to that domain →
    `RESEND_API_KEY`.
-4. `EMAIL_FROM="Loving Hands Portal <portal@lovinghands.my>"`.
+4. `EMAIL_FROM="Loving Hands Portal <portal@lovinghandsportal.com>"`.
 5. Until the domain verifies, `EMAIL_FROM=onboarding@resend.dev` works but
    only delivers to your own Resend account email.
 
@@ -88,13 +92,16 @@ project settings for Preview and Production.
    Hobby the cap is 300 s with Fluid, on Pro 800 s.
 4. Environment variables: every var from `.env.example`, for Production and
    Preview. `APP_URL` = the deployed origin for each environment.
-5. Domains → add `portal.lovinghands.my`, add the CNAME at your DNS provider.
+5. Domains → add `lovinghandsportal.com`. It is an apex domain, so add the
+   A record Vercel shows (or an ALIAS/ANAME if your DNS provider supports it) —
+   a CNAME is not legal at the zone apex. Add `www` as a CNAME redirect if you want it.
 6. Add the production domain to Google redirect URIs (step 3.2) and R2 CORS (step 2.3).
 
 ## 7. Local first run (after Phase 01 is merged)
 
 ```
-cp .env.example .env.local     # fill in every value above
+cp -n .env.example .env.local  # -n: never clobber an existing .env.local
+                               # then fill in every value above
 npm install
 npm run db:migrate             # creates the schema on Neon
 npm run db:seed                # ~400 POs, 11 buyers, 12 products, you as super admin

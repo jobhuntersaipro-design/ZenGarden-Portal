@@ -165,7 +165,7 @@ admin if you think that's a mistake."
    the request with `status ACTIVE`, the request is marked approved, and the
    requester gets "You're in" with a sign-in link. **Decline** marks it
    declined (kept for audit, hidden from the list) and optionally emails.
-3. Optional shortcut, off by default: `AUTO_APPROVE_DOMAIN=lovinghands.my`
+3. Optional shortcut, off by default: `AUTO_APPROVE_DOMAIN=lovinghandsportal.com`
    approves Workspace-domain emails instantly as Members, so only outside
    Gmail addresses ever queue.
 
@@ -741,7 +741,7 @@ admin cannot be demoted; **deleting a user is typed-confirmation only**: a dialo
 Kumar?", body copy saying their uploads and stage history stay in Loving Hands
 attributed to a deleted user and that they lose access immediately, then the
 label "Type their email to confirm" over a `text-input` and the caption "Must
-match priya@lovinghands.my exactly." The Delete button renders disabled
+match priya@lovinghandsportal.com exactly." The Delete button renders disabled
 (`bg-surface-soft text-ink-disabled`) until the string matches, with the caption
 "Delete unlocks when the email matches." The dialog is `card` geometry at
 440–520px; `accent-red` appears in the title only, never as a fill. New user with a password shows the
