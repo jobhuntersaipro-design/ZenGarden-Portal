@@ -37,7 +37,19 @@ const schema = z.object({
   EXTRACTION_MODEL: z.string().min(1),
 });
 
-const parsed = schema.safeParse(process.env);
+/**
+ * Preview deployments get a fresh URL per build, so APP_URL cannot be set by
+ * hand there. Vercel injects VERCEL_BRANCH_URL (stable per branch) and
+ * VERCEL_URL (per deployment); either beats guessing. An explicit APP_URL
+ * always wins, which is how production pins its real domain.
+ */
+const appUrl =
+  process.env.APP_URL ||
+  (process.env.VERCEL_BRANCH_URL && `https://${process.env.VERCEL_BRANCH_URL}`) ||
+  (process.env.VERCEL_URL && `https://${process.env.VERCEL_URL}`) ||
+  undefined;
+
+const parsed = schema.safeParse({ ...process.env, APP_URL: appUrl });
 
 if (!parsed.success) {
   const missing = parsed.error.issues
