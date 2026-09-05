@@ -26,18 +26,23 @@ const PUT_TTL_SECONDS = 15 * 60;
 const GET_TTL_SECONDS = 10 * 60;
 
 /**
- * Upload URL for the browser. Content-Type is pinned so the client cannot
- * upload something other than what it declared; size is enforced again on
- * /api/upload/complete via headObject.
+ * Upload URL for the browser. Content-Type and Content-Length are both pinned
+ * into the signature, so a client that changes either is rejected by R2 rather
+ * than by us. Size is checked once more on /api/upload/complete via headObject,
+ * because a signature only proves what was declared, not what arrived.
+ *
+ * `sizeBytes` is the file's exact size, not a ceiling: S3 signs Content-Length
+ * as an exact value, so passing a maximum here would reject every real upload
+ * but one.
  */
-export function presignPut(key: string, contentType: string, maxBytes: number) {
+export function presignPut(key: string, contentType: string, sizeBytes: number) {
   return getSignedUrl(
     r2,
     new PutObjectCommand({
       Bucket: env.R2_BUCKET,
       Key: key,
       ContentType: contentType,
-      ContentLength: maxBytes,
+      ContentLength: sizeBytes,
     }),
     { expiresIn: PUT_TTL_SECONDS },
   );
@@ -76,6 +81,15 @@ export async function getObjectBytes(key: string): Promise<Uint8Array> {
 export function deleteObject(key: string) {
   return r2.send(new DeleteObjectCommand({ Bucket: env.R2_BUCKET, Key: key }));
 }
+
+/**
+ * A Document needs a unique `r2Key` at creation, before its id exists to build
+ * the real key from. A key with this prefix is that placeholder: it names no
+ * object, and nothing should ever try to delete one.
+ */
+export const PENDING_KEY_PREFIX = "pending:";
+
+export const isPendingKey = (key: string) => key.startsWith(PENDING_KEY_PREFIX);
 
 /** `po/2026/09/{documentId}.pdf`, foldered by KL date so listings stay usable. */
 export function documentKey(documentId: string, ext: string): string {
