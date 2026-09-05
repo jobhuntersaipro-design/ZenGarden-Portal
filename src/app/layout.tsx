@@ -19,8 +19,8 @@ const sometypeMono = Sometype_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "Unifi Sales Report",
-  description: "Sales analytics dashboard for Unifi respond.io conversations",
+  title: "Loving Hands Portal",
+  description: "Purchase-order intake and fulfillment tracking for the Loving Hands ops team",
 };
 
 export default function RootLayout({
