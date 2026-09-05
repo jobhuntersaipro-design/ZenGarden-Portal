@@ -1,0 +1,291 @@
+<!doctype html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <title>Purchase orders</title>
+  <script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@200..800&family=Inter:wght@400..700&family=Sometype+Mono:wght@400;500&display=swap">
+  <style>
+  body { margin: 0; background: #ffffff; color: #292d34; font-family: Inter, ui-sans-serif, sans-serif; font-size: 16px; line-height: 1.375; letter-spacing: -0.32px; -webkit-font-smoothing: antialiased; }
+  h1, h2, h3 { font-family: 'Plus Jakarta Sans', ui-sans-serif, sans-serif; margin: 0; }
+  a { color: #7b68ee; text-decoration: none; } a:hover { color: #7612fa; }
+  .eyebrow { font-family: 'Sometype Mono', ui-monospace, monospace; font-size: 14px; font-weight: 500; line-height: 1.29; letter-spacing: 0; color: #838383; }
+  .display-md { font-family: 'Plus Jakarta Sans', ui-sans-serif, sans-serif; font-size: 34px; font-weight: 650; line-height: 1.2; letter-spacing: -1.36px; }
+  .display-lg { font-family: 'Plus Jakarta Sans', ui-sans-serif, sans-serif; font-size: 40px; font-weight: 650; line-height: 1.2; letter-spacing: -1.6px; }
+  .heading-md { font-family: 'Plus Jakarta Sans', ui-sans-serif, sans-serif; font-size: 26px; font-weight: 650; line-height: 1.25; letter-spacing: -0.91px; }
+  .heading-sm { font-family: 'Plus Jakarta Sans', ui-sans-serif, sans-serif; font-size: 18px; font-weight: 650; line-height: 1.33; letter-spacing: -0.54px; }
+  .body-lg { font-size: 18px; font-weight: 500; line-height: 1.33; letter-spacing: -0.36px; }
+  .body-sm { font-size: 14px; line-height: 1.43; letter-spacing: -0.15px; }
+  .caption { font-size: 12px; line-height: 1.5; letter-spacing: -0.12px; }
+  .btn-primary { display: inline-flex; align-items: center; gap: 8px; height: 52px; padding: 14px 20px; border-radius: 20px; background: #292d34; color: #ffffff; font-size: 18px; font-weight: 600; line-height: 1.33; letter-spacing: -0.36px; box-sizing: border-box; white-space: nowrap; }
+  .btn-gradient { display: inline-flex; align-items: center; gap: 8px; height: 52px; padding: 14px 20px; border-radius: 20px; background: linear-gradient(263deg, #fa12e3 -35%, #7612fa 41%, #12d0fa 135%); color: #ffffff; font-size: 18px; font-weight: 600; line-height: 1.33; letter-spacing: -0.36px; box-sizing: border-box; white-space: nowrap; }
+  .btn-secondary { display: inline-flex; align-items: center; gap: 8px; height: 40px; padding: 10px 16px; border-radius: 9px; background: #e9ebf0; border: 1px solid #e8e8e8; color: #202020; font-size: 14px; font-weight: 600; line-height: 1.43; letter-spacing: -0.15px; box-sizing: border-box; white-space: nowrap; }
+  .btn-tertiary { display: inline-flex; align-items: center; gap: 6px; padding: 8px 12px; border-radius: 9px; color: #7b68ee; font-size: 14px; font-weight: 600; line-height: 1.43; letter-spacing: -0.15px; white-space: nowrap; }
+  .card { background: #ffffff; border: 1px solid #e8e8e8; border-radius: 14px; box-sizing: border-box; }
+  .tile { background: #ffffff; border: 1px solid #e8e8e8; border-radius: 12px; padding: 20px; box-sizing: border-box; }
+  .badge { display: inline-flex; align-items: center; gap: 6px; padding: 4px 10px; border-radius: 9999px; background: #e9ebf0; font-size: 12px; font-weight: 500; line-height: 1.5; letter-spacing: -0.12px; white-space: nowrap; }
+  .dot { width: 6px; height: 6px; border-radius: 9999px; background: currentColor; }
+  .input { display: flex; align-items: center; gap: 10px; height: 44px; padding: 10px 16px; border-radius: 9px; border: 1px solid #d9d9d9; background: #ffffff; color: #292d34; font-size: 16px; line-height: 1.375; letter-spacing: -0.32px; box-sizing: border-box; }
+  .input.focus { border: 2px solid #7612fa; padding: 9px 15px; }
+  .label { font-family: 'Sometype Mono', ui-monospace, monospace; font-size: 12px; font-weight: 500; line-height: 1.5; color: #838383; }
+  table { border-collapse: collapse; width: 100%; }
+  th { font-family: 'Sometype Mono', ui-monospace, monospace; font-size: 12px; font-weight: 500; line-height: 1.5; letter-spacing: 0; color: #838383; text-align: left; padding: 12px 20px; border-bottom: 1px solid #e8e8e8; }
+  td { font-size: 14px; line-height: 1.43; letter-spacing: -0.15px; color: #292d34; padding: 14px 20px; border-bottom: 1px solid #e8e8e8; vertical-align: middle; }
+  tr:last-child td { border-bottom: 0; }
+  th.num, td.num { text-align: right; font-variant-numeric: tabular-nums; }
+  .mono { font-family: 'Sometype Mono', ui-monospace, monospace; font-size: 13px; letter-spacing: 0; }
+  .navitem { display: flex; align-items: center; gap: 12px; height: 44px; padding: 0 12px; border-radius: 9px; color: #646464; font-size: 14px; font-weight: 500; line-height: 1.43; letter-spacing: -0.15px; transition: background-color 0.25s cubic-bezier(0.5, 0, 0.5, 1), color 0.25s cubic-bezier(0.5, 0, 0.5, 1); }
+  .navitem:hover { background: #ffffff; color: #292d34; }
+  .navitem.active { background: #e9ebf0; color: #292d34; font-weight: 600; }
+  .navitem.active:hover { background: #e9ebf0; }
+  .userrow { display: flex; align-items: center; gap: 12px; padding: 10px 12px; border-radius: 9px; color: #292d34; transition: background-color 0.25s cubic-bezier(0.5, 0, 0.5, 1); }
+  .userrow:hover { background: #ffffff; color: #292d34; }
+  .btn-primary { transition: background-color 0.25s cubic-bezier(0.5, 0, 0.5, 1); } .btn-primary:hover { background: #202020; }
+  .btn-secondary { transition: border-color 0.25s cubic-bezier(0.5, 0, 0.5, 1); } .btn-secondary:hover { border-color: #d9d9d9; }
+  .btn-tertiary { transition: color 0.25s cubic-bezier(0.5, 0, 0.5, 1); } .btn-tertiary:hover { color: #7612fa; }
+  tbody tr { transition: background-color 0.25s cubic-bezier(0.5, 0, 0.5, 1); } tbody tr:hover td { background: #f8f9fa; }
+  table.dense th, table.dense td { padding-left: 12px; padding-right: 12px; }
+  table.dense th:first-child, table.dense td:first-child { padding-left: 20px; }
+  table.dense th:last-child, table.dense td:last-child { padding-right: 20px; }
+  .who { display: flex; align-items: center; gap: 8px; }
+  .who span { white-space: nowrap; }
+  .avatar { width: 32px; height: 32px; border-radius: 9999px; background: #e9ebf0; color: #202020; display: flex; align-items: center; justify-content: center; font-size: 12px; font-weight: 600; letter-spacing: 0; }
+
+  .chip { display: inline-flex; align-items: center; height: 36px; padding: 0 14px; border-radius: 9999px; background: #e9ebf0; color: #646464; font-size: 14px; font-weight: 500; line-height: 1.43; letter-spacing: -0.15px; white-space: nowrap; cursor: pointer; border: 0; font-family: inherit; transition: background-color 0.25s cubic-bezier(0.5, 0, 0.5, 1), color 0.25s cubic-bezier(0.5, 0, 0.5, 1); }
+  .chip:hover { background: #d9d9d9; color: #292d34; }
+  .chip.on { background: #292d34; color: #ffffff; }
+  .chip.on:hover { background: #202020; }
+  .seg { display: inline-flex; border: 1px solid #e8e8e8; border-radius: 9px; overflow: hidden; background: #ffffff; }
+  .seg button { height: 36px; padding: 0 14px; border: 0; background: transparent; color: #646464; font-family: inherit; font-size: 14px; font-weight: 500; letter-spacing: -0.15px; cursor: pointer; border-right: 1px solid #e8e8e8; transition: background-color 0.25s cubic-bezier(0.5, 0, 0.5, 1), color 0.25s cubic-bezier(0.5, 0, 0.5, 1); }
+  .seg button:last-child { border-right: 0; }
+  .seg button:hover { background: #f8f9fa; color: #292d34; }
+  .seg button.on { background: #e9ebf0; color: #292d34; font-weight: 600; }
+  .field { height: 40px; padding: 0 12px; border-radius: 9px; border: 1px solid #d9d9d9; background: #ffffff; color: #292d34; font-family: inherit; font-size: 14px; letter-spacing: -0.15px; box-sizing: border-box; outline: none; transition: border-color 0.25s cubic-bezier(0.5, 0, 0.5, 1); }
+  .field:hover { border-color: #b4b4b4; }
+  .field:focus { border: 2px solid #7612fa; padding: 0 11px; }
+  .pager { display: inline-flex; align-items: center; gap: 6px; height: 36px; padding: 0 12px; border-radius: 9px; border: 0; background: transparent; color: #7b68ee; font-family: inherit; font-size: 14px; font-weight: 600; letter-spacing: -0.15px; cursor: pointer; transition: color 0.25s cubic-bezier(0.5, 0, 0.5, 1); }
+  .pager:hover { color: #7612fa; }
+  .pager:disabled { color: #b4b4b4; cursor: default; }
+  .bar { flex: 1; min-width: 2px; background: #292d34; border-radius: 4px 4px 0 0; transition: background-color 0.25s cubic-bezier(0.5, 0, 0.5, 1); }
+  .bar:hover { background: #7b68ee; }
+  .hbar { height: 14px; background: #292d34; border-radius: 0 4px 4px 0; transition: background-color 0.25s cubic-bezier(0.5, 0, 0.5, 1); }
+  .hbar:hover { background: #7b68ee; }
+  .pt { position: absolute; width: 24px; height: 24px; transform: translate(-50%, -50%); display: flex; align-items: center; justify-content: center; cursor: default; }
+  .pt-dot { border-radius: 9999px; border: 2px solid #ffffff; box-shadow: 0 0 0 1px rgb(41 45 52 / 0.15); transition: transform 0.25s cubic-bezier(0.5, 0, 0.5, 1); }
+  .pt:hover .pt-dot { transform: scale(1.5); }
+  .buyerlink { color: #292d34; transition: color 0.25s cubic-bezier(0.5, 0, 0.5, 1); }
+  .buyerlink:hover { color: #7b68ee; text-decoration: underline; text-underline-offset: 3px; }
+</style>
+</helmet>
+<div style="width: 1440px; min-height: 100vh; background: #ffffff; display: flex; flex-direction: row; align-items: stretch;">
+<aside style="width: 240px; flex-shrink: 0; min-height: 100vh; box-sizing: border-box; padding: 24px 16px; background: #f8f9fa; border-right: 1px solid #e8e8e8; display: flex; flex-direction: column; gap: 32px;">
+  <div style="padding: 0 12px;"><div style="display: flex; align-items: baseline; font-family: 'Plus Jakarta Sans', ui-sans-serif, sans-serif; font-size: 22px; font-weight: 700; letter-spacing: -0.88px; line-height: 1;"><span style="background: linear-gradient(263deg, #fa12e3 -35%, #7612fa 41%, #12d0fa 135%); -webkit-background-clip: text; background-clip: text; color: transparent;">Zen</span><span style="color: #292d34;">Garden</span></div></div>
+  <nav style="display: flex; flex-direction: column; gap: 4px; flex: 1;">
+    <a href="#" class="navitem"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" ><rect x="3" y="3" width="8" height="8" rx="1.5"></rect><rect x="13" y="3" width="8" height="8" rx="1.5"></rect><rect x="3" y="13" width="8" height="8" rx="1.5"></rect><rect x="13" y="13" width="8" height="8" rx="1.5"></rect></svg><span>Dashboard</span></a>
+    <a href="#" class="navitem active"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" ><path d="M6 3h12a1 1 0 0 1 1 1v17l-3-2-2 2-2-2-2 2-2-2-3 2V4a1 1 0 0 1 1-1z"></path><path d="M9 8h6"></path><path d="M9 12h6"></path></svg><span>Purchase orders</span></a>
+    <a href="#" class="navitem"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" ><circle cx="9" cy="8" r="3.5"></circle><path d="M2.5 20a6.5 6.5 0 0 1 13 0"></path><path d="M16 4.8a3.5 3.5 0 0 1 0 6.4"></path><path d="M17.5 13.6A6.5 6.5 0 0 1 21.5 20"></path></svg><span>Buyers</span></a>
+    <a href="#" class="navitem"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" ><path d="M12 3 3 7.5v9L12 21l9-4.5v-9z"></path><path d="M3 7.5 12 12l9-4.5"></path><path d="M12 12v9"></path></svg><span>Products</span></a>
+  </nav>
+  <a href="#" class="userrow">
+    <div class="avatar">CL</div>
+    <div style="display: flex; flex-direction: column; gap: 2px; min-width: 0;">
+      <span class="body-sm" style="color: #292d34; font-weight: 500; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">Chris Lam</span>
+      <span class="caption" style="color: #838383; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">chris@zengarden.my</span>
+    </div>
+  </a>
+</aside>
+<main style="flex: 1; min-width: 0; padding: 40px 40px 60px; box-sizing: border-box;">
+<div style="max-width: 1160px; margin: 0 auto;">
+
+
+<div style="display: flex; align-items: flex-end; justify-content: space-between; gap: 24px; margin-bottom: 40px;">
+  <div style="display: flex; flex-direction: column; gap: 8px;">
+    <div class="eyebrow">Records</div>
+    <div style="display: flex; align-items: center; gap: 12px;"><h1 class="display-md">Purchase orders</h1></div>
+  </div>
+  <div style="display: flex; gap: 12px; align-items: center;"><div class="btn-primary"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" ><path d="M12 16V4"></path><path d="m6 10 6-6 6 6"></path><path d="M4 20h16"></path></svg><span>Upload PO</span></div></div>
+</div>
+<div style="display: flex; flex-direction: column; gap: 12px; margin-bottom: 20px;">
+  <div style="display: flex; align-items: center; gap: 12px; flex-wrap: wrap;">
+    <div style="position: relative; display: flex; align-items: center;">
+      <span style="position: absolute; left: 12px; color: #838383; display: flex;"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" ><circle cx="11" cy="11" r="7"></circle><path d="m20 20-3.5-3.5"></path></svg></span>
+      <input class="field" style="width: 300px; padding-left: 38px;" placeholder="Search PO number or line item…" value="{{ q }}" onInput="{{ setQ }}">
+    </div>
+    <select class="field" value="{{ buyer }}" onChange="{{ setBuyer }}">
+      <option value="all">All buyers</option>
+      <sc-for list="{{ buyerOpts }}" as="o" hint-placeholder-count="11"><option value="{{ o }}">{{ o }}</option></sc-for>
+    </select>
+    <select class="field" value="{{ by }}" onChange="{{ setBy }}">
+      <option value="all">Uploaded by anyone</option>
+      <option value="CL">Chris Lam</option>
+      <option value="AR">Aisha Rahman</option>
+    </select>
+    <div style="display: flex; gap: 8px; margin-left: auto;">
+      <sc-for list="{{ statusChips }}" as="c" hint-placeholder-count="5">
+        <button class="chip {{ c.cls }}" onClick="{{ c.pick }}" style="gap: 6px; color: {{ c.color }};"><span class="dot" style="background: {{ c.dotColor }};"></span>{{ c.label }}<span style="font-weight: 600;">{{ c.count }}</span></button>
+      </sc-for>
+    </div>
+  </div>
+  <div style="display: flex; align-items: center; justify-content: space-between;">
+    <span class="body-sm" style="color: #646464;">{{ summary }}</span>
+    <sc-if value="{{ filtered }}" hint-placeholder-val="{{ false }}">
+      <button class="pager" onClick="{{ clear }}"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" ><path d="M6 6l12 12"></path><path d="M18 6 6 18"></path></svg> Clear filters</button>
+    </sc-if>
+  </div>
+</div>
+<div class="card" style="overflow: hidden;">
+  <table class="dense">
+    <thead><tr>
+          <sc-for list="{{ headers }}" as="h" hint-placeholder-count="8">
+            <th class="{{ h.cls }}" onClick="{{ h.pick }}" style="cursor: pointer; white-space: nowrap; color: {{ h.color }};">{{ h.label }}{{ h.caret }}</th>
+          </sc-for>
+          <th></th>
+        </tr></thead>
+    <tbody>
+      <sc-for list="{{ rows }}" as="p" hint-placeholder-count="10">
+        <tr>
+          <td style="color: #202020; white-space: nowrap;"><span style="display: inline-flex; align-items: center; padding: 1px 6px; margin-right: 8px; border-radius: 4px; background: #e9ebf0; color: #646464; font-family: 'Sometype Mono', ui-monospace, monospace; font-size: 10px; font-weight: 500; letter-spacing: 0;">{{ p.file }}</span><span class="mono">{{ p.po }}</span></td>
+          <td style="max-width: 170px;"><a href="#" class="buyerlink" title="{{ p.buyer }}" style="display: block; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">{{ p.buyer }}</a></td>
+          <td style="color: #646464; white-space: nowrap;">{{ p.dateLabel }}</td>
+          <td class="num" style="color: #646464;">{{ p.items }}</td>
+          <td class="num" style="font-weight: 500; white-space: nowrap;">{{ p.totalLabel }}</td>
+          <td><span class="badge" style="color: {{ p.stColor }};"><span class="dot"></span>{{ p.stLabel }}</span></td>
+          <td><div class="who"><div class="avatar" style="width: 24px; height: 24px; font-size: 10px;">{{ p.by }}</div><span class="body-sm" style="color: #646464;">{{ p.byName }}</span></div></td>
+          <td>
+            <sc-if value="{{ p.isConfirmed }}" hint-placeholder-val="{{ true }}">
+              <div class="who"><div class="avatar" style="width: 24px; height: 24px; font-size: 10px;">{{ p.confBy }}</div><span class="body-sm" style="color: #646464;">{{ p.confName }}</span></div>
+            </sc-if>
+            <sc-if value="{{ p.notConfirmed }}" hint-placeholder-val="{{ false }}">
+              <span class="body-sm" style="color: #b4b4b4; white-space: nowrap;">Not confirmed</span>
+            </sc-if>
+          </td>
+          <td style="width: 24px; color: #b4b4b4;"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" ><path d="m10 6 6 6-6 6"></path></svg></td>
+        </tr>
+      </sc-for>
+    </tbody>
+  </table>
+  <sc-if value="{{ empty }}" hint-placeholder-val="{{ false }}">
+    <div class="body-sm" style="color: #646464; padding: 48px 0; text-align: center;">No purchase orders match.</div>
+  </sc-if>
+</div>
+<div style="display: flex; align-items: center; justify-content: space-between; padding: 20px 0 0;">
+  <div style="display: flex; align-items: center; gap: 10px;">
+    <span class="body-sm" style="color: #646464;">{{ pagerLabel }}</span>
+    <span class="caption" style="color: #838383;">·</span>
+    <select class="field" value="{{ pageSize }}" onChange="{{ setPageSize }}" style="height: 36px;">
+      <option value="10">10 / page</option><option value="30">30 / page</option><option value="50">50 / page</option>
+    </select>
+  </div>
+  <div style="display: flex; align-items: center; gap: 4px;">
+    <button class="pager" disabled="{{ noPrev }}" onClick="{{ prev }}"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" ><path d="m14 6-6 6 6 6"></path></svg> Prev</button>
+    <span class="body-sm" style="color: #646464; padding: 0 8px;">Page {{ pageNo }} of {{ pages }}</span>
+    <button class="pager" disabled="{{ noNext }}" onClick="{{ next }}">Next <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" ><path d="m10 6 6 6-6 6"></path></svg></button>
+  </div>
+</div>
+</div>
+</main>
+</div></x-dc>
+<script data-dc-script>
+
+const MON = ["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"];
+const BUYERS = ["Acme Industrial Sdn Bhd","Northwind Traders","Kelana Steel","Sunway Packaging","Bluewave Logistics","Meridian Chemicals","Orchid Textiles","Tanjung Electrical","Pacific Timber","Selatan Plastics","Hexa Components"];
+const ITEMS = [
+  ["Bamboo garden screen 1.8m", 180, 0.08, "ZG-SCR-180", "Screens & fencing", "panel"],
+  ["Granite stepping stone 40cm", 42, 0.03, "ZG-STN-040", "Stone", "pc"],
+  ["River pebble, 20kg bag", 18, 0.14, "ZG-PEB-020", "Stone", "bag"],
+  ["Japanese maple, 1.5m", 420, -0.06, "ZG-PLT-MAP", "Plants", "tree"],
+  ["Cedar bench 1.2m", 690, 0.02, "ZG-FRN-BEN", "Furniture", "pc"],
+  ["Raked gravel, white, 25kg", 22, 0.18, "ZG-GRV-025", "Stone", "bag"],
+  ["Stone lantern 60cm", 510, 0.0, "ZG-STN-LAN", "Stone", "pc"],
+  ["Moss mat 50×50", 36, -0.09, "ZG-PLT-MOS", "Plants", "mat"],
+  ["Teak deck tile 30cm", 28, 0.05, "ZG-DCK-030", "Decking", "tile"],
+  ["Bonsai juniper, 10yr", 850, 0.11, "ZG-PLT-BON", "Plants", "pc"],
+  ["Timber pergola kit 3×3m", 3200, -0.03, "ZG-STR-PER", "Structures", "kit"],
+  ["Koi pond liner 4×5m", 640, 0.07, "ZG-WTR-LIN", "Water", "pc"],
+];
+const START = new Date(2025, 8, 1);
+function priceAt(item, d, noise) { const years = (d - START) / (365 * 86400000); return Math.round(item[1] * (1 + item[2] * years) * (1 + noise) * 100) / 100; }
+const USERS = [["CL","Chris Lam"],["AR","Aisha Rahman"]];
+const STATUS = { confirmed: ["Confirmed","#078d3b"], review: ["Needs review","#fd9a46"], extracting: ["Extracting","#0091ff"], failed: ["Failed","#f0382d"] };
+const TODAY = new Date(2026, 8, 3);
+function rng(seed) { return function () { seed |= 0; seed = seed + 0x6D2B79F5 | 0; let t = Math.imul(seed ^ seed >>> 15, 1 | seed); t = t + Math.imul(t ^ t >>> 7, 61 | t) ^ t; return ((t ^ t >>> 14) >>> 0) / 4294967296; }; }
+function iso(d) { return d.getFullYear() + "-" + String(d.getMonth() + 1).padStart(2, "0") + "-" + String(d.getDate()).padStart(2, "0"); }
+function parseISO(s) { const p = s.split("-").map(Number); return new Date(p[0], p[1] - 1, p[2]); }
+function addDays(d, n) { const t = new Date(d); t.setDate(t.getDate() + n); return t; }
+function fmtRM(n) { return "RM " + n.toLocaleString("en-MY", { minimumFractionDigits: 2, maximumFractionDigits: 2 }); }
+function fmtRM0(n) { return n >= 1e6 ? "RM " + (n / 1e6).toFixed(2) + "M" : n >= 1e3 ? "RM " + (n / 1e3).toFixed(1) + "k" : "RM " + Math.round(n); }
+function fmtDate(d) { return d.getDate() + " " + MON[d.getMonth()] + " " + d.getFullYear(); }
+function genPOs() {
+  const r = rng(42); const out = []; let n = 1;
+  for (let d = new Date(2025, 8, 1); d <= TODAY; d = addDays(d, 1)) {
+    const dow = d.getDay();
+    const count = dow === 0 ? 0 : dow === 6 ? (r() < 0.3 ? 1 : 0) : Math.floor(r() * 3) + (r() < 0.5 ? 1 : 0);
+    for (let i = 0; i < count; i++) {
+      const b = Math.floor(Math.pow(r(), 1.6) * BUYERS.length);
+      const lines = []; const used = new Set(); const k = 2 + Math.floor(r() * 5);
+      for (let j = 0; j < k; j++) { const ii = Math.floor(r() * ITEMS.length); if (used.has(ii)) continue; used.add(ii); const qty = 1 + Math.floor(r() * 40); const unit = priceAt(ITEMS[ii], d, (r() - 0.5) * 0.04); lines.push({ name: ITEMS[ii][0], sku: ITEMS[ii][3], qty: qty, unit: unit, amount: Math.round(qty * unit * 100) / 100 }); }
+      const total = lines.reduce((s, l) => s + l.amount, 0);
+      const age = (TODAY - d) / 86400000; const x = r();
+      let st = "confirmed"; if (age < 2) st = n % 3 === 0 ? "extracting" : "review"; else if (age < 5 && x < 0.5) st = "review"; else if (x < 0.03) st = "failed";
+      const u = USERS[r() < 0.6 ? 0 : 1];
+      out.push({ id: n, po: "PO-" + BUYERS[b].split(" ")[0].toUpperCase().slice(0, 4) + "-" + String(2000 + n), date: new Date(d), dateLabel: fmtDate(d), buyer: BUYERS[b], lines: lines, items: lines.length, total: total, totalLabel: fmtRM(total), file: n % 5 === 0 ? "JPG" : "PDF", conf: st === "confirmed" ? USERS[n % 3 === 0 ? 1 : 0] : null, st: st, stLabel: STATUS[st][0], stColor: STATUS[st][1], by: u[0], byName: u[1] });
+      n++;
+    }
+  }
+  return out.reverse();
+}
+const ALL_POS = genPOs();
+const COLS = [["po","PO number",""],["buyer","Buyer",""],["date","PO date",""],["items","Items","num"],["total","Total","num"],["st","Status",""],["by","Uploaded by",""],["conf","Confirmed by",""]];
+const SORT_ASC = ["po", "buyer", "st", "by", "conf"];
+function sortRows(list, s, keys) {
+  const dir = s.sortDir === "asc" ? 1 : -1;
+  list.sort((x, y) => { const a = keys(x)[s.sortKey], b = keys(y)[s.sortKey]; return (typeof a === "string" ? a.localeCompare(b) : a - b) * dir; });
+}
+function pageOf(list, page, size) {
+  const pages = Math.max(1, Math.ceil(list.length / size)); const p = Math.min(Math.max(1, page), pages);
+  const start = (p - 1) * size; const rows = list.slice(start, start + size);
+  return { rows: rows, page: p, pages: pages, label: list.length === 0 ? "0 results" : (start + 1) + "–" + (start + rows.length) + " of " + list.length, hasPrev: p > 1, hasNext: p < pages };
+}
+
+const ST_CHIPS = [["all","All"],["confirmed","Confirmed"],["review","Needs review"],["extracting","Extracting"],["failed","Failed"]];
+const CHIP_COLOR = { all: "#646464", confirmed: "#078d3b", review: "#fd9a46", extracting: "#0091ff", failed: "#f0382d" };
+class Component extends DCLogic {
+  constructor(props) { super(props); this.state = { q: "", buyer: "all", by: "all", st: "all", sortKey: "date", sortDir: "desc", page: 1, pageSize: 10 }; }
+  sort(key) { const s = this.state; const dir = s.sortKey === key ? (s.sortDir === "desc" ? "asc" : "desc") : (SORT_ASC.indexOf(key) >= 0 ? "asc" : "desc"); this.setState({ sortKey: key, sortDir: dir, page: 1 }); }
+  renderVals() {
+    const s = this.state; const q = s.q.trim().toLowerCase();
+    const base = ALL_POS.filter(p =>
+      (s.buyer === "all" || p.buyer === s.buyer) &&
+      (s.by === "all" || p.by === s.by) &&
+      (!q || p.po.toLowerCase().includes(q) || p.lines.some(l => l.name.toLowerCase().includes(q)))
+    );
+    const list = base.filter(p => s.st === "all" || p.st === s.st);
+    const reviewCount = base.filter(p => p.st === "review").length;
+    sortRows(list, s, p => ({ po: p.po, buyer: p.buyer, date: p.date, items: p.items, total: p.total, st: p.stLabel, by: p.byName, conf: p.conf ? p.conf[1] : "" }));
+    const pg = pageOf(list, s.page, s.pageSize);
+    const filtered = !!q || s.buyer !== "all" || s.by !== "all" || s.st !== "all";
+    const total = list.reduce((a, p) => a + p.total, 0);
+    return {
+      q: s.q, buyer: s.buyer, by: s.by, buyerOpts: BUYERS,
+      setQ: e => this.setState({ q: e.target.value, page: 1 }),
+      setBuyer: e => this.setState({ buyer: e.target.value, page: 1 }),
+      setBy: e => this.setState({ by: e.target.value, page: 1 }),
+      statusChips: ST_CHIPS.map(([k, label]) => ({ label, cls: s.st === k ? "on" : "", color: s.st === k ? "#ffffff" : CHIP_COLOR[k], dotColor: CHIP_COLOR[k], count: k === "review" && reviewCount > 0 ? " " + reviewCount : "", pick: () => this.setState({ st: k, page: 1 }) })),
+      summary: list.length + " purchase orders · " + fmtRM(total),
+      filtered, clear: () => this.setState({ q: "", buyer: "all", by: "all", st: "all", page: 1 }),
+      headers: COLS.map(([k, label, cls]) => ({ label, cls, color: s.sortKey === k ? "#292d34" : "#838383", caret: s.sortKey === k ? (s.sortDir === "asc" ? " \u2191" : " \u2193") : "", pick: () => this.sort(k) })),
+      rows: pg.rows.map(p => Object.assign({}, p, { isConfirmed: !!p.conf, notConfirmed: !p.conf, confBy: p.conf ? p.conf[0] : "", confName: p.conf ? p.conf[1] : "" })), empty: list.length === 0,
+      pagerLabel: pg.label, pageNo: String(pg.page), pages: String(pg.pages), pageSize: String(s.pageSize),
+      setPageSize: e => this.setState({ pageSize: Number(e.target.value), page: 1 }),
+      noPrev: !pg.hasPrev, noNext: !pg.hasNext,
+      prev: () => this.setState({ page: pg.page - 1 }), next: () => this.setState({ page: pg.page + 1 }),
+    };
+  }
+}
+</script>
+</body>
+</html>

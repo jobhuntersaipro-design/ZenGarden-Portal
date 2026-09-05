@@ -1,0 +1,439 @@
+<!doctype html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <title>Product detail</title>
+  <script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@200..800&family=Inter:wght@400..700&family=Sometype+Mono:wght@400;500&display=swap">
+  <style>
+  body { margin: 0; background: #ffffff; color: #292d34; font-family: Inter, ui-sans-serif, sans-serif; font-size: 16px; line-height: 1.375; letter-spacing: -0.32px; -webkit-font-smoothing: antialiased; }
+  h1, h2, h3 { font-family: 'Plus Jakarta Sans', ui-sans-serif, sans-serif; margin: 0; }
+  a { color: #7b68ee; text-decoration: none; } a:hover { color: #7612fa; }
+  .eyebrow { font-family: 'Sometype Mono', ui-monospace, monospace; font-size: 14px; font-weight: 500; line-height: 1.29; letter-spacing: 0; color: #838383; }
+  .display-md { font-family: 'Plus Jakarta Sans', ui-sans-serif, sans-serif; font-size: 34px; font-weight: 650; line-height: 1.2; letter-spacing: -1.36px; }
+  .display-lg { font-family: 'Plus Jakarta Sans', ui-sans-serif, sans-serif; font-size: 40px; font-weight: 650; line-height: 1.2; letter-spacing: -1.6px; }
+  .heading-md { font-family: 'Plus Jakarta Sans', ui-sans-serif, sans-serif; font-size: 26px; font-weight: 650; line-height: 1.25; letter-spacing: -0.91px; }
+  .heading-sm { font-family: 'Plus Jakarta Sans', ui-sans-serif, sans-serif; font-size: 18px; font-weight: 650; line-height: 1.33; letter-spacing: -0.54px; }
+  .body-lg { font-size: 18px; font-weight: 500; line-height: 1.33; letter-spacing: -0.36px; }
+  .body-sm { font-size: 14px; line-height: 1.43; letter-spacing: -0.15px; }
+  .caption { font-size: 12px; line-height: 1.5; letter-spacing: -0.12px; }
+  .btn-primary { display: inline-flex; align-items: center; gap: 8px; height: 52px; padding: 14px 20px; border-radius: 20px; background: #292d34; color: #ffffff; font-size: 18px; font-weight: 600; line-height: 1.33; letter-spacing: -0.36px; box-sizing: border-box; white-space: nowrap; }
+  .btn-gradient { display: inline-flex; align-items: center; gap: 8px; height: 52px; padding: 14px 20px; border-radius: 20px; background: linear-gradient(263deg, #fa12e3 -35%, #7612fa 41%, #12d0fa 135%); color: #ffffff; font-size: 18px; font-weight: 600; line-height: 1.33; letter-spacing: -0.36px; box-sizing: border-box; white-space: nowrap; }
+  .btn-secondary { display: inline-flex; align-items: center; gap: 8px; height: 40px; padding: 10px 16px; border-radius: 9px; background: #e9ebf0; border: 1px solid #e8e8e8; color: #202020; font-size: 14px; font-weight: 600; line-height: 1.43; letter-spacing: -0.15px; box-sizing: border-box; white-space: nowrap; }
+  .btn-tertiary { display: inline-flex; align-items: center; gap: 6px; padding: 8px 12px; border-radius: 9px; color: #7b68ee; font-size: 14px; font-weight: 600; line-height: 1.43; letter-spacing: -0.15px; white-space: nowrap; }
+  .card { background: #ffffff; border: 1px solid #e8e8e8; border-radius: 14px; box-sizing: border-box; }
+  .tile { background: #ffffff; border: 1px solid #e8e8e8; border-radius: 12px; padding: 20px; box-sizing: border-box; }
+  .badge { display: inline-flex; align-items: center; gap: 6px; padding: 4px 10px; border-radius: 9999px; background: #e9ebf0; font-size: 12px; font-weight: 500; line-height: 1.5; letter-spacing: -0.12px; white-space: nowrap; }
+  .dot { width: 6px; height: 6px; border-radius: 9999px; background: currentColor; }
+  .input { display: flex; align-items: center; gap: 10px; height: 44px; padding: 10px 16px; border-radius: 9px; border: 1px solid #d9d9d9; background: #ffffff; color: #292d34; font-size: 16px; line-height: 1.375; letter-spacing: -0.32px; box-sizing: border-box; }
+  .input.focus { border: 2px solid #7612fa; padding: 9px 15px; }
+  .label { font-family: 'Sometype Mono', ui-monospace, monospace; font-size: 12px; font-weight: 500; line-height: 1.5; color: #838383; }
+  table { border-collapse: collapse; width: 100%; }
+  th { font-family: 'Sometype Mono', ui-monospace, monospace; font-size: 12px; font-weight: 500; line-height: 1.5; letter-spacing: 0; color: #838383; text-align: left; padding: 12px 20px; border-bottom: 1px solid #e8e8e8; }
+  td { font-size: 14px; line-height: 1.43; letter-spacing: -0.15px; color: #292d34; padding: 14px 20px; border-bottom: 1px solid #e8e8e8; vertical-align: middle; }
+  tr:last-child td { border-bottom: 0; }
+  th.num, td.num { text-align: right; font-variant-numeric: tabular-nums; }
+  .mono { font-family: 'Sometype Mono', ui-monospace, monospace; font-size: 13px; letter-spacing: 0; }
+  .navitem { display: flex; align-items: center; gap: 12px; height: 44px; padding: 0 12px; border-radius: 9px; color: #646464; font-size: 14px; font-weight: 500; line-height: 1.43; letter-spacing: -0.15px; transition: background-color 0.25s cubic-bezier(0.5, 0, 0.5, 1), color 0.25s cubic-bezier(0.5, 0, 0.5, 1); }
+  .navitem:hover { background: #ffffff; color: #292d34; }
+  .navitem.active { background: #e9ebf0; color: #292d34; font-weight: 600; }
+  .navitem.active:hover { background: #e9ebf0; }
+  .userrow { display: flex; align-items: center; gap: 12px; padding: 10px 12px; border-radius: 9px; color: #292d34; transition: background-color 0.25s cubic-bezier(0.5, 0, 0.5, 1); }
+  .userrow:hover { background: #ffffff; color: #292d34; }
+  .btn-primary { transition: background-color 0.25s cubic-bezier(0.5, 0, 0.5, 1); } .btn-primary:hover { background: #202020; }
+  .btn-secondary { transition: border-color 0.25s cubic-bezier(0.5, 0, 0.5, 1); } .btn-secondary:hover { border-color: #d9d9d9; }
+  .btn-tertiary { transition: color 0.25s cubic-bezier(0.5, 0, 0.5, 1); } .btn-tertiary:hover { color: #7612fa; }
+  tbody tr { transition: background-color 0.25s cubic-bezier(0.5, 0, 0.5, 1); } tbody tr:hover td { background: #f8f9fa; }
+  .avatar { width: 32px; height: 32px; border-radius: 9999px; background: #e9ebf0; color: #202020; display: flex; align-items: center; justify-content: center; font-size: 12px; font-weight: 600; letter-spacing: 0; }
+
+  .chip { display: inline-flex; align-items: center; height: 36px; padding: 0 14px; border-radius: 9999px; background: #e9ebf0; color: #646464; font-size: 14px; font-weight: 500; line-height: 1.43; letter-spacing: -0.15px; white-space: nowrap; cursor: pointer; border: 0; font-family: inherit; transition: background-color 0.25s cubic-bezier(0.5, 0, 0.5, 1), color 0.25s cubic-bezier(0.5, 0, 0.5, 1); }
+  .chip:hover { background: #d9d9d9; color: #292d34; }
+  .chip.on { background: #292d34; color: #ffffff; }
+  .chip.on:hover { background: #202020; }
+  .seg { display: inline-flex; border: 1px solid #e8e8e8; border-radius: 9px; overflow: hidden; background: #ffffff; }
+  .seg button { height: 36px; padding: 0 14px; border: 0; background: transparent; color: #646464; font-family: inherit; font-size: 14px; font-weight: 500; letter-spacing: -0.15px; cursor: pointer; border-right: 1px solid #e8e8e8; transition: background-color 0.25s cubic-bezier(0.5, 0, 0.5, 1), color 0.25s cubic-bezier(0.5, 0, 0.5, 1); }
+  .seg button:last-child { border-right: 0; }
+  .seg button:hover { background: #f8f9fa; color: #292d34; }
+  .seg button.on { background: #e9ebf0; color: #292d34; font-weight: 600; }
+  .field { height: 40px; padding: 0 12px; border-radius: 9px; border: 1px solid #d9d9d9; background: #ffffff; color: #292d34; font-family: inherit; font-size: 14px; letter-spacing: -0.15px; box-sizing: border-box; outline: none; transition: border-color 0.25s cubic-bezier(0.5, 0, 0.5, 1); }
+  .field:hover { border-color: #b4b4b4; }
+  .field:focus { border: 2px solid #7612fa; padding: 0 11px; }
+  .pager { display: inline-flex; align-items: center; gap: 6px; height: 36px; padding: 0 12px; border-radius: 9px; border: 0; background: transparent; color: #7b68ee; font-family: inherit; font-size: 14px; font-weight: 600; letter-spacing: -0.15px; cursor: pointer; transition: color 0.25s cubic-bezier(0.5, 0, 0.5, 1); }
+  .pager:hover { color: #7612fa; }
+  .pager:disabled { color: #b4b4b4; cursor: default; }
+  .bar { flex: 1; min-width: 2px; background: #292d34; border-radius: 4px 4px 0 0; transition: background-color 0.25s cubic-bezier(0.5, 0, 0.5, 1); }
+  .bar:hover { background: #7b68ee; }
+  .hbar { height: 14px; background: #292d34; border-radius: 0 4px 4px 0; transition: background-color 0.25s cubic-bezier(0.5, 0, 0.5, 1); }
+  .hbar:hover { background: #7b68ee; }
+  .pt { position: absolute; width: 24px; height: 24px; transform: translate(-50%, -50%); display: flex; align-items: center; justify-content: center; cursor: default; }
+  .pt-dot { border-radius: 9999px; border: 2px solid #ffffff; box-shadow: 0 0 0 1px rgb(41 45 52 / 0.15); transition: transform 0.25s cubic-bezier(0.5, 0, 0.5, 1); }
+  .pt:hover .pt-dot { transform: scale(1.5); }
+  .buyerlink { color: #292d34; transition: color 0.25s cubic-bezier(0.5, 0, 0.5, 1); }
+  .buyerlink:hover { color: #7b68ee; text-decoration: underline; text-underline-offset: 3px; }
+  .addimg { color: #292d34; transition: border-color 0.25s cubic-bezier(0.5, 0, 0.5, 1), background-color 0.25s cubic-bezier(0.5, 0, 0.5, 1); }
+  .addimg:hover { color: #292d34; border-color: #292d34; background: #f8f9fa; }
+</style>
+</helmet>
+<div style="width: 1440px; min-height: 100vh; background: #ffffff; display: flex; flex-direction: row; align-items: stretch;">
+<aside style="width: 240px; flex-shrink: 0; min-height: 100vh; box-sizing: border-box; padding: 24px 16px; background: #f8f9fa; border-right: 1px solid #e8e8e8; display: flex; flex-direction: column; gap: 32px;">
+  <div style="padding: 0 12px;"><div style="display: flex; align-items: baseline; font-family: 'Plus Jakarta Sans', ui-sans-serif, sans-serif; font-size: 22px; font-weight: 700; letter-spacing: -0.88px; line-height: 1;"><span style="background: linear-gradient(263deg, #fa12e3 -35%, #7612fa 41%, #12d0fa 135%); -webkit-background-clip: text; background-clip: text; color: transparent;">Zen</span><span style="color: #292d34;">Garden</span></div></div>
+  <nav style="display: flex; flex-direction: column; gap: 4px; flex: 1;">
+    <a href="#" class="navitem"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" ><rect x="3" y="3" width="8" height="8" rx="1.5"></rect><rect x="13" y="3" width="8" height="8" rx="1.5"></rect><rect x="3" y="13" width="8" height="8" rx="1.5"></rect><rect x="13" y="13" width="8" height="8" rx="1.5"></rect></svg><span>Dashboard</span></a>
+    <a href="#" class="navitem"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" ><path d="M6 3h12a1 1 0 0 1 1 1v17l-3-2-2 2-2-2-2 2-2-2-3 2V4a1 1 0 0 1 1-1z"></path><path d="M9 8h6"></path><path d="M9 12h6"></path></svg><span>Purchase orders</span></a>
+    <a href="#" class="navitem"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" ><circle cx="9" cy="8" r="3.5"></circle><path d="M2.5 20a6.5 6.5 0 0 1 13 0"></path><path d="M16 4.8a3.5 3.5 0 0 1 0 6.4"></path><path d="M17.5 13.6A6.5 6.5 0 0 1 21.5 20"></path></svg><span>Buyers</span></a>
+    <a href="#" class="navitem active"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" ><path d="M12 3 3 7.5v9L12 21l9-4.5v-9z"></path><path d="M3 7.5 12 12l9-4.5"></path><path d="M12 12v9"></path></svg><span>Products</span></a>
+  </nav>
+  <a href="#" class="userrow">
+    <div class="avatar">CL</div>
+    <div style="display: flex; flex-direction: column; gap: 2px; min-width: 0;">
+      <span class="body-sm" title="Chris Lam" style="color: #292d34; font-weight: 500; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">Chris Lam</span>
+      <span class="caption" title="chris@zengarden.my" style="color: #838383; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">chris@zengarden.my</span>
+    </div>
+  </a>
+</aside>
+<main style="flex: 1; min-width: 0; padding: 40px 40px 60px; box-sizing: border-box;">
+<div style="max-width: 1160px; margin: 0 auto;">
+
+<div style="display: flex; align-items: center; gap: 8px; margin-bottom: 16px;"><a href="#" class="btn-tertiary" style="padding-left: 0;"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" ><path d="m14 6-6 6 6 6"></path></svg> Products</a><span class="caption" style="color: #838383;">/</span><span class="caption" style="color: #646464;">Stone</span></div>
+
+<div style="display: flex; align-items: flex-end; justify-content: space-between; gap: 24px; margin-bottom: 40px;">
+  <div style="display: flex; flex-direction: column; gap: 8px;">
+    <div class="eyebrow">ZG-STN-040 · Stone · per pc</div>
+    <div style="display: flex; align-items: center; gap: 12px;"><h1 class="display-md">Granite stepping stone 40cm</h1><span class="badge" style="color: #078d3b;"><span class="dot"></span>Active</span></div>
+  </div>
+  <div style="display: flex; gap: 12px; align-items: center;"><sc-if value="{{ canEdit }}" hint-placeholder-val="{{ true }}"><div class="btn-secondary"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" ><path d="M12 16V4"></path><path d="m6 10 6-6 6 6"></path><path d="M4 20h16"></path></svg>Add images</div><div class="btn-primary"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" ><path d="M4 20h4l10.5-10.5a2 2 0 0 0 0-3L17 5a2 2 0 0 0-3 0L4 15.5z"></path></svg><span>Edit product</span></div></sc-if><sc-if value="{{ readOnly }}" hint-placeholder-val="{{ false }}"><span class="badge" style="color: #646464;">View only · ask a super admin to change this product</span></sc-if></div>
+</div>
+
+<div style="display: grid; grid-template-columns: 5fr 7fr; gap: 24px; margin-bottom: 24px;">
+  <div style="display: flex; flex-direction: column; gap: 12px;">
+    <div style="aspect-ratio: 4 / 3; border-radius: 14px; background: #e9ebf0; border: 1px solid #e8e8e8; display: flex; align-items: center; justify-content: center; color: #838383; position: relative;">
+      <div style="display: flex; flex-direction: column; align-items: center; gap: 8px;"><svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="16" rx="2"></rect><circle cx="9" cy="10" r="1.6"></circle><path d="m21 16-5-5-8 8"></path></svg><span class="caption">granite-40.jpg · 1600 × 1200</span></div>
+      <span class="caption" style="position: absolute; bottom: 12px; right: 12px; padding: 4px 10px; border-radius: 9999px; background: #ffffff; color: #646464;">1 / 3</span>
+    </div>
+    <div style="display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 10px;">
+      <div style="aspect-ratio: 1; border-radius: 9px; background: #e9ebf0; border: 2px solid #292d34; display: flex; align-items: center; justify-content: center; color: #646464;"><svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="16" rx="2"></rect><circle cx="9" cy="10" r="1.6"></circle><path d="m21 16-5-5-8 8"></path></svg></div>
+      <div style="aspect-ratio: 1; border-radius: 9px; background: #e9ebf0; border: 1px solid #e8e8e8; display: flex; align-items: center; justify-content: center; color: #838383;"><svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="16" rx="2"></rect><circle cx="9" cy="10" r="1.6"></circle><path d="m21 16-5-5-8 8"></path></svg></div>
+      <div style="aspect-ratio: 1; border-radius: 9px; background: #e9ebf0; border: 1px solid #e8e8e8; display: flex; align-items: center; justify-content: center; color: #838383;"><svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="16" rx="2"></rect><circle cx="9" cy="10" r="1.6"></circle><path d="m21 16-5-5-8 8"></path></svg></div>
+      <sc-if value="{{ canEdit }}" hint-placeholder-val="{{ true }}"><a href="#" class="addimg" title="Add images" style="aspect-ratio: 1; border-radius: 9px; border: 1px dashed #d9d9d9; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 4px; padding: 6px; box-sizing: border-box; text-align: center; color: #292d34;"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" ><path d="M12 5v14"></path><path d="M5 12h14"></path></svg><span class="caption" style="font-weight: 500; line-height: 1.2;">Add images</span></a></sc-if>
+    </div>
+  </div>
+  <div style="display: flex; flex-direction: column; gap: 20px;">
+    <div class="card" style="padding: 24px; display: flex; flex-direction: column; gap: 16px;">
+      <div style="display: flex; align-items: baseline; justify-content: space-between;">
+        <div style="display: flex; flex-direction: column; gap: 4px;"><span class="label">List price</span><span class="display-md" style="white-space: nowrap;">{{ listPrice }}</span></div>
+        <div style="display: flex; flex-direction: column; gap: 4px; align-items: flex-end;"><span class="label">Avg billed · 12m</span><span class="heading-md" style="white-space: nowrap;">{{ avgBilled }}</span><span class="caption" style="color: {{ discountColor }};">{{ discountNote }}</span></div>
+      </div>
+      <p class="body-sm" style="margin: 0; color: #646464;">Split-face grey granite, 40 × 40 × 5 cm, approx. 18 kg. Sold per piece; pallets of 20. Natural variation in tone — batches may differ slightly from images.</p>
+      <div style="display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 12px 20px; padding-top: 12px; border-top: 1px solid #e8e8e8;">
+        <div style="display: flex; flex-direction: column; gap: 2px;"><span class="label">SKU</span><span class="body-sm mono">ZG-STN-040</span></div>
+        <div style="display: flex; flex-direction: column; gap: 2px;"><span class="label">Category</span><span class="body-sm">Stone</span></div>
+        <div style="display: flex; flex-direction: column; gap: 2px;"><span class="label">Unit</span><span class="body-sm">pc</span></div>
+        <div style="display: flex; flex-direction: column; gap: 2px;"><span class="label">First sold</span><span class="body-sm">{{ firstSold }}</span></div>
+        <div style="display: flex; flex-direction: column; gap: 2px;"><span class="label">Last sold</span><span class="body-sm">{{ lastSold }}</span></div>
+        <div style="display: flex; flex-direction: column; gap: 2px;"><span class="label">Updated</span><span class="body-sm">28 Aug 2026 · Chris Lam</span></div>
+      </div>
+    </div>
+    <div style="display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 12px;">
+      <div class="tile" style="display: flex; flex-direction: column; gap: 6px; padding: 16px;"><div class="label">Revenue · 12m</div><div class="heading-md" style="white-space: nowrap;">{{ kRevenue }}</div><div class="caption" style="color: #646464;">{{ kShare }} of all sales</div></div>
+      <div class="tile" style="display: flex; flex-direction: column; gap: 6px; padding: 16px;"><div class="label">Units · 12m</div><div class="heading-md">{{ kUnits }}</div><div class="caption" style="color: #646464;">{{ kPerPO }} per order</div></div>
+      <div class="tile" style="display: flex; flex-direction: column; gap: 6px; padding: 16px;"><div class="label">Orders · 12m</div><div class="heading-md">{{ kPOs }}</div><div class="caption" style="color: #646464;">from {{ kBuyers }} buyers</div></div>
+      <div class="tile" style="display: flex; flex-direction: column; gap: 6px; padding: 16px;"><div class="label">Price drift · 12m</div><div class="heading-md" style="color: {{ driftColor }};">{{ kDrift }}</div><div class="caption" style="color: #646464;">{{ kDriftNote }}</div></div>
+      <div class="tile" style="display: flex; flex-direction: column; gap: 6px; padding: 16px;"><div class="label">Sales velocity</div><div class="heading-md">{{ kVelocity }}</div><div class="caption" style="color: #646464;">units per week, last 8 weeks</div></div>
+      <div class="tile" style="display: flex; flex-direction: column; gap: 6px; padding: 16px;"><div class="label">Attach rate</div><div class="heading-md">{{ kAttach }}</div><div class="caption" style="color: #646464;">of all POs include this product</div></div>
+    </div>
+  </div>
+</div>
+
+<div style="background: #f8f9fa; border-radius: 25px; padding: 40px; display: flex; flex-direction: column; gap: 24px; box-sizing: border-box; margin-bottom: 24px;">
+  <div style="display: flex; align-items: flex-start; justify-content: space-between; gap: 24px;">
+    <div style="display: flex; flex-direction: column; gap: 6px;"><div class="eyebrow">Price trend</div><h2 class="heading-md">{{ trendTitle }}</h2><span class="caption" style="color: #838383;">Average billed unit price per month · dashed line is today's list price</span></div>
+    <div class="seg"><sc-for list="{{ metricChips }}" as="c" hint-placeholder-count="2"><button class="{{ c.cls }}" onClick="{{ c.pick }}">{{ c.label }}</button></sc-for></div>
+  </div>
+  <div style="display: flex; flex-direction: column; gap: 10px;">
+    <div style="display: flex; gap: 12px;">
+      <div style="width: 84px; position: relative; height: 200px; flex-shrink: 0;">
+        <sc-for list="{{ gridLines }}" as="g" hint-placeholder-count="3"><span class="caption" style="position: absolute; right: 0; top: {{ g.top }}%; transform: translateY(-50%); color: #838383; white-space: nowrap;">{{ g.label }}</span></sc-for>
+      </div>
+      <div style="flex: 1; position: relative; height: 200px;">
+        <sc-for list="{{ gridLines }}" as="g" hint-placeholder-count="3"><div style="position: absolute; left: 0; right: 0; top: {{ g.top }}%; border-top: 1px solid #e8e8e8;"></div></sc-for>
+        <svg viewBox="0 0 1000 200" preserveAspectRatio="none" style="position: absolute; inset: 0; width: 100%; height: 100%; overflow: visible;">
+          <path d="{{ areaPath }}" fill="#292d34" fill-opacity="0.06"></path>
+          <path d="{{ linePath }}" fill="none" stroke="#292d34" stroke-width="2" stroke-linejoin="round" stroke-linecap="round" vector-effect="non-scaling-stroke"></path>
+        </svg>
+        <sc-if value="{{ showRef }}" hint-placeholder-val="{{ true }}">
+          <div style="position: absolute; left: 0; right: 0; top: {{ refTop }}%; border-top: 2px dashed #7b68ee;"></div>
+          <span class="caption" style="position: absolute; right: 0; top: {{ refTop }}%; transform: translateY(-100%); padding: 2px 8px; background: #f8f9fa; color: #7b68ee; font-weight: 600; white-space: nowrap;">{{ refLabel }}</span>
+        </sc-if>
+        <sc-for list="{{ points }}" as="pt" hint-placeholder-count="12"><div class="pt" style="left: {{ pt.x }}%; top: {{ pt.y }}%;" title="{{ pt.tip }}"><span class="pt-dot" style="width: 10px; height: 10px; background: {{ pt.color }};"></span></div></sc-for>
+        <sc-for list="{{ extremes }}" as="e" hint-placeholder-count="2"><div class="caption" style="position: absolute; left: {{ e.x }}%; top: {{ e.y }}%; transform: translate({{ e.tx }}, {{ e.ty }}); padding: 2px 8px; border-radius: 4px; background: #ffffff; border: 1px solid #d9d9d9; color: #292d34; font-weight: 600; white-space: nowrap;"><span style="color: #838383; font-weight: 500;">{{ e.kind }}</span> {{ e.label }}</div></sc-for>
+      </div>
+    </div>
+    <div style="display: flex; margin-left: 96px;"><sc-for list="{{ points }}" as="pt" hint-placeholder-count="12"><div class="caption" style="flex: 1; min-width: 0; text-align: center; color: #838383; white-space: nowrap;">{{ pt.label }}</div></sc-for></div>
+  </div>
+</div>
+
+<div style="display: grid; grid-template-columns: 1fr 1fr; gap: 24px; margin-bottom: 24px;">
+  <div class="card" style="padding: 24px; display: flex; flex-direction: column; gap: 16px;">
+    <div class="eyebrow">Who buys it</div>
+    <div style="display: flex; flex-direction: column; gap: 12px;">
+      <sc-for list="{{ topBuyers }}" as="t" hint-placeholder-count="5">
+        <div style="display: flex; flex-direction: column; gap: 6px;">
+          <div style="display: flex; justify-content: space-between; gap: 12px;"><a href="#" class="buyerlink body-sm" title="{{ t.name }}" style="white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">{{ t.name }}</a><span class="body-sm" style="color: #646464; font-variant-numeric: tabular-nums; white-space: nowrap;">{{ t.val }}</span></div>
+          <div style="height: 14px; background: #e9ebf0; border-radius: 0 4px 4px 0;"><div class="hbar" style="width: {{ t.w }}%;" title="{{ t.tip }}"></div></div>
+        </div>
+      </sc-for>
+    </div>
+  </div>
+  <div class="card" style="padding: 24px; display: flex; flex-direction: column; gap: 16px;">
+    <div class="eyebrow">Bought together</div>
+    <div style="display: flex; flex-direction: column;">
+      <sc-for list="{{ together }}" as="t" hint-placeholder-count="5">
+        <div style="display: flex; align-items: center; gap: 12px; padding: 10px 0; border-bottom: 1px solid #e8e8e8;">
+          <div style="width: 32px; height: 32px; border-radius: 6px; background: #e9ebf0; display: flex; align-items: center; justify-content: center; font-size: 11px; font-weight: 600; color: #646464;">{{ t.initials }}</div>
+          <a href="#" class="buyerlink body-sm" title="{{ t.name }}" style="flex: 1; min-width: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">{{ t.name }}</a>
+          <span class="caption" style="color: #646464; white-space: nowrap;">{{ t.pct }} of orders</span>
+        </div>
+      </sc-for>
+    </div>
+  </div>
+</div>
+
+<div style="display: flex; flex-direction: column; gap: 16px;">
+  <div style="display: flex; align-items: center; justify-content: space-between;">
+    <div class="eyebrow">Order history · last 12 months · {{ kPOsAll }} purchase orders</div>
+    <div style="display: flex; gap: 8px;"><sc-for list="{{ statusChips }}" as="c" hint-placeholder-count="4"><button class="chip {{ c.cls }}" onClick="{{ c.pick }}">{{ c.label }}</button></sc-for></div>
+  </div>
+  <div class="card" style="overflow: hidden;">
+    <table>
+      <thead><tr>
+          <sc-for list="{{ headers }}" as="h" hint-placeholder-count="8">
+            <th class="{{ h.cls }}" onClick="{{ h.pick }}" style="cursor: pointer; white-space: nowrap; color: {{ h.color }};">{{ h.label }}{{ h.caret }}</th>
+          </sc-for>
+          <th></th>
+        </tr></thead>
+      <tbody>
+        <sc-for list="{{ rows }}" as="p" hint-placeholder-count="10">
+          <tr>
+            <td class="mono" style="color: #202020;">{{ p.po }}</td>
+            <td style="max-width: 220px;"><a href="#" class="buyerlink" title="{{ p.buyer }}" style="display: block; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">{{ p.buyer }}</a></td>
+            <td style="color: #646464;">{{ p.dateLabel }}</td>
+            <td class="num">{{ p.qty }}</td>
+            <td class="num" title="{{ p.unitTip }}" style="color: {{ p.unitColor }};">{{ p.unitLabel }}</td>
+            <td class="num" style="font-weight: 500;">{{ p.lineLabel }}</td>
+            <td class="num" style="color: #646464;">{{ p.totalLabel }}</td>
+            <td><span class="badge" style="color: {{ p.stColor }};"><span class="dot"></span>{{ p.stLabel }}</span></td>
+            <td style="width: 24px; color: #b4b4b4;"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" ><path d="m10 6 6 6-6 6"></path></svg></td>
+          </tr>
+        </sc-for>
+      </tbody>
+    </table>
+    <sc-if value="{{ empty }}" hint-placeholder-val="{{ false }}"><div class="body-sm" style="color: #646464; padding: 48px 0; text-align: center;">No purchase orders match.</div></sc-if>
+  </div>
+  <div style="display: flex; align-items: center; justify-content: space-between;">
+    <div style="display: flex; align-items: center; gap: 10px;">
+      <span class="body-sm" style="color: #646464;">{{ pagerLabel }}</span>
+      <span class="caption" style="color: #838383;">·</span>
+      <select class="field" value="{{ pageSize }}" onChange="{{ setPageSize }}" style="height: 36px;"><option value="10">10 / page</option><option value="30">30 / page</option><option value="50">50 / page</option></select>
+    </div>
+    <div style="display: flex; align-items: center; gap: 4px;">
+      <button class="pager" disabled="{{ noPrev }}" onClick="{{ prev }}"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" ><path d="m14 6-6 6 6 6"></path></svg> Prev</button>
+      <span class="body-sm" style="color: #646464; padding: 0 8px;">Page {{ pageNo }} of {{ pages }}</span>
+      <button class="pager" disabled="{{ noNext }}" onClick="{{ next }}">Next <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" ><path d="m10 6 6 6-6 6"></path></svg></button>
+    </div>
+  </div>
+</div>
+
+<sc-if value="{{ canEdit }}" hint-placeholder-val="{{ true }}">
+<div style="height: 40px;"></div>
+<div style="display: flex; align-items: center; gap: 10px; margin-bottom: 12px;"><div class="eyebrow">Edit product · super admin drawer</div><span class="caption" style="color: #838383;">opens from "Edit product"; shown inline here</span></div>
+<div class="card" style="padding: 0; display: grid; grid-template-columns: 1fr 1fr; overflow: hidden;">
+  <div style="padding: 24px 32px; border-right: 1px solid #e8e8e8; display: flex; flex-direction: column; gap: 20px;">
+    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 16px;">
+      <div style="display: flex; flex-direction: column; gap: 6px; grid-column: span 2;"><span class="label">Name</span><div class="input">Granite stepping stone 40cm</div></div>
+      <div style="display: flex; flex-direction: column; gap: 6px;"><span class="label">SKU</span><div class="input mono">ZG-STN-040</div></div>
+      <div style="display: flex; flex-direction: column; gap: 6px;"><span class="label">Category</span><div class="input" style="justify-content: space-between;">Stone <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" ><path d="m10 6 6 6-6 6"></path></svg></div></div>
+      <div style="display: flex; flex-direction: column; gap: 6px;"><span class="label">List price (MYR)</span><div class="input focus">{{ listPriceRaw }}</div><span class="caption" style="color: #838383;">Changing it records a price history entry — the trend above keeps the old value.</span></div>
+      <div style="display: flex; flex-direction: column; gap: 6px;"><span class="label">Unit</span><div class="input">pc</div></div>
+      <div style="display: flex; flex-direction: column; gap: 6px; grid-column: span 2;"><span class="label">Description</span><div class="input" style="height: 72px; align-items: flex-start; color: #646464;">Split-face grey granite, 40 × 40 × 5 cm, approx. 18 kg. Sold per piece; pallets of 20.</div></div>
+    </div>
+    <div style="display: flex; align-items: center; justify-content: space-between; padding-top: 16px; border-top: 1px solid #e8e8e8;">
+      <div style="display: flex; flex-direction: column; gap: 2px;"><span class="body-sm" style="font-weight: 500;">Active</span><span class="caption" style="color: #838383;">Inactive products stay in history but are hidden from extraction matching.</span></div>
+      <span style="width: 40px; height: 24px; border-radius: 9999px; background: #078d3b; position: relative; flex-shrink: 0;"><span style="position: absolute; top: 3px; right: 3px; width: 18px; height: 18px; border-radius: 9999px; background: #ffffff;"></span></span>
+    </div>
+    <div style="display: flex; align-items: center; justify-content: space-between;">
+      <a href="#" class="btn-tertiary" style="color: #f0382d; padding-left: 0;">Archive product</a>
+      <div style="display: flex; gap: 8px;"><div class="btn-secondary">Cancel</div><div class="btn-secondary" style="background: #292d34; color: #ffffff; border-color: #292d34;">Save changes</div></div>
+    </div>
+  </div>
+  <div style="padding: 24px 32px; display: flex; flex-direction: column; gap: 16px; background: #f8f9fa;">
+    <div style="display: flex; align-items: center; justify-content: space-between;"><div class="eyebrow">Images</div><span class="caption" style="color: #838383;">First image is the thumbnail · stored in R2</span></div>
+    <div style="display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 12px;">
+      <div style="aspect-ratio: 1; border-radius: 12px; background: #e9ebf0; border: 1px solid #e8e8e8; position: relative; display: flex; align-items: center; justify-content: center; color: #838383;"><span style="position: absolute; top: 8px; left: 8px;" class="badge">Thumbnail</span><span style="position: absolute; top: 8px; right: 8px; width: 24px; height: 24px; border-radius: 9999px; background: #ffffff; display: flex; align-items: center; justify-content: center; color: #646464;"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" ><path d="M6 6l12 12"></path><path d="M18 6 6 18"></path></svg></span><div style="display: flex; flex-direction: column; align-items: center; gap: 6px;"><svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="16" rx="2"></rect><circle cx="9" cy="10" r="1.6"></circle><path d="m21 16-5-5-8 8"></path></svg><span class="caption">granite-40.jpg</span></div></div>
+      <div style="aspect-ratio: 1; border-radius: 12px; background: #e9ebf0; border: 1px solid #e8e8e8; position: relative; display: flex; align-items: center; justify-content: center; color: #838383;"><span style="position: absolute; top: 8px; right: 8px; width: 24px; height: 24px; border-radius: 9999px; background: #ffffff; display: flex; align-items: center; justify-content: center; color: #646464;"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" ><path d="M6 6l12 12"></path><path d="M18 6 6 18"></path></svg></span><div style="display: flex; flex-direction: column; align-items: center; gap: 6px;"><svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="16" rx="2"></rect><circle cx="9" cy="10" r="1.6"></circle><path d="m21 16-5-5-8 8"></path></svg><span class="caption">granite-40-path.jpg</span></div></div>
+      <div style="aspect-ratio: 1; border-radius: 12px; border: 1px dashed #d9d9d9; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 8px; color: #646464; text-align: center; padding: 12px; box-sizing: border-box;"><div style="width: 36px; height: 36px; border-radius: 9999px; background: #ffffff; display: flex; align-items: center; justify-content: center; color: #292d34;"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" ><path d="M12 16V4"></path><path d="m6 10 6-6 6 6"></path><path d="M4 20h16"></path></svg></div><span class="body-sm" style="font-weight: 500;">Drop images here</span><span class="caption" style="color: #838383;">or <a href="#">browse</a> · PNG, JPG, WebP · up to 5 MB</span></div>
+    </div>
+    <div style="display: flex; flex-direction: column; gap: 10px; padding: 12px 16px; background: #ffffff; border: 1px solid #e8e8e8; border-radius: 9px;">
+      <div style="display: flex; align-items: center; gap: 14px;"><span style="color: #838383; display: flex;"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" ><path d="M14 3H7a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V8z"></path><path d="M14 3v5h5"></path></svg></span><span class="body-sm" title="granite-40-closeup.jpg" style="flex: 1; min-width: 0; color: #202020; font-weight: 500; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">granite-40-closeup.jpg</span><span class="caption" style="color: #838383;">2.1 MB</span><span style="display: flex;"><span class="badge" style="color: #0091ff;"><span class="dot"></span>Uploading</span></span><span class="caption" style="color: #838383;">58%</span></div>
+      <div style="height: 4px; border-radius: 9999px; background: #e9ebf0; overflow: hidden; margin-left: 34px;"><div style="height: 4px; width: 58%; background: #292d34; border-radius: 9999px;"></div></div>
+    </div>
+    <span class="caption" style="color: #838383;">Drag to reorder. Images are resized to 1600px on upload; the original is kept.</span>
+  </div>
+</div>
+</sc-if>
+</div>
+</main>
+</div></x-dc>
+<script data-dc-script data-props='{"role":{"editor":"enum","options":["superadmin","member"],"default":"superadmin","section":"Viewer"}}'>
+
+const MON = ["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"];
+const BUYERS = ["Acme Industrial Sdn Bhd","Northwind Traders","Kelana Steel","Sunway Packaging","Bluewave Logistics","Meridian Chemicals","Orchid Textiles","Tanjung Electrical","Pacific Timber","Selatan Plastics","Hexa Components"];
+const ITEMS = [
+  ["Bamboo garden screen 1.8m", 180, 0.08, "ZG-SCR-180", "Screens & fencing", "panel"],
+  ["Granite stepping stone 40cm", 42, 0.03, "ZG-STN-040", "Stone", "pc"],
+  ["River pebble, 20kg bag", 18, 0.14, "ZG-PEB-020", "Stone", "bag"],
+  ["Japanese maple, 1.5m", 420, -0.06, "ZG-PLT-MAP", "Plants", "tree"],
+  ["Cedar bench 1.2m", 690, 0.02, "ZG-FRN-BEN", "Furniture", "pc"],
+  ["Raked gravel, white, 25kg", 22, 0.18, "ZG-GRV-025", "Stone", "bag"],
+  ["Stone lantern 60cm", 510, 0.0, "ZG-STN-LAN", "Stone", "pc"],
+  ["Moss mat 50×50", 36, -0.09, "ZG-PLT-MOS", "Plants", "mat"],
+  ["Teak deck tile 30cm", 28, 0.05, "ZG-DCK-030", "Decking", "tile"],
+  ["Bonsai juniper, 10yr", 850, 0.11, "ZG-PLT-BON", "Plants", "pc"],
+  ["Timber pergola kit 3×3m", 3200, -0.03, "ZG-STR-PER", "Structures", "kit"],
+  ["Koi pond liner 4×5m", 640, 0.07, "ZG-WTR-LIN", "Water", "pc"],
+];
+const START = new Date(2025, 8, 1);
+function priceAt(item, d, noise) { const years = (d - START) / (365 * 86400000); return Math.round(item[1] * (1 + item[2] * years) * (1 + noise) * 100) / 100; }
+const USERS = [["CL","Chris Lam"],["AR","Aisha Rahman"]];
+const STATUS = { confirmed: ["Confirmed","#078d3b"], review: ["Needs review","#fd9a46"], extracting: ["Extracting","#0091ff"], failed: ["Failed","#f0382d"] };
+const TODAY = new Date(2026, 8, 3);
+function rng(seed) { return function () { seed |= 0; seed = seed + 0x6D2B79F5 | 0; let t = Math.imul(seed ^ seed >>> 15, 1 | seed); t = t + Math.imul(t ^ t >>> 7, 61 | t) ^ t; return ((t ^ t >>> 14) >>> 0) / 4294967296; }; }
+function iso(d) { return d.getFullYear() + "-" + String(d.getMonth() + 1).padStart(2, "0") + "-" + String(d.getDate()).padStart(2, "0"); }
+function parseISO(s) { const p = s.split("-").map(Number); return new Date(p[0], p[1] - 1, p[2]); }
+function addDays(d, n) { const t = new Date(d); t.setDate(t.getDate() + n); return t; }
+function fmtRM(n) { return "RM " + n.toLocaleString("en-MY", { minimumFractionDigits: 2, maximumFractionDigits: 2 }); }
+function fmtRM0(n) { return n >= 1e6 ? "RM " + (n / 1e6).toFixed(2) + "M" : n >= 1e3 ? "RM " + (n / 1e3).toFixed(1) + "k" : "RM " + Math.round(n); }
+function fmtDate(d) { return d.getDate() + " " + MON[d.getMonth()] + " " + d.getFullYear(); }
+function genPOs() {
+  const r = rng(42); const out = []; let n = 1;
+  for (let d = new Date(2025, 8, 1); d <= TODAY; d = addDays(d, 1)) {
+    const dow = d.getDay();
+    const count = dow === 0 ? 0 : dow === 6 ? (r() < 0.3 ? 1 : 0) : Math.floor(r() * 3) + (r() < 0.5 ? 1 : 0);
+    for (let i = 0; i < count; i++) {
+      const b = Math.floor(Math.pow(r(), 1.6) * BUYERS.length);
+      const lines = []; const used = new Set(); const k = 2 + Math.floor(r() * 5);
+      for (let j = 0; j < k; j++) { const ii = Math.floor(r() * ITEMS.length); if (used.has(ii)) continue; used.add(ii); const qty = 1 + Math.floor(r() * 40); const unit = priceAt(ITEMS[ii], d, (r() - 0.5) * 0.04); lines.push({ name: ITEMS[ii][0], sku: ITEMS[ii][3], qty: qty, unit: unit, amount: Math.round(qty * unit * 100) / 100 }); }
+      const total = lines.reduce((s, l) => s + l.amount, 0);
+      const age = (TODAY - d) / 86400000; const x = r();
+      let st = "confirmed"; if (age < 2) st = n % 3 === 0 ? "extracting" : "review"; else if (age < 5 && x < 0.5) st = "review"; else if (x < 0.03) st = "failed";
+      const u = USERS[r() < 0.6 ? 0 : 1];
+      out.push({ id: n, po: "PO-" + BUYERS[b].split(" ")[0].toUpperCase().slice(0, 4) + "-" + String(2000 + n), date: new Date(d), dateLabel: fmtDate(d), buyer: BUYERS[b], lines: lines, items: lines.length, total: total, totalLabel: fmtRM(total), st: st, stLabel: STATUS[st][0], stColor: STATUS[st][1], by: u[0], byName: u[1] });
+      n++;
+    }
+  }
+  return out.reverse();
+}
+const ALL_POS = genPOs();
+const COLS = [["po","PO number",""],["buyer","Buyer",""],["date","PO date",""],["qty","Qty","num"],["unit","Unit price","num"],["line","Line total","num"],["total","PO total","num"],["st","Status",""]];
+const SORT_ASC = ["po", "buyer", "st"];
+function sortRows(list, s, keys) {
+  const dir = s.sortDir === "asc" ? 1 : -1;
+  list.sort((x, y) => { const a = keys(x)[s.sortKey], b = keys(y)[s.sortKey]; return (typeof a === "string" ? a.localeCompare(b) : a - b) * dir; });
+}
+function pageOf(list, page, size) {
+  const pages = Math.max(1, Math.ceil(list.length / size)); const p = Math.min(Math.max(1, page), pages);
+  const start = (p - 1) * size; const rows = list.slice(start, start + size);
+  return { rows: rows, page: p, pages: pages, label: list.length === 0 ? "0 results" : (start + 1) + "–" + (start + rows.length) + " of " + list.length, hasPrev: p > 1, hasNext: p < pages };
+}
+
+const SKU = "ZG-STN-040";
+const ITEM = ITEMS.find(i => i[3] === SKU);
+const METRICS = [["price","Avg unit price"],["units","Units sold"]];
+const ST_CHIPS = [["all","All"],["confirmed","Confirmed"],["review","Needs review"],["failed","Failed"]];
+class Component extends DCLogic {
+  constructor(props) { super(props); this.state = { metric: "price", st: "all", sortKey: "date", sortDir: "desc", page: 1, pageSize: 10 }; }
+  sort(key) { const s = this.state; const dir = s.sortKey === key ? (s.sortDir === "desc" ? "asc" : "desc") : (SORT_ASC.indexOf(key) >= 0 ? "asc" : "desc"); this.setState({ sortKey: key, sortDir: dir, page: 1 }); }
+  /* Count-up runs in the built app (docs/specs/06-dashboard.md). It is removed from the
+     canvas entirely: PDF exports and screenshots captured it mid-animation and every metric
+     read RM 0.00 / 0 units next to a live note ("1.6% below list"), which reviewers reasonably
+     read as a data bug. Switching the trend metric used to restart it, so it could happen at
+     any time, not just on load. Every metric below renders its final value on every render. */
+  go(patch) { this.setState(patch); }
+  renderVals() {
+    const s = this.state; const canEdit = (this.props.role ?? "superadmin") === "superadmin";
+    const yearAgo = addDays(TODAY, -365);
+    const withLine = ALL_POS.map(p => { const l = p.lines.find(x => x.name === ITEM[0]); return l ? Object.assign({}, p, { line: l }) : null; }).filter(Boolean);
+    const inYear = withLine.filter(p => p.date >= yearAgo);
+    const allYear = ALL_POS.filter(p => p.date >= yearAgo);
+    const units = inYear.reduce((a, p) => a + p.line.qty, 0), rev = inYear.reduce((a, p) => a + p.line.amount, 0);
+    const totalRev = allYear.reduce((a, p) => a + p.total, 0);
+    const list = priceAt(ITEM, TODAY, 0); const avg = units ? rev / units : list;
+    const buyers = {}; inYear.forEach(p => { buyers[p.buyer] = (buyers[p.buyer] || 0) + p.line.amount; });
+    const bl = Object.entries(buyers).sort((a, b) => b[1] - a[1]); const bmax = bl[0] ? bl[0][1] : 1;
+    const eightWeeks = inYear.filter(p => p.date >= addDays(TODAY, -56)).reduce((a, p) => a + p.line.qty, 0) / 8;
+    const together = {}; inYear.forEach(p => p.lines.forEach(l => { if (l.name !== ITEM[0]) together[l.name] = (together[l.name] || 0) + 1; }));
+    const tl = Object.entries(together).sort((a, b) => b[1] - a[1]).slice(0, 5);
+
+    // monthly series (12 months)
+    const keys = []; for (let i = 11; i >= 0; i--) { const d = new Date(TODAY.getFullYear(), TODAY.getMonth() - i, 1); keys.push(d.getFullYear() + "-" + String(d.getMonth() + 1).padStart(2, "0")); }
+    const agg = {}; inYear.forEach(p => { const k = p.date.getFullYear() + "-" + String(p.date.getMonth() + 1).padStart(2, "0"); const a = agg[k] || (agg[k] = { q: 0, v: 0 }); a.q += p.line.qty; a.v += p.line.amount; });
+    const isPrice = s.metric === "price";
+    const vals = keys.map(k => agg[k] ? (isPrice ? agg[k].v / agg[k].q : agg[k].q) : (isPrice ? null : 0));
+    const present = vals.map((v, i) => v === null ? null : i).filter(i => i !== null);
+    const vmax = Math.max(...vals.filter(v => v !== null), isPrice ? list : 1) * 1.05, vmin = isPrice ? Math.min(...vals.filter(v => v !== null), list) * 0.95 : 0;
+    const yPct = v => 100 - ((v - vmin) / (vmax - vmin || 1)) * 92;
+    const xPct = i => (i / (keys.length - 1)) * 100;
+    const lab = k => { const p = k.split("-"); return MON[+p[1] - 1] + " " + p[0].slice(2); };
+    const fmtV = v => isPrice ? fmtRM(v) : v.toLocaleString("en-MY") + " units";
+    const points = present.map(i => ({ x: xPct(i), y: yPct(vals[i]), color: "#292d34", label: lab(keys[i]), tip: lab(keys[i]) + " — " + fmtV(vals[i]) + (agg[keys[i]] ? " · " + agg[keys[i]].q + " units" : "") }));
+    keys.forEach((k, i) => { if (!present.includes(i)) points.splice(i, 0, { x: xPct(i), y: 100, color: "transparent", label: lab(k), tip: lab(k) + " — no sales" }); });
+    const drawn = points.filter(p => p.color !== "transparent");
+    const linePath = drawn.map((p, i) => (i ? "L" : "M") + (p.x * 10).toFixed(1) + " " + (p.y * 2).toFixed(1)).join(" ");
+    const areaPath = drawn.length > 1 ? linePath + " L" + (drawn[drawn.length - 1].x * 10).toFixed(1) + " 200 L" + (drawn[0].x * 10).toFixed(1) + " 200 Z" : "";
+    let maxI = -1, minI = -1; present.forEach(i => { if (maxI < 0 || vals[i] > vals[maxI]) maxI = i; if (minI < 0 || vals[i] < vals[minI]) minI = i; });
+    const mark = (i, kind, below) => ({ kind, label: fmtV(vals[i]), x: xPct(i), y: yPct(vals[i]), tx: xPct(i) > 85 ? "-100%" : xPct(i) < 15 ? "0" : "-50%", ty: below ? "12px" : "calc(-100% - 12px)" });
+    const extremes = maxI >= 0 && minI >= 0 && maxI !== minI ? [mark(maxI, "Max", false), mark(minI, "Min", true)] : [];
+    if (maxI >= 0) points[maxI].color = "#7612fa"; if (minI >= 0) points[minI].color = "#7612fa";
+    const gridLines = [0, 0.5, 1].map(f => ({ top: 100 - f * 92, label: isPrice ? fmtRM(vmin + (vmax - vmin) * f) : Math.round((vmin + (vmax - vmin) * f)).toLocaleString("en-MY") }));
+    const first = vals[present[0]], last = vals[present[present.length - 1]];
+    const driftPct = isPrice && first ? (last - first) / first * 100 : null;
+
+    const filtered = inYear.filter(p => s.st === "all" || p.st === s.st);
+    sortRows(filtered, s, p => ({ po: p.po, buyer: p.buyer, date: p.date, qty: p.line.qty, unit: p.line.unit, line: p.line.amount, total: p.total, st: p.stLabel }));
+    const pg = pageOf(filtered, s.page, s.pageSize);
+    const firstSoldD = inYear.length ? inYear[inYear.length - 1].date : null, lastSoldD = inYear.length ? inYear[0].date : null;
+    const disc = (avg - list) / list * 100;
+    return {
+      canEdit, readOnly: !canEdit,
+      listPrice: fmtRM(list), listPriceRaw: list.toFixed(2), avgBilled: fmtRM(avg),
+      discountNote: Math.abs(disc) < 0.5 ? "billed at list" : (disc < 0 ? Math.abs(disc).toFixed(1) + "% below list on average" : disc.toFixed(1) + "% above list on average"), discountColor: Math.abs(disc) < 0.5 ? "#838383" : disc < 0 ? "#fd9a46" : "#078d3b",
+      firstSold: firstSoldD ? fmtDate(firstSoldD) : "—", lastSold: lastSoldD ? fmtDate(lastSoldD) + " · " + Math.round((TODAY - lastSoldD) / 86400000) + "d ago" : "—",
+      kRevenue: fmtRM(rev), kShare: (totalRev ? rev / totalRev * 100 : 0).toFixed(1) + "%",
+      kUnits: units.toLocaleString("en-MY"), kPerPO: inYear.length ? (units / inYear.length).toFixed(1) : "—",
+      kPOs: String(inYear.length), kBuyers: String(bl.length), kPOsAll: String(inYear.length),
+      kDrift: driftPct === null ? "—" : (driftPct >= 0 ? "+" : "") + driftPct.toFixed(1) + "%", driftColor: driftPct === null ? "#838383" : driftPct >= 0 ? "#078d3b" : "#f0382d",
+      kDriftNote: present.length ? fmtRM(first) + " → " + fmtRM(last) : "no sales",
+      kVelocity: eightWeeks.toFixed(1), kAttach: (inYear.length / Math.max(1, allYear.length) * 100).toFixed(0) + "%",
+      metricChips: METRICS.map(([k, label]) => ({ label, cls: s.metric === k ? "on" : "", pick: () => this.go({ metric: k }) })),
+      trendTitle: isPrice ? fmtRM(first || list) + " → " + fmtRM(last || list) + " over 12 months" : units.toLocaleString("en-MY") + " units over 12 months",
+      gridLines, linePath, areaPath, points, extremes,
+      showRef: isPrice, refTop: yPct(list), refLabel: "List " + fmtRM(list),
+      topBuyers: bl.slice(0, 5).map(([name, v]) => ({ name, val: fmtRM(v), w: Math.max(2, Math.round(v / bmax * 100)), tip: name + " — " + fmtRM(v) })),
+      together: tl.map(([name, n]) => ({ name, initials: name.split(" ").map(w => w[0]).join("").slice(0, 2).toUpperCase(), pct: Math.round(n / inYear.length * 100) + "%" })),
+      statusChips: ST_CHIPS.map(([k, label]) => ({ label, cls: s.st === k ? "on" : "", pick: () => this.setState({ st: k, page: 1 }) })),
+      headers: COLS.map(([k, label, cls]) => ({ label, cls, color: s.sortKey === k ? "#292d34" : "#838383", caret: s.sortKey === k ? (s.sortDir === "asc" ? " \u2191" : " \u2193") : "", pick: () => this.sort(k) })),
+      rows: pg.rows.map(p => { const dayList = priceAt(ITEM, p.date, 0), below = p.line.unit < dayList * 0.99; return { po: p.po, buyer: p.buyer, dateLabel: p.dateLabel, qty: String(p.line.qty), unitLabel: fmtRM(p.line.unit), unitColor: below ? "#fd9a46" : "#292d34", unitTip: "Billed " + fmtRM(p.line.unit) + " · list " + fmtRM(dayList) + (below ? "" : " (at or above list)"), lineLabel: fmtRM(p.line.amount), totalLabel: p.totalLabel, stLabel: p.stLabel, stColor: p.stColor }; }),
+      empty: filtered.length === 0,
+      pagerLabel: pg.label, pageNo: String(pg.page), pages: String(pg.pages), pageSize: String(s.pageSize),
+      setPageSize: e => this.setState({ pageSize: Number(e.target.value), page: 1 }),
+      noPrev: !pg.hasPrev, noNext: !pg.hasNext,
+      prev: () => this.setState({ page: pg.page - 1 }), next: () => this.setState({ page: pg.page + 1 }),
+    };
+  }
+}
+</script>
+</body>
+</html>

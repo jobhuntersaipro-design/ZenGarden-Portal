@@ -1,0 +1,228 @@
+<!doctype html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <title>Admin · Users</title>
+  <script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@200..800&family=Inter:wght@400..700&family=Sometype+Mono:wght@400;500&display=swap">
+  <style>
+  body { margin: 0; background: #ffffff; color: #292d34; font-family: Inter, ui-sans-serif, sans-serif; font-size: 16px; line-height: 1.375; letter-spacing: -0.32px; -webkit-font-smoothing: antialiased; }
+  h1, h2, h3 { font-family: 'Plus Jakarta Sans', ui-sans-serif, sans-serif; margin: 0; }
+  a { color: #7b68ee; text-decoration: none; } a:hover { color: #7612fa; }
+  .eyebrow { font-family: 'Sometype Mono', ui-monospace, monospace; font-size: 14px; font-weight: 500; line-height: 1.29; letter-spacing: 0; color: #838383; }
+  .display-md { font-family: 'Plus Jakarta Sans', ui-sans-serif, sans-serif; font-size: 34px; font-weight: 650; line-height: 1.2; letter-spacing: -1.36px; }
+  .display-lg { font-family: 'Plus Jakarta Sans', ui-sans-serif, sans-serif; font-size: 40px; font-weight: 650; line-height: 1.2; letter-spacing: -1.6px; }
+  .heading-md { font-family: 'Plus Jakarta Sans', ui-sans-serif, sans-serif; font-size: 26px; font-weight: 650; line-height: 1.25; letter-spacing: -0.91px; }
+  .heading-sm { font-family: 'Plus Jakarta Sans', ui-sans-serif, sans-serif; font-size: 18px; font-weight: 650; line-height: 1.33; letter-spacing: -0.54px; }
+  .body-lg { font-size: 18px; font-weight: 500; line-height: 1.33; letter-spacing: -0.36px; }
+  .body-sm { font-size: 14px; line-height: 1.43; letter-spacing: -0.15px; }
+  .caption { font-size: 12px; line-height: 1.5; letter-spacing: -0.12px; }
+  .btn-primary { display: inline-flex; align-items: center; gap: 8px; height: 52px; padding: 14px 20px; border-radius: 20px; background: #292d34; color: #ffffff; font-size: 18px; font-weight: 600; line-height: 1.33; letter-spacing: -0.36px; box-sizing: border-box; white-space: nowrap; }
+  .btn-gradient { display: inline-flex; align-items: center; gap: 8px; height: 52px; padding: 14px 20px; border-radius: 20px; background: linear-gradient(263deg, #fa12e3 -35%, #7612fa 41%, #12d0fa 135%); color: #ffffff; font-size: 18px; font-weight: 600; line-height: 1.33; letter-spacing: -0.36px; box-sizing: border-box; white-space: nowrap; }
+  .btn-secondary { display: inline-flex; align-items: center; gap: 8px; height: 40px; padding: 10px 16px; border-radius: 9px; background: #e9ebf0; border: 1px solid #e8e8e8; color: #202020; font-size: 14px; font-weight: 600; line-height: 1.43; letter-spacing: -0.15px; box-sizing: border-box; white-space: nowrap; }
+  .btn-tertiary { display: inline-flex; align-items: center; gap: 6px; padding: 8px 12px; border-radius: 9px; color: #7b68ee; font-size: 14px; font-weight: 600; line-height: 1.43; letter-spacing: -0.15px; white-space: nowrap; }
+  .card { background: #ffffff; border: 1px solid #e8e8e8; border-radius: 14px; box-sizing: border-box; }
+  .tile { background: #ffffff; border: 1px solid #e8e8e8; border-radius: 12px; padding: 20px; box-sizing: border-box; }
+  .badge { display: inline-flex; align-items: center; gap: 6px; padding: 4px 10px; border-radius: 9999px; background: #e9ebf0; font-size: 12px; font-weight: 500; line-height: 1.5; letter-spacing: -0.12px; white-space: nowrap; }
+  .dot { width: 6px; height: 6px; border-radius: 9999px; background: currentColor; }
+  .input { display: flex; align-items: center; gap: 10px; height: 44px; padding: 10px 16px; border-radius: 9px; border: 1px solid #d9d9d9; background: #ffffff; color: #292d34; font-size: 16px; line-height: 1.375; letter-spacing: -0.32px; box-sizing: border-box; }
+  .input.focus { border: 2px solid #7612fa; padding: 9px 15px; }
+  .label { font-family: 'Sometype Mono', ui-monospace, monospace; font-size: 12px; font-weight: 500; line-height: 1.5; color: #838383; }
+  table { border-collapse: collapse; width: 100%; }
+  th { font-family: 'Sometype Mono', ui-monospace, monospace; font-size: 12px; font-weight: 500; line-height: 1.5; letter-spacing: 0; color: #838383; text-align: left; padding: 12px 20px; border-bottom: 1px solid #e8e8e8; }
+  td { font-size: 14px; line-height: 1.43; letter-spacing: -0.15px; color: #292d34; padding: 14px 20px; border-bottom: 1px solid #e8e8e8; vertical-align: middle; }
+  tr:last-child td { border-bottom: 0; }
+  th.num, td.num { text-align: right; font-variant-numeric: tabular-nums; }
+  .mono { font-family: 'Sometype Mono', ui-monospace, monospace; font-size: 13px; letter-spacing: 0; }
+  .navitem { display: flex; align-items: center; gap: 12px; height: 44px; padding: 0 12px; border-radius: 9px; color: #646464; font-size: 14px; font-weight: 500; line-height: 1.43; letter-spacing: -0.15px; transition: background-color 0.25s cubic-bezier(0.5, 0, 0.5, 1), color 0.25s cubic-bezier(0.5, 0, 0.5, 1); }
+  .navitem:hover { background: #ffffff; color: #292d34; }
+  .navitem.active { background: #e9ebf0; color: #292d34; font-weight: 600; }
+  .navitem.active:hover { background: #e9ebf0; }
+  .userrow { display: flex; align-items: center; gap: 12px; padding: 10px 12px; border-radius: 9px; color: #292d34; transition: background-color 0.25s cubic-bezier(0.5, 0, 0.5, 1); }
+  .userrow:hover { background: #ffffff; color: #292d34; }
+  .btn-primary { transition: background-color 0.25s cubic-bezier(0.5, 0, 0.5, 1); } .btn-primary:hover { background: #202020; }
+  .btn-secondary { transition: border-color 0.25s cubic-bezier(0.5, 0, 0.5, 1); } .btn-secondary:hover { border-color: #d9d9d9; }
+  .btn-tertiary { transition: color 0.25s cubic-bezier(0.5, 0, 0.5, 1); } .btn-tertiary:hover { color: #7612fa; }
+  tbody tr { transition: background-color 0.25s cubic-bezier(0.5, 0, 0.5, 1); } tbody tr:hover td { background: #f8f9fa; }
+  .avatar { width: 32px; height: 32px; border-radius: 9999px; background: #e9ebf0; color: #202020; display: flex; align-items: center; justify-content: center; font-size: 12px; font-weight: 600; letter-spacing: 0; }
+</style>
+</helmet>
+<div style="position: relative; width: 1440px; min-height: 1180px; background: #ffffff; display: flex; flex-direction: column;">
+  <header style="height: 60px; box-sizing: border-box; padding: 0 40px; border-bottom: 1px solid #e8e8e8; background: #ffffff; display: flex; align-items: center; justify-content: space-between;">
+    <div style="display: flex; align-items: center; gap: 14px;"><div style="display: flex; align-items: baseline; font-family: 'Plus Jakarta Sans', ui-sans-serif, sans-serif; font-size: 20px; font-weight: 700; letter-spacing: -0.8px; line-height: 1;"><span style="background: linear-gradient(263deg, #fa12e3 -35%, #7612fa 41%, #12d0fa 135%); -webkit-background-clip: text; background-clip: text; color: transparent;">Zen</span><span style="color: #292d34;">Garden</span></div><span style="width: 1px; height: 20px; background: #d9d9d9;"></span><span class="eyebrow" style="color: #292d34;">Admin</span></div>
+    <div style="display: flex; align-items: center; gap: 16px;">
+      <a href="#" class="btn-tertiary"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" ><path d="m14 6-6 6 6 6"></path></svg> Back to portal</a>
+      <div style="display: flex; align-items: center; gap: 10px;"><span class="body-sm" style="color: #646464;">Chris Lam</span><div class="avatar">CL</div></div>
+    </div>
+  </header>
+  <main style="width: 920px; margin: 0 0 0 40px; padding: 40px 0 60px; box-sizing: border-box;">
+  
+
+<div style="display: flex; align-items: flex-end; justify-content: space-between; gap: 24px; margin-bottom: 40px;">
+  <div style="display: flex; flex-direction: column; gap: 8px;">
+    <div class="eyebrow">Admin · /admin</div>
+    <div style="display: flex; align-items: center; gap: 12px;"><h1 class="display-md">User management</h1></div>
+  </div>
+  <div style="display: flex; gap: 12px; align-items: center;"><div class="btn-primary"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" ><path d="M12 5v14"></path><path d="M5 12h14"></path></svg><span>New user</span></div></div>
+</div>
+<div style="display: flex; flex-direction: column; gap: 16px; margin-bottom: 40px;">
+  <div style="display: flex; align-items: center; justify-content: space-between;">
+    <div style="display: flex; align-items: center; gap: 10px;"><div class="eyebrow">Pending access requests</div><span class="badge" style="color: #646464; box-shadow: inset 0 0 0 1px #fd9a46;"><span class="dot" style="background: #fd9a46;"></span>2</span></div>
+    <span class="caption" style="color: #838383;">People who signed in with Google but aren't on the list yet</span>
+  </div>
+  <div class="card" style="overflow: hidden; border-color: #fd9a46;">
+    
+<div style="display: flex; align-items: center; gap: 16px; padding: 14px 20px; border-bottom: 1px solid #e8e8e8;">
+  <div class="avatar" style="width: 36px; height: 36px;">DT</div>
+  <div style="display: flex; flex-direction: column; gap: 2px; flex: 1; min-width: 0;">
+    <span class="body-sm" style="font-weight: 500; color: #202020;">Daniel Tan</span>
+    <span class="caption" style="color: #838383;">daniel.tan@gmail.com · signed in with Google · 12 min ago</span>
+  </div>
+  <div class="input" style="height: 36px; font-size: 14px; gap: 8px; width: 140px;">Member <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" ><path d="m10 6 6 6-6 6"></path></svg></div>
+  <div class="btn-secondary" style="background: #ffffff;">Decline</div>
+  <div class="btn-secondary" style="background: #292d34; color: #ffffff; border-color: #292d34;"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" ><path d="m5 12 5 5L20 7"></path></svg>Approve</div>
+</div>
+    
+<div style="display: flex; align-items: center; gap: 16px; padding: 14px 20px; border-bottom: 1px solid #e8e8e8;">
+  <div class="avatar" style="width: 36px; height: 36px;">SM</div>
+  <div style="display: flex; flex-direction: column; gap: 2px; flex: 1; min-width: 0;">
+    <span class="body-sm" style="font-weight: 500; color: #202020;">Sara Mohd</span>
+    <span class="caption" style="color: #838383;">sara@zengarden.my · signed in with Google · Yesterday, 17:05</span>
+  </div>
+  <div class="input" style="height: 36px; font-size: 14px; gap: 8px; width: 140px;">Member <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" ><path d="m10 6 6 6-6 6"></path></svg></div>
+  <div class="btn-secondary" style="background: #ffffff;">Decline</div>
+  <div class="btn-secondary" style="background: #292d34; color: #ffffff; border-color: #292d34;"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" ><path d="m5 12 5 5L20 7"></path></svg>Approve</div>
+</div>
+  </div>
+</div>
+<div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 16px;">
+  <div class="eyebrow">Users · 5</div>
+  <div style="display: flex; align-items: center; gap: 12px;">
+    <div class="input" style="width: 220px; height: 40px; color: #b4b4b4; font-size: 14px;"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" ><circle cx="11" cy="11" r="7"></circle><path d="m20 20-3.5-3.5"></path></svg><span>Search…</span></div>
+    <div style="display: flex; gap: 8px;">
+      <span class="badge" style="background: #292d34; color: #ffffff; padding: 8px 14px; font-size: 14px;">All</span>
+      <span class="badge" style="color: #646464; padding: 8px 14px; font-size: 14px;">Active</span>
+      <span class="badge" style="color: #646464; padding: 8px 14px; font-size: 14px;">Invited</span>
+      <span class="badge" style="color: #646464; padding: 8px 14px; font-size: 14px;">Disabled</span>
+    </div>
+  </div>
+</div>
+<div class="card" style="overflow: hidden;">
+  <table>
+    <thead><tr>
+          <sc-for list="{{ headers }}" as="h" hint-placeholder-count="4">
+            <th onClick="{{ h.pick }}" style="cursor: pointer; white-space: nowrap; color: {{ h.color }};">{{ h.label }}{{ h.caret }}</th>
+          </sc-for>
+          <th></th>
+        </tr></thead>
+    <tbody>
+        <sc-for list="{{ rows }}" as="u" hint-placeholder-count="5">
+          <tr style="background: {{ u.hl }};">
+            <td><div style="display: flex; align-items: center; gap: 12px;"><div class="avatar">{{ u.init }}</div><div style="display: flex; flex-direction: column; gap: 2px;"><span style="font-weight: 500; color: #202020;">{{ u.name }}</span><span class="caption" style="color: #838383;">{{ u.email }}</span></div></div></td>
+            <td><span class="badge" style="color: {{ u.roleColor }};">{{ u.role }}</span></td>
+            <td><span class="badge" style="color: {{ u.stColor }}; box-shadow: {{ u.stRing }};"><span class="dot" style="background: {{ u.dotColor }};"></span>{{ u.status }}</span></td>
+            <td style="color: #646464;">{{ u.last }}</td>
+            <td style="text-align: right; white-space: nowrap;"><a href="#" class="btn-tertiary">Edit</a><a href="#" class="btn-tertiary" style="display: {{ u.pwLink }};">Reset password</a><span class="caption" title="This user has no password. They sign in with Google." style="display: {{ u.pwNote }}; padding: 8px 12px; color: #838383;">Password managed by Google</span></td>
+          </tr>
+        </sc-for>
+      </tbody>
+  </table>
+</div>
+<div style="display: flex; align-items: center; justify-content: space-between; padding: 20px 0 0;">
+  <div style="display: flex; align-items: center; gap: 10px;">
+    <span class="body-sm" style="color: #646464;">1–5 of 5</span>
+    <span class="caption" style="color: #838383;">·</span>
+    <div class="input" style="height: 36px; font-size: 14px; gap: 8px;">10 / page <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" ><path d="m10 6 6 6-6 6"></path></svg></div>
+  </div>
+  <div style="display: flex; gap: 8px;">
+    <span class="btn-tertiary" style="color: #b4b4b4;"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" ><path d="m14 6-6 6 6 6"></path></svg> Prev</span>
+    <span class="body-sm" style="color: #646464; padding: 8px;">Page 1 of 1</span>
+    <span class="btn-tertiary" style="color: #b4b4b4;">Next <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" ><path d="m10 6 6 6-6 6"></path></svg></span>
+  </div>
+</div>
+<div style="position: absolute; top: 60px; right: 0; bottom: 0; width: 440px; background: #ffffff; border-left: 1px solid #e8e8e8; box-shadow: 0 20px 60px rgb(18 43 165 / 0.12); display: flex; flex-direction: column; box-sizing: border-box;">
+  <div style="padding: 24px 32px; border-bottom: 1px solid #e8e8e8; display: flex; align-items: center; justify-content: space-between;">
+    <div style="display: flex; flex-direction: column; gap: 4px;"><div class="eyebrow">Edit user</div><h2 class="heading-md">Wei Lin</h2></div>
+    <span style="color: #838383; display: flex;"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" ><path d="M6 6l12 12"></path><path d="M18 6 6 18"></path></svg></span>
+  </div>
+  <div style="padding: 24px 32px; display: flex; flex-direction: column; gap: 24px; flex: 1; overflow: auto;">
+    <div style="display: flex; flex-direction: column; gap: 6px;"><span class="label">Full name</span><div class="input">Wei Lin</div></div>
+    <div style="display: flex; flex-direction: column; gap: 6px;"><span class="label">Email</span><div class="input">wei@zengarden.my</div><span class="caption" style="color: #838383;">Google sign-in matches on this address.</span></div>
+    <div style="display: flex; flex-direction: column; gap: 6px;">
+      <span class="label">Role</span>
+      <div style="display: inline-flex; border: 1px solid #e8e8e8; border-radius: 9px; overflow: hidden;">
+        <span style="flex: 1; text-align: center; padding: 10px 0; font-size: 14px; font-weight: 600; color: #292d34; background: #e9ebf0; border-right: 1px solid #e8e8e8;">Member</span>
+        <span style="flex: 1; text-align: center; padding: 10px 0; font-size: 14px; font-weight: 500; color: #646464;">Super admin</span>
+      </div>
+      <span class="caption" style="color: #838383;">Super admins can open /admin and manage users. Members can upload, review and browse.</span>
+    </div>
+    <div style="display: flex; flex-direction: column; gap: 12px; padding: 16px; background: #f8f9fa; border-radius: 12px;">
+      <div style="display: flex; flex-direction: column; gap: 6px;"><span class="label">Set a password</span><div class="input" style="background: #ffffff; color: #b4b4b4; letter-spacing: 2px;">••••••••••••</div></div>
+      <div style="display: flex; align-items: center; gap: 10px;"><span style="width: 16px; height: 16px; border-radius: 4px; background: #292d34; display: flex; align-items: center; justify-content: center; color: #ffffff;"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" ><path d="m5 12 5 5L20 7"></path></svg></span><span class="body-sm">Require a new password at next sign-in</span></div>
+      <span class="caption" style="color: #838383;">Optional — anyone can also sign in with Google. Leave blank to keep the current password. Changing it signs the user out everywhere.</span>
+    </div>
+    <div style="display: flex; align-items: center; justify-content: space-between; padding-top: 8px; border-top: 1px solid #e8e8e8;">
+      <div style="display: flex; flex-direction: column; gap: 2px;"><span class="body-sm" style="font-weight: 500;">Account active</span><span class="caption" style="color: #838383;">Disabled users keep their history but cannot sign in.</span></div>
+      <span style="width: 40px; height: 24px; border-radius: 9999px; background: #078d3b; position: relative; flex-shrink: 0;"><span style="position: absolute; top: 3px; right: 3px; width: 18px; height: 18px; border-radius: 9999px; background: #ffffff;"></span></span>
+    </div>
+  </div>
+  <div style="padding: 20px 32px; border-top: 1px solid #e8e8e8; display: flex; align-items: center; justify-content: space-between;">
+    <a href="#" class="btn-tertiary" style="color: #f0382d; padding-left: 0;">Delete user</a>
+    <div style="display: flex; gap: 8px;"><div class="btn-secondary">Cancel</div><div class="btn-secondary" style="background: #292d34; color: #ffffff; border-color: #292d34;">Save changes</div></div>
+  </div>
+</div>
+
+<div style="margin-top: 48px; display: flex; flex-direction: column; gap: 12px;">
+  <div class="eyebrow">Delete user · confirmation</div>
+  <div class="card" style="width: 480px; padding: 28px; display: flex; flex-direction: column; gap: 20px; box-shadow: 0 20px 60px rgb(18 43 165 / 0.12);">
+    <div style="display: flex; flex-direction: column; gap: 10px;">
+      <h2 class="heading-md" style="color: #f0382d;">Delete Priya Kumar?</h2>
+      <p class="body-sm" style="margin: 0; color: #646464;">Their uploads and stage history stay in ZenGarden, attributed to a deleted user. They lose access immediately.</p>
+    </div>
+    <div style="display: flex; flex-direction: column; gap: 6px;">
+      <span class="label">Type their email to confirm</span>
+      <div class="input focus"><span style="display: flex; align-items: center; gap: 2px;">priya@zengarden.<span style="width: 1px; height: 18px; background: #292d34;"></span></span></div>
+      <span class="caption" style="color: #838383;">Must match <span class="mono" style="color: #646464;">priya@zengarden.my</span> exactly.</span>
+    </div>
+    <div style="display: flex; flex-direction: column; align-items: flex-end; gap: 10px; padding-top: 20px; border-top: 1px solid #e8e8e8;">
+      <div style="display: flex; gap: 8px;">
+        <div class="btn-secondary">Cancel</div>
+        <div class="btn-secondary" style="background: #e9ebf0; border-color: #e9ebf0; border-radius: 9px; color: #b4b4b4;">Delete user</div>
+      </div>
+      <span class="caption" style="color: #838383;">Delete unlocks when the email matches.</span>
+    </div>
+  </div>
+</div>
+
+  </main>
+</div></x-dc>
+<script data-dc-script>
+const ROWS = [
+  { init: "CL", name: "Chris Lam",    email: "chris@zengarden.my", role: "Super admin", roleColor: "#7b68ee", status: "Active",   stColor: "#078d3b", dotColor: "#078d3b", stRing: "none",                        last: "Today, 09:12", lastTs: 20260904.0912, hl: "transparent", pwLink: "inline-flex", pwNote: "none" },
+  { init: "AR", name: "Aisha Rahman", email: "aisha@zengarden.my", role: "Member",      roleColor: "#646464", status: "Active",   stColor: "#078d3b", dotColor: "#078d3b", stRing: "none",                        last: "Today, 08:40", lastTs: 20260904.0840, hl: "transparent", pwLink: "none",        pwNote: "inline-block" },
+  { init: "WL", name: "Wei Lin",      email: "wei@zengarden.my",   role: "Member",      roleColor: "#646464", status: "Active",   stColor: "#078d3b", dotColor: "#078d3b", stRing: "none",                        last: "2 Sep 2026",   lastTs: 20260902,      hl: "#f8f9fa",     pwLink: "inline-flex", pwNote: "none" },
+  { init: "PK", name: "Priya Kumar",  email: "priya@zengarden.my", role: "Member",      roleColor: "#646464", status: "Invited",  stColor: "#646464", dotColor: "#fd9a46", stRing: "inset 0 0 0 1px #fd9a46",     last: "\u2014",           lastTs: 0,             hl: "transparent", pwLink: "none",        pwNote: "inline-block" },
+  { init: "HN", name: "Hafiz Noor",   email: "hafiz@zengarden.my", role: "Member",      roleColor: "#646464", status: "Disabled", stColor: "#838383", dotColor: "#838383", stRing: "none",                        last: "14 Jul 2026",  lastTs: 20260714,      hl: "transparent", pwLink: "inline-flex", pwNote: "none" },
+];
+const COLS = [["name","User"],["role","Role"],["status","Status"],["last","Last active"]];
+const SORT_ASC = ["name", "role", "status"];
+const KEYS = u => ({ name: u.name, role: u.role, status: u.status, last: u.lastTs });
+class Component extends DCLogic {
+  constructor(props) { super(props); this.state = { sortKey: "last", sortDir: "desc" }; }
+  sort(key) { const s = this.state; const dir = s.sortKey === key ? (s.sortDir === "desc" ? "asc" : "desc") : (SORT_ASC.indexOf(key) >= 0 ? "asc" : "desc"); this.setState({ sortKey: key, sortDir: dir }); }
+  renderVals() {
+    const s = this.state; const dir = s.sortDir === "asc" ? 1 : -1;
+    const rows = ROWS.slice().sort((x, y) => { const a = KEYS(x)[s.sortKey], b = KEYS(y)[s.sortKey]; return (typeof a === "string" ? a.localeCompare(b) : a - b) * dir; });
+    return {
+      rows,
+      headers: COLS.map(([k, label]) => ({ label, color: s.sortKey === k ? "#292d34" : "#838383", caret: s.sortKey === k ? (s.sortDir === "asc" ? " \u2191" : " \u2193") : "", pick: () => this.sort(k) })),
+    };
+  }
+}
+</script>
+</body>
+</html>

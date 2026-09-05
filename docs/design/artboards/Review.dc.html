@@ -1,0 +1,243 @@
+<!doctype html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <title>Extraction review</title>
+  <script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@200..800&family=Inter:wght@400..700&family=Sometype+Mono:wght@400;500&display=swap">
+  <style>
+  body { margin: 0; background: #ffffff; color: #292d34; font-family: Inter, ui-sans-serif, sans-serif; font-size: 16px; line-height: 1.375; letter-spacing: -0.32px; -webkit-font-smoothing: antialiased; }
+  h1, h2, h3 { font-family: 'Plus Jakarta Sans', ui-sans-serif, sans-serif; margin: 0; }
+  a { color: #7b68ee; text-decoration: none; } a:hover { color: #7612fa; }
+  .eyebrow { font-family: 'Sometype Mono', ui-monospace, monospace; font-size: 14px; font-weight: 500; line-height: 1.29; letter-spacing: 0; color: #838383; }
+  .display-md { font-family: 'Plus Jakarta Sans', ui-sans-serif, sans-serif; font-size: 34px; font-weight: 650; line-height: 1.2; letter-spacing: -1.36px; }
+  .display-lg { font-family: 'Plus Jakarta Sans', ui-sans-serif, sans-serif; font-size: 40px; font-weight: 650; line-height: 1.2; letter-spacing: -1.6px; }
+  .heading-md { font-family: 'Plus Jakarta Sans', ui-sans-serif, sans-serif; font-size: 26px; font-weight: 650; line-height: 1.25; letter-spacing: -0.91px; }
+  .heading-sm { font-family: 'Plus Jakarta Sans', ui-sans-serif, sans-serif; font-size: 18px; font-weight: 650; line-height: 1.33; letter-spacing: -0.54px; }
+  .body-lg { font-size: 18px; font-weight: 500; line-height: 1.33; letter-spacing: -0.36px; }
+  .body-sm { font-size: 14px; line-height: 1.43; letter-spacing: -0.15px; }
+  .caption { font-size: 12px; line-height: 1.5; letter-spacing: -0.12px; }
+  .btn-primary { display: inline-flex; align-items: center; gap: 8px; height: 52px; padding: 14px 20px; border-radius: 20px; background: #292d34; color: #ffffff; font-size: 18px; font-weight: 600; line-height: 1.33; letter-spacing: -0.36px; box-sizing: border-box; white-space: nowrap; }
+  .btn-gradient { display: inline-flex; align-items: center; gap: 8px; height: 52px; padding: 14px 20px; border-radius: 20px; background: linear-gradient(263deg, #fa12e3 -35%, #7612fa 41%, #12d0fa 135%); color: #ffffff; font-size: 18px; font-weight: 600; line-height: 1.33; letter-spacing: -0.36px; box-sizing: border-box; white-space: nowrap; }
+  .btn-secondary { display: inline-flex; align-items: center; gap: 8px; height: 40px; padding: 10px 16px; border-radius: 9px; background: #e9ebf0; border: 1px solid #e8e8e8; color: #202020; font-size: 14px; font-weight: 600; line-height: 1.43; letter-spacing: -0.15px; box-sizing: border-box; white-space: nowrap; }
+  .btn-tertiary { display: inline-flex; align-items: center; gap: 6px; padding: 8px 12px; border-radius: 9px; color: #7b68ee; font-size: 14px; font-weight: 600; line-height: 1.43; letter-spacing: -0.15px; white-space: nowrap; }
+  .card { background: #ffffff; border: 1px solid #e8e8e8; border-radius: 14px; box-sizing: border-box; }
+  .tile { background: #ffffff; border: 1px solid #e8e8e8; border-radius: 12px; padding: 20px; box-sizing: border-box; }
+  .badge { display: inline-flex; align-items: center; gap: 6px; padding: 4px 10px; border-radius: 9999px; background: #e9ebf0; font-size: 12px; font-weight: 500; line-height: 1.5; letter-spacing: -0.12px; white-space: nowrap; }
+  .dot { width: 6px; height: 6px; border-radius: 9999px; background: currentColor; }
+  .input { display: flex; align-items: center; gap: 10px; height: 44px; padding: 10px 16px; border-radius: 9px; border: 1px solid #d9d9d9; background: #ffffff; color: #292d34; font-size: 16px; line-height: 1.375; letter-spacing: -0.32px; box-sizing: border-box; }
+  .input.focus { border: 2px solid #7612fa; padding: 9px 15px; }
+  .input .val { flex: 1; min-width: 0; overflow: hidden; white-space: nowrap; text-overflow: ellipsis; }
+  .input.focus .val { overflow: visible; text-overflow: clip; }
+  .label { font-family: 'Sometype Mono', ui-monospace, monospace; font-size: 12px; font-weight: 500; line-height: 1.5; color: #838383; }
+  table { border-collapse: collapse; width: 100%; }
+  th { font-family: 'Sometype Mono', ui-monospace, monospace; font-size: 12px; font-weight: 500; line-height: 1.5; letter-spacing: 0; color: #838383; text-align: left; padding: 12px 20px; border-bottom: 1px solid #e8e8e8; }
+  td { font-size: 14px; line-height: 1.43; letter-spacing: -0.15px; color: #292d34; padding: 14px 20px; border-bottom: 1px solid #e8e8e8; vertical-align: middle; }
+  tr:last-child td { border-bottom: 0; }
+  th.num, td.num { text-align: right; font-variant-numeric: tabular-nums; }
+  .mono { font-family: 'Sometype Mono', ui-monospace, monospace; font-size: 13px; letter-spacing: 0; }
+  .navitem { display: flex; align-items: center; gap: 12px; height: 44px; padding: 0 12px; border-radius: 9px; color: #646464; font-size: 14px; font-weight: 500; line-height: 1.43; letter-spacing: -0.15px; transition: background-color 0.25s cubic-bezier(0.5, 0, 0.5, 1), color 0.25s cubic-bezier(0.5, 0, 0.5, 1); }
+  .navitem:hover { background: #ffffff; color: #292d34; }
+  .navitem.active { background: #e9ebf0; color: #292d34; font-weight: 600; }
+  .navitem.active:hover { background: #e9ebf0; }
+  .userrow { display: flex; align-items: center; gap: 12px; padding: 10px 12px; border-radius: 9px; color: #292d34; transition: background-color 0.25s cubic-bezier(0.5, 0, 0.5, 1); }
+  .userrow:hover { background: #ffffff; color: #292d34; }
+  .btn-primary { transition: background-color 0.25s cubic-bezier(0.5, 0, 0.5, 1); } .btn-primary:hover { background: #202020; }
+  .btn-secondary { transition: border-color 0.25s cubic-bezier(0.5, 0, 0.5, 1); } .btn-secondary:hover { border-color: #d9d9d9; }
+  .btn-tertiary { transition: color 0.25s cubic-bezier(0.5, 0, 0.5, 1); } .btn-tertiary:hover { color: #7612fa; }
+  tbody tr { transition: background-color 0.25s cubic-bezier(0.5, 0, 0.5, 1); } tbody tr:hover td { background: #f8f9fa; }
+  .avatar { width: 32px; height: 32px; border-radius: 9999px; background: #e9ebf0; color: #202020; display: flex; align-items: center; justify-content: center; font-size: 12px; font-weight: 600; letter-spacing: 0; }
+</style>
+</helmet>
+<div style="width: 1440px; min-height: 100vh; background: #ffffff; display: flex; flex-direction: row; align-items: stretch;">
+<aside style="width: 240px; flex-shrink: 0; min-height: 100vh; box-sizing: border-box; padding: 24px 16px; background: #f8f9fa; border-right: 1px solid #e8e8e8; display: flex; flex-direction: column; gap: 32px;">
+  <div style="padding: 0 12px;"><div style="display: flex; align-items: baseline; font-family: 'Plus Jakarta Sans', ui-sans-serif, sans-serif; font-size: 22px; font-weight: 700; letter-spacing: -0.88px; line-height: 1;"><span style="background: linear-gradient(263deg, #fa12e3 -35%, #7612fa 41%, #12d0fa 135%); -webkit-background-clip: text; background-clip: text; color: transparent;">Zen</span><span style="color: #292d34;">Garden</span></div></div>
+  <nav style="display: flex; flex-direction: column; gap: 4px; flex: 1;">
+    <a href="#" class="navitem"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" ><rect x="3" y="3" width="8" height="8" rx="1.5"></rect><rect x="13" y="3" width="8" height="8" rx="1.5"></rect><rect x="3" y="13" width="8" height="8" rx="1.5"></rect><rect x="13" y="13" width="8" height="8" rx="1.5"></rect></svg><span>Dashboard</span></a>
+    <a href="#" class="navitem active"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" ><path d="M6 3h12a1 1 0 0 1 1 1v17l-3-2-2 2-2-2-2 2-2-2-3 2V4a1 1 0 0 1 1-1z"></path><path d="M9 8h6"></path><path d="M9 12h6"></path></svg><span>Purchase orders</span></a>
+    <a href="#" class="navitem"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" ><circle cx="9" cy="8" r="3.5"></circle><path d="M2.5 20a6.5 6.5 0 0 1 13 0"></path><path d="M16 4.8a3.5 3.5 0 0 1 0 6.4"></path><path d="M17.5 13.6A6.5 6.5 0 0 1 21.5 20"></path></svg><span>Buyers</span></a>
+    <a href="#" class="navitem"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" ><path d="M12 3 3 7.5v9L12 21l9-4.5v-9z"></path><path d="M3 7.5 12 12l9-4.5"></path><path d="M12 12v9"></path></svg><span>Products</span></a>
+  </nav>
+  <a href="#" class="userrow">
+    <div class="avatar">CL</div>
+    <div style="display: flex; flex-direction: column; gap: 2px; min-width: 0;">
+      <span class="body-sm" style="color: #292d34; font-weight: 500; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">Chris Lam</span>
+      <span class="caption" style="color: #838383; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">chris@zengarden.my</span>
+    </div>
+  </a>
+</aside>
+<main style="flex: 1; min-width: 0; padding: 40px 40px 60px; box-sizing: border-box;">
+<div style="max-width: 1160px; margin: 0 auto;">
+
+
+<div style="display: flex; align-items: flex-end; justify-content: space-between; gap: 24px; margin-bottom: 40px;">
+  <div style="display: flex; flex-direction: column; gap: 8px;">
+    <div class="eyebrow">Review 1 of 3</div>
+    <div style="display: flex; align-items: center; gap: 12px;"><h1 class="display-md">PO-ACME-2026-0917.pdf</h1></div>
+  </div>
+  <div style="display: flex; gap: 12px; align-items: center;"><div class="btn-secondary">Discard</div><div style="display: flex; flex-direction: column; align-items: flex-end; gap: 6px;"><div class="btn-primary" style="background: #e9ebf0; color: #b4b4b4; cursor: not-allowed;" title="Confirm unlocks when the computed total matches the document, or when you tick “save with this mismatch”."><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" ><path d="m5 12 5 5L20 7"></path></svg><span>Confirm &amp; save</span></div><span class="caption" style="color: #f0382d;">Locked — totals don’t match</span></div></div>
+</div>
+
+<div style="display: flex; align-items: flex-start; gap: 16px; padding: 20px 24px; margin-bottom: 24px; background: #ffffff; border: 1px solid #e8e8e8; border-left: 3px solid #f0382d; border-radius: 14px; box-shadow: 0 4px 12px rgb(18 43 165 / 0.08);">
+  <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#f0382d" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink: 0; margin-top: 2px;"><path d="M10.3 3.9 1.8 18a2 2 0 0 0 1.7 3h17a2 2 0 0 0 1.7-3L13.7 3.9a2 2 0 0 0-3.4 0z"></path><path d="M12 9v4"></path><path d="M12 17h.01"></path></svg>
+  <div style="flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 14px;">
+    <div style="display: flex; align-items: baseline; gap: 12px; flex-wrap: wrap;">
+      <span class="heading-sm">The totals don’t match the document</span>
+      <span class="caption" style="color: #838383;">Confirm &amp; save is locked until this is resolved</span>
+    </div>
+    <div style="display: flex; align-items: flex-end; gap: 40px; flex-wrap: wrap;">
+      <div style="display: flex; flex-direction: column; gap: 2px;"><span class="label">Computed total</span><span class="body-lg" style="color: #292d34; font-weight: 600; font-variant-numeric: tabular-nums;">RM 21,416.40</span></div>
+      <div style="display: flex; flex-direction: column; gap: 2px;"><span class="label">Document says</span><span class="body-lg" style="color: #292d34; font-weight: 600; font-variant-numeric: tabular-nums;">RM 24,680.00</span></div>
+      <div style="display: flex; flex-direction: column; gap: 2px;"><span class="label">Difference</span><span class="body-lg" style="color: #f0382d; font-weight: 600; font-variant-numeric: tabular-nums;">RM 3,263.60</span></div>
+    </div>
+    <p class="body-sm" style="margin: 0; color: #646464;">Subtotal RM 19,830.00 plus SST 8% comes to RM 21,416.40. A line the extraction missed, or a different tax rate, is the usual cause — check the source on the left. Fix the line items or the total and Confirm unlocks by itself.</p>
+    <div style="display: flex; align-items: flex-start; gap: 10px; padding-top: 12px; border-top: 1px solid #e8e8e8;">
+      <div style="width: 16px; height: 16px; border-radius: 4px; border: 1px solid #d9d9d9; background: #ffffff; flex-shrink: 0; margin-top: 2px;"></div>
+      <div style="display: flex; flex-direction: column; gap: 2px;">
+        <span class="body-sm" style="font-weight: 500;">I checked the source — save with this mismatch</span>
+        <span class="caption" style="color: #838383;">Unlocks Confirm and records the difference in this PO’s activity log, with your name.</span>
+      </div>
+    </div>
+  </div>
+</div>
+<div style="display: grid; grid-template-columns: 55fr 45fr; gap: 24px; align-items: start;">
+  <div class="card" style="padding: 24px; display: flex; flex-direction: column; gap: 16px; background: #f8f9fa;">
+    <div style="display: flex; align-items: center; justify-content: space-between;">
+      <div class="eyebrow">Source file</div>
+      <a href="#" class="btn-tertiary" style="padding-right: 0;">Open original <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" ><path d="M14 4h6v6"></path><path d="M20 4 10 14"></path><path d="M18 14v5a1 1 0 0 1-1 1H5a1 1 0 0 1-1-1V7a1 1 0 0 1 1-1h5"></path></svg></a>
+    </div>
+    
+<div style="width: 100%; aspect-ratio: 1 / 1.3; background: #ffffff; border: 1px solid #e8e8e8; border-radius: 4px; box-shadow: 0 10px 25px rgb(18 43 165 / 0.10); padding: 36px; box-sizing: border-box; display: flex; flex-direction: column; gap: 22px; color: #646464;">
+  <div style="display: flex; justify-content: space-between; align-items: flex-start;">
+    <div style="display: flex; flex-direction: column; gap: 6px;"><div style="width: 150px; height: 14px; background: #292d34; border-radius: 2px;"></div><div style="width: 110px; height: 8px; background: #e9ebf0; border-radius: 2px;"></div><div style="width: 130px; height: 8px; background: #e9ebf0; border-radius: 2px;"></div></div>
+    <div style="display: flex; flex-direction: column; gap: 6px; align-items: flex-end;"><div class="mono" style="font-size: 12px; color: #292d34;">PURCHASE ORDER</div><div class="mono" style="font-size: 12px;">PO-ACME-2026-0917</div><div class="mono" style="font-size: 12px;">02 SEP 2026</div></div>
+  </div>
+  <div style="display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 16px;">
+    <div style="display: flex; flex-direction: column; gap: 6px;"><div style="width: 60px; height: 8px; background: #d9d9d9; border-radius: 2px;"></div><div style="width: 90%; height: 8px; background: #e9ebf0; border-radius: 2px;"></div><div style="width: 70%; height: 8px; background: #e9ebf0; border-radius: 2px;"></div></div>
+    <div style="display: flex; flex-direction: column; gap: 6px;"><div style="width: 60px; height: 8px; background: #d9d9d9; border-radius: 2px;"></div><div style="width: 85%; height: 8px; background: #e9ebf0; border-radius: 2px;"></div><div style="width: 60%; height: 8px; background: #e9ebf0; border-radius: 2px;"></div></div>
+  </div>
+  <div style="display: flex; flex-direction: column; gap: 0; border-top: 1px solid #292d34; border-bottom: 1px solid #292d34;">
+    <div style="display: flex; gap: 12px; padding: 9px 0; border-bottom: 1px solid #e8e8e8;"><div style="flex: 1; height: 8px; background: #d9d9d9; border-radius: 2px;"></div><div style="width: 40px; height: 8px; background: #e9ebf0; border-radius: 2px;"></div><div style="width: 60px; height: 8px; background: #e9ebf0; border-radius: 2px;"></div><div style="width: 70px; height: 8px; background: #e9ebf0; border-radius: 2px;"></div></div><div style="display: flex; gap: 12px; padding: 9px 0; border-bottom: 1px solid #e8e8e8;"><div style="flex: 1; height: 8px; background: #e9ebf0; border-radius: 2px;"></div><div style="width: 40px; height: 8px; background: #e9ebf0; border-radius: 2px;"></div><div style="width: 60px; height: 8px; background: #e9ebf0; border-radius: 2px;"></div><div style="width: 70px; height: 8px; background: #e9ebf0; border-radius: 2px;"></div></div><div style="display: flex; gap: 12px; padding: 9px 0; border-bottom: 1px solid #e8e8e8;"><div style="flex: 1; height: 8px; background: #e9ebf0; border-radius: 2px;"></div><div style="width: 40px; height: 8px; background: #e9ebf0; border-radius: 2px;"></div><div style="width: 60px; height: 8px; background: #e9ebf0; border-radius: 2px;"></div><div style="width: 70px; height: 8px; background: #e9ebf0; border-radius: 2px;"></div></div><div style="display: flex; gap: 12px; padding: 9px 0; border-bottom: 1px solid #e8e8e8;"><div style="flex: 1; height: 8px; background: #e9ebf0; border-radius: 2px;"></div><div style="width: 40px; height: 8px; background: #e9ebf0; border-radius: 2px;"></div><div style="width: 60px; height: 8px; background: #e9ebf0; border-radius: 2px;"></div><div style="width: 70px; height: 8px; background: #e9ebf0; border-radius: 2px;"></div></div><div style="display: flex; gap: 12px; padding: 9px 0; border-bottom: 1px solid #e8e8e8;"><div style="flex: 1; height: 8px; background: #e9ebf0; border-radius: 2px;"></div><div style="width: 40px; height: 8px; background: #e9ebf0; border-radius: 2px;"></div><div style="width: 60px; height: 8px; background: #e9ebf0; border-radius: 2px;"></div><div style="width: 70px; height: 8px; background: #e9ebf0; border-radius: 2px;"></div></div><div style="display: flex; gap: 12px; padding: 9px 0; border-bottom: 1px solid #e8e8e8;"><div style="flex: 1; height: 8px; background: #e9ebf0; border-radius: 2px;"></div><div style="width: 40px; height: 8px; background: #e9ebf0; border-radius: 2px;"></div><div style="width: 60px; height: 8px; background: #e9ebf0; border-radius: 2px;"></div><div style="width: 70px; height: 8px; background: #e9ebf0; border-radius: 2px;"></div></div><div style="display: flex; gap: 12px; padding: 9px 0; border-bottom: 1px solid #e8e8e8;"><div style="flex: 1; height: 8px; background: #e9ebf0; border-radius: 2px;"></div><div style="width: 40px; height: 8px; background: #e9ebf0; border-radius: 2px;"></div><div style="width: 60px; height: 8px; background: #e9ebf0; border-radius: 2px;"></div><div style="width: 70px; height: 8px; background: #e9ebf0; border-radius: 2px;"></div></div>
+  </div>
+  <div style="display: flex; justify-content: flex-end;"><div style="display: flex; flex-direction: column; gap: 8px; align-items: flex-end;"><div style="width: 140px; height: 8px; background: #e9ebf0; border-radius: 2px;"></div><div style="width: 120px; height: 8px; background: #e9ebf0; border-radius: 2px;"></div><div class="mono" style="font-size: 13px; color: #292d34; font-weight: 500;">TOTAL RM 24,680.00</div></div></div>
+</div>
+    <div style="display: flex; align-items: center; justify-content: center; gap: 12px; color: #838383;"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" ><path d="m14 6-6 6 6 6"></path></svg><span class="caption">Page 1 of 2</span><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" ><path d="m10 6 6 6-6 6"></path></svg></div>
+  </div>
+  <div class="card" style="padding: 24px; display: flex; flex-direction: column; gap: 24px;">
+    <div style="display: flex; align-items: center; justify-content: space-between;">
+      <div class="eyebrow" style="white-space: nowrap;">Extracted fields</div>
+      <div style="display: flex; align-items: center; gap: 10px;"><span class="caption" style="color: #838383; white-space: nowrap;">under 90% is worth a look</span><span class="badge" style="color: #078d3b;"><span class="dot"></span>92% overall</span></div>
+    </div>
+    <div style="display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 16px;">
+      <div style="display: flex; flex-direction: column; gap: 6px; grid-column: span 2;">
+  <div style="display: flex; align-items: baseline; justify-content: space-between; gap: 8px;"><span class="label">Buyer</span><span class="caption" style="color: #838383; font-variant-numeric: tabular-nums; font-weight: 500;">96%</span></div>
+  <div class="input" style=""><span class="val" title="Acme Industrial Sdn Bhd">Acme Industrial Sdn Bhd</span><span style="display: flex;"><span class="badge" style="color: #646464;">Known buyer</span></span></div>
+  
+</div>
+      <div style="display: flex; flex-direction: column; gap: 6px;">
+  <div style="display: flex; align-items: baseline; justify-content: space-between; gap: 8px;"><span class="label">PO number</span><span class="caption" style="color: #838383; font-variant-numeric: tabular-nums; font-weight: 500;">99%</span></div>
+  <div class="input" style=""><span class="val" title="PO-ACME-2026-0917">PO-ACME-2026-0917</span></div>
+  
+</div>
+      <div style="display: flex; flex-direction: column; gap: 6px;">
+  <div style="display: flex; align-items: baseline; justify-content: space-between; gap: 8px;"><span class="label">PO date</span><span class="caption" style="color: #838383; font-variant-numeric: tabular-nums; font-weight: 500;">98%</span></div>
+  <div class="input" style=""><span class="val" title="2 Sep 2026">2 Sep 2026</span></div>
+  
+</div>
+      <div style="display: flex; flex-direction: column; gap: 6px;">
+  <div style="display: flex; align-items: baseline; justify-content: space-between; gap: 8px;"><span class="label">Delivery date</span><span class="caption" style="color: #fd9a46; font-variant-numeric: tabular-nums; font-weight: 500;">61%</span></div>
+  <div class="input" style="border-left: 2px solid #fd9a46;"><span class="val" title="16 Sep 2026">16 Sep 2026</span></div>
+  <span class="caption" style="color: #fd9a46;">Low confidence — check source</span>
+</div>
+      <div style="display: flex; flex-direction: column; gap: 6px;">
+  <div style="display: flex; align-items: baseline; justify-content: space-between; gap: 8px;"><span class="label">Currency</span><span class="caption" style="color: #838383; font-variant-numeric: tabular-nums; font-weight: 500;">99%</span></div>
+  <div class="input" style=""><span class="val" title="MYR">MYR</span></div>
+  
+</div>
+      <div style="display: flex; flex-direction: column; gap: 6px;">
+  <div style="display: flex; align-items: baseline; justify-content: space-between; gap: 8px;"><span class="label">Buyer reference</span><span class="caption" style="color: #fd9a46; font-variant-numeric: tabular-nums; font-weight: 500;">88%</span></div>
+  <div class="input" style=""><span class="val" title="ZG-REQ-1187">ZG-REQ-1187</span></div>
+  
+</div>
+      <div style="display: flex; flex-direction: column; gap: 6px;">
+  <div style="display: flex; align-items: baseline; justify-content: space-between; gap: 8px;"><span class="label">Payment terms</span><span class="caption" style="color: #838383; font-variant-numeric: tabular-nums; font-weight: 500;">93%</span></div>
+  <div class="input focus" style=""><span class="val" title="Net 30">Net 30</span></div>
+  
+</div>
+    </div>
+    <div style="display: flex; flex-direction: column; gap: 12px;">
+      <div style="display: flex; align-items: center; justify-content: space-between;">
+        <div class="eyebrow">Line items</div>
+        <a href="#" class="btn-tertiary" style="padding-right: 0;"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" ><path d="M12 5v14"></path><path d="M5 12h14"></path></svg> Add line</a>
+      </div>
+      <div style="border: 1px solid #e8e8e8; border-radius: 9px; overflow: hidden;">
+        <table>
+          <thead><tr><th style="padding: 10px 12px;">Description</th><th class="num" style="padding: 10px 12px;">Qty</th><th style="padding: 10px 12px;">Unit</th><th class="num" style="padding: 10px 12px;">Unit price</th><th class="num" style="padding: 10px 12px;">Amount</th></tr></thead>
+          <tbody>
+<tr>
+  <td style="padding: 10px 12px;">Granite stepping stone 40cm</td>
+  <td class="num" style="padding: 10px 12px;">120</td>
+  <td style="padding: 10px 12px; color: #646464;">pc</td>
+  <td class="num" style="padding: 10px 12px;">42.00</td>
+  <td class="num" style="padding: 10px 12px; font-weight: 500;">5,040.00</td>
+</tr>
+<tr>
+  <td style="padding: 10px 12px;">Bamboo garden screen 1.8m</td>
+  <td class="num" style="padding: 10px 12px;">24</td>
+  <td style="padding: 10px 12px; color: #646464;">panel</td>
+  <td class="num" style="padding: 10px 12px;">180.00</td>
+  <td class="num" style="padding: 10px 12px; font-weight: 500;">4,320.00</td>
+</tr>
+<tr>
+  <td style="padding: 10px 12px;">River pebble, 20kg bag</td>
+  <td class="num" style="padding: 10px 12px;">200</td>
+  <td style="padding: 10px 12px; color: #646464;">bag</td>
+  <td class="num" style="padding: 10px 12px;">18.00</td>
+  <td class="num" style="padding: 10px 12px; font-weight: 500;">3,600.00</td>
+</tr>
+<tr>
+  <td style="padding: 10px 12px;">Stone lantern 60cm</td>
+  <td class="num" style="padding: 10px 12px;">6</td>
+  <td style="padding: 10px 12px; color: #646464;">pc</td>
+  <td class="num" style="padding: 10px 12px;">510.00</td>
+  <td class="num" style="padding: 10px 12px; font-weight: 500;">3,060.00</td>
+</tr>
+<tr>
+  <td style="padding: 10px 12px;">Japanese maple, 1.5m</td>
+  <td class="num" style="padding: 10px 12px;">8</td>
+  <td style="padding: 10px 12px; color: #646464;">tree</td>
+  <td class="num" style="padding: 10px 12px;">420.00</td>
+  <td class="num" style="padding: 10px 12px; font-weight: 500;">3,360.00</td>
+</tr>
+<tr>
+  <td style="padding: 10px 12px;">Delivery — Klang to Shah Alam</td>
+  <td class="num" style="padding: 10px 12px;">1</td>
+  <td style="padding: 10px 12px; color: #646464;">trip</td>
+  <td class="num" style="padding: 10px 12px;">450.00</td>
+  <td class="num" style="padding: 10px 12px; font-weight: 500;">450.00</td>
+</tr></tbody>
+        </table>
+      </div>
+      <div style="display: flex; flex-direction: column; gap: 6px; align-items: flex-end; padding-right: 12px;">
+        <div class="body-sm" style="display: flex; gap: 32px; color: #646464;"><span>Subtotal</span><span class="num" style="font-variant-numeric: tabular-nums; width: 120px; text-align: right;">RM 19,830.00</span></div>
+        <div class="body-sm" style="display: flex; gap: 32px; color: #646464;"><span>SST 8%</span><span style="font-variant-numeric: tabular-nums; width: 120px; text-align: right;">RM 1,586.40</span></div>
+        <div class="heading-sm" style="display: flex; gap: 32px; color: #f0382d;"><span>Total</span><span style="font-variant-numeric: tabular-nums; width: 120px; text-align: right;">RM 21,416.40</span></div>
+        <div class="caption" style="color: #f0382d; margin-top: 4px; text-align: right;">RM 3,263.60 under the document’s RM 24,680.00 — see the banner above.</div>
+      </div>
+    </div>
+    <div style="display: flex; flex-direction: column; gap: 6px;">
+      <div style="display: flex; align-items: baseline; justify-content: space-between; gap: 8px;"><span class="label">Notes</span><span class="caption" style="color: #fd9a46; font-variant-numeric: tabular-nums; font-weight: 500;">79%</span></div>
+      <div class="input" style="height: 72px; align-items: flex-start; color: #b4b4b4;">Optional</div>
+    </div>
+  </div>
+</div>
+
+</div>
+</main>
+</div></x-dc>
+</body>
+</html>

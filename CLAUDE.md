@@ -1,5 +1,7 @@
-# Your Project Name
-Project descriptions
+# ZenGarden Portal
+Purchase-order intake portal for ZenGarden's ops team: upload a customer PO (PDF/image),
+Claude extracts the fields, a person reviews and confirms, the record lands in Neon with the
+original file in R2, and the dashboards read confirmed POs as sales and fulfillment trends.
 
 ## Context Files
 Read the following to get the full context of the project:
@@ -7,6 +9,15 @@ Read the following to get the full context of the project:
 - @context/coding-standard.md
 - @context/ai-interaction.md
 - @context/current-feature.md
+
+## Web Design (source of truth for every screen)
+
+The approved visual design lives in Claude Design:
+https://claude.ai/code/artifact/43c584c8-b4b6-4479-8d0f-391ab44299ae?via=auto_preview
+
+Every screen, state and interaction is drawn there. Build what the canvas shows; if the
+canvas and a spec file disagree, the canvas wins for visuals and the spec wins for data
+and behaviour. The written companion is `docs/specs/design/zengarden-portal-design.md`; coders start at `docs/specs/00-master.md`.
 
 ## Design System
 
@@ -18,6 +29,11 @@ Tailwind arbitrary value in a component.
 Read `context/design-system.md` before building or restyling any UI — it has
 the full spec: color roles, the two-family type ramp, the eight-tier radius
 scale, all 22 component definitions, and the Do's and Don'ts.
+
+Product-level conventions that override or extend it — the status colour
+palette, sentence-case labels, truncation recovery, and the rule that a KPI
+never renders zero on first paint — live in `docs/specs/00-master.md` §4
+"Design conventions". Read those too before building UI.
 
 ## Commands
 - `npm run dev` — start dev server

@@ -347,6 +347,14 @@ components:
 
 ## Overview
 
+> **Read this first.** This file documents ClickUp's marketing design system as
+> captured. The ZenGarden Portal follows it with one deliberate exception —
+> eyebrows, field labels and table column headers are **sentence case**, not
+> uppercase — and adds product-level conventions of its own (the status colour
+> palette, truncation recovery, and the rule that a KPI never renders zero on
+> first paint). Both are in `docs/specs/00-master.md` §4 "Design conventions",
+> and the override is restated under Do's and Don'ts below.
+
 ClickUp's marketing system is a productivity SaaS that hides its purple voltage inside a gradient and leaves the rest of the page on graphite-and-white. The canvas is `{colors.canvas}` ("#ffffff"); the page-floor text is `{colors.ink}` ("#292d34"), a warm graphite that appears 3585 times across text and hairline borders. The single saturated chromatic signal is **neon purple** `{colors.primary}` ("#7612fa"), which lives almost entirely inside the primary CTA gradient `linear-gradient(263deg, #fa12e3 -35%, #7612fa 41%, #12d0fa 135%)`. A quieter lavender `{colors.brand-link}` ("#7b68ee") sits in the `--color-brand-clickup` variable and surfaces on inline links and footer chrome.
 
 **Gradient-as-brand**: where most productivity tools commit to one flat brand swatch (Asana coral, Linear lavender, Notion purple-pill), ClickUp's identity is the 263-degree magenta-to-purple-to-cyan sweep itself. The flat "#7612fa" hex never appears as a section background — it's a stop inside the gradient, not a fill. The hero CTA inverts this rule one more time: "Get started. It's FREE!" renders as a dark pill at `{colors.ink}` ("#292d34") with white text, 20px radius, weight 650. The gradient stays in supporting CTAs and brand surfaces while the dominant action goes graphite.
@@ -432,6 +440,18 @@ The geometry contrast is deliberate: chips are nearly square (4px), tiles are so
 - **`footer-region`** + **`footer-link`** — the multi-column footer with `{colors.ink-secondary}` ("#646464") text at body-sm.
 
 ## Do's and Don'ts
+
+> **Project override — ZenGarden Portal, 2026-09-05.** One rule below is
+> deliberately not followed. ClickUp's eyebrow is Sometype Mono **uppercase**;
+> in this product, eyebrows, field labels and table column headers keep the
+> mono family, size and tertiary colour but are set in **sentence case**. A
+> design review found the all-caps slowed scanning on screens the ops team
+> reads all day, where those labels are functional rather than decorative.
+> Everything else here stands: mono still marks a label as chrome, and
+> uppercase is still never used on Plus Jakarta Sans headlines. The full set of
+> product-level conventions is in `docs/specs/00-master.md` §4 "Design
+> conventions", and the canvas linked from `CLAUDE.md` is the picture of them.
+
 
 **Do** keep neon purple "#7612fa" inside the gradient. The flat hex never appears as a section background on ClickUp's homepage — using it as a fill breaks the gradient-as-brand discipline. For a purple surface, use the lavender brand-link "#7b68ee" instead.
 

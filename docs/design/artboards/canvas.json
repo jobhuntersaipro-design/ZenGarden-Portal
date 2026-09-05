@@ -1,0 +1,167 @@
+{
+  "artboards": [
+    {
+      "file": "SignIn.dc.html",
+      "title": "Sign in",
+      "x": 0,
+      "y": 0,
+      "w": 1440,
+      "h": 1000
+    },
+    {
+      "file": "Main.dc.html",
+      "title": "Dashboard",
+      "x": 1540,
+      "y": 0,
+      "w": 1440,
+      "h": 3400,
+      "is_interactive": true
+    },
+    {
+      "file": "Upload.dc.html",
+      "title": "Upload",
+      "x": 3080,
+      "y": 0,
+      "w": 1440,
+      "h": 1160
+    },
+    {
+      "file": "Review.dc.html",
+      "title": "Extraction review",
+      "x": 0,
+      "y": 3660,
+      "w": 1440,
+      "h": 1680
+    },
+    {
+      "file": "PurchaseOrders.dc.html",
+      "title": "Purchase orders",
+      "x": 1540,
+      "y": 3660,
+      "w": 1440,
+      "h": 1200,
+      "is_interactive": true
+    },
+    {
+      "file": "PODetail.dc.html",
+      "title": "PO detail",
+      "x": 3080,
+      "y": 3660,
+      "w": 1440,
+      "h": 2100
+    },
+    {
+      "file": "Buyer.dc.html",
+      "title": "Buyer detail",
+      "x": 1540,
+      "y": 6020,
+      "w": 1440,
+      "h": 3440,
+      "is_interactive": true
+    },
+    {
+      "file": "Users.dc.html",
+      "title": "Admin \u00b7 /admin",
+      "x": 3080,
+      "y": 6020,
+      "w": 1440,
+      "h": 1500
+    },
+    {
+      "file": "SignInPending.dc.html",
+      "title": "Sign in \u00b7 access requested",
+      "x": 4620,
+      "y": 6020,
+      "w": 1440,
+      "h": 1000
+    },
+    {
+      "file": "Products.dc.html",
+      "title": "Products",
+      "x": 0,
+      "y": 9720,
+      "w": 1440,
+      "h": 1500,
+      "is_interactive": true
+    },
+    {
+      "file": "ProductDetail.dc.html",
+      "title": "Product detail",
+      "x": 1540,
+      "y": 9720,
+      "w": 1440,
+      "h": 3040,
+      "is_interactive": true
+    },
+    {
+      "file": "Buyers.dc.html",
+      "title": "Buyers",
+      "x": 0,
+      "y": 6020,
+      "w": 1440,
+      "h": 1680,
+      "is_interactive": true
+    }
+  ],
+  "annotations": [
+    {
+      "id": "flow",
+      "x": 0,
+      "y": -140,
+      "w": 520,
+      "text": "Core loop: Sign in \u2192 Dashboard \u2192 Upload PO \u2192 Extraction review \u2192 Purchase orders \u2192 PO detail.\n\nUpload is an action, not a destination: it left the sidebar and is reached by the Upload PO button on Dashboard, Purchase orders, Buyers and Buyer detail.\n\nDashboard, Purchase orders, Buyers, Buyer detail, Products and Product detail are working prototypes on a year of seeded POs \u2014 try the range chips, Custom range, the Fulfillment/Sales switch, More analytics, filters, sorting and page size."
+    },
+    {
+      "id": "products-note",
+      "x": 0,
+      "y": 9580,
+      "w": 560,
+      "text": "Products \u2014 grid/list toggle like a marketplace catalog; quick chips surface what needs maintenance. Click a product \u2192 Product detail. The Viewer tweak (top of each artboard) switches super admin \u2194 member: members lose New product, Edit, Add images and the edit drawer."
+    },
+    {
+      "id": "admin-note",
+      "x": 3080,
+      "y": 5880,
+      "w": 520,
+      "text": "/admin is not in the sidebar \u2014 super admins type the URL. Google sign-ins from unknown emails land in Pending access requests; Approve creates the user with the chosen role and emails them."
+    },
+    {
+      "id": "buyer-note",
+      "x": 1540,
+      "y": 5880,
+      "w": 520,
+      "text": "Buyer detail \u2014 reached by clicking a buyer name in any table. The range and aggregation under the header drive every number on the page (Reorder signals excepted \u2014 it predicts from full history). Product order trend picks up to 6 products from the dropdown; the 'Product picker' tweak above the artboard shows it open or closed. What they buy toggles between value and quantity."
+    },
+    {
+      "id": "review-note",
+      "x": 1000,
+      "y": 3520,
+      "w": 420,
+      "text": "Review screen: the two states worth checking are the low-confidence field and the totals mismatch.\n\nA mismatch now locks Confirm & save. Fixing the numbers unlocks it; the checkbox is the escape hatch for a document whose printed total really is different, and it records the difference in the PO's activity log."
+    },
+    {
+      "id": "lifecycle-note",
+      "x": 3080,
+      "y": 3520,
+      "w": 560,
+      "text": "PO lifecycle \u2014 Order placed is set automatically when a PO is confirmed. Advance logs who, when and an optional note; super admins can Move back. The dashboard's Fulfillment trend and the stage bar read the same history."
+    },
+    {
+      "id": "buyers-note",
+      "x": 0,
+      "y": 5880,
+      "w": 520,
+      "text": "Buyers roster: the landing page for the tab. Range chips drive every number, the three needs-attention counts filter the table below and show a selected state, and every column sorts. Overdue reads red \u2014 it is lost revenue, not a process in flight. Click a buyer to open Buyer detail beside it."
+    },
+    {
+      "id": "dashboard-note",
+      "x": 1540,
+      "y": -140,
+      "w": 620,
+      "text": "Dashboard, reordered so the work queue outranks the analytics. Work queue first (it ignores the date range \u2014 it is what needs doing now), then a compact KPI row, then ONE trend: Fulfillment by default with Sales a click away. Status and stage bars sit under the trend because they explain the queue. Market share, In this range, churn and price drift moved behind More analytics. Custom dates hide behind Custom range."
+    }
+  ],
+  "launch": {
+    "view": "canvas"
+  }
+}

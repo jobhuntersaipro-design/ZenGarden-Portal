@@ -1,0 +1,183 @@
+<!doctype html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <title>Upload</title>
+  <script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@200..800&family=Inter:wght@400..700&family=Sometype+Mono:wght@400;500&display=swap">
+  <style>
+  body { margin: 0; background: #ffffff; color: #292d34; font-family: Inter, ui-sans-serif, sans-serif; font-size: 16px; line-height: 1.375; letter-spacing: -0.32px; -webkit-font-smoothing: antialiased; }
+  h1, h2, h3 { font-family: 'Plus Jakarta Sans', ui-sans-serif, sans-serif; margin: 0; }
+  a { color: #7b68ee; text-decoration: none; } a:hover { color: #7612fa; }
+  .eyebrow { font-family: 'Sometype Mono', ui-monospace, monospace; font-size: 14px; font-weight: 500; line-height: 1.29; letter-spacing: 0; color: #838383; }
+  .display-md { font-family: 'Plus Jakarta Sans', ui-sans-serif, sans-serif; font-size: 34px; font-weight: 650; line-height: 1.2; letter-spacing: -1.36px; }
+  .display-lg { font-family: 'Plus Jakarta Sans', ui-sans-serif, sans-serif; font-size: 40px; font-weight: 650; line-height: 1.2; letter-spacing: -1.6px; }
+  .heading-md { font-family: 'Plus Jakarta Sans', ui-sans-serif, sans-serif; font-size: 26px; font-weight: 650; line-height: 1.25; letter-spacing: -0.91px; }
+  .heading-sm { font-family: 'Plus Jakarta Sans', ui-sans-serif, sans-serif; font-size: 18px; font-weight: 650; line-height: 1.33; letter-spacing: -0.54px; }
+  .body-lg { font-size: 18px; font-weight: 500; line-height: 1.33; letter-spacing: -0.36px; }
+  .body-sm { font-size: 14px; line-height: 1.43; letter-spacing: -0.15px; }
+  .caption { font-size: 12px; line-height: 1.5; letter-spacing: -0.12px; }
+  .btn-primary { display: inline-flex; align-items: center; gap: 8px; height: 52px; padding: 14px 20px; border-radius: 20px; background: #292d34; color: #ffffff; font-size: 18px; font-weight: 600; line-height: 1.33; letter-spacing: -0.36px; box-sizing: border-box; white-space: nowrap; }
+  .btn-gradient { display: inline-flex; align-items: center; gap: 8px; height: 52px; padding: 14px 20px; border-radius: 20px; background: linear-gradient(263deg, #fa12e3 -35%, #7612fa 41%, #12d0fa 135%); color: #ffffff; font-size: 18px; font-weight: 600; line-height: 1.33; letter-spacing: -0.36px; box-sizing: border-box; white-space: nowrap; }
+  .btn-secondary { display: inline-flex; align-items: center; gap: 8px; height: 40px; padding: 10px 16px; border-radius: 9px; background: #e9ebf0; border: 1px solid #e8e8e8; color: #202020; font-size: 14px; font-weight: 600; line-height: 1.43; letter-spacing: -0.15px; box-sizing: border-box; white-space: nowrap; }
+  .btn-tertiary { display: inline-flex; align-items: center; gap: 6px; padding: 8px 12px; border-radius: 9px; color: #7b68ee; font-size: 14px; font-weight: 600; line-height: 1.43; letter-spacing: -0.15px; white-space: nowrap; }
+  .card { background: #ffffff; border: 1px solid #e8e8e8; border-radius: 14px; box-sizing: border-box; }
+  .tile { background: #ffffff; border: 1px solid #e8e8e8; border-radius: 12px; padding: 20px; box-sizing: border-box; }
+  .badge { display: inline-flex; align-items: center; gap: 6px; padding: 4px 10px; border-radius: 9999px; background: #e9ebf0; font-size: 12px; font-weight: 500; line-height: 1.5; letter-spacing: -0.12px; white-space: nowrap; }
+  .dot { width: 6px; height: 6px; border-radius: 9999px; background: currentColor; }
+  .input { display: flex; align-items: center; gap: 10px; height: 44px; padding: 10px 16px; border-radius: 9px; border: 1px solid #d9d9d9; background: #ffffff; color: #292d34; font-size: 16px; line-height: 1.375; letter-spacing: -0.32px; box-sizing: border-box; }
+  .input.focus { border: 2px solid #7612fa; padding: 9px 15px; }
+  .label { font-family: 'Sometype Mono', ui-monospace, monospace; font-size: 12px; font-weight: 500; line-height: 1.5; color: #838383; }
+  table { border-collapse: collapse; width: 100%; }
+  th { font-family: 'Sometype Mono', ui-monospace, monospace; font-size: 12px; font-weight: 500; line-height: 1.5; letter-spacing: 0; color: #838383; text-align: left; padding: 12px 20px; border-bottom: 1px solid #e8e8e8; }
+  td { font-size: 14px; line-height: 1.43; letter-spacing: -0.15px; color: #292d34; padding: 14px 20px; border-bottom: 1px solid #e8e8e8; vertical-align: middle; }
+  tr:last-child td { border-bottom: 0; }
+  th.num, td.num { text-align: right; font-variant-numeric: tabular-nums; }
+  .mono { font-family: 'Sometype Mono', ui-monospace, monospace; font-size: 13px; letter-spacing: 0; }
+  .navitem { display: flex; align-items: center; gap: 12px; height: 44px; padding: 0 12px; border-radius: 9px; color: #646464; font-size: 14px; font-weight: 500; line-height: 1.43; letter-spacing: -0.15px; transition: background-color 0.25s cubic-bezier(0.5, 0, 0.5, 1), color 0.25s cubic-bezier(0.5, 0, 0.5, 1); }
+  .navitem:hover { background: #ffffff; color: #292d34; }
+  .navitem.active { background: #e9ebf0; color: #292d34; font-weight: 600; }
+  .navitem.active:hover { background: #e9ebf0; }
+  .userrow { display: flex; align-items: center; gap: 12px; padding: 10px 12px; border-radius: 9px; color: #292d34; transition: background-color 0.25s cubic-bezier(0.5, 0, 0.5, 1); }
+  .userrow:hover { background: #ffffff; color: #292d34; }
+  .btn-primary { transition: background-color 0.25s cubic-bezier(0.5, 0, 0.5, 1); } .btn-primary:hover { background: #202020; }
+  .btn-secondary { transition: border-color 0.25s cubic-bezier(0.5, 0, 0.5, 1); } .btn-secondary:hover { border-color: #d9d9d9; }
+  .btn-tertiary { transition: color 0.25s cubic-bezier(0.5, 0, 0.5, 1); } .btn-tertiary:hover { color: #7612fa; }
+  tbody tr { transition: background-color 0.25s cubic-bezier(0.5, 0, 0.5, 1); } tbody tr:hover td { background: #f8f9fa; }
+  .avatar { width: 32px; height: 32px; border-radius: 9999px; background: #e9ebf0; color: #202020; display: flex; align-items: center; justify-content: center; font-size: 12px; font-weight: 600; letter-spacing: 0; }
+</style>
+</helmet><div style="position: relative; width: 1440px; min-height: 1100px;">
+<div style="width: 1440px; min-height: 100vh; background: #ffffff; display: flex; flex-direction: row; align-items: stretch;">
+<aside style="width: 240px; flex-shrink: 0; min-height: 100vh; box-sizing: border-box; padding: 24px 16px; background: #f8f9fa; border-right: 1px solid #e8e8e8; display: flex; flex-direction: column; gap: 32px;">
+  <div style="padding: 0 12px;"><div style="display: flex; align-items: baseline; font-family: 'Plus Jakarta Sans', ui-sans-serif, sans-serif; font-size: 22px; font-weight: 700; letter-spacing: -0.88px; line-height: 1;"><span style="background: linear-gradient(263deg, #fa12e3 -35%, #7612fa 41%, #12d0fa 135%); -webkit-background-clip: text; background-clip: text; color: transparent;">Zen</span><span style="color: #292d34;">Garden</span></div></div>
+  <nav style="display: flex; flex-direction: column; gap: 4px; flex: 1;">
+    <a href="#" class="navitem"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" ><rect x="3" y="3" width="8" height="8" rx="1.5"></rect><rect x="13" y="3" width="8" height="8" rx="1.5"></rect><rect x="3" y="13" width="8" height="8" rx="1.5"></rect><rect x="13" y="13" width="8" height="8" rx="1.5"></rect></svg><span>Dashboard</span></a>
+    <a href="#" class="navitem active"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" ><path d="M6 3h12a1 1 0 0 1 1 1v17l-3-2-2 2-2-2-2 2-2-2-3 2V4a1 1 0 0 1 1-1z"></path><path d="M9 8h6"></path><path d="M9 12h6"></path></svg><span>Purchase orders</span></a>
+    <a href="#" class="navitem"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" ><circle cx="9" cy="8" r="3.5"></circle><path d="M2.5 20a6.5 6.5 0 0 1 13 0"></path><path d="M16 4.8a3.5 3.5 0 0 1 0 6.4"></path><path d="M17.5 13.6A6.5 6.5 0 0 1 21.5 20"></path></svg><span>Buyers</span></a>
+    <a href="#" class="navitem"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" ><path d="M12 3 3 7.5v9L12 21l9-4.5v-9z"></path><path d="M3 7.5 12 12l9-4.5"></path><path d="M12 12v9"></path></svg><span>Products</span></a>
+  </nav>
+  <a href="#" class="userrow">
+    <div class="avatar">CL</div>
+    <div style="display: flex; flex-direction: column; gap: 2px; min-width: 0;">
+      <span class="body-sm" style="color: #292d34; font-weight: 500; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">Chris Lam</span>
+      <span class="caption" style="color: #838383; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">chris@zengarden.my</span>
+    </div>
+  </a>
+</aside>
+<main style="flex: 1; min-width: 0; padding: 40px 40px 60px; box-sizing: border-box;">
+<div style="max-width: 1160px; margin: 0 auto;">
+
+
+<div style="display: flex; align-items: flex-end; justify-content: space-between; gap: 24px; margin-bottom: 40px;">
+  <div style="display: flex; flex-direction: column; gap: 8px;">
+    <div class="eyebrow">Intake</div>
+    <div style="display: flex; align-items: center; gap: 12px;"><h1 class="display-md">Upload purchase orders</h1></div>
+  </div>
+  <div style="display: flex; gap: 12px; align-items: center;"></div>
+</div>
+<div style="min-height: 320px; border: 1px dashed #d9d9d9; border-radius: 35px; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 16px; padding: 40px; box-sizing: border-box; margin-bottom: 24px;">
+  <div style="width: 40px; height: 40px; border-radius: 9999px; background: #f8f9fa; display: flex; align-items: center; justify-content: center; color: #292d34;"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" ><path d="M12 16V4"></path><path d="m6 10 6-6 6 6"></path><path d="M4 20h16"></path></svg></div>
+  <h3 class="heading-md">Drop PO files here</h3>
+  <p style="margin: 0; color: #646464;">PDF, PNG, JPG — up to 20 MB each</p>
+  <div class="btn-secondary" style="margin-top: 8px;">Browse files</div>
+</div>
+<div style="display: flex; flex-direction: column; gap: 16px;">
+  <div class="eyebrow">Queue · 6 files</div>
+  <div class="card" style="overflow: hidden;">
+    
+<div style="display: flex; flex-direction: column; gap: 10px; padding: 16px 20px; border-bottom: 1px solid #e8e8e8;">
+  <div style="display: flex; align-items: center; gap: 14px;">
+    <span style="color: #838383; display: flex;"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" ><path d="M14 3H7a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V8z"></path><path d="M14 3v5h5"></path></svg></span>
+    <span class="body-sm" title="PO-ACME-2026-0917.pdf" style="flex: 1; min-width: 0; color: #202020; font-weight: 500; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">PO-ACME-2026-0917.pdf</span>
+    <span class="caption" style="color: #838383; width: 64px;">1.2 MB</span>
+    <span style="width: 150px; display: flex;"><span class="badge" style="color: #fd9a46;"><span class="dot"></span>Ready to review</span></span>
+    <span style="width: 110px; display: flex; justify-content: flex-end;"><a href="#" class="btn-tertiary" style="padding-right: 0;">Review <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" ><path d="M5 12h14"></path><path d="m13 6 6 6-6 6"></path></svg></a></span>
+    <span style="color: #b4b4b4; display: flex;"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" ><path d="M6 6l12 12"></path><path d="M18 6 6 18"></path></svg></span>
+  </div>
+  
+</div>
+    
+<div style="display: flex; flex-direction: column; gap: 10px; padding: 16px 20px; border-bottom: 1px solid #e8e8e8;">
+  <div style="display: flex; align-items: center; gap: 14px;">
+    <span style="color: #838383; display: flex;"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" ><path d="M14 3H7a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V8z"></path><path d="M14 3v5h5"></path></svg></span>
+    <span class="body-sm" title="PO-KS-2026-233.pdf" style="flex: 1; min-width: 0; color: #202020; font-weight: 500; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">PO-KS-2026-233.pdf</span>
+    <span class="caption" style="color: #838383; width: 64px;">3.8 MB</span>
+    <span style="width: 150px; display: flex;"><span class="badge" style="color: #fd9a46;"><span class="dot"></span>Ready to review</span></span>
+    <span style="width: 110px; display: flex; justify-content: flex-end;"><a href="#" class="btn-tertiary" style="padding-right: 0;">Review <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" ><path d="M5 12h14"></path><path d="m13 6 6 6-6 6"></path></svg></a></span>
+    <span style="color: #b4b4b4; display: flex;"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" ><path d="M6 6l12 12"></path><path d="M18 6 6 18"></path></svg></span>
+  </div>
+  
+</div>
+    
+<div style="display: flex; flex-direction: column; gap: 10px; padding: 16px 20px; border-bottom: 1px solid #e8e8e8;">
+  <div style="display: flex; align-items: center; gap: 14px;">
+    <span style="color: #838383; display: flex;"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" ><path d="M14 3H7a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V8z"></path><path d="M14 3v5h5"></path></svg></span>
+    <span class="body-sm" title="PO-MC-2026-118.pdf" style="flex: 1; min-width: 0; color: #202020; font-weight: 500; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">PO-MC-2026-118.pdf</span>
+    <span class="caption" style="color: #838383; width: 64px;">1.6 MB</span>
+    <span style="width: 150px; display: flex;"><span class="badge" style="color: #fd9a46;"><span class="dot"></span>Ready to review</span></span>
+    <span style="width: 110px; display: flex; justify-content: flex-end;"><a href="#" class="btn-tertiary" style="padding-right: 0;">Review <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" ><path d="M5 12h14"></path><path d="m13 6 6 6-6 6"></path></svg></a></span>
+    <span style="color: #b4b4b4; display: flex;"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" ><path d="M6 6l12 12"></path><path d="M18 6 6 18"></path></svg></span>
+  </div>
+  
+</div>
+    
+<div style="display: flex; flex-direction: column; gap: 10px; padding: 16px 20px; border-bottom: 1px solid #e8e8e8;">
+  <div style="display: flex; align-items: center; gap: 14px;">
+    <span style="color: #838383; display: flex;"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" ><path d="M14 3H7a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V8z"></path><path d="M14 3v5h5"></path></svg></span>
+    <span class="body-sm" title="PO-NWT-44812.pdf" style="flex: 1; min-width: 0; color: #202020; font-weight: 500; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">PO-NWT-44812.pdf</span>
+    <span class="caption" style="color: #838383; width: 64px;">640 KB</span>
+    <span style="width: 150px; display: flex;"><span class="badge" style="color: #0091ff;"><span class="dot"></span>Extracting</span></span>
+    <span style="width: 110px; display: flex; justify-content: flex-end;"></span>
+    <span style="color: #b4b4b4; display: flex;"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" ><path d="M6 6l12 12"></path><path d="M18 6 6 18"></path></svg></span>
+  </div>
+  <div style="height: 4px; border-radius: 9999px; background: #e9ebf0; overflow: hidden; margin-left: 34px;"><div style="height: 4px; width: 40%; background: #0091ff; border-radius: 9999px;"></div></div>
+</div>
+    
+<div style="display: flex; flex-direction: column; gap: 10px; padding: 16px 20px; border-bottom: 1px solid #e8e8e8;">
+  <div style="display: flex; align-items: center; gap: 14px;">
+    <span style="color: #838383; display: flex;"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" ><path d="M14 3H7a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V8z"></path><path d="M14 3v5h5"></path></svg></span>
+    <span class="body-sm" title="IMG_4471.jpg" style="flex: 1; min-width: 0; color: #202020; font-weight: 500; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">IMG_4471.jpg</span>
+    <span class="caption" style="color: #838383; width: 64px;">2.4 MB</span>
+    <span style="width: 150px; display: flex;"><span class="badge" style="color: #0091ff;"><span class="dot"></span>Uploading</span></span>
+    <span style="width: 110px; display: flex; justify-content: flex-end;"><span class="caption" style="color: #838383;">62%</span></span>
+    <span style="color: #b4b4b4; display: flex;"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" ><path d="M6 6l12 12"></path><path d="M18 6 6 18"></path></svg></span>
+  </div>
+  <div style="height: 4px; border-radius: 9999px; background: #e9ebf0; overflow: hidden; margin-left: 34px;"><div style="height: 4px; width: 62%; background: #292d34; border-radius: 9999px;"></div></div>
+</div>
+    
+<div style="display: flex; flex-direction: column; gap: 10px; padding: 16px 20px; border-bottom: 1px solid #e8e8e8;">
+  <div style="display: flex; align-items: center; gap: 14px;">
+    <span style="color: #838383; display: flex;"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" ><path d="M14 3H7a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V8z"></path><path d="M14 3v5h5"></path></svg></span>
+    <span class="body-sm" title="PO-BWL-77201.pdf" style="flex: 1; min-width: 0; color: #202020; font-weight: 500; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">PO-BWL-77201.pdf</span>
+    <span class="caption" style="color: #838383; width: 64px;">910 KB</span>
+    <span style="width: 150px; display: flex;"><span class="badge" style="color: #f0382d;"><span class="dot"></span>Failed</span></span>
+    <span style="width: 110px; display: flex; justify-content: flex-end;"><a href="#" class="btn-tertiary" style="padding-right: 0;"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" ><path d="M20 12a8 8 0 1 1-2.3-5.7"></path><path d="M20 4v5h-5"></path></svg> Retry</a></span>
+    <span style="color: #b4b4b4; display: flex;"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" ><path d="M6 6l12 12"></path><path d="M18 6 6 18"></path></svg></span>
+  </div>
+  <span class="caption" style="color: #838383; margin-left: 34px;">Couldn't read the PDF — it may be a scan with no text layer</span>
+</div>
+  </div>
+</div>
+<div style="height: 96px;"></div>
+
+</div>
+</main>
+</div>
+<div style="position: absolute; left: 240px; right: 0; bottom: 0; height: 84px; box-sizing: border-box; background: #ffffff; border-top: 1px solid #e8e8e8; display: flex; align-items: center;">
+  <div style="width: 100%; max-width: 1160px; margin: 0 auto; padding: 0 40px; box-sizing: border-box; display: flex; align-items: center; justify-content: space-between;">
+    <span class="body-sm" style="color: #646464;">3 files ready · 1 extracting · 1 uploading · 1 failed</span>
+    <div style="display: flex; align-items: center; gap: 16px;">
+      <span class="caption" style="color: #838383;">Not included: 1 still uploading · 1 still extracting · 1 failed</span>
+      <!-- N counts ONLY rows in "Ready to review" (3 of the 6 queued). When N would be 0 this pill renders disabled: background #e9ebf0, color #b4b4b4. -->
+      <div class="btn-primary" title="Reviews the 3 files in Ready to review. Uploading, Extracting and Failed files are excluded. When no file is ready this button is disabled (background #e9ebf0, text #b4b4b4).">Review 3 files <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" ><path d="M5 12h14"></path><path d="m13 6 6 6-6 6"></path></svg></div>
+    </div>
+  </div>
+</div>
+</div>
+</x-dc>
+</body>
+</html>
