@@ -35,7 +35,13 @@ function isActive(pathname: string, href: string): boolean {
   return pathname.startsWith(href);
 }
 
-export function Sidebar() {
+export function Sidebar({
+  userName,
+  userEmail,
+}: {
+  userName: string;
+  userEmail: string;
+}) {
   const pathname = usePathname();
 
   return (
@@ -79,7 +85,7 @@ export function Sidebar() {
         })}
       </nav>
 
-      <UserMenu name="Chris Lam" email="chris@lovinghandsportal.com" />
+      <UserMenu name={userName} email={userEmail} />
     </aside>
   );
 }
