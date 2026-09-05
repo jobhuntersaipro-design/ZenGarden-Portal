@@ -1,45 +1,39 @@
 # Current Feature
 
-Phase 05 — Purchase orders list and detail (`docs/specs/05-purchase-orders.md`)
+Phase 06 — Dashboard (`docs/specs/06-dashboard.md`)
 
 ## Status
 
-Complete. Merged to `main` 2026-09-05. Criterion 4 (PDF beside the data) is
-unverified while R2 holds placeholder credentials.
+In progress. Branch `feature/dashboard`. Phase 05 merged 2026-09-05.
 
 ## Goals
 
-- Shared table machinery, reused by phases 06–09: `DataTable` (every column
-  sortable, first-click direction per type), `TablePagination` (10/30/50),
-  `parsePagination` / `parseSort`, `StatusBadge` and `StageBadge`
-- List: one merged row model over confirmed POs *and* in-flight extractions,
-  via a parameter-bound `UNION ALL` in raw SQL — sorting and paginating across
-  two tables is not expressible in Prisma's query API
-- Filters all AND-ed from the URL: `q` (PO number or any line-item
-  description), buyer, uploader, status chip, stage, date range; every change
-  resets to page 1
-- The "Needs review" chip carries its count from the same query that feeds the
-  table, never a separate figure; zero shows no number
-- Detail: breadcrumb, header, Lifecycle card, `StageStepper` with the breathing
-  loop (CSS keyframes gated by `prefers-reduced-motion`), document beside data,
-  Activity list, revision links
-- `advanceStage` / `revertStage` with a `where: { id, stage }` guard so two
-  people clicking at once cannot double-advance; Move back is super-admin only,
-  a real secondary button, with a required note
-- `updatePurchaseOrder` through an edit sheet, appending an EDIT activity entry
+- `src/lib/analytics/` — pure, unit-tested: `buckets`, `range`, `sales`,
+  `fulfillment`, `share`, `churn`, `price-drift`. No Prisma in the folder
+- `loadDashboard(range, agg)` runs the queries and calls the library
+- Page order, exactly: three KPI tiles → one trend card → the two status bars →
+  the collapsed "More analytics" disclosure → the in-range table
+- `RangeControls` with preset chips primary, custom dates behind a toggle,
+  aggregation secondary; state in `?from=&to=&agg=&trend=&more=`
+- KPI tiles render their real value on first paint; the count-up animates from
+  there and never replays on a range, trend or disclosure change
+- `SalesLineChart`, `StackedStageChart`, `StatusBar` ×2, the two donuts
 
 ## Notes
 
 - Read `docs/specs/00-master.md` before this phase file.
-- `prevStage` does not exist yet in `src/lib/po-stages.ts`; Phase 01 shipped
-  `nextStage`, `stageIndex`, `stagesUpTo` and `isFinalStage`.
-- The raw SQL is the one deliberate exception to "Server Components fetch with
-  Prisma directly". Parameters are bound, never interpolated.
-- **Still blocked on owner setup, inherited from Phases 03 and 04:**
-  `R2_ACCOUNT_ID` is a placeholder, so the detail page's document column cannot
-  load a presigned GET; `ANTHROPIC_API_KEY` likewise, so no new extraction can
-  be produced. The seeded backlog still exercises the list, the filters, the
-  lifecycle and the activity log.
+- The `dataviz` skill is loaded. The six-stage categorical palette re-validated
+  clean: worst adjacent CVD ΔE 9.1 (protan), normal-vision floor ΔE 16.3. The
+  contrast WARN on three stage fills is discharged by the legend, the direct
+  labels and the 2px surface gaps — not dismissed.
+- No dual-axis chart anywhere; categorical hues in fixed stage order, never
+  cycled; colours read from CSS variables, never hex literals in components.
+- The range-independent work-queue strip was cut on 2026-09-05 and must not
+  come back: it repeated counts the status bar already carries.
+- **Inherited blockers:** `R2_ACCOUNT_ID` and `ANTHROPIC_API_KEY` are still
+  placeholders. The dashboard reads confirmed POs, so the seeded 400 exercise
+  nearly all of it; only the extraction-failure figure depends on real
+  extractions.
 
 ## History
 
