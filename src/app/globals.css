@@ -1,4 +1,10 @@
 @import "tailwindcss";
+@import "tw-animate-css";
+@import "shadcn/tailwind.css";
+/*
+ ---break---
+ */
+@custom-variant dark (&:is(.dark *));
 
 /*
  * Design tokens — ClickUp design system (see context/design-system.md).
@@ -127,6 +133,20 @@
   --radius-xl: 25px;
   --radius-xxl: 35px;
 
+  /* Control heights — primary pill, inputs/secondary, chips. */
+  --spacing-control-lg: 52px;
+  --spacing-control-md: 44px;
+  --spacing-control-sm: 36px;
+
+  /* Stage palette — six categorical hues in stage order. Fills and dots only,
+     never text. See docs/specs/design/…-design.md "Stage palette". */
+  --color-stage-1: #4a3aa7;   /* Order placed   — violet */
+  --color-stage-2: #2a78d6;   /* In production  — blue */
+  --color-stage-3: #1baf7a;   /* QC passed      — aqua */
+  --color-stage-4: #eda100;   /* In warehouse   — yellow */
+  --color-stage-5: #e87ba4;   /* Delivering     — pink */
+  --color-stage-6: #04642a;   /* Delivered      — deep green */
+
   /* Spacing — 10px base rhythm */
   --spacing-xxs: 4px;
   --spacing-xs: 8px;
@@ -170,6 +190,7 @@
     background-color: var(--color-canvas);
     color: var(--color-ink);
     font-family: var(--font-sans);
+    @apply bg-background text-foreground;
   }
 
   h1,
@@ -179,6 +200,12 @@
   h5,
   h6 {
     font-family: var(--font-display);
+  }
+  * {
+    @apply border-border outline-ring/50;
+  }
+  html {
+    @apply font-sans;
   }
 }
 
@@ -191,4 +218,83 @@
     opacity: 1;
     transform: translateY(0);
   }
+}
+
+/*
+ ---break---
+ */
+
+@theme inline {
+  --font-heading: var(--font-display);
+  --color-sidebar-ring: var(--sidebar-ring);
+  --color-sidebar-border: var(--sidebar-border);
+  --color-sidebar-accent-foreground: var(--sidebar-accent-foreground);
+  --color-sidebar-accent: var(--sidebar-accent);
+  --color-sidebar-primary-foreground: var(--sidebar-primary-foreground);
+  --color-sidebar-primary: var(--sidebar-primary);
+  --color-sidebar-foreground: var(--sidebar-foreground);
+  --color-sidebar: var(--sidebar);
+  --color-chart-5: var(--chart-5);
+  --color-chart-4: var(--chart-4);
+  --color-chart-3: var(--chart-3);
+  --color-chart-2: var(--chart-2);
+  --color-chart-1: var(--chart-1);
+  --color-ring: var(--ring);
+  --color-input: var(--input);
+  --color-border: var(--border);
+  --color-destructive: var(--destructive);
+  --color-accent-foreground: var(--accent-foreground);
+  --color-accent: var(--accent);
+  --color-muted-foreground: var(--muted-foreground);
+  --color-muted: var(--muted);
+  --color-secondary-foreground: var(--secondary-foreground);
+  --color-secondary: var(--secondary);
+  --color-primary-foreground: var(--primary-foreground);
+  --color-primary: var(--primary);
+  --color-popover-foreground: var(--popover-foreground);
+  --color-popover: var(--popover);
+  --color-card-foreground: var(--card-foreground);
+  --color-card: var(--card);
+  --color-foreground: var(--foreground);
+  --color-background: var(--background);
+}
+
+/*
+ ---break---
+ */
+
+:root {
+  --background: var(--color-canvas);
+  --foreground: var(--color-ink);
+  --card: var(--color-canvas);
+  --card-foreground: var(--color-ink);
+  --popover: var(--color-canvas);
+  --popover-foreground: var(--color-ink);
+  --primary: var(--color-ink);                 /* dark pill, never purple */
+  --primary-foreground: var(--color-canvas);
+  --secondary: var(--color-surface-soft);
+  --secondary-foreground: var(--color-ink);
+  --muted: var(--color-surface);
+  --muted-foreground: var(--color-ink-secondary);
+  --accent: var(--color-surface);
+  --accent-foreground: var(--color-ink);
+  --destructive: var(--color-accent-red);
+  --border: var(--color-hairline);
+  --input: var(--color-hairline-strong);
+  --ring: var(--color-primary);                /* 2px purple focus ring */
+  --radius: var(--radius-sm);                  /* 9px inputs and secondary buttons */
+
+  /* Sidebar primitives inherit the same tokens; the product has one surface set. */
+  --sidebar: var(--color-surface);
+  --sidebar-foreground: var(--color-ink);
+  --sidebar-primary: var(--color-ink);
+  --sidebar-primary-foreground: var(--color-canvas);
+  --sidebar-accent: var(--color-surface-soft);
+  --sidebar-accent-foreground: var(--color-ink);
+  --sidebar-border: var(--color-hairline);
+  --sidebar-ring: var(--color-primary);
+}
+
+@utility tabular-nums {
+  font-variant-numeric: tabular-nums;
 }
