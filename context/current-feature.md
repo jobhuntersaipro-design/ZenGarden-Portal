@@ -1,40 +1,43 @@
 # Current Feature
 
-Phase 07 — Buyers (`docs/specs/07-buyers.md`)
+Phase 08 — Products (`docs/specs/08-products.md`)
 
 ## Status
 
-Complete. Merged to `main` 2026-09-06.
+In progress. Branch `feature/products`. Phase 07 merged 2026-09-06.
 
 ## Goals
 
-- Analytics additions: `reorder`, `buyer-status`, `product-mix`,
-  `product-trend`, `sparkline` — pure and unit tested like Phase 06's
-- `listBuyers(range, filter, q, sort, page)` computing status, cadence,
-  overdue count and sparkline per buyer; sort in memory after the derived
-  columns exist, then paginate
-- Roster: range chips, KPI row, `AttentionStrip` where the counts and the
-  table filter are **one control**, `BuyersTable` with a sparkline cell
-- Buyer detail: KPI row of five, order trend, product trend with a picker
-  capped at six, what-they-buy donut and bars, reorder signals, details card,
-  intake bar, their POs
-- Buyer names everywhere become links to `/buyers/[id]`
+- `twelveMonthWindow(now)` exported once and passed to every caller, so the
+  KPI tiles, the table, the footer summary and the order history can never
+  read different windows
+- `productStats`, `priceTrend` (gaps, not zeros), `whoBuysIt`,
+  `boughtTogether`, `needsAttention` — pure and unit tested
+- Catalog: KPI row over all products, quick-filter chips, clickable
+  Needs-attention breakdown, grid and list views with the preference in
+  `localStorage` behind the URL
+- Product detail: gallery, facts, six stat tiles, price trend with the list
+  reference line, who buys it, bought together, order history
+- `ProductSheet` for super admins; members are read-only and the actions
+  enforce it rather than the UI
+- Product images through the Phase 03 presign/complete pattern, with a 1600px
+  WebP derivative
 
 ## Notes
 
 - Read `docs/specs/00-master.md` before this phase file.
-- Overdue is red at 1 or more, an em dash at zero, never amber and never blue.
-  The design reference §3.8 still carries a stale "`brand-amber` above 2" line
-  in its table paragraph; the paragraph below it and the phase file both
-  supersede that, and the phase file wins for behaviour.
-- "New" is a neutral badge. Blue means a process in flight; a new buyer is a
-  standing fact.
-- Cadence and reorder come from **full** history, not the range — both are
-  predictions about a buyer's rhythm.
-- **Inherited blockers:** `R2_ACCOUNT_ID` and `ANTHROPIC_API_KEY` are still
-  placeholders. Nothing in this phase depends on either.
-- Known and untouched from Phase 06: `--ring` resolves to ink rather than the
-  design system's purple, affecting every focus ring in the app.
+- **One dataset, one window.** The catalog KPI row describes all products and
+  the footer summary describes the active filter; with no filter on they must
+  read identically. The named bug to prevent is tiles reading "RM 0.00" beside
+  a footer reading RM 15.5M, and an order-history table drifting to 367 days
+  against tiles on 365.
+- The sort control and the table headers share one piece of sort state — the
+  reuse case `DataTable`'s `onSortChange` was refactored for in Phase 05.
+- **Blocked on owner setup:** image upload, the WebP derivative and the gallery
+  all need R2, which still holds placeholder credentials. Acceptance criteria 5
+  and 10's super-admin half cannot be verified until it is set.
+- New dependency: `@dnd-kit/core` and `@dnd-kit/sortable` for image reordering,
+  named in `00-master.md` §3 for this phase.
 
 ## History
 
