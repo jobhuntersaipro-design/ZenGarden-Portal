@@ -13,10 +13,13 @@ export function DonutShare({
   eyebrow,
   slices,
   centreLabel,
+  bare = false,
 }: {
   eyebrow: string;
   slices: ShareSlice[];
   centreLabel: string;
+  /** Ring only: the buyer page nests it inside a card that has its own frame. */
+  bare?: boolean;
 }) {
   if (slices.length === 0) {
     return (
@@ -42,27 +45,33 @@ export function DonutShare({
     return `${colorFor(index, slice.isOther)} ${from}% ${from + slice.share}%`;
   });
 
+  const ring = (
+    <div
+      role="img"
+      aria-label={`${eyebrow || "Share"}: ${slices.map((s) => `${s.label} ${s.share.toFixed(0)}%`).join(", ")}`}
+      className="relative size-donut shrink-0 rounded-full"
+      style={{ backgroundImage: `conic-gradient(${stops.join(", ")})` }}
+    >
+      <div className="absolute inset-lg flex flex-col items-center justify-center rounded-full bg-canvas text-center">
+        <span className="font-display text-[length:var(--text-heading-sm)] font-[650] text-ink tabular-nums">
+          {slices[0].share.toFixed(0)}%
+        </span>
+        <span className="text-[length:var(--text-caption)] text-ink-tertiary">
+          {centreLabel}
+        </span>
+      </div>
+    </div>
+  );
+
+  if (bare) return ring;
+
   return (
     <section className="rounded-lg border border-hairline bg-canvas p-lg">
       <p className="mb-md font-mono text-[length:var(--text-eyebrow)] text-ink-tertiary">
         {eyebrow}
       </p>
       <div className="flex flex-wrap items-center gap-lg">
-        <div
-          role="img"
-          aria-label={`${eyebrow}: ${slices.map((s) => `${s.label} ${s.share.toFixed(0)}%`).join(", ")}`}
-          className="relative size-donut shrink-0 rounded-full"
-          style={{ backgroundImage: `conic-gradient(${stops.join(", ")})` }}
-        >
-          <div className="absolute inset-lg flex flex-col items-center justify-center rounded-full bg-canvas text-center">
-            <span className="font-display text-[length:var(--text-heading-sm)] font-[650] text-ink tabular-nums">
-              {slices[0].share.toFixed(0)}%
-            </span>
-            <span className="text-[length:var(--text-caption)] text-ink-tertiary">
-              {centreLabel}
-            </span>
-          </div>
-        </div>
+        {ring}
 
         {/* Every slice is directly labelled, which is what discharges the
             contrast warning on the orange (00-master.md §4). */}

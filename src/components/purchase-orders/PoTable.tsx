@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { DataTable, type Column } from "@/components/portal/DataTable";
 import { TablePagination } from "@/components/portal/TablePagination";
@@ -20,6 +21,7 @@ export type PoRow = {
   kind: "PO" | "DRAFT";
   poNumber: string;
   buyerName: string;
+  buyerId: string | null;
   poDate: string | null;
   itemCount: number;
   total: string;
@@ -107,11 +109,21 @@ export function PoTable({
     {
       key: "buyerName",
       header: "Buyer",
-      cell: (row) => (
-        <span className="block max-w-56 truncate" title={row.buyerName}>
-          {row.buyerName}
-        </span>
-      ),
+      cell: (row) =>
+        // A draft has no buyer yet, so there is nothing to link to.
+        row.buyerId ? (
+          <Link
+            href={`/buyers/${row.buyerId}`}
+            title={row.buyerName}
+            className="block max-w-56 truncate hover:text-brand-link hover:underline"
+          >
+            {row.buyerName}
+          </Link>
+        ) : (
+          <span className="block max-w-56 truncate" title={row.buyerName}>
+            {row.buyerName}
+          </span>
+        ),
     },
     {
       key: "poDate",
