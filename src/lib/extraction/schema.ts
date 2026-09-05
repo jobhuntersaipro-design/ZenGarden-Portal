@@ -52,7 +52,20 @@ export const PoExtractionSchema = z.object({
   pageCount: z.number().int().positive(),
   confidence: z.object({
     overall: z.number().min(0).max(100),
-    fields: z.record(z.string(), z.number().min(0).max(100)),
+    /**
+     * Every key is required, not a free-form record.
+     *
+     * As a `z.record` this validated `{}`, and the model duly returned `{}` —
+     * the structured-output schema was asking for "an object of numbers"
+     * without naming a single key. That silently killed the whole per-field
+     * confidence UI on the review screen: nothing could ever score under 70,
+     * so no field was ever flagged. Naming the keys makes the model fill them.
+     */
+    fields: z.object(
+      Object.fromEntries(
+        CONFIDENCE_FIELDS.map((field) => [field, z.number().min(0).max(100)]),
+      ) as Record<ConfidenceField, z.ZodNumber>,
+    ),
   }),
 });
 

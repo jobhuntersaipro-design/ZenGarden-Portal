@@ -1,5 +1,10 @@
 import { describe, expect, it } from "vitest";
-import { PoExtractionSchema } from "@/lib/extraction/schema";
+import { CONFIDENCE_FIELDS, PoExtractionSchema } from "@/lib/extraction/schema";
+
+/** Every key is required, so fixtures cannot quietly omit them. */
+const fullConfidence = Object.fromEntries(
+  CONFIDENCE_FIELDS.map((field) => [field, 90]),
+);
 
 const sample = {
   poNumber: "PO-2026-0917",
@@ -22,7 +27,7 @@ const sample = {
   tax: 0,
   total: 14543.23,
   pageCount: 2,
-  confidence: { overall: 92, fields: { poNumber: 99, lineItems: 84 } },
+  confidence: { overall: 92, fields: fullConfidence },
 };
 
 describe("PoExtractionSchema", () => {
@@ -84,7 +89,27 @@ describe("PoExtractionSchema", () => {
     expect(
       PoExtractionSchema.safeParse({
         ...sample,
-        confidence: { overall: 120, fields: {} },
+        confidence: { overall: 120, fields: fullConfidence },
+      }).success,
+    ).toBe(false);
+  });
+
+  it("requires a score for every field, not a free-form object", () => {
+    // As a record this accepted {}, and the model returned {} — which killed
+    // the per-field confidence UI without anything failing.
+    expect(
+      PoExtractionSchema.safeParse({
+        ...sample,
+        confidence: { overall: 92, fields: {} },
+      }).success,
+    ).toBe(false);
+
+    const { poNumber: _drop, ...partial } = fullConfidence;
+    void _drop;
+    expect(
+      PoExtractionSchema.safeParse({
+        ...sample,
+        confidence: { overall: 92, fields: partial },
       }).success,
     ).toBe(false);
   });
