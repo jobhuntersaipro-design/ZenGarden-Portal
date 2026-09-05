@@ -183,6 +183,10 @@
   /* The indeterminate extraction bar: a short fill sliding across its track.
      Length is unknown, so the bar reports motion, never a fraction. */
   --animate-indeterminate: indeterminate 1.4s cubic-bezier(0.5, 0, 0.5, 1) infinite;
+  /* The stage stepper's 2.8s loop, all three parts on the same beat. */
+  --animate-stage-breathe: stage-breathe 2.8s cubic-bezier(0.5, 0, 0.5, 1) infinite;
+  --animate-stage-dot: stage-dot 2.8s cubic-bezier(0.5, 0, 0.5, 1) infinite;
+  --animate-stage-track: stage-track 2.8s cubic-bezier(0.5, 0, 0.5, 1) infinite;
 }
 
 /*
@@ -220,6 +224,54 @@
   }
   html {
     @apply font-sans;
+  }
+}
+
+/*
+ * The current stage breathes, so the one stage an order is actually sitting in
+ * reads as live (design reference §3.6). Nothing moves position and the filled
+ * length never changes, so the animation cannot misreport progress.
+ */
+@keyframes stage-breathe {
+  0% {
+    transform: scale(1);
+    opacity: 0.5;
+  }
+  100% {
+    transform: scale(1.65);
+    opacity: 0;
+  }
+}
+
+@keyframes stage-dot {
+  0%,
+  100% {
+    transform: scale(1);
+  }
+  50% {
+    transform: scale(1.18);
+  }
+}
+
+@keyframes stage-track {
+  0%,
+  100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.72;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .animate-stage-breathe,
+  .animate-stage-dot,
+  .animate-stage-track {
+    animation: none;
+  }
+  /* The ring rests instead of pulsing, so the current node still stands out. */
+  .animate-stage-breathe {
+    opacity: 0.28;
   }
 }
 
