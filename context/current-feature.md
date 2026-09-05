@@ -1,45 +1,39 @@
 # Current Feature
 
-Phase 05 — Purchase orders list and detail (`docs/specs/05-purchase-orders.md`)
+Phase 06 — Dashboard (`docs/specs/06-dashboard.md`)
 
 ## Status
 
-Complete. Merged to `main` 2026-09-05. Criterion 4 (PDF beside the data) is
-unverified while R2 holds placeholder credentials.
+Complete. Merged to `main` 2026-09-05.
 
 ## Goals
 
-- Shared table machinery, reused by phases 06–09: `DataTable` (every column
-  sortable, first-click direction per type), `TablePagination` (10/30/50),
-  `parsePagination` / `parseSort`, `StatusBadge` and `StageBadge`
-- List: one merged row model over confirmed POs *and* in-flight extractions,
-  via a parameter-bound `UNION ALL` in raw SQL — sorting and paginating across
-  two tables is not expressible in Prisma's query API
-- Filters all AND-ed from the URL: `q` (PO number or any line-item
-  description), buyer, uploader, status chip, stage, date range; every change
-  resets to page 1
-- The "Needs review" chip carries its count from the same query that feeds the
-  table, never a separate figure; zero shows no number
-- Detail: breadcrumb, header, Lifecycle card, `StageStepper` with the breathing
-  loop (CSS keyframes gated by `prefers-reduced-motion`), document beside data,
-  Activity list, revision links
-- `advanceStage` / `revertStage` with a `where: { id, stage }` guard so two
-  people clicking at once cannot double-advance; Move back is super-admin only,
-  a real secondary button, with a required note
-- `updatePurchaseOrder` through an edit sheet, appending an EDIT activity entry
+- `src/lib/analytics/` — pure, unit-tested: `buckets`, `range`, `sales`,
+  `fulfillment`, `share`, `churn`, `price-drift`. No Prisma in the folder
+- `loadDashboard(range, agg)` runs the queries and calls the library
+- Page order, exactly: three KPI tiles → one trend card → the two status bars →
+  the collapsed "More analytics" disclosure → the in-range table
+- `RangeControls` with preset chips primary, custom dates behind a toggle,
+  aggregation secondary; state in `?from=&to=&agg=&trend=&more=`
+- KPI tiles render their real value on first paint; the count-up animates from
+  there and never replays on a range, trend or disclosure change
+- `SalesLineChart`, `StackedStageChart`, `StatusBar` ×2, the two donuts
 
 ## Notes
 
 - Read `docs/specs/00-master.md` before this phase file.
-- `prevStage` does not exist yet in `src/lib/po-stages.ts`; Phase 01 shipped
-  `nextStage`, `stageIndex`, `stagesUpTo` and `isFinalStage`.
-- The raw SQL is the one deliberate exception to "Server Components fetch with
-  Prisma directly". Parameters are bound, never interpolated.
-- **Still blocked on owner setup, inherited from Phases 03 and 04:**
-  `R2_ACCOUNT_ID` is a placeholder, so the detail page's document column cannot
-  load a presigned GET; `ANTHROPIC_API_KEY` likewise, so no new extraction can
-  be produced. The seeded backlog still exercises the list, the filters, the
-  lifecycle and the activity log.
+- The `dataviz` skill is loaded. The six-stage categorical palette re-validated
+  clean: worst adjacent CVD ΔE 9.1 (protan), normal-vision floor ΔE 16.3. The
+  contrast WARN on three stage fills is discharged by the legend, the direct
+  labels and the 2px surface gaps — not dismissed.
+- No dual-axis chart anywhere; categorical hues in fixed stage order, never
+  cycled; colours read from CSS variables, never hex literals in components.
+- The range-independent work-queue strip was cut on 2026-09-05 and must not
+  come back: it repeated counts the status bar already carries.
+- **Inherited blockers:** `R2_ACCOUNT_ID` and `ANTHROPIC_API_KEY` are still
+  placeholders. The dashboard reads confirmed POs, so the seeded 400 exercise
+  nearly all of it; only the extraction-failure figure depends on real
+  extractions.
 
 ## History
 
@@ -49,6 +43,7 @@ unverified while R2 holds placeholder credentials.
 - 2026-09-05: Design review applied to the canvas and to every spec. Upload left the sidebar; the dashboard leads with a work queue and folds its analytics away; a totals mismatch locks Confirm on the review screen; one status palette; sentence-case labels; truncation recovery; KPIs render their real value on first paint. Canvas sources now live in `docs/design/`.
 - 2026-09-05: Renamed ZenGarden to Loving Hands across the specs, context files and all twelve artboards; seed addresses moved to `@lovinghandsportal.com` and the canvas bundle and design spec became `loving-hands-*`. Business, data model and product catalogue unchanged. Fixed two latent clipping bugs surfaced by the new name: every wordmark variant used `line-height: 1`, which cropped the descender of "Loving" under `background-clip: text` (the sidebar mark also moved up to the on-system `heading-md` 26px), and the Main/Buyer chart x-axis labels were clipped to their own flex cell instead of overflowing into the empty neighbouring ones.
 - 2026-09-05: Phase 01 §1 — Respond.io crawler, `/dashboard`, `src/lib/dashboard` and the four `crawl*` scripts deleted. `recharts` kept for Phase 06.
+- 2026-09-05: Phase 06 complete and merged — the pure analytics library (`buckets`, `range`, `sales`, `fulfillment`, `share`, `churn`, `price-drift`) with 70 tests, `loadDashboard` at 422 ms for Last year daily, and the page in its specified order: three KPI tiles, one trend card, the two status bars, the collapsed disclosure, the table last. KPI figures cross-checked against independent raw SQL — 400 orders, RM 8,161,352.29, 11 buyers. Three defects found and fixed: `buckets.startOf` never truncated the time for daily aggregation, so Last 30 days ending now drew 31 columns; the donut and line-chart palettes reached for `--color-primary`, which shadcn's `@theme inline` block rebinds to ink, so the validated hues were never the rendered ones (now unshadowed `--color-share-1..6`); and Recharts' default bar animation meant a screenshot caught an empty plot, the same failure the KPI count-up rule exists to prevent. **Known, not fixed:** `--ring` is set from `--color-primary` and is therefore ink rather than the purple the design system specifies — a Phase 01 issue affecting every focus ring in the app.
 - 2026-09-05: Phase 05 complete and merged — the shared table machinery (`DataTable` taking `onSortChange`, `TablePagination`, `parsePagination`/`parseSort`, status and stage badges), the merged list over `PurchaseOrder` and `Extraction` as a parameter-bound `UNION ALL`, the filter row with live chip counts, and the detail page (breadcrumb, Lifecycle card, `StageStepper` with the breathing loop, document/data split, Activity, revisions, edit sheet). `advanceStage`/`revertStage` guard the update on the stage the caller last saw. Verified against the seeded data: advance, super-admin move back with a required note, and an edit appearing in Activity — all rolled back afterwards. **Criterion 4 is unverified** (R2 placeholder) and criterion 8 is covered by unit tests rather than two real tabs. The database caught three things the types could not: Postgres refuses an `ORDER BY` over a `UNION` that uses an expression rather than a result column name; "Confirmed by" ascending sorted the backlog to the bottom because ASC defaults to NULLS LAST, not NULLS FIRST as my comment claimed; and clearing the filters left the search text in the box. Two review findings from the first half were also fixed before shipping: `DataTable` hardwired its own URL writing, which would have stopped Phase 08's segmented control sharing sort state, and `StatusDot` took a `text-*` class where a background was needed. The edit sheet deliberately omits money and line items — editing totals after confirmation would bypass the Phase 04 totals gate and its audit entry.
 - 2026-09-05: Phase 04 complete and merged — `PoExtractionSchema`, the extraction system prompt, `extractPurchaseOrder` over `messages.parse` with `zodOutputFormat`, the shared `runExtraction` runner wired into `/api/upload/complete` and `retryExtraction`, `/api/documents/[id]/url`, the review screen (react-pdf source column, draft form, buyer/product comboboxes, line-item editing with amount recompute, 800 ms debounced `saveDraft`), the totals gate, the duplicate check with revision numbering, and `confirmPurchaseOrder`. **Criterion 1 is unverified** (`ANTHROPIC_API_KEY` is a placeholder) and the source column cannot load (`R2_ACCOUNT_ID` likewise); everything else was verified against the seeded Neon database, including a full confirm that wrote a PO, six line items and a System stage event before being rolled back. A review pass found four defects, all fixed: the upload queue ignored the extraction result so a document Claude could not read still showed "Uploaded" and was counted in "Review N files"; the upload footer never linked to `/review`, leaving the whole multi-file review journey unreachable; the deferred "Extracting" row state was missing; and the review form defaulted `poDate` from UTC, pre-filling yesterday between midnight and 08:00 KL. Fixing them also surfaced two more: Retry re-uploaded a file that had arrived intact rather than asking for another read, and the queue's status vocabulary lived in the hook, coupling anything that reasoned about a row to the server actions and Auth.js.
 - 2026-09-05: Phase 03 complete and merged — presign / complete / delete route handlers, `deleteOrphans()`, the `useUploadQueue` state machine (three concurrent XHR uploads, live progress, `beforeunload` guard), Dropzone with drop/browse/paste, one progress-bar geometry, plain-language failure reasons, the ready-only footer count, and "Upload PO" wired on Dashboard, Purchase orders and Buyers. **Criteria 1, 3, 4 and 8's enabled state are unverified**: R2 still holds placeholder credentials, so no browser PUT can reach the bucket. Re-run them once `docs/specs/SETUP-CHECKLIST.md` §2 is done. Fixed three defects found while building: `presignPut` pinned `ContentLength` to a ceiling rather than the file's exact size (S3 signs it exactly, so every real upload but one would have been refused); the `Document.r2Key` unique constraint needed a unique `pending:` placeholder because the key contains the row's own id; and the queue pump read a ref during render and drove state from an effect.

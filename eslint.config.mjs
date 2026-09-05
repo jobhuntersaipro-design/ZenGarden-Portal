@@ -14,6 +14,8 @@ const eslintConfig = defineConfig([
     "next-env.d.ts",
     // Design-canvas tooling: plain Node scripts, not application source.
     "docs/design/**",
+    // Throwaway probe scripts. Gitignored, never shipped.
+    ".scratch/**",
   ]),
 ]);
 
