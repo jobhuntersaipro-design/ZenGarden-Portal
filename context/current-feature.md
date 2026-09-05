@@ -1,50 +1,40 @@
 # Current Feature
 
-Phase 02 — Authentication and access (`docs/specs/02-auth.md`)
+Phase 03 — Upload to R2 (`docs/specs/03-upload.md`)
 
 ## Status
 
-Complete. Merged to `main` 2026-09-05.
+In progress. Branch `feature/upload`. Phase 02 merged 2026-09-05.
 
 ## Goals
 
-- Auth.js v5 with Google (approval-gated) and Credentials (admin-set passwords)
-- `signIn` callback: active in, disabled out, unknown queues an `AccessRequest`
-  and emails every super admin, `AUTO_APPROVE_DOMAIN` shortcut
-- `jwt` callback re-reads role, `disabledAt`, `mustChangePassword` and
-  `sessionVersion` every 5 minutes so a disabled or demoted user is cut off
-- Route protection in `src/proxy.ts`; `/admin` 404s for members, never 403s
-- Database-backed rate limiting (5 failed logins / 15 min per email and per IP)
-- Forgot / reset / change password with 30-minute single-use tokens
-- Five transactional email templates
-- Sidebar user row reads the real session
+- `POST /api/upload/presign` — validate type, size and count, create the
+  `Document` rows, return presigned PUTs with `ContentType` and `ContentLength`
+  pinned; rejected files come back in `errors[]` and the rest proceed
+- `POST /api/upload/complete` — owner check, `HEAD` the object, verify size and
+  type, create `Extraction { PENDING }`. Keeps `maxDuration = 120` for Phase 04
+- `DELETE /api/upload/[documentId]` — owner-only, removes the object and the row
+  while no `Extraction` exists
+- `deleteOrphans()` in `src/lib/queries/documents.ts`, called on 1 presign in 20
+- `/upload`: dropzone (drop, browse, paste), `useUploadQueue` state machine,
+  three concurrent XHR uploads with live progress, `beforeunload` guard
+- One progress-bar geometry across every state; only fill colour and label differ
+- Every failed row carries a plain-language reason beside Retry
+- Sticky footer counting ready rows only, disabled at zero, with a caption
+  naming what was excluded
+- `?buyer=<id>` carried through to `Extraction.draftJson.buyerId`
 
 ## Notes
 
 - Read `docs/specs/00-master.md` before this phase file.
-- Two deliberate deviations from the phase file's letter, both commented in code:
-  1. The disabled-Google branch returns the redirect string `/signin?error=disabled`
-     rather than `false`. Returning `false` raises `AccessDenied` and lands the user
-     on `?error=AccessDenied`, which is not the outcome the spec asks for.
-  2. `src/proxy.ts` uses a Prisma-free `src/lib/auth.config.ts` instance, as the
-     phase file requires. The authoritative disabled / `sessionVersion` check lives
-     in the full `jwt` callback, which every page, action and route handler goes
-     through.
-
-- Added beyond the phase file's letter, each for a reason:
-  - `src/app/(portal)/admin/page.tsx`. Acceptance criterion 5 checks `/admin`
-    against "the Phase 01 stub", but Phase 01 never shipped one. This is the
-    smallest page that makes the criterion testable; Phase 09 replaces it.
-  - The Google branch refuses a profile whose `email_verified` is false.
-    `allowDangerousEmailAccountLinking` rests entirely on Google having verified
-    the address, so the one case where it has not must not link.
-  - A completed reset signs this browser out as well, rather than pushing to
-    `/signin?reset=1`. The reset bumps `sessionVersion`, so the session is
-    already dead; without the sign-out the proxy bounced the redirect straight
-    back into the portal on a cookie it had not re-checked yet.
-  - Two `@theme` tokens: `--spacing-control-oauth: 48px` (the Google button's
-    height on the canvas, between `control-md` and `control-lg`) and
-    `--container-auth-card: 480px` (the auth card width).
+- Extraction is Phase 04. The queue stops at "Uploaded" here and the complete
+  route only records the document.
+- `/upload` stays out of the sidebar (G1). The way in is the "Upload PO"
+  primary in the page header of Dashboard, Purchase orders, Buyers and Buyer
+  detail; "Purchase orders" stays lit while `/upload` is open.
+- **Infra prerequisite, owner action:** the R2 bucket needs the CORS policy from
+  `docs/specs/SETUP-CHECKLIST.md` §2.3 allowing `PUT` from the app's origins.
+  Browser uploads fail without it and no code change can substitute.
 
 ## History
 
