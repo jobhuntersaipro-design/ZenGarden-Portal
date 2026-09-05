@@ -208,7 +208,6 @@ export default async function PurchaseOrderPage({
             <dl className="grid gap-sm sm:grid-cols-2">
               {[
                 ["PO number", po.poNumber],
-                ["Buyer", po.buyer.name],
                 ["PO date", formatDate(po.poDate)],
                 ["Delivery date", po.deliveryDate ? formatDate(po.deliveryDate) : "—"],
                 ["Buyer reference", po.buyerReference ?? "—"],
@@ -228,6 +227,20 @@ export default async function PurchaseOrderPage({
                   </dd>
                 </div>
               ))}
+              <div>
+                <dt className="font-mono text-[length:var(--text-eyebrow)] text-ink-tertiary">
+                  Buyer
+                </dt>
+                <dd className="truncate text-[length:var(--text-body-md)]">
+                  <Link
+                    href={`/buyers/${po.buyer.id}`}
+                    title={po.buyer.name}
+                    className="text-ink hover:text-brand-link hover:underline"
+                  >
+                    {po.buyer.name}
+                  </Link>
+                </dd>
+              </div>
             </dl>
           </section>
 

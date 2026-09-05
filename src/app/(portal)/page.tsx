@@ -133,12 +133,17 @@ export default async function DashboardPage({
         <KpiTile
           label="Top buyer"
           value={
-            <span
-              title={data.kpis.topBuyer?.name}
-              className="block truncate text-[length:var(--text-heading-md)] tracking-[-0.91px]"
-            >
-              {data.kpis.topBuyer?.name ?? "—"}
-            </span>
+            data.kpis.topBuyer ? (
+              <Link
+                href={`/buyers/${data.kpis.topBuyer.id}`}
+                title={data.kpis.topBuyer.name}
+                className="block truncate text-[length:var(--text-heading-md)] tracking-[-0.91px] hover:text-brand-link hover:underline"
+              >
+                {data.kpis.topBuyer.name}
+              </Link>
+            ) : (
+              "—"
+            )
           }
           caption={
             data.kpis.topBuyer
