@@ -2,11 +2,69 @@
 
 ## Status
 
-Not Started
+Built and verified on `feature/product-matching` — awaiting review before commit.
 
 ## Goals
 
+Backlog item 1: prove the intake loop works end to end. It never had — the seed writes
+`Document.r2Key` values without uploading anything, so every document in the database
+pointed at an object that did not exist. Prompted by a reported upload failure.
+
 ## Notes
+
+**The reported failure did not reproduce, and the pipeline is sound.** The message —
+"The upload was interrupted — check your connection" — comes from exactly one place,
+`xhr.onerror` on the browser's PUT to R2, which fires only for a network-level failure
+with no HTTP status; a refused upload would have said "Storage refused the file (403)"
+and a failed presign "We couldn't start that upload". Four uploads from a clean browser
+all succeeded (123 B, 96 KB with a spaced filename, and the 59 KB PO twice), presign →
+PUT → complete all 200. No `Document` row survives from the reported attempt, which is
+consistent either with a dismissed row (the ✕ fires a cleanup DELETE) or with a PUT that
+never started. **Most likely an extension or transient network blip in the reporter's own
+browser** — worth asking, since it is not reproducible here.
+
+**The loop now demonstrably works, for the first time.** A realistic PO — Pacific Timber
+Sdn Bhd, three catalogue SKUs, RM 13,100.00 — was rendered, uploaded, read, reviewed,
+confirmed and rolled back. Claude read every field correctly: PO number `PT-2026-4471`,
+both dates, currency, buyer reference `REQ-88231`, payment terms, three lines with exact
+quantities, unit prices and amounts, and subtotal/tax/total, with the totals gate
+agreeing ("Lines add up to RM 13,100.00"). The confirmed record carried the right buyer,
+stage `ORDER_PLACED`, a stage event and the confirming user. **The document preview
+rendered** — the first time one ever has, since it is the first document whose R2 object
+actually exists.
+
+**What the test found: product matching was never implemented.** `toDraft` hardcoded
+`productId: null`, so every line of every PO arrived "Unmatched" and a reviewer had to
+pick each product by hand — on a twenty-line order, twenty pickers — even where the
+document printed the exact catalogue SKU and the exact catalogue name. The extraction
+schema did not capture the SKU at all and the prompt never mentioned it, so the column
+was read and discarded.
+
+Fixed: `sku` added to `PoLineItemSchema` (nullable, never optional — a missing key means
+the model forgot the field, and treating that as "no code" would quietly stop matching)
+and to the prompt, which now names the column's aliases and forbids deriving a code from
+the description. `matchProducts` resolves a line by exact SKU first, then exact
+case-insensitive name, in **one query for the whole document** rather than one per line.
+The rule is deliberately the same as the buyer's: exact only, never fuzzy, because
+silently attaching a line to the wrong product misprices an order and the reviewer
+cannot see it happened. Archived products are excluded, and two active products sharing
+a name match neither.
+
+Verified against the live pipeline by re-uploading the same PO: all three lines resolved
+to `PLT-BON-010`, `DEC-LAN-060` and `SCR-BAM-180`, the form showed them pre-selected,
+and the confirmed order's line items carry the right `productId`s.
+
+**Buyer matching is unchanged and still correct.** The document says "Pacific Timber Sdn
+Bhd" and the catalogue says "Pacific Timber", so it stayed unmatched and offered to
+create one — the deliberate behaviour, since a near match that guesses wrong is worse
+than asking. The reviewer picked the existing buyer in one click.
+
+All test data was removed afterwards: 4 documents, 1 purchase order, its line items and
+stage event, and all 4 orphaned R2 objects. The database is back to 400 purchase orders.
+
+**Known, unfixed.** Claude rejects images over 8000px on a side, and nothing in the app
+guards against it — a phone photo can exceed that, and the "Take a photo" path shipped
+this morning makes it likelier. It surfaces as a failed extraction with a raw API message.
 
 ## History
 - 2026-09-06: Weekly labels and the drawer clamp complete and merged (`feature/weekly-labels-and-po-edit`) — two reports on 2026-09-06. **A weekly axis labelled `6 Jul` reads as Monday's takings rather than the week's**, and the tooltip inherited the ambiguity; weeks start Monday, so the label now runs Monday to Sunday — `6–12 Jul`, or `29 Jun–5 Jul` where the week crosses a month, with the year left off because the range header above every chart already carries it. The bucket *key* is unchanged, so nothing that joins on it moved, and one label source feeds the sales, stage, buyer-trend and product-trend charts, so all four changed together. Two follow-ons the wider label forced: `ChartScroller`'s floor was a flat 24px a bucket — enough for `6 Jul`, nowhere near enough for `31 Aug–6 Sep` — so it now sizes from the longest label, counting only the ticks the axis will really print; and the `Math.ceil(n / 12) - 1` interval formula that decides that, duplicated in three charts, became `axisInterval` in `charts/labels.tsx` so the scroller and the axes cannot drift. The tooltip read `27 Jul–2 Aug — RM 252,487.41`, two dashes side by side, so its separator became the `·` used everywhere else. **The second report — "I can't edit" on the PO detail page — was not the edit sheet.** It opened correctly (page dimmed, ✕ present, the whole form inside) but the panel was **12px wide and off the right edge**. Tailwind v4 resolves `max-w-<name>` against `--spacing-<name>` before `--container-<name>`, and this system names its spacing steps `xs`, `sm`, `md`, `lg`, so the compiled CSS was literally `.max-w-sm{max-width:var(--spacing-sm)}` — **12px, not 24rem** — and `.max-w-xs` 8px, `.sm\:max-w-lg` 24px. **Every Sheet, Dialog and Tooltip in the app was clamped, and had been since Phase 01**: `sheet.tsx` is untouched since install and `tailwindcss: "^4"` floated to 4.3.3. `--container-panel-xs|sm|md|lg` are names the spacing scale cannot shadow, mapping 1:1 onto the sizes the primitives asked for; recorded in `context/design-system.md` beside the ink-tertiary deviation. Two further traps, both measured rather than assumed: `data-[side=right]:sm:max-w-*` outranks a caller's plain `sm:max-w-*` on specificity, so the drawer opened at 384px while asking for 512px — and *removing that prefix did not fix it*, because tailwind-merge does not treat `max-w-panel-sm` and `max-w-panel-lg` as one conflict group, keeps both, and lets stylesheet order hand it back to `panel-sm`; `SheetContent` now applies its default in code, guarded on whether the caller supplied a `max-w-`. Verified: the drawer opens at 512px on desktop and 75% of the viewport on a phone, and a real edit saved, toasted, appeared in the summary and logged to Activity as "Edited: buyer reference" before being rolled back (the two audit entries remain, which is correct); weekly labels checked at 9, 14 and 53 buckets, the 53-week axis thinning to every fifth tick with no overlap; a sweep over 9 routes × {390, 768, 1440} clean on all 27.

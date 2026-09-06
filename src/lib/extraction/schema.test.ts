@@ -17,6 +17,7 @@ const sample = {
   lineItems: [
     {
       description: "Stone lantern 60cm",
+      sku: "DEC-LAN-060",
       quantity: 20,
       unit: "piece",
       unitPrice: 727.1613,
@@ -49,9 +50,19 @@ describe("PoExtractionSchema", () => {
         deliveryDate: null,
         buyerReference: null,
         paymentTerms: null,
-        lineItems: [{ ...sample.lineItems[0], unit: null }],
+        lineItems: [{ ...sample.lineItems[0], unit: null, sku: null }],
       }).success,
     ).toBe(true);
+  });
+
+  it("requires sku to be present, even when the line carries no code", () => {
+    // Nullable, not optional: a missing key means the model forgot the field,
+    // and silently treating that as "no code" would quietly stop matching.
+    const withoutSku: Record<string, unknown> = { ...sample.lineItems[0] };
+    delete withoutSku.sku;
+    expect(
+      PoExtractionSchema.safeParse({ ...sample, lineItems: [withoutSku] }).success,
+    ).toBe(false);
   });
 
   it("refuses an extraction with no line items", () => {
