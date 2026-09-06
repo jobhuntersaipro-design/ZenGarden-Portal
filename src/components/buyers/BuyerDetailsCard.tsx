@@ -69,7 +69,7 @@ export function BuyerDetailsCard({
           {present.length === 0 ? "Add contact details" : "Edit details"}
         </Button>
       </SheetTrigger>
-      <SheetContent className="w-full sm:max-w-lg">
+      <SheetContent className="w-full sm:max-w-panel-lg">
         <SheetHeader>
           <SheetTitle>Edit buyer details</SheetTitle>
         </SheetHeader>

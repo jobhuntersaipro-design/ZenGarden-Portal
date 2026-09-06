@@ -60,7 +60,7 @@ export function ProductSheet({
   return (
     <Sheet open={open} onOpenChange={setOpen}>
       <SheetTrigger asChild>{trigger}</SheetTrigger>
-      <SheetContent className="w-full overflow-y-auto sm:max-w-lg">
+      <SheetContent className="w-full overflow-y-auto sm:max-w-panel-lg">
         <SheetHeader>
           <SheetTitle>{product ? "Edit product" : "New product"}</SheetTitle>
           <SheetDescription>

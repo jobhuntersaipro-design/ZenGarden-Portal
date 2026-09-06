@@ -16,6 +16,7 @@ import type { StagePoint } from "@/lib/analytics/fulfillment";
 import { PO_STAGES, stageLabel } from "@/lib/po-stages";
 import { STAGE_VARS, cssVar } from "@/lib/analytics/palette";
 import {
+  axisInterval,
   CHART_ANIMATION,
   LABEL_FONT_SIZE,
   labelledIndices,
@@ -48,7 +49,7 @@ function StageTooltip({
   return (
     <div className="rounded-md bg-ink p-sm text-canvas shadow-sm">
       <p className="text-[length:var(--text-caption)] font-medium">
-        {label} — {total} confirmed
+        {label} · {total} confirmed
       </p>
       {stages
         .filter((entry) => (entry.value ?? 0) > 0)
@@ -95,7 +96,12 @@ export function StackedStageChart({ points }: { points: StagePoint[] }) {
   return (
     // Bars need at least as much room per bucket as a line does; below that
     // the stack becomes a smear (2026-09-06 review, A1).
-    <ChartScroller buckets={points.length} axisWidth={96} fade="surface">
+    <ChartScroller
+      buckets={points.length}
+      labels={points.map((point) => point.label)}
+      axisWidth={96}
+      fade="surface"
+    >
       <div className="h-72 w-full">
         <ResponsiveContainer onResize={labels.onResize}>
           {/* Room above the tallest bar for its label. */}
@@ -113,7 +119,7 @@ export function StackedStageChart({ points }: { points: StagePoint[] }) {
               dataKey="label"
               tickLine={false}
               axisLine={false}
-              interval={Math.max(0, Math.ceil(points.length / 12) - 1)}
+              interval={axisInterval(points.length)}
               tick={{
                 fill: "var(--color-ink-tertiary)",
                 fontSize: LABEL_FONT_SIZE,

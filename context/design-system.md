@@ -379,6 +379,15 @@ Page rhythm leans on a **workspace-app tile grid** rather than atmospheric color
 - **Page-floor white (`#ffffff`)** — frequency 173. Used as bg (95), border (32), text (31). Canvas color for `--Core-Background-Main`; also appears as text inside the dark pill CTA and the gradient buttons.
 - **Surface soft (`#e9ebf0`)** — frequency 529. Used as bg (510), border (10), text (8). The light tile background carrying app-grid chips, secondary buttons, and the lighter strip dividers between hero sections.
 - **Ink secondary (`#646464`)** — frequency 201. Used as text (108), border (91), bg (2). Mapped to `--Core-Text-Secondary`; carries dimmed copy, nav-link inactive states, and footer labels.
+- **Panel widths (`--container-panel-xs|sm|md|lg`)** — `18rem / 24rem / 28rem / 32rem`.
+  **Implementation constraint (2026-09-06), not a design choice.** Tailwind v4 resolves
+  `max-w-<name>` against `--spacing-<name>` before `--container-<name>`, and this system's
+  spacing steps are *named* `xs`, `sm`, `md`, `lg`. So `max-w-sm` compiles to
+  `max-width: var(--spacing-sm)` — **12px, not 24rem** — and `max-w-xs` to 8px. Every shadcn
+  Sheet, Dialog and Tooltip shipped with those class names, so from Phase 01 until this was
+  found every drawer in the app opened as a 12px sliver against a dimmed page and could not
+  be used. Use `max-w-panel-*` for any floating panel; never `max-w-sm|md|lg|xs`. Re-running
+  `shadcn add` restores the original class names and the bug.
 - **Focus purple (`--color-focus`, `#7612fa`)** — the same value as brand purple, under a second name.
   **Product deviation (2026-09-06 UI review, C1).** The design system specifies a 2px purple focus ring, and every component asked for it as `outline-primary`. It never rendered: shadcn's `@theme inline` block re-declares `--color-primary` as `var(--primary)`, and `:root` sets `--primary` to ink, so `--color-primary` computed to `#292d34` from Phase 01 until this review. Ink is the *correct* resolution for `bg-primary` — the ClickUp primary CTA is the dark pill, never purple — so the rebinding stays and the focus ring moved to `--color-focus`, which nothing shadows. Use `outline-focus` / `border-focus` for focus states; `bg-primary` remains the dark pill.
 - **Brand link lavender (`#7b68ee`)** — frequency 46. Used as text (25), border (21). The `--color-brand-clickup` and `--color-link` value; scoped to inline links, "Learn more" affordances, and footer accent dots — never a button background.

@@ -1,6 +1,7 @@
 "use client";
 
 import type { ReactNode } from "react";
+import { shownTickCount } from "@/components/charts/labels";
 import { useEdgeFades } from "@/hooks/useEdgeFades";
 
 /**
@@ -16,12 +17,24 @@ import { useEdgeFades } from "@/hooks/useEdgeFades";
  *
  * At desktop widths `min-width` is under 100% and this is a no-op wrapper.
  */
+/** Rough width of one character at `LABEL_FONT_SIZE`, plus breathing room. */
+const CHAR_PX = 6.6;
+const TICK_GAP_PX = 16;
+
 export function ChartScroller({
   buckets,
   /** Room the axis and labels need on top of the buckets themselves. */
   axisWidth = 80,
   /** Horizontal room one bucket needs to stay legible. */
   perBucket = 24,
+  /**
+   * The x-axis labels, so the floor accounts for how wide they actually are.
+   * A weekly axis reads "31 Aug–6 Sep", more than three times the width of a
+   * daily "6 Jul", and 24px a bucket left them overlapping into each other.
+   * Only the ticks the axis will really print are counted — it shows at most
+   * twelve, however many buckets there are.
+   */
+  labels,
   /** The surface behind the chart, so the fade dissolves into it. */
   fade = "canvas",
   className = "",
@@ -30,12 +43,20 @@ export function ChartScroller({
   buckets: number;
   axisWidth?: number;
   perBucket?: number;
+  labels?: string[];
   fade?: "canvas" | "surface";
   className?: string;
   children: ReactNode;
 }) {
   const { ref, clipped, measure } = useEdgeFades<HTMLDivElement>();
-  const minWidth = axisWidth + buckets * perBucket;
+
+  const longest =
+    labels?.reduce((max, label) => Math.max(max, label.length), 0) ?? 0;
+  const labelFloor =
+    longest > 0
+      ? shownTickCount(buckets) * (longest * CHAR_PX + TICK_GAP_PX)
+      : 0;
+  const minWidth = axisWidth + Math.max(buckets * perBucket, labelFloor);
   // Written out rather than interpolated: Tailwind only emits the classes it
   // can see as whole strings.
   const from = fade === "surface" ? "from-surface" : "from-canvas";

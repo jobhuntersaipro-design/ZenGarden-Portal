@@ -102,6 +102,52 @@ describe("makeBuckets", () => {
       .toBe("2026");
   });
 
+  it("names both ends of a week, so a bar is not read as a single day", () => {
+    // "6 Jul" on a weekly axis looks like Monday's takings rather than the
+    // week's. Weeks start Monday, so each label runs Monday to Sunday.
+    const inOneMonth = makeBuckets(
+      new Date("2026-07-06T00:00:00+08:00"),
+      new Date("2026-07-06T00:00:00+08:00"),
+      "week",
+    );
+    expect(inOneMonth[0].label).toBe("6–12 Jul");
+
+    // The month is repeated only when the week crosses one.
+    const acrossMonths = makeBuckets(
+      new Date("2026-06-29T00:00:00+08:00"),
+      new Date("2026-06-29T00:00:00+08:00"),
+      "week",
+    );
+    expect(acrossMonths[0].label).toBe("29 Jun–5 Jul");
+
+    // And across a year boundary. The year is left off: the range header above
+    // the chart already carries it, and the axis has no room.
+    const acrossYears = makeBuckets(
+      new Date("2025-12-29T00:00:00+08:00"),
+      new Date("2025-12-29T00:00:00+08:00"),
+      "week",
+    );
+    expect(acrossYears[0].label).toBe("29 Dec–4 Jan");
+  });
+
+  it("keys a week by its first day even though the label names both", () => {
+    const weeks = makeBuckets(
+      new Date("2026-07-06T00:00:00+08:00"),
+      new Date("2026-07-20T00:00:00+08:00"),
+      "week",
+    );
+    expect(weeks.map((bucket) => bucket.key)).toEqual([
+      "2026-07-06",
+      "2026-07-13",
+      "2026-07-20",
+    ]);
+    expect(weeks.map((bucket) => bucket.label)).toEqual([
+      "6–12 Jul",
+      "13–19 Jul",
+      "20–26 Jul",
+    ]);
+  });
+
   it("never runs away on a reversed range", () => {
     const buckets = makeBuckets(
       new Date("2026-09-30T00:00:00Z"),

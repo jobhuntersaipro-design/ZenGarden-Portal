@@ -49,7 +49,7 @@ export function EditPurchaseOrderSheet({
       <SheetTrigger asChild>
         <Button variant="secondary">Edit</Button>
       </SheetTrigger>
-      <SheetContent className="w-full sm:max-w-lg">
+      <SheetContent className="w-full sm:max-w-panel-lg">
         <SheetHeader>
           <SheetTitle>Edit purchase order</SheetTitle>
           <SheetDescription>

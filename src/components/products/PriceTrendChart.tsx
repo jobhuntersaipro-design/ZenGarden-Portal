@@ -135,6 +135,7 @@ export function PriceTrendChart({
 
       <ChartScroller
         buckets={points.length}
+        labels={points.map((point) => point.label)}
         axisWidth={128}
         fade="surface"
         className="mt-lg"

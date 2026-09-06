@@ -214,6 +214,30 @@
   /* The auth card — sign in, access requested, forgot, reset, change password. */
   --container-auth-card: 480px;
 
+  /*
+   * Floating-panel widths, and why they are not `max-w-sm` / `max-w-lg`.
+   *
+   * Tailwind resolves `max-w-<name>` against `--spacing-<name>` in preference
+   * to `--container-<name>`, and this system's spacing steps are *named*
+   * `xs`, `sm`, `md`, `lg`. So in this project `max-w-sm` compiles to
+   * `max-width: var(--spacing-sm)` — 12px, not 24rem:
+   *
+   *     .max-w-xs { max-width: var(--spacing-xs) }   ->  8px
+   *     .max-w-sm { max-width: var(--spacing-sm) }   -> 12px
+   *     .sm\:max-w-lg { max-width: var(--spacing-lg) } -> 24px
+   *
+   * Every shadcn Sheet, Dialog and Tooltip shipped with those class names, so
+   * every drawer in the app opened as a 12px sliver against a dimmed page and
+   * could not be used at all (2026-09-06). These names cannot be shadowed,
+   * because there is no `--spacing-panel-*`. They map 1:1 onto the Tailwind
+   * sizes the primitives originally asked for, so re-running `shadcn add`
+   * reintroduces the bug — swap the class back if that happens.
+   */
+  --container-panel-xs: 18rem; /* Tailwind max-w-xs — tooltips */
+  --container-panel-sm: 24rem; /* Tailwind max-w-sm — dialogs, default sheet */
+  --container-panel-md: 28rem; /* Tailwind max-w-md — the user drawer */
+  --container-panel-lg: 32rem; /* Tailwind max-w-lg — the record drawers */
+
   --animate-fade-in-up: fade-in-up 1s ease-out both;
   /* The ring inside a control that is waiting (`Spinner`). */
   --animate-spinner: spinner 0.8s linear infinite;
