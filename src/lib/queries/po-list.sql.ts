@@ -1,3 +1,4 @@
+import { dateColumnRange } from "@/lib/dates";
 import { Prisma } from "@/generated/prisma/client";
 
 /**
@@ -152,8 +153,18 @@ function orderRows(filters: PoListFilters): Prisma.Sql {
   if (filters.uploadedById) {
     conditions.push(Prisma.sql`doc."uploadedById" = ${filters.uploadedById}`);
   }
-  if (filters.from) conditions.push(Prisma.sql`po."poDate" >= ${filters.from}`);
-  if (filters.to) conditions.push(Prisma.sql`po."poDate" <= ${filters.to}`);
+  // `poDate` is `@db.Date`, so both bounds are compared as calendar days in
+  // Kuala Lumpur rather than as instants — see `dateColumnRange`. Without it a
+  // KL-midnight `from` truncates to the previous UTC day and the list returns
+  // one day more than the range it claims.
+  if (filters.from || filters.to) {
+    const bounds = dateColumnRange({
+      from: filters.from ?? filters.to!,
+      to: filters.to ?? filters.from!,
+    });
+    if (filters.from) conditions.push(Prisma.sql`po."poDate" >= ${bounds.gte}`);
+    if (filters.to) conditions.push(Prisma.sql`po."poDate" <= ${bounds.lte}`);
+  }
   if (filters.stage === "not-delivered") {
     conditions.push(Prisma.sql`po."stage" <> 'DELIVERED'`);
   } else if (filters.stage) {
