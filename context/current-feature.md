@@ -2,65 +2,16 @@
 
 ## Status
 
-Built and verified in the browser on `feature/dashboard-interactions` (branched off
-`feature/dashboard-charts`, which is pushed but not merged) — awaiting review.
+Not Started
 
 ## Goals
 
-The second 2026-09-06 `/ui-ux-pro-max` request, three items, open decisions settled by
-one round of questions (every recommended pick taken):
-
-1. **Headline numbers count up over 2s.** KPI tiles on every page, the six "In this
-   range" tiles, the product KPI row, and the single-metric card headings (Sales over
-   time, Order stage, buyer Order trend). Not chart value labels, legend counts or
-   table cells.
-2. **Donut "Other" opens, and every entity name is a link.** `shareBy` keeps the
-   folded members, the legend row unfolds them in place, and buyer / product names
-   throughout the donuts, the What-they-buy bars and the price-drift list link to
-   their detail pages.
-3. **The sidebar is sticky and full height** instead of stopping at the fold.
-
 ## Notes
-
-- **Count-up is back after being cut the same day.** It was removed because the
-  review read the moving figures as "laggy / numbers jump". The rule that made the
-  old one unsafe is now fixed rather than repeated: the server figure is the initial
-  state, so the HTML and the first paint always hold the true number; the count runs
-  after mount; a range change continues from the frame on screen rather than
-  restarting at zero; and `prefers-reduced-motion` skips it. Verified on a hard load:
-  true value painted at 515 ms, zero at 648 ms, 194 frames, settled at 2543 ms.
-- **Easing took three passes, and the exponent was never the problem.** Cubic, then
-  quadratic, were both reported as not feeling like they slowed down. The cause was
-  the repaint rhythm: the figure changed on every frame right to the last one, and
-  sixty changes a second is a blur whatever the curve does to the increments — a blur
-  that stops is not a deceleration. The run now repaints every frame at the start and
-  progressively less often after, the gap growing to 150 ms, so the tick rate
-  decelerates alongside the value. Measured on Total sales: 35 paints over 1.9 s,
-  gaps 8–17 ms at the start and 108–142 ms at the end, final steps RM 14,467 → 11,037
-  → 7,495 → 4,152 → 1,568 → 181. The small tiles tick too — Purchase orders counts
-  0 → 38 through 29 integers with its last gaps at 192 and 242 ms. Duration constant
-  is still 2000 ms.
-- The donut ring keeps one grey "Other" arc while the list is open. Unfolding it into
-  arcs would need hues past the six the palette validates, which is the rule the fold
-  exists to protect.
-- Folded members carry their share **of the whole**, not of Other, so an unfolded row
-  reads on the same scale as a top-five slice.
-- Three defects found and fixed while building:
-  - The count-up never ran on mount **in development only**. React runs effects twice;
-    the first pass was cancelled by its own cleanup before a frame fired, so the second
-    pass read the start ref as still holding the final value and skipped the animation.
-    The ref is now written synchronously when a run starts.
-  - The first two frames rendered **negative money** ("-RM 8,851.78" under Total sales).
-    An animation frame already in flight carries a timestamp from before the effect ran,
-    so progress went negative and an ease-out cubic of a negative progress is negative.
-    The clock now starts on the first frame.
-  - Linking the PO number in the product order history nested `<a>` inside `<a>` and
-    failed hydration — `DataTable` already wraps the first cell of every row in a link
-    to `rowHref`, so that cell was a link all along. Reverted.
-- Two donuts sit side by side, so the expanding panel's id comes from `useId`.
 
 ## History
 
+- 2026-09-06: Dashboard interactions brief complete and merged (`feature/dashboard-interactions`) — the second 2026-09-06 `/ui-ux-pro-max` request. **Count-up is back**, at 2s, after being cut that morning; the rule that made the old one unsafe is fixed rather than repeated, so the server figure is the initial state and the first paint, the count runs after mount, a range change continues from the frame on screen instead of restarting at zero, and `prefers-reduced-motion` skips it (`useCountUp`, `CountUp`). It covers the KPI tiles on every page, the six "In this range" tiles, the product KPI row and the single-metric card headings, but not chart labels or table cells. Donut legends link every named slice to its detail page and **"Other (n)" unfolds in place**, `shareBy` keeping the folded members with their share *of the whole* so an unfolded row ranks on the same scale as a top-five slice; the ring keeps one grey Other arc, because unfolding it into arcs would need hues past the six the palette validates. The same treatment went to the What-they-buy bars, and product names in the price-drift list became links. The **sidebar is `sticky top-0`** — a plain `h-dvh` aside stopped at the fold and left its surface and right border hanging mid-page. **Easing took three passes and the exponent was never the problem:** cubic, then quadratic, were both reported as not feeling like they slowed down, because the figure repainted on every frame to the last one, and sixty changes a second is a blur whatever the curve does to the increments. The repaint rhythm now decelerates too — every frame at the start, widening to 150 ms gaps — measured at 35 paints over 1.9 s with final steps RM 14,467 → 181, and Purchase orders counting 0 → 38 through 29 integers with its last gaps at 192 and 242 ms. Three other defects fixed: the mount animation was skipped **in development only**, because React double-invokes effects and the second pass read a start ref the cancelled first pass never wrote; the first frames rendered **negative money** ("-RM 8,851.78" under Total sales) because an animation frame already in flight carries a timestamp from before the effect ran, making progress negative under an ease-out; and linking the PO number in the product order history nested `<a>` inside `<a>` and failed hydration, since `DataTable` already wraps the first cell of every row in a link to `rowHref`.
+- 2026-09-06: Dashboard charts brief complete and merged (`feature/dashboard-charts`) — the first of two 2026-09-06 `/ui-ux-pro-max` requests. The trend card split into two: **Sales over time** with a *Sales · Quantity* switch (`?measure=`, Quantity summing line-item units through `pickMeasure`), then **Order stage**, the stacked stage chart headed "27 orders still open" with the confirmed count dropped and the 14px stage bar — counts and links intact — moved under it as its legend. The Status-breakdown *intake* bar left the dashboard; that backlog is read from the Purchase orders chips. Every Recharts chart (dashboard sales and stage, buyer product trend, product price trend) now animates 800 ms ease-out on load and on data change and carries whole-number value labels, drawn by one `content` renderer in `src/components/charts/labels.tsx` that hides zero buckets and spaces labels from the plot width. Sidebar label became **Purchase Orders** (title case, the one deliberate exception to the sentence-case rule, at the user's request) and the wordmark links to `/`. Six defects found and fixed: stage totals vanished on bars whose top segment was zero, so the totals ride an invisible `Line` — a `LabelList` on the top segment goes missing wherever that segment is zero, and every segment is zero somewhere; that line then leaked into the tooltip as an unnamed ": 8", so the tooltip filters its payload to stage keys; labels sampled every nth index skipped busy days, so `labelledIndices` walks the busy buckets instead; the quantity y-axis printed `931.84000000001` from the 1.12 headroom multiplier; end-point labels ran into the axis and the card edge; and the average and list-price reference labels were positioned at `"right"`, off the svg, so they had never been visible at all. **Known, not fixed:** `poDate` is `@db.Date` and the range filter is cast to a UTC calendar date while buckets are built in Kuala Lumpur time, so on "Last 30 days" three orders dated 7 Aug sit in the KPI, the summary and the table (38 POs, RM 737,667.95) but outside the daily chart (RM 673,967.79); the weekly view agrees because the week of 3 Aug is a bucket. The fix belongs in every query that filters `poDate` by range, not in a chart.
 - 2026-09-06: Click-feedback pass complete and merged (`feature/click-feedback`) — the 2026-09-06 `/ui-ux-pro-max` request. **Tailwind v4's preflight sets `cursor: default` on `<button>`**, so every chip, segment, sort header, pill and icon button showed an arrow while links showed a hand; one rule in `globals.css` `@layer base` now gives enabled buttons, `[role=button]`, `<summary>`, selects and checkbox/radio/file inputs the pointer and disabled ones `not-allowed`, so no component carries `cursor-pointer` itself. A busy button gets `progress` rather than `not-allowed`, scoped to the control so rows inside an updating table keep the hand. The brief's G1 had shipped the top progress bar and the "Updating…" hints but nothing on the element you clicked — a chip reads its selected state from the URL, and the URL only changes once the server answers, so it sat untouched for the whole round trip. Shipped: `Spinner`, one 14px `currentColor` ring on a 0.8s loop (the ring Sonner already spins, never the brand gradient, slowed rather than stopped under `prefers-reduced-motion`); `usePendingChoice` + `ChoiceButton`, giving range presets, aggregate segments, status and quick-filter chips, the sort strip, grid/list and the chart toggles an optimistic selection with the spinner on the clicked option and siblings dimmed under `aria-busy`, the local choice dropped when the server's value lands so a superseded write cannot leave a stale selection; `DataTable` taking its arrow and spinner on click and fading the previous rows to 60% instead of blanking them; `<Button pending>` on every button that waits; and `LinkSpinner` over `useLinkStatus` for the gap between a route click and its `loading.tsx`. Verified against the reseeded database — cursor audit clean on Dashboard (63 elements), Products (34) and PO detail (13); "Last 60 days" flipped and spun with siblings dimmed, settling in ~340 ms; sorting Total took the arrow and released PO date's in the same frame; Next paged with rows at 60% while "Page 1 of 41" held. The zero-count tiles on the Buyers attention strip keep `cursor-default` deliberately — an empty category is nothing to fix, not something forbidden — and gained the "Nothing to fix here" title the Products tile already had. **R2 now authenticates** and signs presigned URLs correctly, but the seed writes `Document.r2Key` values without uploading files, so every seeded document returns `NoSuchKey` and still shows the preview error state; a real upload has never been run end to end.
 - 2026-04-12: Respond.io API crawler built and first full crawl completed (1,582 contacts) — **retired 2026-09-05**
 - 2026-04-12: Started Playwright automation for "Conversation Opened By" field — **retired 2026-09-05**
