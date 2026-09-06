@@ -1,5 +1,5 @@
 import { ExtractionStatus } from "@/generated/prisma/enums";
-import type { Aggregation } from "@/lib/dates";
+import { dateColumnRange, type Aggregation } from "@/lib/dates";
 import { prisma } from "@/lib/prisma";
 import { buyerChurn, type BuyerChurn } from "@/lib/analytics/churn";
 import {
@@ -105,7 +105,7 @@ export async function loadDashboard(range: Range, agg: Aggregation): Promise<Das
 
   const [current, prior, history, intakeRows, anyOrder] = await Promise.all([
     prisma.purchaseOrder.findMany({
-      where: { ...LATEST_ONLY, poDate: { gte: range.from, lte: range.to } },
+      where: { ...LATEST_ONLY, poDate: dateColumnRange(range) },
       select: {
         ...ORDER_SELECT,
         lineItems: {
@@ -120,7 +120,7 @@ export async function loadDashboard(range: Range, agg: Aggregation): Promise<Das
       },
     }),
     prisma.purchaseOrder.findMany({
-      where: { ...LATEST_ONLY, poDate: { gte: previous.from, lte: previous.to } },
+      where: { ...LATEST_ONLY, poDate: dateColumnRange(previous) },
       select: {
         ...ORDER_SELECT,
         lineItems: {

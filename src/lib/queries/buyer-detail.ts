@@ -1,5 +1,5 @@
 import { ExtractionStatus } from "@/generated/prisma/enums";
-import type { Aggregation } from "@/lib/dates";
+import { dateColumnRange, type Aggregation } from "@/lib/dates";
 import { prisma } from "@/lib/prisma";
 import { buyerStatus } from "@/lib/analytics/buyer-status";
 import { productMix, type MixMeasure } from "@/lib/analytics/product-mix";
@@ -94,7 +94,7 @@ export async function loadBuyer(
     }),
     // Every buyer's total in range, for the share-of-sales tile.
     prisma.purchaseOrder.aggregate({
-      where: { ...LATEST_ONLY, poDate: { gte: range.from, lte: range.to } },
+      where: { ...LATEST_ONLY, poDate: dateColumnRange(range) },
       _sum: { total: true },
     }),
     prisma.extraction.groupBy({

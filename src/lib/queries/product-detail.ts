@@ -1,3 +1,4 @@
+import { dateColumnRange } from "@/lib/dates";
 import { prisma } from "@/lib/prisma";
 import {
   boughtTogether,
@@ -91,7 +92,7 @@ export async function loadProduct(
         productId,
         purchaseOrder: {
           ...LATEST_ONLY,
-          poDate: { gte: window.from, lte: window.to },
+          poDate: dateColumnRange(window),
         },
       },
       select: {
@@ -119,7 +120,7 @@ export async function loadProduct(
         productId: { not: null },
         purchaseOrder: {
           ...LATEST_ONLY,
-          poDate: { gte: window.from, lte: window.to },
+          poDate: dateColumnRange(window),
         },
       },
       select: {
@@ -138,10 +139,10 @@ export async function loadProduct(
       },
     }),
     prisma.purchaseOrder.count({
-      where: { ...LATEST_ONLY, poDate: { gte: window.from, lte: window.to } },
+      where: { ...LATEST_ONLY, poDate: dateColumnRange(window) },
     }),
     prisma.purchaseOrder.aggregate({
-      where: { ...LATEST_ONLY, poDate: { gte: window.from, lte: window.to } },
+      where: { ...LATEST_ONLY, poDate: dateColumnRange(window) },
       _sum: { total: true },
     }),
     prisma.product.findMany({ select: { id: true, name: true } }),

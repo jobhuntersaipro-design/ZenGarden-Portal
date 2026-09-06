@@ -1,3 +1,4 @@
+import { dateColumnRange } from "@/lib/dates";
 import { Prisma } from "@/generated/prisma/client";
 import { prisma } from "@/lib/prisma";
 import {
@@ -81,7 +82,7 @@ export async function listProducts(
         productId: { not: null },
         purchaseOrder: {
           ...LATEST_ONLY,
-          poDate: { gte: window.from, lte: window.to },
+          poDate: dateColumnRange(window),
         },
       },
       select: {
@@ -100,7 +101,7 @@ export async function listProducts(
       },
     }),
     prisma.purchaseOrder.count({
-      where: { ...LATEST_ONLY, poDate: { gte: window.from, lte: window.to } },
+      where: { ...LATEST_ONLY, poDate: dateColumnRange(window) },
     }),
   ]);
 

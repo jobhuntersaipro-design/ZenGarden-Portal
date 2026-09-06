@@ -1,11 +1,13 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 import {
   bucketStart,
+  dateColumnRange,
   formatDate,
   formatDateTime,
   rangeFromPreset,
   todayISO,
 } from "@/lib/dates";
+import { bucketKey } from "@/lib/analytics/buckets";
 
 describe("formatDate", () => {
   it("renders the canvas format", () => {
@@ -72,5 +74,39 @@ describe("todayISO", () => {
     vi.useFakeTimers();
     vi.setSystemTime(new Date("2026-09-17T04:00:00Z"));
     expect(todayISO()).toBe("2026-09-17");
+  });
+});
+
+describe("dateColumnRange", () => {
+  it("keeps the Kuala Lumpur calendar day at the start of the range", () => {
+    // The bug this exists for: `poDate` is `@db.Date`, and a timestamp
+    // parameter is truncated to a UTC calendar date to compare against it.
+    // Midnight on 8 Aug in KL is 2026-08-07T16:00Z, whose UTC date is the 7th
+    // — so `gte` admitted a whole extra day and the dashboard's KPI counted 38
+    // orders while its daily chart, bucketed in KL, drew 35.
+    const from = new Date("2026-08-07T16:00:00.000Z"); // 8 Aug 00:00 KL
+    const to = new Date("2026-09-06T15:59:59.999Z"); // 6 Sep 23:59 KL
+    const bounds = dateColumnRange({ from, to });
+
+    expect(bounds.gte.toISOString()).toBe("2026-08-08T00:00:00.000Z");
+    expect(bounds.lte.toISOString()).toBe("2026-09-06T00:00:00.000Z");
+  });
+
+  it("is a no-op for bounds already on a UTC day boundary", () => {
+    const bounds = dateColumnRange({
+      from: new Date("2026-08-08T00:00:00.000Z"),
+      to: new Date("2026-09-06T00:00:00.000Z"),
+    });
+    expect(bounds.gte.toISOString()).toBe("2026-08-08T00:00:00.000Z");
+    expect(bounds.lte.toISOString()).toBe("2026-09-06T00:00:00.000Z");
+  });
+
+  it("agrees with the chart's bucket keys at both ends", () => {
+    const from = new Date("2026-08-07T16:00:00.000Z");
+    const to = new Date("2026-09-06T15:59:59.999Z");
+    const bounds = dateColumnRange({ from, to });
+    // What the axis calls the first and last bucket.
+    expect(bucketKey(bounds.gte, "day")).toBe(bucketKey(from, "day"));
+    expect(bucketKey(bounds.lte, "day")).toBe(bucketKey(to, "day"));
   });
 });

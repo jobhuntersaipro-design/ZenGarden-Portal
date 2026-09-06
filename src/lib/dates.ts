@@ -39,6 +39,31 @@ export function formatDateTime(value: DateInput): string {
   return format(toKL(value), "d MMM yyyy, HH:mm");
 }
 
+/**
+ * The `[gte, lte]` bounds to filter a **date-only** column by — `poDate` is
+ * `@db.Date` — from a range whose ends are Kuala Lumpur instants.
+ *
+ * A timestamp parameter compared against a `date` column is truncated to a UTC
+ * calendar date. Midnight on 8 Aug in KL is `2026-08-07T16:00:00Z`, whose UTC
+ * date is the **7th**, so `gte` admitted a whole extra day at the start of
+ * every ranged query: the dashboard's KPI, summary and table counted 38 orders
+ * and RM 737,667.95 while the daily chart, bucketed in KL, drew 35 and
+ * RM 673,967.79. (The `to` end was always right — 23:59 KL is 15:59 UTC on the
+ * same day — which is why only the opening day was ever wrong, and why the
+ * weekly view appeared to agree: the extra day fell inside a bucket it drew.)
+ *
+ * Returning UTC midnight of each end's KL calendar day makes the truncation a
+ * no-op and puts the filter on exactly the days the axis labels.
+ */
+export function dateColumnRange(range: { from: DateInput; to: DateInput }): {
+  gte: Date;
+  lte: Date;
+} {
+  const utcDay = (value: DateInput) =>
+    new Date(`${format(toKL(value), "yyyy-MM-dd")}T00:00:00.000Z`);
+  return { gte: utcDay(range.from), lte: utcDay(range.to) };
+}
+
 /** Start of the bucket `date` falls in. Weeks start Monday. */
 export function bucketStart(value: DateInput, aggregation: Aggregation): Date {
   const date = toKL(value);
