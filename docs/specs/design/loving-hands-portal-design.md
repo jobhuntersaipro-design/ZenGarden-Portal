@@ -195,6 +195,16 @@ weight burying the state of the business, so the order is now:
 
 Nothing above the fold is a donut.
 
+> **Revision 2026-09-06 (`feature/dashboard-charts`).** Item 2 is now **two
+> cards**: *Sales over time* with a *Sales · Quantity* switch (`?measure=`,
+> Quantity = line-item units), then *Order stage* — the stacked stage chart
+> with the heading "27 orders still open" and the stage bar (counts, links)
+> as its legend. Item 3's *intake* bar has left the dashboard; the backlog is
+> read from the Purchase orders chips. Every chart carries whole-number value
+> labels (`RM 47,950`, `1,240`, `4`) and animates 800 ms ease-out on load and
+> on data change, off under `prefers-reduced-motion`. The count-up rule below
+> still governs KPI numbers, which stay static.
+
 A dedicated "work queue" strip was drawn and then removed on 2026-09-05: it
 repeated the three counts the Status breakdown bar already carries, and one
 number in two places is a number that can disagree with itself. The backlog is

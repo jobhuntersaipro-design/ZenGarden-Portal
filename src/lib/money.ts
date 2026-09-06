@@ -18,13 +18,17 @@ export type MoneyInput = Decimal | string | number;
 const toDecimal = (value: MoneyInput): Decimal =>
   value instanceof Prisma.Decimal ? value : new Prisma.Decimal(value);
 
-/** `RM 1,234.50`. Always two decimals, grouped thousands, MYR only. */
-export function formatMYR(value: MoneyInput): string {
+/**
+ * `RM 1,234.50`. Two decimals, grouped thousands, MYR only. Chart value labels
+ * pass `0` and get `RM 1,235`: they sit beside a bar and a rounded figure is
+ * what fits, the exact one is a hover away in the tooltip.
+ */
+export function formatMYR(value: MoneyInput, decimals: 0 | 2 = 2): string {
   const decimal = toDecimal(value);
   const negative = decimal.isNegative();
-  const [whole, fraction = "00"] = decimal.abs().toFixed(2).split(".");
+  const [whole, fraction] = decimal.abs().toFixed(decimals).split(".");
   const grouped = whole.replace(/\B(?=(\d{3})+(?!\d))/g, ",");
-  return `${negative ? "-" : ""}RM ${grouped}.${fraction}`;
+  return `${negative ? "-" : ""}RM ${grouped}${fraction ? `.${fraction}` : ""}`;
 }
 
 /**

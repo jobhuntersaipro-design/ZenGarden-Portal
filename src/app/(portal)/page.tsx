@@ -14,11 +14,13 @@ import { MoreAnalytics } from "@/components/dashboard/MoreAnalytics";
 import { PriceDriftList } from "@/components/dashboard/PriceDriftList";
 import { RangeControls } from "@/components/dashboard/RangeControls";
 import { StatusBar } from "@/components/dashboard/StatusBar";
-import { TrendCard, type Trend } from "@/components/dashboard/TrendCard";
+import { SalesCard } from "@/components/dashboard/SalesCard";
+import { StageCard } from "@/components/dashboard/StageCard";
 import { PoTable, type PoRow } from "@/components/purchase-orders/PoTable";
 import { Button } from "@/components/ui/button";
 import { AGGREGATIONS, parseRange, rangeParams } from "@/lib/analytics/range";
-import { INTAKE_VARS, STAGE_VARS, cssVar } from "@/lib/analytics/palette";
+import type { SalesMeasure } from "@/lib/analytics/sales";
+import { STAGE_VARS, cssVar } from "@/lib/analytics/palette";
 import { formatDate } from "@/lib/dates";
 import { formatMYR } from "@/lib/money";
 import { PO_STAGES, stageLabel } from "@/lib/po-stages";
@@ -42,7 +44,7 @@ export default async function DashboardPage({
 }) {
   const params = await searchParams;
   const range = parseRange(params);
-  const trend: Trend = firstParam(params, "trend") === "sales" ? "sales" : "fulfillment";
+  const measure: SalesMeasure = firstParam(params, "measure") === "units" ? "units" : "sales";
   const moreOpen = firstParam(params, "more") === "1";
 
   const data = await loadDashboard(range, range.agg);
@@ -155,53 +157,19 @@ export default async function DashboardPage({
         />
       </div>
 
-      {/* 2. One trend. */}
-      <div className="mt-lg">
-        <TrendCard
-          trend={trend}
+      {/* 2. Two charts: what the range's orders were worth, then where they
+          stand. The stage bar under the second chart is its legend, and the
+          one place the dashboard reports the six stage counts — each count is
+          the way into the rows it counts (brief §2). */}
+      <div className="mt-lg flex flex-col gap-lg">
+        <SalesCard
+          measure={measure}
           sales={data.sales}
-          stages={data.stages}
           agg={range.agg}
           aggLabel={`${aggLabel}s`}
-          openCount={data.pipeline.openCount}
-          confirmedCount={data.kpis.orderCount}
         />
-      </div>
-
-      {/* 3. The backlog, directly under the trend. */}
-      <section className="mt-lg grid gap-lg rounded-lg border border-hairline bg-canvas p-lg lg:grid-cols-2">
-        {/* Each count is the way into the rows it counts, so the intake
-            backlog leads into the work instead of sitting beside the sales
-            figures as a statistic (brief §2). */}
-        <StatusBar
-          eyebrow="Status breakdown · intake"
-          caption={`${data.kpis.orderCount} purchase orders`}
-          segments={(
-            [
-              ["confirmed", "Confirmed", data.intake.confirmed, INTAKE_VARS.confirmed],
-              ["needs-review", "Needs review", data.intake.needsReview, INTAKE_VARS.needsReview],
-              ["extracting", "Extracting", data.intake.extracting, INTAKE_VARS.extracting],
-              ["failed", "Failed", data.intake.failed, INTAKE_VARS.failed],
-            ] as const
-          ).map(([id, label, count, tokenVar]) => ({
-            id,
-            label,
-            count,
-            color: cssVar(tokenVar),
-            // Only Confirmed carries the range. The other three are drafts
-            // with no PO date yet, and `listPurchaseOrders` drops the whole
-            // extraction branch the moment a date bound is present — so a
-            // dated link to "Needs review 3" would land on an empty table.
-            href:
-              id === "confirmed"
-                ? `/purchase-orders?status=${id}&from=${from}&to=${to}`
-                : `/purchase-orders?status=${id}`,
-          }))}
-        />
-        <div className="border-t border-hairline pt-lg lg:border-l lg:border-t-0 lg:pl-lg lg:pt-0">
+        <StageCard points={data.stages} openCount={data.pipeline.openCount}>
           <StatusBar
-            eyebrow="Stage · confirmed orders"
-            caption={`${data.kpis.orderCount} confirmed`}
             segments={data.stageBreakdown.map((entry) => ({
               id: entry.stage,
               label: stageLabel(entry.stage),
@@ -212,10 +180,10 @@ export default async function DashboardPage({
               href: `/purchase-orders?status=confirmed&stage=${entry.stage}&from=${from}&to=${to}`,
             }))}
           />
-        </div>
-      </section>
+        </StageCard>
+      </div>
 
-      {/* 4. Everything a person goes looking for, behind one control. */}
+      {/* 3. Everything a person goes looking for, behind one control. */}
       <MoreAnalytics open={moreOpen}>
         <div className="grid gap-lg lg:grid-cols-2">
           <DonutShare
@@ -236,7 +204,7 @@ export default async function DashboardPage({
         </div>
       </MoreAnalytics>
 
-      {/* 5. The table, last. */}
+      {/* 4. The table, last. */}
       <section className="mt-lg">
         <div className="mb-sm flex items-center justify-between gap-md">
           <p className="font-mono text-[length:var(--text-eyebrow)] text-ink-tertiary">

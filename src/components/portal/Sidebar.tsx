@@ -18,7 +18,8 @@ import { Wordmark } from "@/components/portal/Wordmark";
  */
 const NAV = [
   { href: "/", label: "Dashboard", icon: LayoutDashboard },
-  { href: "/purchase-orders", label: "Purchase orders", icon: FileText },
+  // Title case at the user's request (2026-09-06) — the one label that is.
+  { href: "/purchase-orders", label: "Purchase Orders", icon: FileText },
   { href: "/buyers", label: "Buyers", icon: Users },
   { href: "/products", label: "Products", icon: Package },
 ] as const;
@@ -49,14 +50,19 @@ export function Sidebar({
 
   return (
     <aside className="flex h-dvh w-16 shrink-0 flex-col gap-xl border-r border-hairline bg-surface px-xs py-lg lg:w-60 lg:px-md">
-      <div className="px-xs">
+      {/* The wordmark is the way home: the dashboard lives at `/`. */}
+      <Link
+        href="/"
+        aria-label="Loving Hands — go to the dashboard"
+        className="block rounded-xxs px-xs transition-opacity duration-[0.25s] hover:opacity-80 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary"
+      >
         <Wordmark className="hidden lg:block" />
         <div className="lg:hidden" aria-hidden>
           <span className="bg-brand-gradient bg-clip-text font-display text-[length:var(--text-heading-md)] font-bold text-transparent">
             L
           </span>
         </div>
-      </div>
+      </Link>
 
       <nav className="flex flex-1 flex-col gap-xxs" aria-label="Main">
         {NAV.map(({ href, label, icon: Icon }) => {

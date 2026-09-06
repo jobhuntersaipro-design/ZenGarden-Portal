@@ -2,11 +2,63 @@
 
 ## Status
 
-Not Started
+Built and verified in the browser on `feature/dashboard-charts` — awaiting review and
+permission to commit and merge.
 
 ## Goals
 
+The 2026-09-06 `/ui-ux-pro-max` dashboard request, six items, with the open design
+calls settled by one round of questions (every recommended pick taken):
+
+1. **Chart animation and value labels** on every Recharts chart (dashboard sales,
+   dashboard stage, buyer product trend, product price trend). Bars and lines grow
+   in on first load and morph on every data change (~800 ms ease-out), off under
+   `prefers-reduced-motion` (Recharts' `isAnimationActive="auto"`). Each point or
+   bar carries its value with **0 decimals** (`RM 47,950`, `1,240`, `4`). Labels
+   hide past 31 buckets so a daily "Last 3 months" stays readable.
+2. **Two chart cards instead of one.** The first is **Sales**, switchable to
+   **Quantity** (`?measure=sales|units`); Quantity is the sum of line-item
+   quantities per period. Heading reads `RM 737,667.95 across 30 days` or
+   `12,480 units across 30 days`.
+3. **Status breakdown · intake bar removed** from the dashboard. Needs review /
+   Extracting / Failed are read from the Purchase orders list chips.
+4. The second card is **Order stage**: the stacked stage chart (each period's
+   confirmed orders by the stage they are in now), heading `27 orders still
+   open` — the confirmed count dropped from the label. The 14px stage bar with its
+   counted, linked legend sits under the chart as its legend, replacing the plain
+   six-swatch row.
+5. Sidebar label **Purchase Orders** (title case, the one deliberate exception to
+   the sentence-case rule, at the user's request; page titles unchanged).
+6. The **Loving Hands wordmark links to the dashboard**. The dashboard is `/`
+   (`/dashboard` was retired in Phase 01), so the link goes to `/`.
+
 ## Notes
+
+- Deviation from `docs/specs/design/loving-hands-portal-design.md` §3.2: the
+  trend card splits in two, the intake bar leaves the dashboard, and chart
+  animation re-runs on data change (the spec's "never restarts" rule was written
+  for KPI numbers, which stay static).
+- Recharts 3.8: `isAnimationActive` defaults to `"auto"`, which is off during SSR
+  and under reduced motion, so removing the explicit `false` is the whole switch.
+- Value labels are drawn by one `content` renderer (`src/components/charts/labels.tsx`)
+  that hides zero buckets and spaces labels from the plot width (`useLabelStep` +
+  `labelledIndices`, walking busy buckets rather than sampling every nth index). The
+  stacked stage chart carries its totals on an invisible `Line` — a `LabelList` on
+  the top segment vanishes wherever that segment is zero — and its tooltip filters
+  the payload to stage keys so the label line never appears as ": 8".
+- Playwright's full-page screenshot resizes the viewport, which re-measures the
+  charts and restarts the animation, so a full-page capture always shows empty
+  plots. Element and viewport screenshots show the real chart.
+- **Pre-existing, not fixed (Phase 06):** `poDate` is `@db.Date`, and the range filter
+  is cast to a UTC calendar date while the buckets are built in Kuala Lumpur time. For
+  "Last 30 days" three orders dated 7 Aug are in the KPI, the summary and the table
+  (38 POs, RM 737,667.95) but outside the daily chart (RM 673,967.79). The weekly
+  view agrees with the KPI because the week of 3 Aug is a bucket. The fix belongs in
+  every query that filters `poDate` by range, not in the chart.
+- **Pre-existing, not fixed:** Recharts draws the average and list-price reference
+  labels at `position: "right"` past the svg edge, so they were never visible; both
+  now sit inside the plot. Line dots are white-filled by default, so a flat price
+  line reads as dashes; unchanged.
 
 ## History
 

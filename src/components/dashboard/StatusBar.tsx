@@ -28,22 +28,25 @@ export function StatusBar({
   caption,
   segments,
 }: {
-  eyebrow: string;
-  caption: string;
+  /** Both omitted when the bar is the legend of a card that has its own header. */
+  eyebrow?: string;
+  caption?: string;
   segments: BarSegment[];
 }) {
   const total = segments.reduce((sum, segment) => sum + segment.count, 0);
 
   return (
     <div className="flex flex-col gap-sm">
-      <div className="flex items-baseline justify-between gap-sm">
-        <p className="font-mono text-[length:var(--text-eyebrow)] text-ink-tertiary">
-          {eyebrow}
-        </p>
-        <p className="text-[length:var(--text-caption)] text-ink-tertiary">
-          {caption}
-        </p>
-      </div>
+      {eyebrow || caption ? (
+        <div className="flex items-baseline justify-between gap-sm">
+          <p className="font-mono text-[length:var(--text-eyebrow)] text-ink-tertiary">
+            {eyebrow}
+          </p>
+          <p className="text-[length:var(--text-caption)] text-ink-tertiary">
+            {caption}
+          </p>
+        </div>
+      ) : null}
 
       <div className="flex h-3.5 w-full gap-0.5 overflow-hidden rounded-pill bg-surface-soft">
         {total === 0

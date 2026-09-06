@@ -2,8 +2,10 @@
 
 import {
   Bar,
-  BarChart,
   CartesianGrid,
+  ComposedChart,
+  LabelList,
+  Line,
   ResponsiveContainer,
   Tooltip,
   XAxis,
@@ -13,6 +15,13 @@ import type { PoStage } from "@/generated/prisma/enums";
 import type { StagePoint } from "@/lib/analytics/fulfillment";
 import { PO_STAGES, stageLabel } from "@/lib/po-stages";
 import { STAGE_VARS, cssVar } from "@/lib/analytics/palette";
+import {
+  CHART_ANIMATION,
+  LABEL_FONT_SIZE,
+  labelledIndices,
+  useLabelStep,
+  valueLabel,
+} from "@/components/charts/labels";
 
 /** Delivered at the bottom, Order placed on top (design reference §3.2). */
 const STACK_ORDER = [...PO_STAGES].reverse();
@@ -30,13 +39,17 @@ function StageTooltip({
   label?: string;
 }) {
   if (!active || !payload?.length) return null;
-  const total = payload.reduce((sum, entry) => sum + (entry.value ?? 0), 0);
+  // The label line rides along in the payload as "total"; only stages count.
+  const stages = payload.filter((entry) =>
+    (PO_STAGES as readonly string[]).includes(String(entry.dataKey)),
+  );
+  const total = stages.reduce((sum, entry) => sum + (entry.value ?? 0), 0);
   return (
     <div className="rounded-md bg-ink p-sm text-canvas shadow-sm">
       <p className="text-[length:var(--text-caption)] font-medium">
         {label} — {total} confirmed
       </p>
-      {payload
+      {stages
         .filter((entry) => (entry.value ?? 0) > 0)
         .map((entry) => (
           <p key={String(entry.dataKey)} className="text-[length:var(--text-caption)]">
@@ -49,10 +62,21 @@ function StageTooltip({
 
 /**
  * One bar per bucket, segments = the current stage of that bucket's confirmed
- * orders. The y axis is order count, not money — this chart answers throughput,
- * and mixing a money scale in would be the dual-axis mistake.
+ * orders, the bucket's total above it. The y axis is order count, not money —
+ * this chart answers throughput, and mixing a money scale in would be the
+ * dual-axis mistake. The legend is the stage bar the card renders below.
  */
 export function StackedStageChart({ points }: { points: StagePoint[] }) {
+  const longest = points.reduce(
+    (max, point) => Math.max(max, String(point.total).length),
+    0,
+  );
+  const labels = useLabelStep(points.length, longest);
+  const labelled = labelledIndices(
+    points.map((point) => point.total),
+    labels.step,
+  );
+
   if (points.every((point) => point.total === 0)) {
     return (
       <p className="py-xl text-center text-[length:var(--text-body-sm)] text-ink-secondary">
@@ -62,73 +86,65 @@ export function StackedStageChart({ points }: { points: StagePoint[] }) {
   }
 
   const dense = points.length > 60;
+  const top = STACK_ORDER.length - 1;
 
   return (
-    <>
-      <div className="h-72 w-full">
-        <ResponsiveContainer>
-          <BarChart data={points} barCategoryGap={dense ? 1 : 2}>
-            <CartesianGrid
-              vertical={false}
-              stroke="var(--color-hairline)"
-              strokeDasharray="0"
+    <div className="h-72 w-full">
+      <ResponsiveContainer onResize={labels.onResize}>
+        {/* Room above the tallest bar for its label. */}
+        <ComposedChart data={points} barCategoryGap={dense ? 1 : 2} margin={{ top: 16 }}>
+          <CartesianGrid
+            vertical={false}
+            stroke="var(--color-hairline)"
+            strokeDasharray="0"
+          />
+          <XAxis
+            dataKey="label"
+            tickLine={false}
+            axisLine={false}
+            interval={Math.max(0, Math.ceil(points.length / 12) - 1)}
+            tick={{ fill: "var(--color-ink-tertiary)", fontSize: LABEL_FONT_SIZE }}
+          />
+          <YAxis
+            allowDecimals={false}
+            tickLine={false}
+            axisLine={false}
+            width={32}
+            tick={{ fill: "var(--color-ink-tertiary)", fontSize: LABEL_FONT_SIZE }}
+          />
+          <Tooltip
+            cursor={{ fill: "var(--color-surface-soft)" }}
+            content={<StageTooltip />}
+          />
+          {STACK_ORDER.map((stage, index) => (
+            <Bar
+              key={stage}
+              dataKey={stage}
+              stackId="a"
+              fill={colorFor(stage)}
+              {...CHART_ANIMATION}
+              // A 2px surface gap keeps adjacent fills apart, which is what
+              // discharges the CVD warning on the pink/aqua pair.
+              stroke="var(--color-canvas)"
+              strokeWidth={dense ? 1 : 2}
+              // Only the topmost segment is rounded.
+              radius={index === top ? [3, 3, 0, 0] : undefined}
             />
-            <XAxis
-              dataKey="label"
-              tickLine={false}
-              axisLine={false}
-              interval={Math.max(0, Math.ceil(points.length / 12) - 1)}
-              tick={{ fill: "var(--color-ink-tertiary)", fontSize: 12 }}
-            />
-            <YAxis
-              allowDecimals={false}
-              tickLine={false}
-              axisLine={false}
-              width={32}
-              tick={{ fill: "var(--color-ink-tertiary)", fontSize: 12 }}
-            />
-            <Tooltip
-              cursor={{ fill: "var(--color-surface-soft)" }}
-              content={<StageTooltip />}
-            />
-            {STACK_ORDER.map((stage, index) => (
-              <Bar
-                key={stage}
-                dataKey={stage}
-                stackId="a"
-                fill={colorFor(stage)}
-                // Off, like the line chart. Recharts grows bars from zero over
-                // 1.5s, so a screenshot or a PDF export catches an empty plot
-                // and reads it as "no data" — the same failure the KPI
-                // count-up rule exists to prevent (design reference §3.2).
-                isAnimationActive={false}
-                // A 2px surface gap keeps adjacent fills apart, which is what
-                // discharges the CVD warning on the pink/aqua pair.
-                stroke="var(--color-canvas)"
-                strokeWidth={dense ? 1 : 2}
-                // Only the topmost segment is rounded.
-                radius={index === STACK_ORDER.length - 1 ? [3, 3, 0, 0] : undefined}
-              />
-            ))}
-          </BarChart>
-        </ResponsiveContainer>
-      </div>
-
-      {/* Six stages in order, always — identity is never colour alone. */}
-      <ul className="mt-md flex flex-wrap gap-md">
-        {PO_STAGES.map((stage) => (
-          <li key={stage} className="flex items-center gap-xxs">
-            <span
-              aria-hidden
-              className="size-2.5 rounded-xxs"
-              style={{ backgroundColor: colorFor(stage) }}
-            />
-            <span className="text-[length:var(--text-caption)] text-ink-secondary">
-              {stageLabel(stage)}
-            </span>
-          </li>
-        ))}
-      </ul>
-    </>
+          ))}
+          {/* An invisible line at each bucket's total carries the label: a
+              LabelList on the top segment goes missing wherever that segment
+              is zero, and every segment is zero somewhere. */}
+          <Line
+            dataKey="total"
+            stroke="none"
+            dot={false}
+            activeDot={false}
+            {...CHART_ANIMATION}
+          >
+            <LabelList dataKey="total" content={valueLabel(String, labelled)} />
+          </Line>
+        </ComposedChart>
+      </ResponsiveContainer>
+    </div>
   );
 }
