@@ -6,16 +6,28 @@ import { useEffect, useRef, useState } from "react";
 export const COUNT_UP_MS = 2000;
 
 /**
- * Ease-out quadratic: quick off the mark, decelerating to the target.
+ * Ease-out cubic: fast off the mark, easing into the target.
  *
- * Cubic was the first choice and it was too aggressive to read as motion. It
- * puts 89% of the distance in the first second of a two-second run, so the
- * figure sprints, arrives, and then dithers in its last digits for a second —
- * which looks stalled rather than slowing. The square covers 75% by the
- * halfway mark and still moves ~6% of the range through the final quarter
- * second, so the deceleration is visible for the whole two seconds.
+ * The exponent alone was never the problem. Cubic and then quadratic were both
+ * tried and both were reported as not feeling like they slowed down, because
+ * the figure repainted on *every* frame right up to the last one: sixty
+ * changes a second is a blur whatever the curve does to the increments, and a
+ * blur that stops is not a deceleration. The cue the eye reads is the
+ * repaint rhythm, handled below.
  */
-const easeOut = (progress: number) => 1 - (1 - progress) ** 2;
+const easeOut = (progress: number) => 1 - (1 - progress) ** 3;
+
+/**
+ * How far apart the repaints get by the end of the run.
+ *
+ * The gap grows from nothing to this across the two seconds, so the figure
+ * blurs off the mark, breaks into chunky steps through the middle, and lands
+ * in distinct ticks roughly a seventh of a second apart. Combined with the
+ * cubic — whose increments are shrinking at the same time — the last stretch
+ * is a handful of small, well-spaced, readable steps rather than a smear that
+ * halts.
+ */
+const MAX_TICK_MS = 150;
 
 const reducedMotion = () =>
   typeof window !== "undefined" &&
@@ -68,14 +80,24 @@ export function useCountUp(value: number, duration = COUNT_UP_MS): number {
     // first tick or two — and an ease-out cubic of a negative progress is
     // negative, which painted "-RM 8,851.78" under a Total sales label.
     let startedAt = 0;
+    let paintedAt = -Infinity;
     let frame = 0;
     const tick = (now: number) => {
       if (startedAt === 0) startedAt = now;
       const progress = span === 0 ? 1 : Math.min(1, (now - startedAt) / span);
-      const next =
-        progress === 1 ? value : from + (value - from) * easeOut(progress);
-      shown.current = next;
-      setDisplay(next);
+
+      // Repaint every frame at the start and progressively less often after,
+      // so the tick rate itself decelerates. The final frame always paints,
+      // so the run cannot end on a stale figure.
+      const gap = MAX_TICK_MS * progress;
+      if (progress === 1 || now - paintedAt >= gap) {
+        paintedAt = now;
+        const next =
+          progress === 1 ? value : from + (value - from) * easeOut(progress);
+        shown.current = next;
+        setDisplay(next);
+      }
+
       if (progress < 1) frame = requestAnimationFrame(tick);
     };
 

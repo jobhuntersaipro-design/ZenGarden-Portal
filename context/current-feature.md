@@ -29,13 +29,17 @@ one round of questions (every recommended pick taken):
   after mount; a range change continues from the frame on screen rather than
   restarting at zero; and `prefers-reduced-motion` skips it. Verified on a hard load:
   true value painted at 515 ms, zero at 648 ms, 194 frames, settled at 2543 ms.
-- **Easing.** The first build used an ease-out cubic, which put 89% of the distance
-  in the first second of a two-second run: the figure sprinted, arrived, then dithered
-  in its last digits: motion for one second and a frozen second after it. The curve is
-  now an ease-out **quadratic** — 50% of the distance in the first quarter of the time
-  (against 25% for a linear ramp), 78% by the halfway mark, and still ~6% of the range
-  moving through the final half second, so the deceleration is legible for the whole
-  two seconds. Duration constant 2000 ms; measured 1.9 s in the browser.
+- **Easing took three passes, and the exponent was never the problem.** Cubic, then
+  quadratic, were both reported as not feeling like they slowed down. The cause was
+  the repaint rhythm: the figure changed on every frame right to the last one, and
+  sixty changes a second is a blur whatever the curve does to the increments — a blur
+  that stops is not a deceleration. The run now repaints every frame at the start and
+  progressively less often after, the gap growing to 150 ms, so the tick rate
+  decelerates alongside the value. Measured on Total sales: 35 paints over 1.9 s,
+  gaps 8–17 ms at the start and 108–142 ms at the end, final steps RM 14,467 → 11,037
+  → 7,495 → 4,152 → 1,568 → 181. The small tiles tick too — Purchase orders counts
+  0 → 38 through 29 integers with its last gaps at 192 and 242 ms. Duration constant
+  is still 2000 ms.
 - The donut ring keeps one grey "Other" arc while the list is open. Unfolding it into
   arcs would need hues past the six the palette validates, which is the rule the fold
   exists to protect.

@@ -200,8 +200,11 @@ Nothing above the fold is a donut.
 > after its 2026-09-06 removal — the server value is the initial state and the
 > first paint, the count runs after mount, a range change continues from the
 > frame on screen, and `prefers-reduced-motion` skips it. The curve is an
-> ease-out quadratic: cubic front-loaded so hard that the second half of the
-> run read as frozen rather than slowing. Donut legends link
+> ease-out cubic, and — the part that actually carries the perception — the
+> repaint rhythm decelerates with it: every frame at the start, widening to
+> 150 ms gaps at the end, so the figure blurs off the mark and lands in
+> distinct, shrinking ticks. A value repainted sixty times a second reads as a
+> blur that stops, whatever the easing curve does to the increments. Donut legends link
 > every named slice to its detail page and "Other (n)" unfolds in place, its
 > members sharing percentages of the whole; the ring keeps one grey Other arc.
 > The sidebar is `sticky top-0`, so it fills the screen at every scroll offset.
