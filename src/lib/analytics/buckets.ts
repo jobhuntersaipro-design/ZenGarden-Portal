@@ -64,6 +64,20 @@ const LABEL = {
 } as const;
 
 /**
+ * `6–12 Jul`, or `29 Jun–5 Jul` where the week crosses a month.
+ *
+ * A weekly axis labelled `6 Jul` reads as Monday's takings rather than the
+ * week's, and the tooltip inherits the same ambiguity. Weeks start Monday, so
+ * the label names Monday through Sunday. The year is left off — the range
+ * header above every chart already carries it, and the axis has no room.
+ */
+function weekLabel(start: TZDate): string {
+  const end = addDays(start, 6);
+  const sameMonth = format(start, "MMM") === format(end, "MMM");
+  return `${format(start, sameMonth ? "d" : "d MMM")}–${format(end, "d MMM")}`;
+}
+
+/**
  * Which bucket a date falls in, in Kuala Lumpur. A PO confirmed at 07:00 KL
  * belongs to that day, not to the UTC day before it.
  */
@@ -76,11 +90,7 @@ export function bucketKey(value: Date | string, agg: Aggregation): string {
  * them. A chart that skips empty buckets draws a busy week and a dead week the
  * same width, which is a lie about time.
  */
-export function makeBuckets(
-  from: Date,
-  to: Date,
-  agg: Aggregation,
-): Bucket[] {
+export function makeBuckets(from: Date, to: Date, agg: Aggregation): Bucket[] {
   const buckets: Bucket[] = [];
   const last = startOf(toKL(to), agg);
   let cursor = startOf(toKL(from), agg);
@@ -89,7 +99,8 @@ export function makeBuckets(
   for (let guard = 0; guard < 2000; guard += 1) {
     buckets.push({
       key: format(cursor, "yyyy-MM-dd"),
-      label: format(cursor, LABEL[agg]),
+      // The key stays the week's first day; only the label names both ends.
+      label: agg === "week" ? weekLabel(cursor) : format(cursor, LABEL[agg]),
       start: new Date(cursor.getTime()),
     });
     if (cursor.getTime() >= last.getTime()) break;

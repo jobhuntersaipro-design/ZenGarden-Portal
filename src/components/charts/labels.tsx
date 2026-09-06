@@ -17,6 +17,21 @@ export const CHART_ANIMATION = {
 /** Axis ticks and value labels share one size and the tertiary/secondary inks. */
 export const LABEL_FONT_SIZE = 12;
 
+/**
+ * How many buckets an x-axis skips between the ticks it prints — at most
+ * twelve labels, however many buckets there are. Shared so `ChartScroller` can
+ * size the plot from the labels that will actually be drawn rather than from a
+ * formula that has drifted out of step with the axis.
+ */
+export function axisInterval(bucketCount: number): number {
+  return Math.max(0, Math.ceil(bucketCount / 12) - 1);
+}
+
+/** How many ticks that interval leaves on screen. */
+export function shownTickCount(bucketCount: number): number {
+  return Math.ceil(bucketCount / (axisInterval(bucketCount) + 1));
+}
+
 // Inter at 12px runs ~7.5px per glyph for digits and capitals; the gap keeps
 // neighbours apart.
 const GLYPH_PX = 7.5;

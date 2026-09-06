@@ -19,6 +19,7 @@ import {
 } from "@/lib/analytics/sales";
 import { EXTREME_VAR, cssVar } from "@/lib/analytics/palette";
 import {
+  axisInterval,
   CHART_ANIMATION,
   LABEL_FONT_SIZE,
   labelledIndices,
@@ -62,7 +63,10 @@ function SalesTooltip({
   return (
     <div className="rounded-md bg-ink p-sm text-canvas shadow-sm">
       <p className="text-[length:var(--text-caption)]">
-        {label} — {formatExact(measure, payload[0].value ?? 0)}
+        {/* `·` and not an em dash: a weekly label is itself a range —
+            "27 Jul–2 Aug — RM 252,487.41" put two dashes side by side. The
+            middle dot is the separator the rest of the app already uses. */}
+        {label} · {formatExact(measure, payload[0].value ?? 0)}
       </p>
     </div>
   );
@@ -119,7 +123,12 @@ export function SalesLineChart({
           cannot supply it: at 390px this series had 86px to draw 13 buckets in
           (2026-09-06 review, A1). `axisWidth` covers the 64px y-axis plus the
           x-axis end padding. */}
-      <ChartScroller buckets={picked.points.length} axisWidth={128} fade={fade}>
+      <ChartScroller
+        buckets={picked.points.length}
+        labels={picked.points.map((point) => point.label)}
+        axisWidth={128}
+        fade={fade}
+      >
         <div className="h-72 w-full">
           <ResponsiveContainer onResize={labels.onResize}>
             {/* The end points sit off the plot edges so their labels do not
@@ -150,7 +159,7 @@ export function SalesLineChart({
                 tickLine={false}
                 axisLine={false}
                 padding={{ left: 40, right: 24 }}
-                interval={Math.max(0, Math.ceil(picked.points.length / 12) - 1)}
+                interval={axisInterval(picked.points.length)}
                 tick={{
                   fill: "var(--color-ink-tertiary)",
                   fontSize: LABEL_FONT_SIZE,

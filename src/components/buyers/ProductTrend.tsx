@@ -14,6 +14,7 @@ import {
   YAxis,
 } from "recharts";
 import {
+  axisInterval,
   CHART_ANIMATION,
   LABEL_FONT_SIZE,
   labelledIndices,
@@ -210,7 +211,12 @@ export function ProductTrend({
             Pick a product to see its trend.
           </p>
         ) : (
-          <ChartScroller buckets={points.length} axisWidth={128} fade="surface">
+          <ChartScroller
+            buckets={points.length}
+            labels={points.map((point) => point.label)}
+            axisWidth={128}
+            fade="surface"
+          >
             <div className="h-72 w-full">
               <ResponsiveContainer onResize={labels.onResize}>
                 <LineChart data={points} margin={{ top: 16, right: 16 }}>
@@ -223,7 +229,7 @@ export function ProductTrend({
                     tickLine={false}
                     axisLine={false}
                     padding={{ left: 24, right: 24 }}
-                    interval={Math.max(0, Math.ceil(points.length / 12) - 1)}
+                    interval={axisInterval(points.length)}
                     tick={{
                       fill: "var(--color-ink-tertiary)",
                       fontSize: LABEL_FONT_SIZE,

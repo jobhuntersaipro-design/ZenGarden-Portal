@@ -2,110 +2,69 @@
 
 ## Status
 
-Built and verified on `feature/mobile-and-engagement` — awaiting review before commit.
+Built and verified on `feature/weekly-labels-and-po-edit` — awaiting review before commit.
 
 ## Goals
 
-The 2026-09-06 `/ui-review` pass. Desktop passed; mobile failed. Three findings were
-not "cramped" but unreadable, and one number causes most of the rest: the portal shell
-leaves **246px of a 390px viewport** for content (64px icon rail + 40px padding a side).
-
-**A — mobile blockers**
-
-- A1 Charts collapse to a vertical spike. Buyer detail's plot area measured **86px wide**
-  for 13 months; the dashboard sales chart is the same. Labels pile into mush.
-- A2 `StageStepper`'s `grid-cols-6` gives **29px cells to 48–73px labels** — every PO
-  detail page renders "Ipeodductpiassveedhouse".
-- A3 The dashboard scrolls sideways **122px** (512 vs 390). The Aggregate segment group
-  is 408px and cannot wrap; `PageHeader` is a non-wrapping `justify-between`, so the
-  primary Upload PO button is cut in half.
-- A4 Same header clipping on Products ("View only…") and PO detail ("Download original").
-- A5 37% of the mobile screen is chrome. The rail runs to `lg` (1024px), so tablets get
-  it too.
-- A6 At 768px the Top buyer tile clips mid-word — "Northwii Traders".
-- A7 55 interactive elements under 44px on the dashboard alone.
-
-**B — engagement**
-
-- B1 The PO list shows one and a half of seven columns in a 246px window.
-- B2 "hover a point for the value" on a touch device: the data is unreachable.
-- B3 The hero sales chart is flat black beside a stage chart that uses the full palette.
-- B4 The dashboard opens on vanity metrics; the backlog is not on it at all, against the
-  2026-09-05 design review.
-- B5 Buyer detail is **5448px tall** on a phone; KPI tiles stack one per row.
-- B6 Upload leads with "Drop PO files here" on a PO-photo intake product.
-- B7 Product cards are half empty grey placeholder.
-
-**C — smaller**
-
-- C1 `--color-primary` resolves to **`#292d34`**, not `#7612fa`: `@theme inline` rebinds it
-  to `--primary`, which `:root` sets to ink. Every `outline-primary` focus ring in the app
-  is grey. Broader than the `--ring` note already in the history.
-- C2 No skip link. C3 No `viewport` export / `viewportFit`.
+Two things reported on 2026-09-06: weekly chart labels should name both ends of the
+week, and the Purchase order detail page could not be edited.
 
 ## Notes
 
-**Shipped.**
+**Weekly labels.** `makeBuckets` labelled a weekly bucket `6 Jul`, which reads as
+Monday's takings rather than the week's — and the tooltip inherited the same
+ambiguity. Weeks start Monday, so the label now runs Monday to Sunday: `6–12 Jul`,
+and `29 Jun–5 Jul` where the week crosses a month. The year is left off; the range
+header above every chart already carries it and the axis has no room. The key is
+unchanged (still the week's first day), so nothing that joins on it moves. One label
+source feeds the sales, stage, buyer-trend and product-trend charts, so all four
+changed together.
 
-- **The shell (A5).** The icon rail is gone. Below `lg` the portal gets `MobileTopBar`
-  (wordmark + account, sticky, painted into the top safe-area inset) and `MobileTabBar`
-  (four 56px destinations, fixed, `env(safe-area-inset-bottom)`), and `main` steps its
-  padding `p-md sm:p-lg lg:p-xl`. `NAV` and `isActive` moved to `components/portal/nav.ts`
-  so the two navs cannot drift. Content on a 390px phone went **246px → 350px**, which is
-  what made A1 and A2 fixable without touching either component. Added `viewport` with
-  `viewportFit: "cover"` (C3) — without it every safe-area inset is 0 — and a `SkipLink` (C2).
-- **Charts (A1).** `ChartScroller` gives a plot a floor of `axisWidth + buckets × 24px` and
-  scrolls it inside the card, with a fade at whichever edge has more to reach. Wrapped
-  round all four Recharts charts. The dashboard sales plot measured **86px → 768px**; the
-  buyer trend **86px → 360px**. The edge-fade logic came out of `DataTable` into
-  `useEdgeFades` rather than being written twice.
-- **Stepper (A2).** Vertical below `sm`, the canvas's horizontal track from `sm` up, sharing
-  one `StageNode`. `grid-cols-6` was handing 29px cells to 48–73px labels.
-- **Tables (B1).** `DataTable` renders cards below `md` — title from the first column, the
-  rest as a `<dl>`, `mobileHidden` to drop columns that only matter when scanning many rows
-  (both avatar columns on the PO list). Sorting moves to a select + direction button, since a
-  card has no header to click. All five consumers got it at once.
-- **Segments (A3).** Five copies of `flex overflow-hidden rounded-sm border border-hairline`
-  became `SegmentGroup`, which scrolls instead of clipping and can wrap. That one class
-  string was the whole of the dashboard's 122px overflow and Products' 38px.
-- **KPI tiles (A6, B5).** Two-up on mobile; `break-words` (Top buyer clipped to "Northwii
-  Traders" at 768px); `mobileFull` for money, because "RM 29,175.52" measures **161px** against
-  **125px** of a half tile and the spec forbids wrapping money.
-- **Touch targets (A7).** 44px on mobile, back to the system's 36px at `sm`: every
-  `ChoiceButton` look, every `h-control-sm` control, `BackLink`, pagination, breadcrumbs,
-  the stage-count links, the attention breakdown, "Custom range", "Cancel", "Try preview
-  again". Inline links inside prose and card cells are left alone (WCAG 2.5.8 exempts them).
-- **Engagement.** `WorkQueue` at the top of the dashboard (B4) — renders **only when there is
-  work**, so it is not the always-on intake bar that was deliberately removed on 2026-09-06;
-  it reads `data.intake`, which was already loaded and unused, so no new query. Its links
-  carry no date range, because a draft has no `poDate` — the trap already recorded in the
-  UI-change brief. "hover a point" → "tap or hover" (B2). The sales area fill went from ink
-  at 0.06 (invisible) to the brand purple (B3); the line stays ink and the extremes stay
-  purple, so the single-hue rationale is intact. Upload leads with **Take a photo** and a
-  rear-camera `capture` input below `sm` (B6). Product cards are two-up (B7).
-- **Focus ring (C1).** `--color-primary` computed to `#292d34`, not `#7612fa` — `@theme inline`
-  re-declares it as `var(--primary)` and `:root` points that at ink, so no focus ring in the
-  app had ever been purple. Ink is right for `bg-primary`, so the rebinding stays and the ring
-  moved to a new unshadowed `--color-focus`; 37 files swapped to `outline-focus` /
-  `border-focus`. Recorded in `context/design-system.md`.
+Two follow-ons the wider label forced. The `ChartScroller` floor was a flat 24px a
+bucket — fine for `6 Jul`, far too little for `31 Aug–6 Sep`; it now also takes the
+labels and sizes from the longest one, counting only the ticks the axis will really
+print. The `Math.ceil(n / 12) - 1` interval formula that decides that was duplicated
+in three charts and moved to `axisInterval` in `charts/labels.tsx`, so the scroller
+and the axes cannot drift. And the tooltip read `27 Jul–2 Aug — RM 252,487.41`, two
+dashes side by side, so its separator is now the `·` the rest of the app uses.
 
-**Verified.** A scripted sweep over 8 routes × {390, 768, 1440}: zero horizontal overflow,
-zero clipped text, zero sub-44px standalone controls on phone — all 24 combinations clean.
-326 unit tests, `npm run build` and `npm run lint` all pass. Desktop re-checked by screenshot
-and unchanged apart from the work queue and the chart wash.
+**The edit drawer — and why nothing in the app could be edited.** The sheet opened
+(the page dimmed, the ✕ appeared) but the panel was **12px wide and off the right
+edge**, with the whole form inside it. `EditPurchaseOrderSheet` was not at fault; it
+works and was verified saving end to end.
 
-**Known, not fixed.** A KPI row that mixes half tiles with a full-width money tile leaves one
-empty cell where the full-width tile starts a new row (visible on Buyers and buyer detail).
-Every fix trades away either the canvas's tile order or DOM/reading order, so it stands.
-The R2 `NoSuchKey` previews and the `poDate` UTC/KL bucketing gap are both untouched and
-still open from earlier briefs.
+The cause is a design-system collision. Tailwind v4 resolves `max-w-<name>` against
+`--spacing-<name>` before `--container-<name>`, and this system names its spacing
+steps `xs`, `sm`, `md`, `lg`. The compiled CSS was literally
+`.max-w-sm{max-width:var(--spacing-sm)}` — **12px, not 24rem** — so shadcn's
+`data-[side=right]:sm:max-w-sm` clamped every drawer to a sliver. Likewise
+`.max-w-xs` (8px, tooltips) and `.sm\:max-w-lg` (24px). **Every Sheet, Dialog and
+Tooltip in the app was affected, and had been since Phase 01**: `sheet.tsx` is
+untouched since it was installed and `tailwindcss: "^4"` floated to 4.3.3.
+`--container-panel-xs|sm|md|lg` are names the spacing scale cannot shadow, mapping
+1:1 onto the sizes the primitives originally asked for.
 
-**Test-account note.** Browsing the portal required signing in as the seeded member, which
-forced a password change. It was set back to the seeded `Password123!`, so that credential
-still works, but `mustChangePassword` is now `false` in the database — `npm run db:seed`
-restores it.
+Two further traps, both measured rather than assumed. `data-[side=right]:sm:max-w-*`
+outranks a caller's plain `sm:max-w-*` on specificity, so the PO drawer opened at the
+primitive's 384px while asking for 512px; and removing that prefix did **not** fix it,
+because tailwind-merge does not treat `max-w-panel-sm` and `max-w-panel-lg` as one
+conflict group — it keeps both and stylesheet order decides, handing it back to
+`panel-sm`. `SheetContent` now applies its default in code, guarded on whether the
+caller supplied a `max-w-`.
+
+**Verified.** The PO drawer opens at 512px on desktop and 75% of the viewport on a
+phone, and a real edit saved, toasted, appeared in the summary and logged to Activity
+as "Edited: buyer reference" — then was rolled back (the two audit entries remain,
+which is correct). Weekly labels checked at 9, 14 and 53 buckets: the 53-week axis
+thins to every fifth tick with no overlap and shows the cross-month form
+`23 Feb–1 Mar`. A sweep over 9 routes × {390, 768, 1440} is clean on all 27 — no
+overflow, no sub-44px controls. 328 tests, build and lint pass.
+
+The collision is recorded in `context/design-system.md` beside the ink-tertiary
+deviation, as well as in `globals.css` beside the tokens.
 
 ## History
+- 2026-09-06: Mobile and engagement pass complete and merged (`feature/mobile-and-engagement`) — the 2026-09-06 `/ui-review` request, the third of the day. Desktop passed; **mobile failed**, and three findings were unreadable rather than merely cramped. One measurement caused most of it: the shell left **246px of a 390px viewport** for content (64px icon rail + 40px padding a side), which is why the buyer trend chart had **86px of plot for 13 buckets** and `StageStepper`'s `grid-cols-6` handed **29px cells to 48–73px labels** ("Ipeodductpiassveedhouse"). The rail is gone below `lg` — `MobileTopBar` (wordmark + account, sticky, painted into the top safe-area inset) and `MobileTabBar` (four 56px destinations, fixed, `env(safe-area-inset-bottom)`), with `NAV`/`isActive` extracted to `components/portal/nav.ts` so the two navs cannot drift — and `main` steps `p-md sm:p-lg lg:p-xl`. Content went to **350px**, which is what made everything else fixable without special-casing. Shipped: `ChartScroller` (a floor of `axisWidth + buckets × 24px`, scrolled inside the card with edge fades, round all four Recharts charts — dashboard sales plot **86px → 768px**), the stepper vertical below `sm` sharing one `StageNode` with the canvas's horizontal track above, `DataTable` card mode below `md` (title from column one, the rest a `<dl>`, `mobileHidden` dropping both avatar columns from the PO list, sorting moved to a select since a card has no header to click — all five consumers at once), `SegmentGroup` replacing five copies of one strip class that clipped instead of scrolling and alone caused the dashboard's **122px** and Products' **38px** document overflow, two-up KPI rows with `break-words` (Top buyer clipped to "Northwii Traders" at 768px) and `mobileFull` for money (**"RM 29,175.52" measures 161px against 125px** of a half tile, and the spec forbids wrapping money), 44px touch targets below `sm`, `SkipLink`, and a `viewport` export with `viewportFit: "cover"` — without which every safe-area inset is 0. Engagement: `WorkQueue` leads the dashboard, reading `data.intake` which was already loaded and unused, and **renders only when there is work**, so it is not the always-on intake bar deliberately removed earlier the same day; its links carry no date range because a draft has no `poDate`. "hover a point" → "tap or hover"; the sales area fill went from ink at 0.06 (invisible) to the brand purple while the line and extremes keep their meanings; Upload leads with **Take a photo** and a rear-camera `capture` input below `sm`; product cards two-up. **`--color-primary` computed to `#292d34`, not `#7612fa`** — the `@theme inline` block re-declares it as `var(--primary)` and `:root` points that at ink, so **no focus ring in the app had ever been purple** since Phase 01; ink is right for `bg-primary`, so the rebinding stays and the ring moved to a new unshadowed `--color-focus`, 37 files swapped, recorded in `context/design-system.md`. The `DataTable` edge-fade logic came out into `useEdgeFades` rather than being written twice. Verified by a scripted sweep over 8 routes × {390, 768, 1440}: zero horizontal overflow, zero clipped text, zero sub-44px standalone controls on phone, all 24 combinations clean; 326 tests, build and lint pass. Prettier reformatted ~40 files it was not asked to touch (semicolons across every shadcn primitive, imports re-wrapped in `ReviewForm` and `useUploadQueue`); every formatting-only diff was reverted before commit. **Known, not fixed:** a KPI row mixing half tiles with a full-width money tile leaves one empty cell where the money tile starts a new row — every fix trades away either the canvas's tile order or DOM/reading order.
 
 - 2026-09-06: Dashboard interactions brief complete and merged (`feature/dashboard-interactions`) — the second 2026-09-06 `/ui-ux-pro-max` request. **Count-up is back**, at 2s, after being cut that morning; the rule that made the old one unsafe is fixed rather than repeated, so the server figure is the initial state and the first paint, the count runs after mount, a range change continues from the frame on screen instead of restarting at zero, and `prefers-reduced-motion` skips it (`useCountUp`, `CountUp`). It covers the KPI tiles on every page, the six "In this range" tiles, the product KPI row and the single-metric card headings, but not chart labels or table cells. Donut legends link every named slice to its detail page and **"Other (n)" unfolds in place**, `shareBy` keeping the folded members with their share *of the whole* so an unfolded row ranks on the same scale as a top-five slice; the ring keeps one grey Other arc, because unfolding it into arcs would need hues past the six the palette validates. The same treatment went to the What-they-buy bars, and product names in the price-drift list became links. The **sidebar is `sticky top-0`** — a plain `h-dvh` aside stopped at the fold and left its surface and right border hanging mid-page. **Easing took three passes and the exponent was never the problem:** cubic, then quadratic, were both reported as not feeling like they slowed down, because the figure repainted on every frame to the last one, and sixty changes a second is a blur whatever the curve does to the increments. The repaint rhythm now decelerates too — every frame at the start, widening to 150 ms gaps — measured at 35 paints over 1.9 s with final steps RM 14,467 → 181, and Purchase orders counting 0 → 38 through 29 integers with its last gaps at 192 and 242 ms. Three other defects fixed: the mount animation was skipped **in development only**, because React double-invokes effects and the second pass read a start ref the cancelled first pass never wrote; the first frames rendered **negative money** ("-RM 8,851.78" under Total sales) because an animation frame already in flight carries a timestamp from before the effect ran, making progress negative under an ease-out; and linking the PO number in the product order history nested `<a>` inside `<a>` and failed hydration, since `DataTable` already wraps the first cell of every row in a link to `rowHref`.
 - 2026-09-06: Dashboard charts brief complete and merged (`feature/dashboard-charts`) — the first of two 2026-09-06 `/ui-ux-pro-max` requests. The trend card split into two: **Sales over time** with a *Sales · Quantity* switch (`?measure=`, Quantity summing line-item units through `pickMeasure`), then **Order stage**, the stacked stage chart headed "27 orders still open" with the confirmed count dropped and the 14px stage bar — counts and links intact — moved under it as its legend. The Status-breakdown *intake* bar left the dashboard; that backlog is read from the Purchase orders chips. Every Recharts chart (dashboard sales and stage, buyer product trend, product price trend) now animates 800 ms ease-out on load and on data change and carries whole-number value labels, drawn by one `content` renderer in `src/components/charts/labels.tsx` that hides zero buckets and spaces labels from the plot width. Sidebar label became **Purchase Orders** (title case, the one deliberate exception to the sentence-case rule, at the user's request) and the wordmark links to `/`. Six defects found and fixed: stage totals vanished on bars whose top segment was zero, so the totals ride an invisible `Line` — a `LabelList` on the top segment goes missing wherever that segment is zero, and every segment is zero somewhere; that line then leaked into the tooltip as an unnamed ": 8", so the tooltip filters its payload to stage keys; labels sampled every nth index skipped busy days, so `labelledIndices` walks the busy buckets instead; the quantity y-axis printed `931.84000000001` from the 1.12 headroom multiplier; end-point labels ran into the axis and the card edge; and the average and list-price reference labels were positioned at `"right"`, off the svg, so they had never been visible at all. **Known, not fixed:** `poDate` is `@db.Date` and the range filter is cast to a UTC calendar date while buckets are built in Kuala Lumpur time, so on "Last 30 days" three orders dated 7 Aug sit in the KPI, the summary and the table (38 POs, RM 737,667.95) but outside the daily chart (RM 673,967.79); the weekly view agrees because the week of 3 Aug is a bucket. The fix belongs in every query that filters `poDate` by range, not in a chart.
