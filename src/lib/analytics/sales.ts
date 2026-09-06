@@ -7,17 +7,68 @@ export type SalesPoint = {
   label: string;
   total: number;
   count: number;
+  /** Line-item quantities summed — the "Quantity" measure of the sales card. */
+  units: number;
 };
 
 export type SalesSeries = {
   points: SalesPoint[];
   total: number;
   count: number;
+  units: number;
   average: number;
   /** Over buckets that had sales — an empty Sunday is not "the minimum". */
   max: SalesPoint | null;
   min: SalesPoint | null;
 };
+
+export type SalesMeasure = "sales" | "units";
+
+export type MeasurePoint = { key: string; label: string; value: number; count: number };
+
+/** One measure of the series, in the shape the line chart draws. */
+export type MeasureSeries = {
+  measure: SalesMeasure;
+  points: MeasurePoint[];
+  total: number;
+  count: number;
+  average: number;
+  max: MeasurePoint | null;
+  min: MeasurePoint | null;
+};
+
+/**
+ * Sales or units, on the same buckets and the same rules: the average is over
+ * every bucket, the extremes over buckets that had orders. Money in, units
+ * out — the chart never sees both, so it never draws two scales.
+ */
+export function pickMeasure(series: SalesSeries, measure: SalesMeasure): MeasureSeries {
+  const points = series.points.map((point) => ({
+    key: point.key,
+    label: point.label,
+    value: measure === "sales" ? point.total : point.units,
+    count: point.count,
+  }));
+  const total = measure === "sales" ? series.total : series.units;
+  const withOrders = points.filter((point) => point.count > 0);
+  const max =
+    withOrders.length > 0
+      ? withOrders.reduce((best, point) => (point.value > best.value ? point : best))
+      : null;
+  const min =
+    withOrders.length > 0
+      ? withOrders.reduce((best, point) => (point.value < best.value ? point : best))
+      : null;
+  return {
+    measure,
+    points,
+    total,
+    count: series.count,
+    average: points.length > 0 ? total / points.length : 0,
+    max,
+    min,
+  };
+}
 
 export function salesSeries(
   orders: AnalyticsOrder[],
@@ -29,7 +80,7 @@ export function salesSeries(
   const byKey = new Map<string, SalesPoint>(
     buckets.map((bucket) => [
       bucket.key,
-      { key: bucket.key, label: bucket.label, total: 0, count: 0 },
+      { key: bucket.key, label: bucket.label, total: 0, count: 0, units: 0 },
     ]),
   );
 
@@ -40,11 +91,13 @@ export function salesSeries(
     if (!point) continue;
     point.total += order.total;
     point.count += 1;
+    point.units += order.lineItems.reduce((sum, line) => sum + line.quantity, 0);
   }
 
   const points = buckets.map((bucket) => byKey.get(bucket.key)!);
   const total = points.reduce((sum, point) => sum + point.total, 0);
   const count = points.reduce((sum, point) => sum + point.count, 0);
+  const units = points.reduce((sum, point) => sum + point.units, 0);
 
   // The average is per bucket across the whole range, empty ones included:
   // "RM 41,430.93 per day" means per day, not per day-that-had-sales.
@@ -60,7 +113,7 @@ export function salesSeries(
       ? withSales.reduce((best, point) => (point.total < best.total ? point : best))
       : null;
 
-  return { points, total, count, average, max, min };
+  return { points, total, count, units, average, max, min };
 }
 
 export type Kpis = {

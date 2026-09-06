@@ -5,6 +5,7 @@ import { usePathname, useSearchParams } from "next/navigation";
 import { ChevronsUpDown } from "lucide-react";
 import {
   CartesianGrid,
+  LabelList,
   Line,
   LineChart,
   ResponsiveContainer,
@@ -12,11 +13,19 @@ import {
   XAxis,
   YAxis,
 } from "recharts";
+import {
+  CHART_ANIMATION,
+  LABEL_FONT_SIZE,
+  labelledIndices,
+  useLabelStep,
+  valueLabel,
+} from "@/components/charts/labels";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { SHARE_VARS, cssVar } from "@/lib/analytics/palette";
 import type { ProductTrendPoint } from "@/lib/analytics/product-trend";
 import { Spinner } from "@/components/portal/Spinner";
 import { formatMYR } from "@/lib/money";
+import { formatUnits } from "@/lib/units";
 import { usePendingChoice } from "@/hooks/usePendingChoice";
 
 const MAX_PRODUCTS = 6;
@@ -51,6 +60,15 @@ export function ProductTrend({
   const pathname = usePathname();
   const searchParams = useSearchParams();
   const [capWarning, setCapWarning] = useState(false);
+  const longest = points.reduce(
+    (max, point) =>
+      selected.reduce(
+        (inner, id) => Math.max(inner, formatUnits(Number(point[id] ?? 0)).length),
+        max,
+      ),
+    0,
+  );
+  const labels = useLabelStep(points.length, longest);
 
   const write = (next: string[], id: string) => {
     // Trailing holes carry no assignment, so they are dropped.
@@ -181,15 +199,16 @@ export function ProductTrend({
             Pick a product to see its trend.
           </p>
         ) : (
-          <ResponsiveContainer>
-            <LineChart data={points}>
+          <ResponsiveContainer onResize={labels.onResize}>
+            <LineChart data={points} margin={{ top: 16, right: 16 }}>
               <CartesianGrid vertical={false} stroke="var(--color-hairline)" />
               <XAxis
                 dataKey="label"
                 tickLine={false}
                 axisLine={false}
+                padding={{ left: 24, right: 24 }}
                 interval={Math.max(0, Math.ceil(points.length / 12) - 1)}
-                tick={{ fill: "var(--color-ink-tertiary)", fontSize: 12 }}
+                tick={{ fill: "var(--color-ink-tertiary)", fontSize: LABEL_FONT_SIZE }}
               />
               {/* Units, never money, so products of different price stay
                   comparable — and one axis, never two. */}
@@ -198,7 +217,7 @@ export function ProductTrend({
                 tickLine={false}
                 axisLine={false}
                 width={40}
-                tick={{ fill: "var(--color-ink-tertiary)", fontSize: 12 }}
+                tick={{ fill: "var(--color-ink-tertiary)", fontSize: LABEL_FONT_SIZE }}
               />
               <Tooltip
                 contentStyle={{
@@ -222,9 +241,21 @@ export function ProductTrend({
                   dataKey={id}
                   stroke={colorFor(index)}
                   strokeWidth={2}
-                  isAnimationActive={false}
+                  {...CHART_ANIMATION}
                   dot={{ r: 4, strokeWidth: 2, stroke: "var(--color-surface)" }}
-                />
+                >
+                  <LabelList
+                    dataKey={id}
+                    content={valueLabel(
+                      formatUnits,
+                      labelledIndices(
+                        points.map((point) => Number(point[id] ?? 0)),
+                        labels.step,
+                      ),
+                      10,
+                    )}
+                  />
+                </Line>
                 ),
               )}
             </LineChart>

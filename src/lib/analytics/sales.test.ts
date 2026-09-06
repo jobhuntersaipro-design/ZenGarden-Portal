@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { kpis, salesSeries } from "@/lib/analytics/sales";
+import { kpis, pickMeasure, salesSeries } from "@/lib/analytics/sales";
 import type { AnalyticsOrder } from "@/lib/analytics/types";
 
 const order = (
@@ -18,6 +18,16 @@ const order = (
   stage: "ORDER_PLACED",
   lineItems: [],
   stageEvents: [],
+});
+
+const withUnits = (base: AnalyticsOrder, quantities: number[]): AnalyticsOrder => ({
+  ...base,
+  lineItems: quantities.map((quantity, index) => ({
+    productId: `p${index}`,
+    productName: `Product ${index}`,
+    quantity,
+    amount: quantity * 10,
+  })),
 });
 
 const FROM = new Date("2026-09-01T00:00:00Z");
@@ -132,5 +142,41 @@ describe("kpis", () => {
       topBuyer: null,
       deltaPercent: null,
     });
+  });
+});
+
+describe("pickMeasure", () => {
+  const series = salesSeries(
+    [
+      withUnits(order("2026-09-01", 100), [3, 4]),
+      withUnits(order("2026-09-02", 500), [1]),
+      withUnits(order("2026-09-02", 50), [20]),
+    ],
+    FROM,
+    TO,
+    "day",
+  );
+
+  it("sums line-item quantities per bucket", () => {
+    expect(series.points.map((p) => p.units)).toEqual([7, 21, 0, 0, 0]);
+    expect(series.units).toBe(28);
+  });
+
+  it("reads sales as the money totals", () => {
+    const sales = pickMeasure(series, "sales");
+    expect(sales.points.map((p) => p.value)).toEqual([100, 550, 0, 0, 0]);
+    expect(sales.total).toBe(650);
+    expect(sales.average).toBe(130);
+    expect(sales.max?.key).toBe(series.points[1].key);
+  });
+
+  it("finds the units extremes over buckets with orders, not empty ones", () => {
+    // Day 1 is the money minimum but the units maximum is day 2 — the two
+    // measures rank the same buckets differently, and neither picks a zero.
+    const units = pickMeasure(series, "units");
+    expect(units.points.map((p) => p.value)).toEqual([7, 21, 0, 0, 0]);
+    expect(units.max?.value).toBe(21);
+    expect(units.min?.value).toBe(7);
+    expect(units.average).toBeCloseTo(5.6);
   });
 });

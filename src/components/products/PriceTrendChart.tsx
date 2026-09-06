@@ -3,6 +3,7 @@
 import { usePathname, useSearchParams } from "next/navigation";
 import {
   CartesianGrid,
+  LabelList,
   Line,
   LineChart,
   ReferenceLine,
@@ -13,6 +14,14 @@ import {
 } from "recharts";
 import type { PricePoint } from "@/lib/analytics/products";
 import { formatMYR } from "@/lib/money";
+import { formatUnits } from "@/lib/units";
+import {
+  CHART_ANIMATION,
+  LABEL_FONT_SIZE,
+  labelledIndices,
+  useLabelStep,
+  valueLabel,
+} from "@/components/charts/labels";
 import { ChoiceButton } from "@/components/portal/ChoiceButton";
 import { usePendingChoice } from "@/hooks/usePendingChoice";
 
@@ -65,6 +74,18 @@ export function PriceTrendChart({
   };
 
   const sold = points.filter((point) => point.avgBilled !== null);
+  const format = (value: number) =>
+    mode === "price" ? formatMYR(value, 0) : formatUnits(value);
+  const longest = sold.reduce(
+    (max, point) =>
+      Math.max(max, format(mode === "price" ? (point.avgBilled ?? 0) : point.units).length),
+    0,
+  );
+  const labels = useLabelStep(points.length, longest);
+  const labelled = labelledIndices(
+    points.map((point) => (mode === "price" ? point.avgBilled : point.units)),
+    labels.step,
+  );
   const first = sold[0]?.avgBilled ?? null;
   const last = sold[sold.length - 1]?.avgBilled ?? null;
 
@@ -110,20 +131,21 @@ export function PriceTrendChart({
       </div>
 
       <div className="mt-lg h-72 w-full">
-        <ResponsiveContainer>
-          <LineChart data={points}>
+        <ResponsiveContainer onResize={labels.onResize}>
+          <LineChart data={points} margin={{ top: 16, right: 16 }}>
             <CartesianGrid vertical={false} stroke="var(--color-hairline)" />
             <XAxis
               dataKey="label"
               tickLine={false}
               axisLine={false}
-              tick={{ fill: "var(--color-ink-tertiary)", fontSize: 12 }}
+              padding={{ left: 24, right: 24 }}
+              tick={{ fill: "var(--color-ink-tertiary)", fontSize: LABEL_FONT_SIZE }}
             />
             <YAxis
               tickLine={false}
               axisLine={false}
               width={56}
-              tick={{ fill: "var(--color-ink-tertiary)", fontSize: 12 }}
+              tick={{ fill: "var(--color-ink-tertiary)", fontSize: LABEL_FONT_SIZE }}
             />
             <Tooltip content={<TrendTooltip mode={mode} />} />
             {/* Discounting reads as the gap between the line and the dash. */}
@@ -135,9 +157,10 @@ export function PriceTrendChart({
                 strokeWidth={2}
                 label={{
                   value: `List ${formatMYR(listPrice.toFixed(2))}`,
-                  position: "right",
+                  // Inside the plot: "right" hangs the text past the svg edge.
+                  position: "insideBottomRight",
                   fill: "var(--color-ink-tertiary)",
-                  fontSize: 12,
+                  fontSize: LABEL_FONT_SIZE,
                 }}
               />
             ) : null}
@@ -146,11 +169,17 @@ export function PriceTrendChart({
               dataKey={mode === "price" ? "avgBilled" : "units"}
               stroke="var(--color-ink)"
               strokeWidth={2}
-              isAnimationActive={false}
+              {...CHART_ANIMATION}
               // A month with no sales is a gap, not a drop to zero.
               connectNulls={false}
               dot={{ r: 4, strokeWidth: 2, stroke: "var(--color-surface)" }}
-            />
+            >
+              {/* Whole ringgit or whole units; a gap month has no label. */}
+              <LabelList
+                dataKey={mode === "price" ? "avgBilled" : "units"}
+                content={valueLabel(format, labelled, 10)}
+              />
+            </Line>
           </LineChart>
         </ResponsiveContainer>
       </div>
