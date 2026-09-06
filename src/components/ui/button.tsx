@@ -2,6 +2,7 @@ import * as React from "react"
 import { cva, type VariantProps } from "class-variance-authority"
 import { cn } from "cn"
 import { Slot } from "radix-ui"
+import { Spinner } from "@/components/portal/Spinner"
 
 const buttonVariants = cva(
   "group/button inline-flex shrink-0 items-center justify-center rounded-lg border border-transparent bg-clip-padding text-sm font-medium whitespace-nowrap transition-all outline-none select-none focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50 active:not-aria-[haspopup]:translate-y-px disabled:pointer-events-none disabled:opacity-50 aria-invalid:border-destructive aria-invalid:ring-3 aria-invalid:ring-destructive/20 dark:aria-invalid:border-destructive/50 dark:aria-invalid:ring-destructive/40 [&_svg]:pointer-events-none [&_svg]:shrink-0 [&_svg:not([class*='size-'])]:size-4",
@@ -47,10 +48,22 @@ function Button({
   variant = "default",
   size = "default",
   asChild = false,
+  pending = false,
+  disabled,
+  children,
   ...props
 }: React.ComponentProps<"button"> &
   VariantProps<typeof buttonVariants> & {
     asChild?: boolean
+    /**
+     * The button is waiting on the network. Disables it, marks it `aria-busy`
+     * and puts the shared ring spinner in front of whatever label the caller
+     * renders — the caller still swaps the words ("Saving…"), because the
+     * label names the work and the ring only says that it is happening.
+     * Ignored with `asChild`: a Slot takes exactly one child, and a Link
+     * shows its own progress through `LinkSpinner`.
+     */
+    pending?: boolean
   }) {
   const Comp = asChild ? Slot.Root : "button"
 
@@ -59,9 +72,21 @@ function Button({
       data-slot="button"
       data-variant={variant}
       data-size={size}
+      aria-busy={pending || undefined}
+      disabled={disabled || pending}
       className={cn(buttonVariants({ variant, size, className }))}
       {...props}
-    />
+    >
+      {/* A Slot takes exactly one child, so it gets the caller's alone. */}
+      {asChild ? (
+        children
+      ) : (
+        <>
+          {pending ? <Spinner /> : null}
+          {children}
+        </>
+      )}
+    </Comp>
   )
 }
 

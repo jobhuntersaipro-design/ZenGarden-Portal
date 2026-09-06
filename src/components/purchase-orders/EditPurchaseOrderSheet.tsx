@@ -91,7 +91,7 @@ export function EditPurchaseOrderSheet({
           </div>
 
           <Button
-            disabled={pending}
+            pending={pending}
             onClick={async () => {
               setPending(true);
               const result = await updatePurchaseOrder(poId, patch);

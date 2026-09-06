@@ -205,6 +205,8 @@
   --container-auth-card: 480px;
 
   --animate-fade-in-up: fade-in-up 1s ease-out both;
+  /* The ring inside a control that is waiting (`Spinner`). */
+  --animate-spinner: spinner 0.8s linear infinite;
   /* The indeterminate extraction bar: a short fill sliding across its track.
      Length is unknown, so the bar reports motion, never a fraction. */
   --animate-indeterminate: indeterminate 1.4s cubic-bezier(0.5, 0, 0.5, 1) infinite;
@@ -249,6 +251,40 @@
   }
   html {
     @apply font-sans;
+  }
+
+  /*
+   * Tailwind v4's preflight sets `cursor: default` on buttons, so every chip,
+   * segment, sort header and pill in the app showed an arrow while links
+   * showed a hand. Anything that can be clicked shows the hand, and anything
+   * that cannot right now says so — this is the one place that rule lives,
+   * so no component has to remember `cursor-pointer` (2026-09-06 review).
+   */
+  button:not(:disabled),
+  [role="button"]:not([aria-disabled="true"]),
+  summary,
+  select:not(:disabled),
+  input[type="checkbox"]:not(:disabled),
+  input[type="radio"]:not(:disabled),
+  input[type="file"]:not(:disabled) {
+    cursor: pointer;
+  }
+  button:disabled,
+  [role="button"][aria-disabled="true"],
+  select:disabled,
+  input:disabled {
+    cursor: not-allowed;
+  }
+  /* A control that is waiting is not a control that is refused. `not-allowed`
+     on a button mid-request reads as "you may not do this" when the truth is
+     "this is happening", so a busy button shows the progress cursor instead;
+     it wins over the disabled rule above because `<Button pending>` sets both.
+     Scoped to the control itself — a busy *container* (the updating table, a
+     settling chip group) holds rows and chips that are still clickable, and
+     they keep the hand. */
+  button[aria-busy="true"],
+  [role="button"][aria-busy="true"] {
+    cursor: progress;
   }
 }
 
@@ -319,6 +355,20 @@
   /* Skeletons still hold the layout; they just stop breathing. */
   .animate-pulse {
     animation: none;
+  }
+}
+
+@keyframes spinner {
+  to {
+    transform: rotate(1turn);
+  }
+}
+
+/* A 14px ring is not the motion prefers-reduced-motion guards against, and a
+   ring that does not turn is just a broken circle — so it turns, slowly. */
+@media (prefers-reduced-motion: reduce) {
+  .animate-spinner {
+    animation-duration: 1.6s;
   }
 }
 

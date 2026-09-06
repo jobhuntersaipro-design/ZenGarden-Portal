@@ -163,7 +163,7 @@ export function UserDrawer({
 
           <div className="flex flex-wrap items-center gap-sm">
             <Button
-              disabled={pending}
+              pending={pending}
               onClick={async () => {
                 setPending(true);
                 if (isNew) {
@@ -250,7 +250,8 @@ export function UserDrawer({
                   className="bg-ink text-canvas hover:bg-ink-deep"
                   // Stays disabled until the address matches exactly. The
                   // action checks it again; this is the friction, not the gate.
-                  disabled={!emailMatches || pending}
+                  disabled={!emailMatches}
+                  pending={pending}
                   onClick={async () => {
                     setPending(true);
                     const result = await deleteUser(user.id, typedEmail);
@@ -263,7 +264,7 @@ export function UserDrawer({
                     done("User deleted");
                   }}
                 >
-                  Delete
+                  {pending ? "Deleting…" : "Delete"}
                 </Button>
               </DialogFooter>
             </DialogContent>

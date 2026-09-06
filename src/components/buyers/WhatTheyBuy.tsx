@@ -6,7 +6,8 @@ import { OTHER_VAR, SHARE_VARS, cssVar } from "@/lib/analytics/palette";
 import type { MixMeasure } from "@/lib/analytics/product-mix";
 import type { ShareSlice } from "@/lib/analytics/share";
 import { formatMYR } from "@/lib/money";
-import { useUrlNavigation } from "@/hooks/useUrlNavigation";
+import { ChoiceButton } from "@/components/portal/ChoiceButton";
+import { usePendingChoice } from "@/hooks/usePendingChoice";
 
 const colorFor = (index: number, isOther: boolean) =>
   cssVar(isOther ? OTHER_VAR : SHARE_VARS[index % SHARE_VARS.length]);
@@ -79,14 +80,16 @@ export function WhatTheyBuy({
   heading?: string;
   showMeasureToggle?: boolean;
 }) {
-  const { replace } = useUrlNavigation();
+  // The slices are computed per measure on the server, so only the toggle
+  // flips early; the figures wait for the data that matches them.
+  const measures = usePendingChoice<MixMeasure>(measure);
   const pathname = usePathname();
   const searchParams = useSearchParams();
 
   const select = (next: MixMeasure) => {
     const params = new URLSearchParams(searchParams.toString());
     params.set("measure", next);
-    replace(`${pathname}?${params.toString()}`);
+    measures.choose(next, `${pathname}?${params.toString()}`);
   };
 
   return (
@@ -104,6 +107,7 @@ export function WhatTheyBuy({
         </div>
         <div
           className={`flex overflow-hidden rounded-sm border border-hairline ${showMeasureToggle ? "" : "hidden"}`}
+          aria-busy={measures.pending || undefined}
         >
           {(
             [
@@ -111,19 +115,16 @@ export function WhatTheyBuy({
               ["qty", "Quantity"],
             ] as const
           ).map(([value, label]) => (
-            <button
+            <ChoiceButton
               key={value}
-              type="button"
-              aria-pressed={measure === value}
+              look="segment"
+              selected={measures.value === value}
+              pending={measures.isPending(value)}
+              dimmed={measures.pending && !measures.isPending(value)}
               onClick={() => select(value)}
-              className={`h-control-sm px-md text-[length:var(--text-caption)] transition-colors -outline-offset-2 focus-visible:outline-2 focus-visible:outline-primary ${
-                measure === value
-                  ? "bg-surface-soft font-semibold text-ink"
-                  : "text-ink-secondary hover:text-ink"
-              }`}
             >
               {label}
-            </button>
+            </ChoiceButton>
           ))}
         </div>
       </div>

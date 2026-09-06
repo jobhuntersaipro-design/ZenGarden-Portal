@@ -21,6 +21,8 @@ export function SignInForm({ next }: { next: string }) {
   const [password, setPassword] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [pending, setPending] = useState(false);
+  // Stays pending through the redirect: Google takes over the tab from here.
+  const [googlePending, setGooglePending] = useState(false);
 
   async function onSubmit(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -89,7 +91,7 @@ export function SignInForm({ next }: { next: string }) {
           />
         </div>
 
-        <Button type="submit" disabled={pending} className="mt-xs w-full">
+        <Button type="submit" pending={pending} className="mt-xs w-full">
           {pending ? "Signing in…" : "Sign in"}
         </Button>
       </form>
@@ -107,11 +109,15 @@ export function SignInForm({ next }: { next: string }) {
         <Button
           type="button"
           variant="secondary"
-          onClick={() => signIn("google", { redirectTo: next })}
+          pending={googlePending}
+          onClick={() => {
+            setGooglePending(true);
+            void signIn("google", { redirectTo: next });
+          }}
           className="h-control-oauth w-full gap-xs border-hairline-strong bg-canvas hover:bg-surface"
         >
           <GoogleMark />
-          Continue with Google
+          {googlePending ? "Opening Google…" : "Continue with Google"}
         </Button>
         {/* Belongs to the Google block, not to the card: at the foot of the card
             it read as applying to both paths (design reference §3.1). */}

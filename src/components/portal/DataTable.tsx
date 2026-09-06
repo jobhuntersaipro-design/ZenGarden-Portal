@@ -10,6 +10,8 @@ import {
 } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
+import { useIsUpdating } from "@/components/portal/NavProgress";
+import { Spinner } from "@/components/portal/Spinner";
 import type { SortDirection } from "@/lib/queries/pagination";
 
 export type ColumnAlign = "left" | "right";
@@ -50,6 +52,28 @@ export function DataTable<Row extends { id: string }>({
   rowHref?: (row: Row) => string;
 }) {
   const router = useRouter();
+  const updating = useIsUpdating();
+  /**
+   * The sort that was just clicked, held until the server's sort replaces it
+   * (or until the update settles without changing it — a failed write must
+   * not leave an arrow on a column the rows are not sorted by). The header
+   * shows it at once, with the spinner, instead of sitting untouched for the
+   * whole round trip.
+   */
+  const [clicked, setClicked] = useState<{ key: string; dir: SortDirection } | null>(null);
+  // Adjusted during render, not in an effect, so the reset lands in the same
+  // paint as the change that caused it.
+  const [seenSort, setSeenSort] = useState(sort);
+  if (seenSort.key !== sort.key || seenSort.dir !== sort.dir) {
+    setSeenSort(sort);
+    setClicked(null);
+  }
+  const [seenUpdating, setSeenUpdating] = useState(updating);
+  if (seenUpdating !== updating) {
+    setSeenUpdating(updating);
+    if (!updating) setClicked(null);
+  }
+  const shownSort = clicked ?? sort;
   /**
    * Which edges have content hidden past them (brief G5). A table that clips
    * "PO total" off the right with no visible edge just looks like a table
@@ -93,11 +117,12 @@ export function DataTable<Row extends { id: string }>({
 
   const setSort = (column: Column<Row>) => {
     const nextDir: SortDirection =
-      sort.key === column.key
-        ? sort.dir === "asc"
+      shownSort.key === column.key
+        ? shownSort.dir === "asc"
           ? "desc"
           : "asc"
         : (column.defaultDir ?? "asc");
+    setClicked({ key: column.key, dir: nextDir });
     onSortChange(column.key, nextDir);
   };
 
@@ -124,19 +149,20 @@ export function DataTable<Row extends { id: string }>({
             them loses its own rules. With separate borders each cell carries
             its own, so the first column can be sticky and still look like part
             of the table. */}
-        <table className="w-full border-separate border-spacing-0">
+        <table className="w-full border-separate border-spacing-0" aria-busy={updating || undefined}>
           <thead>
             <tr>
               {columns.map((column, index) => {
-                const active = sort.key === column.key;
+                const active = shownSort.key === column.key;
                 const sortable = column.sortable !== false;
+                const spinning = clicked?.key === column.key && updating;
                 return (
                   <th
                     key={column.key}
                     scope="col"
                     aria-sort={
                       active
-                        ? sort.dir === "asc"
+                        ? shownSort.dir === "asc"
                           ? "ascending"
                           : "descending"
                         : undefined
@@ -156,7 +182,11 @@ export function DataTable<Row extends { id: string }>({
                         className="inline-flex items-center gap-xxs rounded-xxs hover:text-ink focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary"
                       >
                         {column.header}
-                        {active ? <span aria-hidden>{sort.dir === "asc" ? "↑" : "↓"}</span> : null}
+                        {spinning ? (
+                          <Spinner className="size-3" />
+                        ) : active ? (
+                          <span aria-hidden>{shownSort.dir === "asc" ? "↑" : "↓"}</span>
+                        ) : null}
                       </button>
                     ) : (
                       column.header
@@ -166,7 +196,10 @@ export function DataTable<Row extends { id: string }>({
               })}
             </tr>
           </thead>
-          <tbody>
+          {/* The rows are the previous answer until the server sends the next
+              one; they fade rather than vanish (brief G1, "stale with
+              overlay"), so the reader keeps their place. */}
+          <tbody className={`transition-opacity ${updating ? "opacity-60" : ""}`}>
             {rows.length === 0 ? (
               <tr>
                 <td

@@ -1,5 +1,6 @@
 "use client";
 
+import { useState } from "react";
 import { signIn, signOut } from "next-auth/react";
 import { Button } from "@/components/ui/button";
 
@@ -9,17 +10,21 @@ import { Button } from "@/components/ui/button";
  * different one (design reference §3.1).
  */
 export function UseDifferentAccount() {
+  // Stays pending through the redirect: Google takes over the tab from here.
+  const [pending, setPending] = useState(false);
   return (
     <Button
       type="button"
       variant="secondary"
       className="w-full"
+      pending={pending}
       onClick={async () => {
+        setPending(true);
         await signOut({ redirect: false });
         await signIn("google", { redirectTo: "/" }, { prompt: "select_account" });
       }}
     >
-      Use a different account
+      {pending ? "Switching…" : "Use a different account"}
     </Button>
   );
 }

@@ -4,15 +4,66 @@
 
 ## Status
 
-Not Started
+In Progress — branch `feature/click-feedback`
 
 ## Goals
 
-<!-- Bullet points of what success looks like. -->
+Click feedback across the portal (2026-09-06 request, via `/ui-ux-pro-max`):
+
+1. **Hand cursor on everything clickable.** Tailwind v4's preflight sets
+   `cursor: default` on `<button>`, so every chip, segment, sort header, pill
+   and icon button showed an arrow while links showed a hand. One rule in
+   `globals.css` `@layer base` gives enabled buttons, `[role=button]`,
+   `<summary>`, selects and checkbox/radio/file inputs the pointer, and disabled
+   ones `not-allowed`. No component carries `cursor-pointer` itself.
+2. **The clicked element shows it is working.** The top progress bar and the
+   "Updating…" hint stay; what was missing was feedback *on the thing you
+   clicked*. Decided with the user:
+   - A filter chip, range preset, segmented control, sort header or pagination
+     step **selects instantly** (optimistic, `usePendingChoice`) and shows a
+     14px ring spinner in its own text colour beside its label until the server
+     answers; its siblings dim to `opacity-60` under `aria-busy`. A second click
+     is not blocked — React transitions make the last write win.
+   - Every button that waits on the network shows the same ring spinner in
+     front of its pending label (`<Button pending>`): Saving…, Advancing…,
+     Signing in…, Approving…, and so on.
+   - A `Link` that opens a new route (sidebar rows, Upload PO, Review N files)
+     shows the spinner through `useLinkStatus` until the route commits.
+   - The spinner is `Spinner` in `src/components/portal/Spinner.tsx`: a
+     `border-2 border-current border-r-transparent rounded-full` ring on
+     `--animate-spinner` (0.8s linear), slowed rather than stopped under
+     `prefers-reduced-motion` because a 14px ring is not the motion that
+     setting guards against. It is the loading element the design system
+     never specified — ClickUp's DESIGN.md documents only the
+     `0.25s cubic-bezier(0.5, 0, 0.5, 1)` transition — so it borrows the ring
+     Sonner already spins in toasts, in `currentColor`, never the gradient
+     (the gradient is the CTA family, not a status).
+3. **UI/UX review** of the live screens. Two refinements came out of the
+   browser pass: a busy button showed `cursor: not-allowed`, which reads as
+   "you may not do this" when it means "this is happening", so
+   `button[aria-busy="true"]` now shows `progress`; and the zero-count tiles on
+   the Buyers attention strip gained the `title="Nothing to fix here"` the
+   Products tile already had, because a greyed number with no explanation
+   reads as a broken control.
 
 ## Notes
 
-<!-- Additional context, constraints or details from the spec. -->
+- Acceptance: every `<button>` and `<select>` computes `cursor: pointer` when
+  enabled; clicking "Last 60 days" flips the chip and spins within one frame;
+  `npm run build`, `npm run lint`, `npm test` pass.
+- Verified in the browser after the database credentials were fixed
+  (2026-09-06): cursor audit clean on Dashboard (63 elements), Products (34)
+  and PO detail (13); the two `cursor-default` tiles on Buyers are the
+  deliberate zero-count opt-out. "Last 60 days" flipped selected with its
+  spinner while its siblings dimmed, and settled in ~340 ms. Sorting Total
+  took the arrow and the spinner at once and released PO date's. Next paged
+  with the rows faded to 60% while "Page 1 of 41" held until the new rows
+  landed. The Products attention breakdown spun and drove the chip below it.
+  Download original ran Preparing… with a `progress` cursor and reset.
+- **R2 now authenticates** — a presigned URL is minted and signed correctly.
+  The seeded `Document.r2Key` values point at objects that were never
+  uploaded, so every seeded document returns `NoSuchKey` and the preview error
+  state still stands in. A real upload through `/upload` has not been tried.
 
 ## History
 

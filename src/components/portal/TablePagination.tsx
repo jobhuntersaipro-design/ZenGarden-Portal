@@ -1,7 +1,9 @@
 "use client";
 
 import { usePathname, useSearchParams } from "next/navigation";
+import { Spinner } from "@/components/portal/Spinner";
 import { PAGE_SIZES, pageRange } from "@/lib/queries/pagination";
+import { usePendingChoice } from "@/hooks/usePendingChoice";
 import { useUrlNavigation } from "@/hooks/useUrlNavigation";
 
 /** The footer under every table (design reference §4). */
@@ -18,21 +20,28 @@ export function TablePagination({
   sizes?: readonly number[];
 }) {
   const { replace } = useUrlNavigation();
+  // The step that was clicked spins; the page label keeps the server's page
+  // until the rows that belong to the new one are actually on screen.
+  const steps = usePendingChoice<number>(page);
   const pathname = usePathname();
   const searchParams = useSearchParams();
   const { from, to, pages } = pageRange(page, size, total);
 
-  const go = (next: Record<string, string | null>) => {
+  const hrefFor = (next: Record<string, string | null>) => {
     const params = new URLSearchParams(searchParams.toString());
     for (const [key, value] of Object.entries(next)) {
       if (value === null) params.delete(key);
       else params.set(key, value);
     }
-    replace(`${pathname}?${params.toString()}`);
+    return `${pathname}?${params.toString()}`;
   };
+  const go = (next: Record<string, string | null>) => replace(hrefFor(next));
+  const stepTo = (target: number) => steps.choose(target, hrefFor({ page: String(target) }));
 
   const step =
-    "rounded-sm px-sm py-xxs text-[length:var(--text-body-sm)] text-ink transition-colors hover:bg-surface focus-visible:outline-2 focus-visible:outline-primary disabled:pointer-events-none disabled:text-ink-disabled";
+    "inline-flex items-center gap-xxs rounded-sm px-sm py-xxs text-[length:var(--text-body-sm)] text-ink transition hover:bg-surface focus-visible:outline-2 focus-visible:outline-primary disabled:pointer-events-none disabled:text-ink-disabled";
+  const dimmed = (target: number) =>
+    steps.pending && !steps.isPending(target) ? "opacity-60" : "";
 
   return (
     <div className="mt-sm flex flex-wrap items-center justify-between gap-md">
@@ -59,13 +68,14 @@ export function TablePagination({
         </select>
       </div>
 
-      <div className="flex items-center gap-sm">
+      <div className="flex items-center gap-sm" aria-busy={steps.pending || undefined}>
         <button
           type="button"
-          className={step}
+          className={`${step} ${dimmed(page - 1)}`}
           disabled={page <= 1}
-          onClick={() => go({ page: String(page - 1) })}
+          onClick={() => stepTo(page - 1)}
         >
+          {steps.isPending(page - 1) ? <Spinner /> : null}
           Prev
         </button>
         <span className="tabular-nums text-[length:var(--text-body-sm)] text-ink-secondary">
@@ -73,10 +83,11 @@ export function TablePagination({
         </span>
         <button
           type="button"
-          className={step}
+          className={`${step} ${dimmed(page + 1)}`}
           disabled={page >= pages}
-          onClick={() => go({ page: String(page + 1) })}
+          onClick={() => stepTo(page + 1)}
         >
+          {steps.isPending(page + 1) ? <Spinner /> : null}
           Next
         </button>
       </div>

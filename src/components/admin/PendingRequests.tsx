@@ -103,6 +103,7 @@ export function PendingRequests({ requests }: { requests: PendingRequest[] }) {
               <Button
                 variant="secondary"
                 disabled={pending?.id === request.id}
+                pending={pending?.id === request.id && pending.action === "decline"}
                 onClick={async () => {
                   setPending({ id: request.id, action: "decline" });
                   const result = await declineAccessRequest(
@@ -123,6 +124,7 @@ export function PendingRequests({ requests }: { requests: PendingRequest[] }) {
               </Button>
               <Button
                 disabled={pending?.id === request.id}
+                pending={pending?.id === request.id && pending.action === "approve"}
                 onClick={async () => {
                   setPending({ id: request.id, action: "approve" });
                   const result = await approveAccessRequest(

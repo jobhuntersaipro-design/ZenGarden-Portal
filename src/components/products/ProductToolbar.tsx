@@ -6,7 +6,9 @@ import { LayoutGrid, List, Search } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { PRODUCT_CATEGORIES } from "@/lib/product-categories";
 import type { ProductFilter, ProductSortKey } from "@/lib/queries/products";
+import { ChoiceButton } from "@/components/portal/ChoiceButton";
 import { UpdatingHint } from "@/components/portal/UpdatingHint";
+import { usePendingChoice } from "@/hooks/usePendingChoice";
 import { useUrlNavigation } from "@/hooks/useUrlNavigation";
 
 export type ProductView = "grid" | "list";
@@ -43,6 +45,10 @@ export function ProductToolbar({
   summary: string;
 }) {
   const { replace } = useUrlNavigation();
+  // One transition per group, so a chip click never spins the sort strip.
+  const filters = usePendingChoice<ProductFilter>(filter);
+  const sorts = usePendingChoice<ProductSortKey>(sortKey);
+  const views = usePendingChoice<ProductView>(view);
   const pathname = usePathname();
   const searchParams = useSearchParams();
   const [query, setQuery] = useState(searchParams.get("q") ?? "");
@@ -55,15 +61,16 @@ export function ProductToolbar({
     [],
   );
 
-  const write = (next: Record<string, string | null>) => {
+  const hrefFor = (next: Record<string, string | null>) => {
     const params = new URLSearchParams(searchParams.toString());
     for (const [key, value] of Object.entries(next)) {
       if (value === null || value === "") params.delete(key);
       else params.set(key, value);
     }
     params.delete("page");
-    replace(params.toString() ? `${pathname}?${params.toString()}` : pathname);
+    return params.toString() ? `${pathname}?${params.toString()}` : pathname;
   };
+  const write = (next: Record<string, string | null>) => replace(hrefFor(next));
 
   const chooseView = (next: ProductView) => {
     // Remembered per browser, but the URL always wins on read — a shared link
@@ -73,11 +80,8 @@ export function ProductToolbar({
     } catch {
       // Private mode, or storage disabled. The URL still carries it.
     }
-    write({ view: next });
+    views.choose(next, hrefFor({ view: next }));
   };
-
-  const segment =
-    "h-control-sm px-md text-[length:var(--text-caption)] transition-colors -outline-offset-2 focus-visible:outline-2 focus-visible:outline-primary";
 
   return (
     <div className="mb-lg flex flex-col gap-sm">
@@ -121,77 +125,78 @@ export function ProductToolbar({
           <span className="font-mono text-[length:var(--text-eyebrow)] text-ink-tertiary">
             Sort
           </span>
-          <div className="flex overflow-hidden rounded-sm border border-hairline">
+          <div
+            className="flex overflow-hidden rounded-sm border border-hairline"
+            aria-busy={sorts.pending || undefined}
+          >
             {SORTS.map((option) => (
-              <button
+              <ChoiceButton
                 key={option.value}
-                type="button"
-                aria-pressed={sortKey === option.value}
+                look="segment"
+                selected={sorts.value === option.value}
+                pending={sorts.isPending(option.value)}
+                dimmed={sorts.pending && !sorts.isPending(option.value)}
                 // Writes the same ?sort= the table headers write, so the two
                 // controls share one piece of state and stay in step.
                 onClick={() =>
-                  write({
-                    sort: option.value,
-                    dir: option.value === "name" ? "asc" : "desc",
-                  })
+                  sorts.choose(
+                    option.value,
+                    hrefFor({
+                      sort: option.value,
+                      dir: option.value === "name" ? "asc" : "desc",
+                    }),
+                  )
                 }
-                className={`${segment} ${
-                  sortKey === option.value
-                    ? "bg-surface-soft font-semibold text-ink"
-                    : "text-ink-secondary hover:text-ink"
-                }`}
               >
                 {option.label}
-              </button>
+              </ChoiceButton>
             ))}
           </div>
         </div>
 
-        <div className="ml-auto flex overflow-hidden rounded-sm border border-hairline">
+        <div
+          className="ml-auto flex overflow-hidden rounded-sm border border-hairline"
+          aria-busy={views.pending || undefined}
+        >
           {(
             [
               ["grid", "Grid", LayoutGrid],
               ["list", "List", List],
             ] as const
           ).map(([value, label, Icon]) => (
-            <button
+            <ChoiceButton
               key={value}
-              type="button"
-              aria-pressed={view === value}
+              look="segment"
+              selected={views.value === value}
+              pending={views.isPending(value)}
+              dimmed={views.pending && !views.isPending(value)}
               onClick={() => chooseView(value)}
-              className={`${segment} flex items-center gap-xxs ${
-                view === value
-                  ? "bg-surface-soft font-semibold text-ink"
-                  : "text-ink-secondary hover:text-ink"
-              }`}
             >
               <Icon className="size-4" aria-hidden />
               {label}
-            </button>
+            </ChoiceButton>
           ))}
         </div>
       </div>
 
       <div className="flex flex-wrap items-center justify-between gap-sm">
-        <div className="flex flex-wrap items-center gap-xxs">
-          {CHIPS.map((chip) => {
-            const active = filter === chip.value;
-            return (
-              <button
-                key={chip.label}
-                type="button"
-                aria-pressed={active}
-                onClick={() => write({ filter: chip.value })}
-                className={`h-control-sm rounded-pill px-md text-[length:var(--text-caption)] transition-colors focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary ${
-                  active
-                    ? "bg-ink text-canvas"
-                    : "bg-surface-soft text-ink-secondary hover:text-ink"
-                }`}
-              >
-                {chip.label}
-              </button>
-            );
-          })}
+        <div
+          className="flex flex-wrap items-center gap-xxs"
+          aria-busy={filters.pending || undefined}
+        >
+          {CHIPS.map((chip) => (
+            <ChoiceButton
+              key={chip.label}
+              look="pill"
+              compact
+              selected={filters.value === chip.value}
+              pending={filters.isPending(chip.value)}
+              dimmed={filters.pending && !filters.isPending(chip.value)}
+              onClick={() => filters.choose(chip.value, hrefFor({ filter: chip.value }))}
+            >
+              {chip.label}
+            </ChoiceButton>
+          ))}
         </div>
         {/* Says which set it describes, because the KPI row above describes
             a different one whenever a filter is on. */}

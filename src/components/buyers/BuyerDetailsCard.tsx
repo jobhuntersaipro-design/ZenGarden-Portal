@@ -119,7 +119,7 @@ export function BuyerDetailsCard({
           )}
 
           <Button
-            disabled={pending}
+            pending={pending}
             onClick={async () => {
               setPending(true);
               const result = await updateBuyer(buyer.id, patch);

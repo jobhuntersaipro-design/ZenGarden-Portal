@@ -2,10 +2,13 @@
 
 import { useEffect, useRef, useState } from "react";
 import { usePathname, useSearchParams } from "next/navigation";
-import { Search } from "lucide-react";
+import { Search, X } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { INTAKE_STATUS } from "@/components/portal/StatusBadge";
+import { ChoiceButton } from "@/components/portal/ChoiceButton";
+import { Spinner } from "@/components/portal/Spinner";
 import { PO_STAGES, stageLabel } from "@/lib/po-stages";
+import { usePendingChoice } from "@/hooks/usePendingChoice";
 import { useUrlNavigation } from "@/hooks/useUrlNavigation";
 
 export type StatusChip =
@@ -45,8 +48,12 @@ export function PoFilters({
   const status = (searchParams.get("status") ?? "all") as StatusChip;
   const stage = searchParams.get("stage") ?? "";
   const [query, setQuery] = useState(searchParams.get("q") ?? "");
+  const statuses = usePendingChoice<StatusChip>(status);
+  // "Clear filters" is a one-option group: the spinner lands on it when
+  // clicked and nowhere else.
+  const clearing = usePendingChoice<boolean>(false);
 
-  const set = (next: Record<string, string | null>) => {
+  const hrefFor = (next: Record<string, string | null>) => {
     const params = new URLSearchParams(searchParams.toString());
     for (const [key, value] of Object.entries(next)) {
       if (value === null || value === "") params.delete(key);
@@ -55,8 +62,9 @@ export function PoFilters({
     // Every filter change goes back to page 1: page 7 of a longer result set
     // is usually past the end of a shorter one.
     params.delete("page");
-    replace(params.toString() ? `${pathname}?${params.toString()}` : pathname);
+    return params.toString() ? `${pathname}?${params.toString()}` : pathname;
   };
+  const set = (next: Record<string, string | null>) => replace(hrefFor(next));
 
   /**
    * Debounced in the change handler rather than in an effect. An effect here
@@ -149,33 +157,35 @@ export function PoFilters({
           <option value="not-delivered">Not delivered</option>
         </select>
 
-        <div className="ml-auto flex flex-wrap items-center gap-xxs">
+        <div
+          className="ml-auto flex flex-wrap items-center gap-xxs"
+          aria-busy={statuses.pending || undefined}
+        >
           {CHIPS.map((chip) => {
-            const active = status === chip.value;
             // The count comes from the same query that feeds the table, so a
             // row leaving the queue changes the chip on the same render.
             const count =
               chip.value === "needs-review" && needsReview > 0 ? needsReview : null;
             return (
-              <button
+              <ChoiceButton
                 key={chip.value}
-                type="button"
-                aria-pressed={active}
+                look="chip"
+                selected={statuses.value === chip.value}
+                pending={statuses.isPending(chip.value)}
+                dimmed={statuses.pending && !statuses.isPending(chip.value)}
                 onClick={() =>
-                  set({ status: chip.value === "all" ? null : chip.value })
+                  statuses.choose(
+                    chip.value,
+                    hrefFor({ status: chip.value === "all" ? null : chip.value }),
+                  )
                 }
-                className={`inline-flex items-center gap-xxs rounded-full px-sm py-xxs text-[length:var(--text-caption)] transition-colors focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary ${
-                  active
-                    ? "bg-ink text-canvas"
-                    : "bg-surface-soft text-ink-secondary hover:text-ink"
-                }`}
               >
                 <span aria-hidden className={`size-1.5 rounded-full ${chip.dot}`} />
                 {chip.label}
                 {count !== null ? (
                   <span className="tabular-nums font-medium">{count}</span>
                 ) : null}
-              </button>
+              </ChoiceButton>
             );
           })}
         </div>
@@ -189,11 +199,19 @@ export function PoFilters({
             // without this the box keeps showing the search it no longer runs.
             if (timer.current) clearTimeout(timer.current);
             setQuery("");
-            set({ q: null, buyer: null, by: null, stage: null, status: null });
+            clearing.choose(
+              true,
+              hrefFor({ q: null, buyer: null, by: null, stage: null, status: null }),
+            );
           }}
-          className="self-start text-[length:var(--text-body-sm)] text-brand-link underline-offset-2 hover:underline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary"
+          className="inline-flex items-center gap-xxs self-start text-[length:var(--text-body-sm)] text-brand-link underline-offset-2 hover:underline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary"
         >
-          ✕ Clear filters
+          {clearing.pending ? (
+            <Spinner />
+          ) : (
+            <X className="size-3.5" strokeWidth={2} aria-hidden />
+          )}
+          Clear filters
         </button>
       ) : null}
     </div>

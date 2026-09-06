@@ -20,7 +20,7 @@ export function MoreAnalytics({
   open: boolean;
   children: ReactNode;
 }) {
-  const { replace } = useUrlNavigation();
+  const { replace, pending } = useUrlNavigation();
   const pathname = usePathname();
   const searchParams = useSearchParams();
 
@@ -39,10 +39,18 @@ export function MoreAnalytics({
           variant="secondary"
           aria-expanded={open}
           aria-controls="more-analytics"
+          pending={pending}
           onClick={toggle}
           className="relative bg-canvas"
         >
-          {open ? "Hide analytics" : "More analytics"}
+          {/* The cards are rendered on the server, so opening is a wait. */}
+          {pending
+            ? open
+              ? "Hiding…"
+              : "Loading analytics…"
+            : open
+              ? "Hide analytics"
+              : "More analytics"}
         </Button>
       </div>
 

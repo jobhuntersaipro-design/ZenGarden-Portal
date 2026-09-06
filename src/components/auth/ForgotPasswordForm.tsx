@@ -60,7 +60,7 @@ export function ForgotPasswordForm() {
         />
       </div>
 
-      <Button type="submit" disabled={pending} className="w-full">
+      <Button type="submit" pending={pending} className="w-full">
         {pending ? "Sending…" : "Email me a link"}
       </Button>
 

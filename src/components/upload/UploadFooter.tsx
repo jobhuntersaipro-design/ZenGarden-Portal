@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import type { UploadRow } from "@/components/upload/queue-types";
+import { LinkSpinner } from "@/components/portal/LinkSpinner";
 import { Button } from "@/components/ui/button";
 import { summariseQueue } from "@/components/upload/summarise-queue";
 
@@ -34,6 +35,7 @@ export function UploadFooter({ rows }: { rows: UploadRow[] }) {
           <Link
             href={`/review/${readyIds[0]}?queue=${encodeURIComponent(queue)}`}
           >
+            <LinkSpinner />
             Review {ready} {ready === 1 ? "file" : "files"}
           </Link>
         </Button>
