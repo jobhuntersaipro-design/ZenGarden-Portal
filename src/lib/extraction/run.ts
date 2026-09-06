@@ -88,6 +88,57 @@ export async function runExtraction({
 }
 
 /**
+ * Resolve each line to a catalogue product, or to null.
+ *
+ * The same rule as the buyer above, for the same reason: **exact matches only**.
+ * A SKU printed on the document is the surest key — most buyers quote the
+ * supplier's own code — and an exact name is the fallback for documents that
+ * print no codes. Anything looser is refused: silently attaching a line to the
+ * wrong product misprices an order, and the reviewer cannot see that it
+ * happened. `LineItemsTable` shows "Unmatched" and asks.
+ *
+ * One query for the whole document rather than one per line: a twenty-line PO
+ * was twenty round trips.
+ */
+async function matchProducts(
+  lines: PoExtraction["lineItems"],
+): Promise<(string | null)[]> {
+  const skus = lines.map((line) => line.sku).filter((sku): sku is string => !!sku);
+  const names = lines.map((line) => line.description);
+  if (skus.length === 0 && names.length === 0) return lines.map(() => null);
+
+  const candidates = await prisma.product.findMany({
+    where: {
+      // An archived product is not something a new order should be filed
+      // against; leaving it unmatched puts the choice in front of a person.
+      active: true,
+      OR: [
+        { sku: { in: skus, mode: "insensitive" } },
+        { name: { in: names, mode: "insensitive" } },
+      ],
+    },
+    select: { id: true, sku: true, name: true },
+  });
+
+  const key = (value: string) => value.trim().toLowerCase();
+  const bySku = new Map(candidates.map((p) => [key(p.sku), p.id]));
+  const byName = new Map<string, string | null>();
+  for (const product of candidates) {
+    const k = key(product.name);
+    // Two active products sharing a name cannot be told apart from the
+    // document, so neither is chosen.
+    byName.set(k, byName.has(k) ? null : product.id);
+  }
+
+  return lines.map(
+    (line) =>
+      (line.sku ? bySku.get(key(line.sku)) : undefined) ??
+      byName.get(key(line.description)) ??
+      null,
+  );
+}
+
+/**
  * The model's numbers become Decimal strings here, once, on the way into the
  * draft. From this point on nothing re-parses a float, so a value cannot be
  * rounded twice (docs/specs/04-extraction-review.md §1).
@@ -121,6 +172,8 @@ async function toDraft(extraction: PoExtraction, extractionId: string) {
   // would ever be used.
   const buyerId = matched?.id ?? hinted ?? null;
 
+  const products = await matchProducts(extraction.lineItems);
+
   return {
     poNumber: extraction.poNumber,
     buyerId,
@@ -130,9 +183,9 @@ async function toDraft(extraction: PoExtraction, extractionId: string) {
     currency: extraction.currency,
     buyerReference: extraction.buyerReference,
     paymentTerms: extraction.paymentTerms,
-    lineItems: extraction.lineItems.map((line) => ({
+    lineItems: extraction.lineItems.map((line, index) => ({
       description: line.description,
-      productId: null,
+      productId: products[index],
       quantity: new Prisma.Decimal(line.quantity).toFixed(3),
       unit: line.unit,
       unitPrice: new Prisma.Decimal(line.unitPrice).toFixed(4),

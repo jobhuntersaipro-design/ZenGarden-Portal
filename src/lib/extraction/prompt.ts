@@ -24,6 +24,12 @@ unitPrice, but if the document prints a different amount, report what the
 document prints — a discount or a rounding on the page is information, not an
 error to correct. unit is null when the document gives none.
 
+sku is the item or product code printed against the line — the column a
+document may head SKU, Item, Item code, Product code, Part no. or Article.
+Copy it exactly as printed, including its punctuation and case; do not
+normalise it, and do not derive one from the description. It is null when the
+line carries no code.
+
 Totals. subtotal, tax and total are the figures printed on the document. Do not
 recompute them and do not make them agree; a document whose totals disagree
 with its own lines is exactly what a human reviewer needs to see.

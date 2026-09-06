@@ -26,6 +26,15 @@ const isoDate = z
 
 export const PoLineItemSchema = z.object({
   description: z.string().min(1),
+  /**
+   * The item code as printed on the document, when it carries one.
+   *
+   * Read only so the line can be matched to a catalogue product — most POs
+   * quote the supplier's own SKU, which is a far surer key than a description
+   * a buyer may have retyped. Never shown in the form and never stored on the
+   * line item; `toDraft` resolves it to a `productId` and drops it.
+   */
+  sku: z.string().nullable(),
   quantity: z.number().positive(),
   unit: z.string().nullable(),
   unitPrice: z.number().nonnegative(),
