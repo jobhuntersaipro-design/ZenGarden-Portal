@@ -83,6 +83,9 @@ export function AttentionStrip({
               // An empty category is not a filter worth offering, so it is not
               // clickable and not in the tab order.
               disabled={empty}
+              // Says why it does nothing, the way the Products tile does — a
+              // greyed number with no explanation reads as a broken control.
+              title={empty ? "Nothing to fix here" : undefined}
               aria-pressed={selected}
               onClick={() => toggle(column.value)}
               className={`p-lg text-left transition-colors focus-visible:outline-2 -outline-offset-2 focus-visible:outline-primary ${

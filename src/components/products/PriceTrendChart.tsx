@@ -13,7 +13,8 @@ import {
 } from "recharts";
 import type { PricePoint } from "@/lib/analytics/products";
 import { formatMYR } from "@/lib/money";
-import { useUrlNavigation } from "@/hooks/useUrlNavigation";
+import { ChoiceButton } from "@/components/portal/ChoiceButton";
+import { usePendingChoice } from "@/hooks/usePendingChoice";
 
 export type TrendMode = "price" | "units";
 
@@ -53,14 +54,14 @@ export function PriceTrendChart({
   listPrice: number;
   mode: TrendMode;
 }) {
-  const { replace } = useUrlNavigation();
+  const modes = usePendingChoice<TrendMode>(mode);
   const pathname = usePathname();
   const searchParams = useSearchParams();
 
   const select = (next: TrendMode) => {
     const params = new URLSearchParams(searchParams.toString());
     params.set("trend", next);
-    replace(`${pathname}?${params.toString()}`);
+    modes.choose(next, `${pathname}?${params.toString()}`);
   };
 
   const sold = points.filter((point) => point.avgBilled !== null);
@@ -84,26 +85,26 @@ export function PriceTrendChart({
           </p>
         </div>
 
-        <div className="flex overflow-hidden rounded-sm border border-hairline">
+        <div
+          className="flex overflow-hidden rounded-sm border border-hairline"
+          aria-busy={modes.pending || undefined}
+        >
           {(
             [
               ["price", "Avg unit price"],
               ["units", "Units sold"],
             ] as const
           ).map(([value, label]) => (
-            <button
+            <ChoiceButton
               key={value}
-              type="button"
-              aria-pressed={mode === value}
+              look="segment"
+              selected={modes.value === value}
+              pending={modes.isPending(value)}
+              dimmed={modes.pending && !modes.isPending(value)}
               onClick={() => select(value)}
-              className={`h-control-sm px-md text-[length:var(--text-caption)] transition-colors -outline-offset-2 focus-visible:outline-2 focus-visible:outline-primary ${
-                mode === value
-                  ? "bg-surface-soft font-semibold text-ink"
-                  : "text-ink-secondary hover:text-ink"
-              }`}
             >
               {label}
-            </button>
+            </ChoiceButton>
           ))}
         </div>
       </div>

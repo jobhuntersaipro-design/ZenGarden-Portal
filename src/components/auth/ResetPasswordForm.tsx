@@ -56,7 +56,7 @@ export function ResetPasswordForm({ token }: { token: string }) {
         onChange={setConfirm}
       />
 
-      <Button type="submit" disabled={pending} className="w-full">
+      <Button type="submit" pending={pending} className="w-full">
         {pending ? "Saving…" : "Set new password"}
       </Button>
     </form>

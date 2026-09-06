@@ -1,8 +1,9 @@
 "use client";
 
 import { usePathname, useSearchParams } from "next/navigation";
+import { Spinner } from "@/components/portal/Spinner";
 import type { ProductFilter } from "@/lib/queries/products";
-import { useUrlNavigation } from "@/hooks/useUrlNavigation";
+import { usePendingChoice } from "@/hooks/usePendingChoice";
 
 /**
  * The breakdown is a to-do list, so each count is a click target that sets the
@@ -14,9 +15,9 @@ export function AttentionTile({
 }: {
   counts: { missingImage: number; inactive: number; notSold: number };
 }) {
-  const { replace } = useUrlNavigation();
   const pathname = usePathname();
   const searchParams = useSearchParams();
+  const filters = usePendingChoice<string>(searchParams.get("filter") ?? "");
 
   const parts: { filter: Exclude<ProductFilter, null>; count: number; label: string }[] =
     [
@@ -31,7 +32,7 @@ export function AttentionTile({
     const params = new URLSearchParams(searchParams.toString());
     params.set("filter", filter);
     params.delete("page");
-    replace(`${pathname}?${params.toString()}`);
+    filters.choose(filter, `${pathname}?${params.toString()}`);
   };
 
   return (
@@ -62,8 +63,9 @@ export function AttentionTile({
                 <button
                   type="button"
                   onClick={() => apply(part.filter)}
-                  className="rounded-xxs text-ink-secondary underline-offset-2 hover:text-ink hover:underline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary"
+                  className="inline-flex items-center gap-xxs rounded-xxs text-ink-secondary underline-offset-2 hover:text-ink hover:underline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary"
                 >
+                  {filters.isPending(part.filter) ? <Spinner className="size-3" /> : null}
                   {part.count} {part.label}
                 </button>
               )}

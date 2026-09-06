@@ -75,7 +75,7 @@ export function ChangePasswordForm({ forced }: { forced: boolean }) {
         onChange={setConfirm}
       />
 
-      <Button type="submit" disabled={pending} className="w-full">
+      <Button type="submit" pending={pending} className="w-full">
         {pending ? "Saving…" : "Change password"}
       </Button>
     </form>

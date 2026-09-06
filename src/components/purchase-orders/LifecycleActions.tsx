@@ -88,7 +88,8 @@ export function LifecycleActions({
                   <Button
                     variant="secondary"
                     className="bg-ink text-canvas hover:bg-ink-deep"
-                    disabled={!backNote.trim() || reverting}
+                    disabled={!backNote.trim()}
+                    pending={reverting}
                     onClick={async () => {
                       setReverting(true);
                       const result = await revertStage(poId, backNote);
@@ -127,7 +128,7 @@ export function LifecycleActions({
               />
               <Button
                 className="mt-sm w-full"
-                disabled={advancing}
+                pending={advancing}
                 onClick={async () => {
                   setAdvancing(true);
                   const result = await advanceStage(poId, note);

@@ -4,8 +4,9 @@ import { usePathname, useSearchParams } from "next/navigation";
 import type { BuyerRangePreset } from "@/lib/analytics/buyer-range";
 import { AGGREGATIONS } from "@/lib/analytics/range";
 import type { Aggregation } from "@/lib/dates";
+import { ChoiceButton } from "@/components/portal/ChoiceButton";
 import { UpdatingHint } from "@/components/portal/UpdatingHint";
-import { useUrlNavigation } from "@/hooks/useUrlNavigation";
+import { usePendingChoice } from "@/hooks/usePendingChoice";
 
 /** One range drives the whole page, and it lives in the URL so it can be shared. */
 export function BuyerRangeChips({
@@ -22,41 +23,37 @@ export function BuyerRangeChips({
   aggregations?: Aggregation[];
   agg?: Aggregation;
 }) {
-  const { replace } = useUrlNavigation();
+  const presets = usePendingChoice<BuyerRangePreset>(preset);
+  const aggs = usePendingChoice<Aggregation | undefined>(agg);
   const pathname = usePathname();
   const searchParams = useSearchParams();
 
-  const select = (value: BuyerRangePreset) => {
+  const hrefFor = (key: string, value: string) => {
     const params = new URLSearchParams(searchParams.toString());
-    params.set("range", value);
+    params.set(key, value);
     params.delete("page");
-    replace(`${pathname}?${params.toString()}`);
-  };
-
-  const setAgg = (value: Aggregation) => {
-    const params = new URLSearchParams(searchParams.toString());
-    params.set("agg", value);
-    params.delete("page");
-    replace(`${pathname}?${params.toString()}`);
+    return `${pathname}?${params.toString()}`;
   };
 
   return (
     <div className="mb-lg flex flex-col gap-xs">
-      <div className="flex flex-wrap items-center gap-xxs">
+      <div
+        className="flex flex-wrap items-center gap-xxs"
+        aria-busy={presets.pending || undefined}
+      >
         {options.map((option) => (
-          <button
+          <ChoiceButton
             key={option.value}
-            type="button"
-            aria-pressed={preset === option.value}
-            onClick={() => select(option.value)}
-            className={`h-control-sm rounded-pill px-md text-[length:var(--text-body-sm)] transition-colors focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary ${
-              preset === option.value
-                ? "bg-ink text-canvas"
-                : "bg-surface-soft text-ink-secondary hover:text-ink"
-            }`}
+            look="pill"
+            selected={presets.value === option.value}
+            pending={presets.isPending(option.value)}
+            dimmed={presets.pending && !presets.isPending(option.value)}
+            onClick={() =>
+              presets.choose(option.value, hrefFor("range", option.value))
+            }
           >
             {option.label}
-          </button>
+          </ChoiceButton>
         ))}
       </div>
       <div className="flex flex-wrap items-center justify-between gap-sm">
@@ -73,23 +70,26 @@ export function BuyerRangeChips({
             <span className="font-mono text-[length:var(--text-eyebrow)] text-ink-tertiary">
               Aggregate
             </span>
-            <div className="flex overflow-hidden rounded-sm border border-hairline">
+            <div
+              className="flex overflow-hidden rounded-sm border border-hairline"
+              aria-busy={aggs.pending || undefined}
+            >
               {AGGREGATIONS.filter((option) =>
                 aggregations.includes(option.value),
               ).map((option) => (
-                <button
+                <ChoiceButton
                   key={option.value}
-                  type="button"
-                  aria-pressed={agg === option.value}
-                  onClick={() => setAgg(option.value)}
-                  className={`h-control-sm px-sm text-[length:var(--text-caption)] transition-colors -outline-offset-2 focus-visible:outline-2 focus-visible:outline-primary ${
-                    agg === option.value
-                      ? "bg-surface-soft font-semibold text-ink"
-                      : "text-ink-secondary hover:text-ink"
-                  }`}
+                  look="segment"
+                  compact
+                  selected={aggs.value === option.value}
+                  pending={aggs.isPending(option.value)}
+                  dimmed={aggs.pending && !aggs.isPending(option.value)}
+                  onClick={() =>
+                    aggs.choose(option.value, hrefFor("agg", option.value))
+                  }
                 >
                   {option.label}
-                </button>
+                </ChoiceButton>
               ))}
             </div>
           </div>

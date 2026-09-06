@@ -69,6 +69,8 @@ export function ReviewForm({
   const [duplicate, setDuplicate] = useState<DuplicateMatch | null>(null);
   const [isRevision, setIsRevision] = useState(false);
   const [confirming, setConfirming] = useState(false);
+  const [retrying, setRetrying] = useState(false);
+  const [discarding, setDiscarding] = useState(false);
   const [formError, setFormError] = useState<string | null>(null);
   const first = useRef(true);
 
@@ -175,13 +177,16 @@ export function ReviewForm({
           <Button
             variant="secondary"
             className="mt-sm"
+            pending={retrying}
             onClick={async () => {
+              setRetrying(true);
               const result = await retryExtraction(extractionId);
+              setRetrying(false);
               if (result.success) router.refresh();
               else toast.error(result.error);
             }}
           >
-            Try again
+            {retrying ? "Reading again…" : "Try again"}
           </Button>
         </div>
       ) : null}
@@ -377,20 +382,26 @@ export function ReviewForm({
                 </DialogHeader>
                 <DialogFooter>
                   <Button
+                    pending={discarding}
                     onClick={async () => {
+                      setDiscarding(true);
                       const result = await discardExtraction(extractionId);
-                      if (result.success) router.push("/purchase-orders");
-                      else toast.error(result.error);
+                      if (result.success) {
+                        router.push("/purchase-orders");
+                        return;
+                      }
+                      setDiscarding(false);
+                      toast.error(result.error);
                     }}
                   >
-                    Discard
+                    {discarding ? "Discarding…" : "Discard"}
                   </Button>
                 </DialogFooter>
               </DialogContent>
             </Dialog>
 
             <div className="text-right">
-              <Button disabled={!canConfirm} onClick={onConfirm}>
+              <Button disabled={!canConfirm} pending={confirming} onClick={onConfirm}>
                 {confirming ? "Saving…" : "Confirm & save"}
               </Button>
               {blockedByTotals ? (

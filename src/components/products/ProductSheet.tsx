@@ -49,6 +49,8 @@ export function ProductSheet({
   const [open, setOpen] = useState(false);
   const [form, setForm] = useState<ProductInput>(product ?? BLANK);
   const [pending, setPending] = useState(false);
+  /** Its own flag: "Saving…" must never show while an archive is what runs. */
+  const [archiving, setArchiving] = useState(false);
 
   const set = <K extends keyof ProductInput>(key: K, value: ProductInput[K]) =>
     setForm((current) => ({ ...current, [key]: value }));
@@ -165,7 +167,8 @@ export function ProductSheet({
 
           <div className="flex flex-wrap items-center gap-sm">
             <Button
-              disabled={pending}
+              disabled={archiving}
+              pending={pending}
               onClick={async () => {
                 setPending(true);
                 const result = product
@@ -188,10 +191,11 @@ export function ProductSheet({
               <Button
                 variant="secondary"
                 disabled={pending}
+                pending={archiving}
                 onClick={async () => {
-                  setPending(true);
+                  setArchiving(true);
                   const result = await archiveProduct(product.id);
-                  setPending(false);
+                  setArchiving(false);
                   if (!result.success) {
                     toast.error(result.error);
                     return;
@@ -202,7 +206,7 @@ export function ProductSheet({
                   router.refresh();
                 }}
               >
-                Archive
+                {archiving ? "Archiving…" : "Archive"}
               </Button>
             ) : null}
           </div>

@@ -8,6 +8,7 @@ import {
   TooltipContent,
   TooltipTrigger,
 } from "@/components/ui/tooltip";
+import { LinkSpinner } from "@/components/portal/LinkSpinner";
 import { UserMenu } from "@/components/portal/UserMenu";
 import { Wordmark } from "@/components/portal/Wordmark";
 
@@ -73,6 +74,9 @@ export function Sidebar({
             >
               <Icon className="size-5 shrink-0" strokeWidth={1.75} aria-hidden />
               <span className="hidden lg:inline">{label}</span>
+              {/* Spins from the click until the route commits and its
+                  loading.tsx takes over. */}
+              <LinkSpinner className="ml-auto hidden lg:inline-block" />
             </Link>
           );
 

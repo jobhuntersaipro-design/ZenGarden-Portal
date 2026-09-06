@@ -4,7 +4,9 @@ import { useState } from "react";
 import { usePathname, useSearchParams } from "next/navigation";
 import { AGGREGATIONS, RANGE_PRESETS, type RangePreset } from "@/lib/analytics/range";
 import type { Aggregation } from "@/lib/dates";
+import { ChoiceButton } from "@/components/portal/ChoiceButton";
 import { UpdatingHint } from "@/components/portal/UpdatingHint";
+import { usePendingChoice } from "@/hooks/usePendingChoice";
 import { useUrlNavigation } from "@/hooks/useUrlNavigation";
 
 /**
@@ -27,41 +29,48 @@ export function RangeControls({
   summary: string;
 }) {
   const { replace } = useUrlNavigation();
+  // Two groups, two transitions: a preset click must not spin the aggregate.
+  const presets = usePendingChoice<RangePreset | null>(preset);
+  const aggs = usePendingChoice<Aggregation>(agg);
   const pathname = usePathname();
   const searchParams = useSearchParams();
   const [customOpen, setCustomOpen] = useState(preset === null);
 
-  const set = (next: Record<string, string | null>) => {
+  const hrefFor = (next: Record<string, string | null>) => {
     const params = new URLSearchParams(searchParams.toString());
     for (const [key, value] of Object.entries(next)) {
       if (value === null) params.delete(key);
       else params.set(key, value);
     }
     params.delete("page");
-    replace(`${pathname}?${params.toString()}`);
+    return `${pathname}?${params.toString()}`;
   };
+  const set = (next: Record<string, string | null>) => replace(hrefFor(next));
 
   return (
     <div className="mb-lg flex flex-col gap-sm">
       <div className="flex flex-wrap items-center gap-sm">
-        <div className="flex flex-wrap items-center gap-xxs">
+        <div
+          className="flex flex-wrap items-center gap-xxs"
+          aria-busy={presets.pending || undefined}
+        >
           {RANGE_PRESETS.map((option) => (
-            <button
+            <ChoiceButton
               key={option.value}
-              type="button"
-              aria-pressed={preset === option.value}
+              look="pill"
+              selected={presets.value === option.value}
+              pending={presets.isPending(option.value)}
+              dimmed={presets.pending && !presets.isPending(option.value)}
               // Clicking a chip rewrites both dates by clearing them.
               onClick={() =>
-                set({ preset: option.value, from: null, to: null })
+                presets.choose(
+                  option.value,
+                  hrefFor({ preset: option.value, from: null, to: null }),
+                )
               }
-              className={`h-control-sm rounded-pill px-md text-[length:var(--text-body-sm)] transition-colors focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary ${
-                preset === option.value
-                  ? "bg-ink text-canvas"
-                  : "bg-surface-soft text-ink-secondary hover:text-ink"
-              }`}
             >
               {option.label}
-            </button>
+            </ChoiceButton>
           ))}
         </div>
 
@@ -124,21 +133,24 @@ export function RangeControls({
           <span className="font-mono text-[length:var(--text-eyebrow)] text-ink-tertiary">
             Aggregate
           </span>
-          <div className="flex overflow-hidden rounded-sm border border-hairline">
+          <div
+            className="flex overflow-hidden rounded-sm border border-hairline"
+            aria-busy={aggs.pending || undefined}
+          >
             {AGGREGATIONS.map((option) => (
-              <button
+              <ChoiceButton
                 key={option.value}
-                type="button"
-                aria-pressed={agg === option.value}
-                onClick={() => set({ agg: option.value })}
-                className={`h-control-sm px-sm text-[length:var(--text-caption)] transition-colors focus-visible:outline-2 -outline-offset-2 focus-visible:outline-primary ${
-                  agg === option.value
-                    ? "bg-surface-soft font-semibold text-ink"
-                    : "text-ink-secondary hover:text-ink"
-                }`}
+                look="segment"
+                compact
+                selected={aggs.value === option.value}
+                pending={aggs.isPending(option.value)}
+                dimmed={aggs.pending && !aggs.isPending(option.value)}
+                onClick={() =>
+                  aggs.choose(option.value, hrefFor({ agg: option.value }))
+                }
               >
                 {option.label}
-              </button>
+              </ChoiceButton>
             ))}
           </div>
         </div>

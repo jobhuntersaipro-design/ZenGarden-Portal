@@ -5,8 +5,9 @@ import type { StagePoint } from "@/lib/analytics/fulfillment";
 import type { SalesSeries } from "@/lib/analytics/sales";
 import { SalesLineChart } from "@/components/dashboard/SalesLineChart";
 import { StackedStageChart } from "@/components/dashboard/StackedStageChart";
+import { ChoiceButton } from "@/components/portal/ChoiceButton";
 import { formatMYR } from "@/lib/money";
-import { useUrlNavigation } from "@/hooks/useUrlNavigation";
+import { usePendingChoice } from "@/hooks/usePendingChoice";
 
 export type Trend = "fulfillment" | "sales";
 
@@ -32,17 +33,19 @@ export function TrendCard({
   confirmedCount: number;
   aggLabel: string;
 }) {
-  const { replace } = useUrlNavigation();
+  const trends = usePendingChoice<Trend>(trend);
   const pathname = usePathname();
   const searchParams = useSearchParams();
 
   const select = (next: Trend) => {
     const params = new URLSearchParams(searchParams.toString());
     params.set("trend", next);
-    replace(`${pathname}?${params.toString()}`);
+    trends.choose(next, `${pathname}?${params.toString()}`);
   };
 
-  const fulfillment = trend !== "sales";
+  // Both series are already here, so the switch is drawn from the click —
+  // the URL write behind it only keeps the choice shareable.
+  const fulfillment = trends.value !== "sales";
 
   return (
     <section className="rounded-xl bg-surface p-xl">
@@ -63,26 +66,26 @@ export function TrendCard({
           </p>
         </div>
 
-        <div className="flex overflow-hidden rounded-sm border border-hairline">
+        <div
+          className="flex overflow-hidden rounded-sm border border-hairline"
+          aria-busy={trends.pending || undefined}
+        >
           {(
             [
               ["fulfillment", "Fulfillment"],
               ["sales", "Sales"],
             ] as const
           ).map(([value, label]) => (
-            <button
+            <ChoiceButton
               key={value}
-              type="button"
-              aria-pressed={fulfillment === (value === "fulfillment")}
+              look="segment"
+              selected={fulfillment === (value === "fulfillment")}
+              pending={trends.isPending(value)}
+              dimmed={trends.pending && !trends.isPending(value)}
               onClick={() => select(value)}
-              className={`h-control-sm px-md text-[length:var(--text-caption)] transition-colors -outline-offset-2 focus-visible:outline-2 focus-visible:outline-primary ${
-                fulfillment === (value === "fulfillment")
-                  ? "bg-surface-soft font-semibold text-ink"
-                  : "text-ink-secondary hover:text-ink"
-              }`}
             >
               {label}
-            </button>
+            </ChoiceButton>
           ))}
         </div>
       </div>

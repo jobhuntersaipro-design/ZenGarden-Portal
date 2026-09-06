@@ -15,8 +15,9 @@ import {
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { SHARE_VARS, cssVar } from "@/lib/analytics/palette";
 import type { ProductTrendPoint } from "@/lib/analytics/product-trend";
+import { Spinner } from "@/components/portal/Spinner";
 import { formatMYR } from "@/lib/money";
-import { useUrlNavigation } from "@/hooks/useUrlNavigation";
+import { usePendingChoice } from "@/hooks/usePendingChoice";
 
 const MAX_PRODUCTS = 6;
 
@@ -45,12 +46,13 @@ export function ProductTrend({
   totalProducts: number;
 }) {
   const selected = slots.filter(Boolean);
-  const { replace } = useUrlNavigation();
+  // Which row was toggled, so it alone spins until the chart has caught up.
+  const picks = usePendingChoice<string>("");
   const pathname = usePathname();
   const searchParams = useSearchParams();
   const [capWarning, setCapWarning] = useState(false);
 
-  const write = (next: string[]) => {
+  const write = (next: string[], id: string) => {
     // Trailing holes carry no assignment, so they are dropped.
     const trimmed = [...next];
     while (trimmed.length > 0 && trimmed[trimmed.length - 1] === "") trimmed.pop();
@@ -58,7 +60,7 @@ export function ProductTrend({
     const params = new URLSearchParams(searchParams.toString());
     if (trimmed.length === 0) params.delete("products");
     else params.set("products", trimmed.join(","));
-    replace(`${pathname}?${params.toString()}`);
+    picks.choose(id, `${pathname}?${params.toString()}`);
   };
 
   const toggle = (id: string) => {
@@ -68,7 +70,7 @@ export function ProductTrend({
       // Blank the slot in place: the products after it keep their colours.
       const next = [...slots];
       next[slot] = "";
-      write(next);
+      write(next, id);
       return;
     }
     if (selected.length >= MAX_PRODUCTS) {
@@ -81,7 +83,7 @@ export function ProductTrend({
     const next = [...slots];
     if (free >= 0) next[free] = id;
     else next.push(id);
-    write(next);
+    write(next, id);
   };
 
   const label =
@@ -158,6 +160,9 @@ export function ProductTrend({
                       >
                         {product.name}
                       </span>
+                      {picks.isPending(product.id) ? (
+                        <Spinner className="size-3 text-ink-tertiary" />
+                      ) : null}
                       <span className="shrink-0 tabular-nums text-[length:var(--text-caption)] text-ink-tertiary">
                         {formatMYR(product.spend.toFixed(2))}
                       </span>

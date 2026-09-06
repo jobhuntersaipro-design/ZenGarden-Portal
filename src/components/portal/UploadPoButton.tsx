@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { LinkSpinner } from "@/components/portal/LinkSpinner";
 import { Button } from "@/components/ui/button";
 
 /**
@@ -10,6 +11,7 @@ export function UploadPoButton({ buyerId }: { buyerId?: string }) {
   return (
     <Button asChild>
       <Link href={buyerId ? `/upload?buyer=${encodeURIComponent(buyerId)}` : "/upload"}>
+        <LinkSpinner />
         Upload PO
       </Link>
     </Button>
