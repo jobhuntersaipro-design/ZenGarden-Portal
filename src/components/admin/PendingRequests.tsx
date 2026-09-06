@@ -29,9 +29,10 @@ export function PendingRequests({ requests }: { requests: PendingRequest[] }) {
    * to label, and a button that reads "Approving…" while a decline runs is
    * worse than no label at all (brief G1).
    */
-  const [pending, setPending] = useState<
-    { id: string; action: "approve" | "decline" } | null
-  >(null);
+  const [pending, setPending] = useState<{
+    id: string;
+    action: "approve" | "decline";
+  } | null>(null);
 
   // Hidden entirely when empty: an empty queue needs no furniture.
   if (requests.length === 0) return null;
@@ -49,7 +50,10 @@ export function PendingRequests({ requests }: { requests: PendingRequest[] }) {
 
       <ul className="divide-y divide-hairline border-t border-hairline">
         {requests.map((request) => (
-          <li key={request.id} className="flex flex-wrap items-center gap-sm p-lg">
+          <li
+            key={request.id}
+            className="flex flex-wrap items-center gap-sm p-lg"
+          >
             <span className="min-w-0 flex-1">
               <span className="flex items-center gap-xs">
                 <span
@@ -80,7 +84,7 @@ export function PendingRequests({ requests }: { requests: PendingRequest[] }) {
                   [request.id]: event.target.value as Role,
                 }))
               }
-              className="h-control-sm rounded-sm border border-hairline-strong bg-transparent px-xs text-[length:var(--text-body-sm)] text-ink focus-visible:border-primary focus-visible:outline-2 focus-visible:outline-primary"
+              className="h-control-md sm:h-control-sm rounded-sm border border-hairline-strong bg-transparent px-xs text-[length:var(--text-body-sm)] text-ink focus-visible:border-focus focus-visible:outline-2 focus-visible:outline-focus"
             >
               <option value={Role.MEMBER}>Member</option>
               <option value={Role.SUPER_ADMIN}>Super admin</option>
@@ -103,7 +107,9 @@ export function PendingRequests({ requests }: { requests: PendingRequest[] }) {
               <Button
                 variant="secondary"
                 disabled={pending?.id === request.id}
-                pending={pending?.id === request.id && pending.action === "decline"}
+                pending={
+                  pending?.id === request.id && pending.action === "decline"
+                }
                 onClick={async () => {
                   setPending({ id: request.id, action: "decline" });
                   const result = await declineAccessRequest(
@@ -124,7 +130,9 @@ export function PendingRequests({ requests }: { requests: PendingRequest[] }) {
               </Button>
               <Button
                 disabled={pending?.id === request.id}
-                pending={pending?.id === request.id && pending.action === "approve"}
+                pending={
+                  pending?.id === request.id && pending.action === "approve"
+                }
                 onClick={async () => {
                   setPending({ id: request.id, action: "approve" });
                   const result = await approveAccessRequest(

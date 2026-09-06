@@ -50,7 +50,13 @@ const initials = (name: string) =>
     .join("")
     .toUpperCase();
 
-function Person({ name, image }: { name: string | null; image: string | null }) {
+function Person({
+  name,
+  image,
+}: {
+  name: string | null;
+  image: string | null;
+}) {
   if (!name) {
     // Visible from the list and sortable to the top: the backlog is the point.
     return <span className="text-ink-disabled">Not confirmed</span>;
@@ -164,11 +170,19 @@ export function PoTable({
     {
       key: "uploadedBy",
       header: "Uploaded by",
-      cell: (row) => <Person name={row.uploadedByName} image={row.uploadedByImage} />,
+      // Two avatars per card is noise when you are scanning for a PO; both
+      // are still on the detail page and in the desktop table.
+      mobileHidden: true,
+      cell: (row) => (
+        <Person name={row.uploadedByName} image={row.uploadedByImage} />
+      ),
     },
     {
       key: "confirmedBy",
       header: "Confirmed by",
+      // Two avatars per card is noise when you are scanning for a PO; both
+      // are still on the detail page and in the desktop table.
+      mobileHidden: true,
       cell: (row) => (
         <Person name={row.confirmedByName} image={row.confirmedByImage} />
       ),

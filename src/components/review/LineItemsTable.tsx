@@ -29,17 +29,23 @@ export function LineItemsTable({
       <table className="w-full min-w-line-items border-collapse">
         <thead>
           <tr className="border-b border-hairline text-left">
-            {["Description", "Product", "Qty", "Unit", "Unit price", "Amount", ""].map(
-              (heading) => (
-                <th
-                  key={heading}
-                  scope="col"
-                  className="py-sm pr-sm font-mono text-[length:var(--text-eyebrow)] font-normal text-ink-tertiary"
-                >
-                  {heading}
-                </th>
-              ),
-            )}
+            {[
+              "Description",
+              "Product",
+              "Qty",
+              "Unit",
+              "Unit price",
+              "Amount",
+              "",
+            ].map((heading) => (
+              <th
+                key={heading}
+                scope="col"
+                className="py-sm pr-sm font-mono text-[length:var(--text-eyebrow)] font-normal text-ink-tertiary"
+              >
+                {heading}
+              </th>
+            ))}
           </tr>
         </thead>
         <tbody>
@@ -73,8 +79,8 @@ export function LineItemsTable({
                       productId: option.id,
                       name: option.label,
                       unit:
-                        products.find((product) => product.id === option.id)?.unit ??
-                        null,
+                        products.find((product) => product.id === option.id)
+                          ?.unit ?? null,
                     })
                   }
                 />
@@ -157,7 +163,7 @@ export function LineItemsTable({
                   aria-label={`Remove line ${index + 1}`}
                   disabled={lineItems.length === 1}
                   onClick={() => dispatch({ type: "removeLine", index })}
-                  className="flex size-8 items-center justify-center rounded-sm text-ink-tertiary transition-colors hover:bg-surface hover:text-ink focus-visible:outline-2 focus-visible:outline-primary disabled:opacity-40"
+                  className="flex size-8 items-center justify-center rounded-sm text-ink-tertiary transition-colors hover:bg-surface hover:text-ink focus-visible:outline-2 focus-visible:outline-focus disabled:opacity-40"
                 >
                   <Trash2 className="size-4" strokeWidth={1.75} aria-hidden />
                 </button>
@@ -170,7 +176,7 @@ export function LineItemsTable({
       <button
         type="button"
         onClick={() => dispatch({ type: "addLine" })}
-        className="mt-sm text-[length:var(--text-body-sm)] text-brand-link underline-offset-2 hover:underline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary"
+        className="mt-sm text-[length:var(--text-body-sm)] text-brand-link underline-offset-2 hover:underline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-focus"
       >
         + Add line
       </button>

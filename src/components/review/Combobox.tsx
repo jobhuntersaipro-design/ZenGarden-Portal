@@ -2,7 +2,11 @@
 
 import { useState } from "react";
 import { Check, ChevronsUpDown } from "lucide-react";
-import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from "@/components/ui/popover";
 import { Input } from "@/components/ui/input";
 
 export type ComboboxOption = { id: string; label: string; hint?: string };
@@ -43,7 +47,7 @@ export function Combobox({
     <Popover open={open} onOpenChange={setOpen}>
       <PopoverTrigger
         aria-label={ariaLabel}
-        className="flex h-control-md w-full items-center justify-between gap-xs rounded-sm border border-hairline-strong bg-transparent px-2.5 text-left text-[length:var(--text-body-sm)] focus-visible:border-primary focus-visible:outline-2 focus-visible:outline-primary"
+        className="flex h-control-md w-full items-center justify-between gap-xs rounded-sm border border-hairline-strong bg-transparent px-2.5 text-left text-[length:var(--text-body-sm)] focus-visible:border-focus focus-visible:outline-2 focus-visible:outline-focus"
       >
         {/* The full value is always recoverable, even when the trigger clips it. */}
         <span
@@ -52,15 +56,21 @@ export function Combobox({
         >
           {selected?.label ?? placeholder}
         </span>
-        <ChevronsUpDown className="size-4 shrink-0 text-ink-tertiary" aria-hidden />
+        <ChevronsUpDown
+          className="size-4 shrink-0 text-ink-tertiary"
+          aria-hidden
+        />
       </PopoverTrigger>
-      <PopoverContent align="start" className="w-(--radix-popover-trigger-width) p-xs">
+      <PopoverContent
+        align="start"
+        className="w-(--radix-popover-trigger-width) p-xs"
+      >
         <Input
           autoFocus
           value={query}
           placeholder="Search…"
           onChange={(event) => setQuery(event.target.value)}
-          className="h-control-sm"
+          className="h-control-md sm:h-control-sm"
         />
         <ul className="mt-xs max-h-64 overflow-y-auto">
           {matches.map((option) => (
@@ -72,7 +82,7 @@ export function Combobox({
                   setOpen(false);
                   setQuery("");
                 }}
-                className="flex w-full items-center gap-xs rounded-sm px-xs py-xxs text-left text-[length:var(--text-body-sm)] text-ink hover:bg-surface focus-visible:outline-2 focus-visible:outline-primary"
+                className="flex w-full items-center gap-xs rounded-sm px-xs py-xxs text-left text-[length:var(--text-body-sm)] text-ink hover:bg-surface focus-visible:outline-2 focus-visible:outline-focus"
               >
                 <Check
                   className={`size-4 shrink-0 ${option.id === value ? "text-ink" : "text-transparent"}`}
@@ -98,7 +108,7 @@ export function Combobox({
                   setOpen(false);
                   setQuery("");
                 }}
-                className="w-full rounded-sm px-xs py-xxs text-left text-[length:var(--text-body-sm)] text-brand-link hover:bg-surface focus-visible:outline-2 focus-visible:outline-primary"
+                className="w-full rounded-sm px-xs py-xxs text-left text-[length:var(--text-body-sm)] text-brand-link hover:bg-surface focus-visible:outline-2 focus-visible:outline-focus"
               >
                 {createLabel(query.trim())}
               </button>

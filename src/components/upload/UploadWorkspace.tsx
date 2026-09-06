@@ -20,7 +20,7 @@ export function UploadWorkspace({ hintBuyerId }: { hintBuyerId?: string }) {
       <div className="mt-md">
         <Link
           href="/purchase-orders"
-          className="text-[length:var(--text-body-sm)] text-brand-link underline-offset-2 hover:underline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary"
+          className="inline-flex min-h-control-md items-center rounded-xxs text-[length:var(--text-body-sm)] text-brand-link underline-offset-2 hover:underline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-focus sm:min-h-0"
         >
           Cancel
         </Link>

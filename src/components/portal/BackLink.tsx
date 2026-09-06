@@ -34,7 +34,8 @@ export function BackLink({ fallbackHref }: { fallbackHref: string }) {
     if (!document.referrer) return false;
     try {
       // A referrer can be anything; a malformed one is not this app.
-      if (new URL(document.referrer).origin !== window.location.origin) return false;
+      if (new URL(document.referrer).origin !== window.location.origin)
+        return false;
     } catch {
       return false;
     }
@@ -47,7 +48,7 @@ export function BackLink({ fallbackHref }: { fallbackHref: string }) {
     <button
       type="button"
       onClick={() => (cameFromApp() ? router.back() : push(fallbackHref))}
-      className="mb-xs inline-flex items-center gap-xxs rounded-sm text-[length:var(--text-body-sm)] font-medium text-ink-secondary transition-colors hover:text-ink focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary"
+      className="mb-xs inline-flex min-h-control-md items-center gap-xxs rounded-sm text-[length:var(--text-body-sm)] font-medium text-ink-secondary transition-colors hover:text-ink focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-focus sm:min-h-0"
     >
       <ArrowLeft className="size-4" strokeWidth={1.75} aria-hidden />
       Back

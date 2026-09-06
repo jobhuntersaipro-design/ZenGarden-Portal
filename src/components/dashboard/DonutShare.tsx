@@ -18,7 +18,7 @@ const colorFor = (index: number, isOther: boolean) =>
 export type EntityBase = "/buyers" | "/products";
 
 const linkClass =
-  "min-w-0 flex-1 truncate text-[length:var(--text-body-sm)] text-ink underline-offset-2 hover:text-brand-link hover:underline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary rounded-xxs";
+  "min-w-0 flex-1 truncate text-[length:var(--text-body-sm)] text-ink underline-offset-2 hover:text-brand-link hover:underline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-focus rounded-xxs";
 
 /**
  * A 168px conic-gradient ring. Colours are assigned by rank in a fixed order
@@ -132,7 +132,7 @@ export function DonutShare({
                     aria-expanded={openOther}
                     aria-controls={otherId}
                     onClick={() => setOpenOther((open) => !open)}
-                    className="flex items-center gap-xs rounded-xxs text-left focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary"
+                    className="flex items-center gap-xs rounded-xxs text-left focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-focus"
                   >
                     {swatch}
                     <span className="min-w-0 flex-1 truncate text-[length:var(--text-body-sm)] text-ink-disabled">
@@ -151,7 +151,10 @@ export function DonutShare({
                       className="ml-md flex flex-col gap-xxs border-l border-hairline pl-sm"
                     >
                       {members.map((member) => (
-                        <li key={member.id} className="flex items-center gap-xs">
+                        <li
+                          key={member.id}
+                          className="flex items-center gap-xs"
+                        >
                           {hrefBase ? (
                             <Link
                               href={`${hrefBase}/${member.id}`}

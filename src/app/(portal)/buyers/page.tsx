@@ -4,11 +4,7 @@ import { UploadPoButton } from "@/components/portal/UploadPoButton";
 import { AttentionStrip } from "@/components/buyers/AttentionStrip";
 import { BuyersTable } from "@/components/buyers/BuyersTable";
 import { BuyerRangeChips } from "@/components/buyers/BuyerRangeChips";
-import {
-  KpiMoney,
-  KpiNumber,
-  KpiTile,
-} from "@/components/dashboard/KpiTile";
+import { KpiMoney, KpiNumber, KpiTile } from "@/components/dashboard/KpiTile";
 import {
   BUYER_RANGES,
   buyerPreviousPeriod,
@@ -46,22 +42,21 @@ export default async function BuyersPage({
   const filter = FILTERS.includes(filterParam) ? filterParam : null;
   const q = firstParam(params, "q")?.trim() || undefined;
 
-  const sort = parseSort(params, BUYER_SORT_KEYS, { key: "total", dir: "desc" });
+  const sort = parseSort(params, BUYER_SORT_KEYS, {
+    key: "total",
+    dir: "desc",
+  });
   const { page, size, skip, take } = parsePagination(params);
 
-  const roster = await listBuyers(
-    range,
-    previous,
-    filter,
-    q,
-    sort,
-    skip,
-    take,
-  );
+  const roster = await listBuyers(range, previous, filter, q, sort, skip, take);
 
   return (
     <>
-      <PageHeader eyebrow="Directory" title="Buyers" action={<UploadPoButton />} />
+      <PageHeader
+        eyebrow="Directory"
+        title="Buyers"
+        action={<UploadPoButton />}
+      />
 
       <BuyerRangeChips
         preset={range.preset}
@@ -69,7 +64,7 @@ export default async function BuyersPage({
         options={BUYER_RANGES}
       />
 
-      <div className="mb-lg grid gap-md sm:grid-cols-2 lg:grid-cols-4">
+      <div className="mb-lg grid grid-cols-2 gap-md lg:grid-cols-4">
         <KpiTile
           compact
           label="Buyers with orders"
@@ -80,7 +75,9 @@ export default async function BuyersPage({
           compact
           label="New buyers"
           value={
-            roster.kpis.newUnknowable ? "—" : (
+            roster.kpis.newUnknowable ? (
+              "—"
+            ) : (
               <KpiNumber value={roster.kpis.newBuyers} />
             )
           }
@@ -97,13 +94,19 @@ export default async function BuyersPage({
           label="At risk or lapsed"
           value={<KpiNumber value={roster.kpis.atRiskOrLapsed} />}
           caption={
-            <span className={roster.kpis.atRiskOrLapsed > 0 ? "text-brand-amber" : undefined}>
-              {roster.kpis.lapsedCount} lapsed · {roster.kpis.atRiskCount} at risk
+            <span
+              className={
+                roster.kpis.atRiskOrLapsed > 0 ? "text-brand-amber" : undefined
+              }
+            >
+              {roster.kpis.lapsedCount} lapsed · {roster.kpis.atRiskCount} at
+              risk
             </span>
           }
         />
         <KpiTile
           compact
+          mobileFull
           label="Revenue per buyer"
           value={<KpiMoney value={roster.kpis.revenuePerBuyer} />}
           caption="average per buyer with orders"

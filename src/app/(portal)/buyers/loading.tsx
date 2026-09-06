@@ -14,7 +14,7 @@ export default function BuyersLoading() {
       <ControlsSkeleton />
       <KpiRowSkeleton compact />
       {/* The attention strip. */}
-      <Shimmer className="mb-md h-control-sm w-full rounded-lg" />
+      <Shimmer className="mb-md h-control-md sm:h-control-sm w-full rounded-lg" />
       <TableSkeleton rows={10} columns={7} />
     </PageSkeleton>
   );

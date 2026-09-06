@@ -75,7 +75,13 @@ export function BuyersTable({
         </span>
       ),
     },
-    { key: "orders", header: "Orders", align: "right", defaultDir: "desc", cell: (row) => row.orders },
+    {
+      key: "orders",
+      header: "Orders",
+      align: "right",
+      defaultDir: "desc",
+      cell: (row) => row.orders,
+    },
     {
       key: "total",
       header: "Total",
@@ -156,7 +162,7 @@ export function BuyersTable({
                 SEARCH_DEBOUNCE_MS,
               );
             }}
-            className="h-control-sm w-72 pl-xl"
+            className="h-control-md sm:h-control-sm w-72 pl-xl"
           />
         </div>
 
@@ -176,7 +182,7 @@ export function BuyersTable({
                 setQuery("");
                 write({ filter: null, q: null });
               }}
-              className="text-[length:var(--text-body-sm)] text-brand-link underline-offset-2 hover:underline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary"
+              className="text-[length:var(--text-body-sm)] text-brand-link underline-offset-2 hover:underline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-focus"
             >
               Clear filter
             </button>

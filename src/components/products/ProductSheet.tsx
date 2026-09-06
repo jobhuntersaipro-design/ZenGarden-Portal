@@ -90,7 +90,9 @@ export function ProductSheet({
                 value={form.sku}
                 // Upper-cased as typed, so two people cannot enter the same SKU
                 // two ways and create a duplicate the schema would reject.
-                onChange={(event) => set("sku", event.target.value.toUpperCase())}
+                onChange={(event) =>
+                  set("sku", event.target.value.toUpperCase())
+                }
               />
               <p className="text-[length:var(--text-caption)] text-ink-tertiary">
                 Capitals, digits and dashes
@@ -105,9 +107,12 @@ export function ProductSheet({
                 id="product-category"
                 value={form.category}
                 onChange={(event) =>
-                  set("category", event.target.value as ProductInput["category"])
+                  set(
+                    "category",
+                    event.target.value as ProductInput["category"],
+                  )
                 }
-                className="h-control-md rounded-sm border border-hairline-strong bg-transparent px-xs text-[length:var(--text-body-sm)] text-ink focus-visible:border-primary focus-visible:outline-2 focus-visible:outline-primary"
+                className="h-control-md rounded-sm border border-hairline-strong bg-transparent px-xs text-[length:var(--text-body-sm)] text-ink focus-visible:border-focus focus-visible:outline-2 focus-visible:outline-focus"
               >
                 {PRODUCT_CATEGORIES.map((category) => (
                   <option key={category} value={category}>
@@ -184,7 +189,11 @@ export function ProductSheet({
                 router.refresh();
               }}
             >
-              {pending ? "Saving…" : product ? "Save changes" : "Create product"}
+              {pending
+                ? "Saving…"
+                : product
+                  ? "Save changes"
+                  : "Create product"}
             </Button>
 
             {product && form.active ? (

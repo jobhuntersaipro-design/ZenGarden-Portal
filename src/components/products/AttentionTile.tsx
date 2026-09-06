@@ -19,12 +19,19 @@ export function AttentionTile({
   const searchParams = useSearchParams();
   const filters = usePendingChoice<string>(searchParams.get("filter") ?? "");
 
-  const parts: { filter: Exclude<ProductFilter, null>; count: number; label: string }[] =
-    [
-      { filter: "missing-image", count: counts.missingImage, label: "missing image" },
-      { filter: "inactive", count: counts.inactive, label: "inactive" },
-      { filter: "not-sold-60d", count: counts.notSold, label: "not sold 60d" },
-    ];
+  const parts: {
+    filter: Exclude<ProductFilter, null>;
+    count: number;
+    label: string;
+  }[] = [
+    {
+      filter: "missing-image",
+      count: counts.missingImage,
+      label: "missing image",
+    },
+    { filter: "inactive", count: counts.inactive, label: "inactive" },
+    { filter: "not-sold-60d", count: counts.notSold, label: "not sold 60d" },
+  ];
 
   const total = counts.missingImage + counts.inactive + counts.notSold;
 
@@ -52,7 +59,11 @@ export function AttentionTile({
           const empty = part.count === 0;
           return (
             <span key={part.filter} className="flex items-center gap-xxs">
-              {index > 0 ? <span aria-hidden className="text-ink-tertiary">·</span> : null}
+              {index > 0 ? (
+                <span aria-hidden className="text-ink-tertiary">
+                  ·
+                </span>
+              ) : null}
               {empty ? (
                 // Not clickable and not focusable: an empty category is not a
                 // to-do, and offering it as one wastes a click.
@@ -63,9 +74,13 @@ export function AttentionTile({
                 <button
                   type="button"
                   onClick={() => apply(part.filter)}
-                  className="inline-flex items-center gap-xxs rounded-xxs text-ink-secondary underline-offset-2 hover:text-ink hover:underline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary"
+                  // A touch-height minimum on a phone: as a bare inline button
+                  // this was 18px tall (2026-09-06 review, A7).
+                  className="inline-flex min-h-control-md items-center gap-xxs rounded-xxs text-ink-secondary underline-offset-2 hover:text-ink hover:underline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-focus sm:min-h-0"
                 >
-                  {filters.isPending(part.filter) ? <Spinner className="size-3" /> : null}
+                  {filters.isPending(part.filter) ? (
+                    <Spinner className="size-3" />
+                  ) : null}
                   {part.count} {part.label}
                 </button>
               )}

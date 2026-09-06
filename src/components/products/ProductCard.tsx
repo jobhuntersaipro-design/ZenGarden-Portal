@@ -27,7 +27,7 @@ export function ProductCard({
   return (
     <Link
       href={`/products/${product.id}`}
-      className="group flex flex-col overflow-hidden rounded-lg border border-hairline bg-canvas transition-all hover:-translate-y-0.5 hover:border-hairline-strong hover:shadow-sm focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary"
+      className="group flex flex-col overflow-hidden rounded-lg border border-hairline bg-canvas transition-all hover:-translate-y-0.5 hover:border-hairline-strong hover:shadow-sm focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-focus"
     >
       <div className="relative aspect-4/3 bg-surface-soft">
         <ProductThumb name={product.name} url={imageUrl} />
@@ -60,7 +60,9 @@ export function ProductCard({
           {product.stats.driftPercent === null ? null : (
             <span
               className={`tabular-nums text-[length:var(--text-caption)] ${
-                product.stats.driftPercent >= 0 ? "text-accent-green" : "text-accent-red"
+                product.stats.driftPercent >= 0
+                  ? "text-accent-green"
+                  : "text-accent-red"
               }`}
             >
               {product.stats.driftPercent >= 0 ? "+" : ""}
@@ -72,7 +74,8 @@ export function ProductCard({
 
       <p className="border-t border-hairline px-md py-xs text-[length:var(--text-caption)] text-ink-tertiary tabular-nums">
         {Math.round(product.stats.units).toLocaleString("en-MY")} sold ·{" "}
-        {product.stats.buyers} buyers · {formatMYR(product.stats.revenue.toFixed(2))}
+        {product.stats.buyers} buyers ·{" "}
+        {formatMYR(product.stats.revenue.toFixed(2))}
       </p>
     </Link>
   );

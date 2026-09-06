@@ -35,7 +35,8 @@ export function StageCard({
           )}
         </h2>
         <p className="mt-xxs text-[length:var(--text-caption)] text-ink-tertiary">
-          Where each period&apos;s orders stand today · hover a bar for the split
+          Where each period&apos;s orders stand today · tap or hover a bar for
+          the split
         </p>
       </div>
 

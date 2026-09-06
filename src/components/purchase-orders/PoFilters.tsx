@@ -12,11 +12,7 @@ import { usePendingChoice } from "@/hooks/usePendingChoice";
 import { useUrlNavigation } from "@/hooks/useUrlNavigation";
 
 export type StatusChip =
-  | "all"
-  | "confirmed"
-  | "needs-review"
-  | "extracting"
-  | "failed";
+  "all" | "confirmed" | "needs-review" | "extracting" | "failed";
 
 /**
  * Chips and badges read the same tokens, so a colour means the same thing in
@@ -25,8 +21,16 @@ export type StatusChip =
 const CHIPS: { value: StatusChip; label: string; dot: string }[] = [
   { value: "all", label: "All", dot: "bg-ink-tertiary" },
   { value: "confirmed", label: "Confirmed", dot: "bg-accent-green" },
-  { value: "needs-review", label: "Needs review", dot: INTAKE_STATUS.NEEDS_REVIEW.dot },
-  { value: "extracting", label: "Extracting", dot: INTAKE_STATUS.EXTRACTING.dot },
+  {
+    value: "needs-review",
+    label: "Needs review",
+    dot: INTAKE_STATUS.NEEDS_REVIEW.dot,
+  },
+  {
+    value: "extracting",
+    label: "Extracting",
+    dot: INTAKE_STATUS.EXTRACTING.dot,
+  },
   { value: "failed", label: "Failed", dot: INTAKE_STATUS.FAILED.dot },
 ];
 
@@ -72,9 +76,12 @@ export function PoFilters({
    * navigation would restart the timer with stale params.
    */
   const timer = useRef<ReturnType<typeof setTimeout> | null>(null);
-  useEffect(() => () => {
-    if (timer.current) clearTimeout(timer.current);
-  }, []);
+  useEffect(
+    () => () => {
+      if (timer.current) clearTimeout(timer.current);
+    },
+    [],
+  );
 
   const onSearchChange = (value: string) => {
     setQuery(value);
@@ -86,14 +93,14 @@ export function PoFilters({
   const stageDisabled = status !== "all" && status !== "confirmed";
   const hasFilters = Boolean(
     searchParams.get("q") ||
-      searchParams.get("buyer") ||
-      searchParams.get("by") ||
-      searchParams.get("stage") ||
-      (status && status !== "all"),
+    searchParams.get("buyer") ||
+    searchParams.get("by") ||
+    searchParams.get("stage") ||
+    (status && status !== "all"),
   );
 
   const select =
-    "h-control-sm rounded-sm border border-hairline-strong bg-transparent px-xs text-[length:var(--text-body-sm)] text-ink focus-visible:border-primary focus-visible:outline-2 focus-visible:outline-primary disabled:text-ink-disabled";
+    "h-control-md sm:h-control-sm rounded-sm border border-hairline-strong bg-transparent px-xs text-[length:var(--text-body-sm)] text-ink focus-visible:border-focus focus-visible:outline-2 focus-visible:outline-focus disabled:text-ink-disabled";
 
   return (
     <div className="mb-md flex flex-col gap-sm">
@@ -108,7 +115,7 @@ export function PoFilters({
             placeholder="PO number or item…"
             value={query}
             onChange={(event) => onSearchChange(event.target.value)}
-            className="h-control-sm w-72 pl-xl"
+            className="h-control-md sm:h-control-sm w-72 pl-xl"
           />
         </div>
 
@@ -144,7 +151,9 @@ export function PoFilters({
           aria-label="Stage"
           className={select}
           disabled={stageDisabled}
-          title={stageDisabled ? "Only confirmed orders have a stage" : undefined}
+          title={
+            stageDisabled ? "Only confirmed orders have a stage" : undefined
+          }
           value={stage}
           onChange={(event) => set({ stage: event.target.value })}
         >
@@ -165,7 +174,9 @@ export function PoFilters({
             // The count comes from the same query that feeds the table, so a
             // row leaving the queue changes the chip on the same render.
             const count =
-              chip.value === "needs-review" && needsReview > 0 ? needsReview : null;
+              chip.value === "needs-review" && needsReview > 0
+                ? needsReview
+                : null;
             return (
               <ChoiceButton
                 key={chip.value}
@@ -176,11 +187,16 @@ export function PoFilters({
                 onClick={() =>
                   statuses.choose(
                     chip.value,
-                    hrefFor({ status: chip.value === "all" ? null : chip.value }),
+                    hrefFor({
+                      status: chip.value === "all" ? null : chip.value,
+                    }),
                   )
                 }
               >
-                <span aria-hidden className={`size-1.5 rounded-full ${chip.dot}`} />
+                <span
+                  aria-hidden
+                  className={`size-1.5 rounded-full ${chip.dot}`}
+                />
                 {chip.label}
                 {count !== null ? (
                   <span className="tabular-nums font-medium">{count}</span>
@@ -201,10 +217,16 @@ export function PoFilters({
             setQuery("");
             clearing.choose(
               true,
-              hrefFor({ q: null, buyer: null, by: null, stage: null, status: null }),
+              hrefFor({
+                q: null,
+                buyer: null,
+                by: null,
+                stage: null,
+                status: null,
+              }),
             );
           }}
-          className="inline-flex items-center gap-xxs self-start text-[length:var(--text-body-sm)] text-brand-link underline-offset-2 hover:underline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary"
+          className="inline-flex items-center gap-xxs self-start text-[length:var(--text-body-sm)] text-brand-link underline-offset-2 hover:underline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-focus"
         >
           {clearing.pending ? (
             <Spinner />

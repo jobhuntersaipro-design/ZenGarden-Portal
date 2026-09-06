@@ -89,7 +89,7 @@ export function StatusBar({
               {segment.href ? (
                 <Link
                   href={segment.href}
-                  className="flex items-center gap-xxs rounded-xxs underline-offset-2 hover:underline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary"
+                  className="flex min-h-control-md items-center gap-xxs rounded-xxs underline-offset-2 hover:underline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-focus sm:min-h-0"
                 >
                   {body}
                 </Link>

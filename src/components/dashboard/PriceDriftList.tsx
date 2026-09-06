@@ -7,7 +7,10 @@ function DivergingBar({ percent }: { percent: number }) {
   const magnitude = Math.min(50, Math.abs(percent));
   const up = percent > 0;
   return (
-    <span aria-hidden className="relative block h-1.5 w-24 rounded-pill bg-surface-soft">
+    <span
+      aria-hidden
+      className="relative block h-1.5 w-24 rounded-pill bg-surface-soft"
+    >
       <span className="absolute inset-y-0 left-1/2 w-px bg-hairline-strong" />
       <span
         className={`absolute inset-y-0 rounded-pill ${up ? "bg-accent-green" : "bg-accent-red"}`}
@@ -46,7 +49,7 @@ export function PriceDriftList({ drift }: { drift: PriceDrift }) {
                 <Link
                   href={`/products/${row.productId}`}
                   title={row.productName}
-                  className="block truncate rounded-xxs text-[length:var(--text-body-sm)] text-ink underline-offset-2 hover:text-brand-link hover:underline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary"
+                  className="block truncate rounded-xxs text-[length:var(--text-body-sm)] text-ink underline-offset-2 hover:text-brand-link hover:underline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-focus"
                 >
                   {row.productName}
                 </Link>

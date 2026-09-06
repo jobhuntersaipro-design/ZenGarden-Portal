@@ -25,6 +25,7 @@ import {
   useLabelStep,
   valueLabel,
 } from "@/components/charts/labels";
+import { ChartScroller } from "@/components/charts/ChartScroller";
 import { formatMYR } from "@/lib/money";
 import { formatUnits } from "@/lib/units";
 
@@ -38,7 +39,9 @@ const UNIT: Record<string, string> = {
 
 /** The exact figure, for the tooltip, the average and the legend. */
 const formatExact = (measure: SalesMeasure, value: number) =>
-  measure === "sales" ? formatMYR(value.toFixed(2)) : `${formatUnits(value)} units`;
+  measure === "sales"
+    ? formatMYR(value.toFixed(2))
+    : `${formatUnits(value)} units`;
 
 /** The rounded figure, for the label beside a point. */
 const formatLabel = (measure: SalesMeasure) => (value: number) =>
@@ -74,10 +77,13 @@ export function SalesLineChart({
   series,
   measure = "sales",
   agg,
+  fade = "surface",
 }: {
   series: SalesSeries;
   measure?: SalesMeasure;
   agg: string;
+  /** The card behind the chart, so the scroll fade dissolves into it. */
+  fade?: "canvas" | "surface";
 }) {
   const picked = pickMeasure(series, measure);
   const format = formatLabel(measure);
@@ -109,96 +115,128 @@ export function SalesLineChart({
 
   return (
     <>
-      <div className="h-72 w-full">
-        <ResponsiveContainer onResize={labels.onResize}>
-          {/* The end points sit off the plot edges so their labels do not
+      {/* The plot keeps a floor on its width and scrolls when the viewport
+          cannot supply it: at 390px this series had 86px to draw 13 buckets in
+          (2026-09-06 review, A1). `axisWidth` covers the 64px y-axis plus the
+          x-axis end padding. */}
+      <ChartScroller buckets={picked.points.length} axisWidth={128} fade={fade}>
+        <div className="h-72 w-full">
+          <ResponsiveContainer onResize={labels.onResize}>
+            {/* The end points sit off the plot edges so their labels do not
               run into the y axis or the card. */}
-          <ComposedChart data={picked.points} margin={{ top: 16, right: 16 }}>
-            <defs>
-              <linearGradient id="salesFill" x1="0" y1="0" x2="0" y2="1">
-                <stop offset="0%" stopColor="var(--color-ink)" stopOpacity={0.06} />
-                <stop offset="100%" stopColor="var(--color-ink)" stopOpacity={0} />
-              </linearGradient>
-            </defs>
-            <CartesianGrid vertical={false} stroke="var(--color-hairline)" />
-            <XAxis
-              dataKey="label"
-              tickLine={false}
-              axisLine={false}
-              padding={{ left: 40, right: 24 }}
-              interval={Math.max(0, Math.ceil(picked.points.length / 12) - 1)}
-              tick={{ fill: "var(--color-ink-tertiary)", fontSize: LABEL_FONT_SIZE }}
-            />
-            <YAxis
-              domain={[0, headroom || "auto"]}
-              tickLine={false}
-              axisLine={false}
-              width={64}
-              // The headroom tick is a float (832 × 1.12), so round it.
-              tickFormatter={(value: number) =>
-                value >= 1000
-                  ? `${Math.round(value / 1000)}k`
-                  : String(Math.round(value))
-              }
-              tick={{ fill: "var(--color-ink-tertiary)", fontSize: LABEL_FONT_SIZE }}
-            />
-            <Tooltip content={<SalesTooltip measure={measure} />} />
-            <Area
-              type="linear"
-              dataKey="value"
-              stroke="none"
-              fill="url(#salesFill)"
-              {...CHART_ANIMATION}
-            />
-            <ReferenceLine
-              y={picked.average}
-              stroke="var(--color-brand-link)"
-              strokeDasharray="4 4"
-              strokeWidth={2}
-              label={{
-                value: `Avg ${formatExact(measure, picked.average)} per ${unit}`,
-                // Inside the plot: "right" hangs the text past the svg edge.
-                position: "insideTopRight",
-                fill: "var(--color-ink-tertiary)",
-                fontSize: LABEL_FONT_SIZE,
-              }}
-            />
-            <Line
-              type="linear"
-              dataKey="value"
-              stroke="var(--color-ink)"
-              strokeWidth={2}
-              {...CHART_ANIMATION}
-              dot={
-                dense
-                  ? false
-                  : (props: { cx?: number; cy?: number; payload?: { key: string } }) => {
-                      const extreme =
-                        showExtremes &&
-                        (props.payload?.key === picked.max?.key ||
-                          props.payload?.key === picked.min?.key);
-                      return (
-                        <circle
-                          key={props.payload?.key}
-                          cx={props.cx}
-                          cy={props.cy}
-                          r={extreme ? 5 : 4}
-                          fill={
-                            extreme ? cssVar(EXTREME_VAR) : "var(--color-ink)"
-                          }
-                          stroke="var(--color-canvas)"
-                          strokeWidth={2}
-                        />
-                      );
-                    }
-              }
-            >
-              {/* Whole figures only; the exact value is a hover away. */}
-              <LabelList dataKey="value" content={valueLabel(format, labelled, 10)} />
-            </Line>
-          </ComposedChart>
-        </ResponsiveContainer>
-      </div>
+            <ComposedChart data={picked.points} margin={{ top: 16, right: 16 }}>
+              <defs>
+                {/* The wash under the line carries the brand hue; the line and
+                  the extremes keep their meanings. Ink at 0.06 was invisible,
+                  and the card read as inert beside the fully-coloured stage
+                  chart on the same page (2026-09-06 review, B3). This adds a
+                  ground, not a fifth thing to decode. */}
+                <linearGradient id="salesFill" x1="0" y1="0" x2="0" y2="1">
+                  <stop
+                    offset="0%"
+                    stopColor="var(--color-focus)"
+                    stopOpacity={0.18}
+                  />
+                  <stop
+                    offset="100%"
+                    stopColor="var(--color-focus)"
+                    stopOpacity={0}
+                  />
+                </linearGradient>
+              </defs>
+              <CartesianGrid vertical={false} stroke="var(--color-hairline)" />
+              <XAxis
+                dataKey="label"
+                tickLine={false}
+                axisLine={false}
+                padding={{ left: 40, right: 24 }}
+                interval={Math.max(0, Math.ceil(picked.points.length / 12) - 1)}
+                tick={{
+                  fill: "var(--color-ink-tertiary)",
+                  fontSize: LABEL_FONT_SIZE,
+                }}
+              />
+              <YAxis
+                domain={[0, headroom || "auto"]}
+                tickLine={false}
+                axisLine={false}
+                width={64}
+                // The headroom tick is a float (832 × 1.12), so round it.
+                tickFormatter={(value: number) =>
+                  value >= 1000
+                    ? `${Math.round(value / 1000)}k`
+                    : String(Math.round(value))
+                }
+                tick={{
+                  fill: "var(--color-ink-tertiary)",
+                  fontSize: LABEL_FONT_SIZE,
+                }}
+              />
+              <Tooltip content={<SalesTooltip measure={measure} />} />
+              <Area
+                type="linear"
+                dataKey="value"
+                stroke="none"
+                fill="url(#salesFill)"
+                {...CHART_ANIMATION}
+              />
+              <ReferenceLine
+                y={picked.average}
+                stroke="var(--color-brand-link)"
+                strokeDasharray="4 4"
+                strokeWidth={2}
+                label={{
+                  value: `Avg ${formatExact(measure, picked.average)} per ${unit}`,
+                  // Inside the plot: "right" hangs the text past the svg edge.
+                  position: "insideTopRight",
+                  fill: "var(--color-ink-tertiary)",
+                  fontSize: LABEL_FONT_SIZE,
+                }}
+              />
+              <Line
+                type="linear"
+                dataKey="value"
+                stroke="var(--color-ink)"
+                strokeWidth={2}
+                {...CHART_ANIMATION}
+                dot={
+                  dense
+                    ? false
+                    : (props: {
+                        cx?: number;
+                        cy?: number;
+                        payload?: { key: string };
+                      }) => {
+                        const extreme =
+                          showExtremes &&
+                          (props.payload?.key === picked.max?.key ||
+                            props.payload?.key === picked.min?.key);
+                        return (
+                          <circle
+                            key={props.payload?.key}
+                            cx={props.cx}
+                            cy={props.cy}
+                            r={extreme ? 5 : 4}
+                            fill={
+                              extreme ? cssVar(EXTREME_VAR) : "var(--color-ink)"
+                            }
+                            stroke="var(--color-canvas)"
+                            strokeWidth={2}
+                          />
+                        );
+                      }
+                }
+              >
+                {/* Whole figures only; the exact value is a hover away. */}
+                <LabelList
+                  dataKey="value"
+                  content={valueLabel(format, labelled, 10)}
+                />
+              </Line>
+            </ComposedChart>
+          </ResponsiveContainer>
+        </div>
+      </ChartScroller>
 
       <ul className="mt-md flex flex-wrap gap-md">
         <li className="flex items-center gap-xxs">

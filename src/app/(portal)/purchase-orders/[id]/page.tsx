@@ -14,7 +14,13 @@ import { StageStepper } from "@/components/purchase-orders/StageStepper";
 import { getSessionUser } from "@/lib/auth-guards";
 import { formatDate, formatDateTime } from "@/lib/dates";
 import { formatMYR } from "@/lib/money";
-import { isFinalStage, nextStage, prevStage, stageIndex, stageLabel } from "@/lib/po-stages";
+import {
+  isFinalStage,
+  nextStage,
+  prevStage,
+  stageIndex,
+  stageLabel,
+} from "@/lib/po-stages";
 import { PO_STAGES } from "@/lib/po-stages";
 import { prisma } from "@/lib/prisma";
 
@@ -69,10 +75,14 @@ export default async function PurchaseOrderPage({
   const current = po.stage;
   const daysFromOrder = Math.max(
     0,
-    Math.round((po.stageChangedAt.getTime() - po.confirmedAt.getTime()) / DAY_MS),
+    Math.round(
+      (po.stageChangedAt.getTime() - po.confirmedAt.getTime()) / DAY_MS,
+    ),
   );
 
-  const latestStageEvent = po.stageEvents.find((event) => event.kind === "STAGE");
+  const latestStageEvent = po.stageEvents.find(
+    (event) => event.kind === "STAGE",
+  );
   /**
    * The event is the source of truth for when this stage was entered, not
    * `stageChangedAt`. They are written together by `advanceStage`, but the
@@ -99,7 +109,7 @@ export default async function PurchaseOrderPage({
       <nav aria-label="Breadcrumb" className="mb-xs">
         <Link
           href="/purchase-orders"
-          className="text-[length:var(--text-body-sm)] text-brand-link underline-offset-2 hover:underline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary"
+          className="inline-flex min-h-control-md items-center rounded-xxs text-[length:var(--text-body-sm)] text-brand-link underline-offset-2 hover:underline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-focus sm:min-h-0"
         >
           Purchase orders
         </Link>
@@ -192,8 +202,11 @@ export default async function PurchaseOrderPage({
         />
       </section>
 
-      <div className="mt-lg grid gap-lg lg:grid-cols-[45fr_55fr]">
-        <section>
+      {/* A grid item defaults to `min-width: auto`, so the track grew to the
+          error card's max-content width and pushed the page 113px past a 390px
+          viewport (2026-09-06 review). Both columns must be allowed to shrink. */}
+      <div className="mt-lg grid min-w-0 gap-lg lg:grid-cols-[45fr_55fr]">
+        <section className="min-w-0">
           <p className="mb-xs font-mono text-[length:var(--text-eyebrow)] text-ink-tertiary">
             Original document
           </p>
@@ -203,7 +216,7 @@ export default async function PurchaseOrderPage({
           />
         </section>
 
-        <div className="flex flex-col gap-lg">
+        <div className="flex min-w-0 flex-col gap-lg">
           <section className="rounded-lg border border-hairline bg-canvas p-lg">
             <h2 className="mb-sm font-mono text-[length:var(--text-eyebrow)] text-ink-tertiary">
               Summary
@@ -212,7 +225,10 @@ export default async function PurchaseOrderPage({
               {[
                 ["PO number", po.poNumber],
                 ["PO date", formatDate(po.poDate)],
-                ["Delivery date", po.deliveryDate ? formatDate(po.deliveryDate) : "—"],
+                [
+                  "Delivery date",
+                  po.deliveryDate ? formatDate(po.deliveryDate) : "—",
+                ],
                 ["Buyer reference", po.buyerReference ?? "—"],
                 ["Payment terms", po.paymentTerms ?? "—"],
                 ["Confirmed by", po.confirmedBy?.name ?? "—"],
@@ -255,15 +271,17 @@ export default async function PurchaseOrderPage({
               <table className="w-full border-collapse">
                 <thead>
                   <tr className="border-b border-hairline text-left">
-                    {["Description", "Qty", "Unit price", "Amount"].map((heading, index) => (
-                      <th
-                        key={heading}
-                        scope="col"
-                        className={`py-xs font-mono text-[length:var(--text-eyebrow)] font-normal text-ink-tertiary ${index > 0 ? "pl-md text-right" : ""}`}
-                      >
-                        {heading}
-                      </th>
-                    ))}
+                    {["Description", "Qty", "Unit price", "Amount"].map(
+                      (heading, index) => (
+                        <th
+                          key={heading}
+                          scope="col"
+                          className={`py-xs font-mono text-[length:var(--text-eyebrow)] font-normal text-ink-tertiary ${index > 0 ? "pl-md text-right" : ""}`}
+                        >
+                          {heading}
+                        </th>
+                      ),
+                    )}
                   </tr>
                 </thead>
                 <tbody>
@@ -271,9 +289,15 @@ export default async function PurchaseOrderPage({
                       customer's document, which is what lets someone check
                       them against the page beside it (design reference §4). */}
                   {po.lineItems.map((line) => (
-                    <tr key={line.id} className="border-b border-hairline last:border-0">
+                    <tr
+                      key={line.id}
+                      className="border-b border-hairline last:border-0"
+                    >
                       <td className="py-xs pr-sm text-[length:var(--text-body-sm)] text-ink">
-                        <span className="block truncate" title={line.description}>
+                        <span
+                          className="block truncate"
+                          title={line.description}
+                        >
                           {line.description}
                         </span>
                         {line.product ? (

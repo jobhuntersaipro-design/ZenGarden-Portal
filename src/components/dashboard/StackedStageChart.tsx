@@ -22,6 +22,7 @@ import {
   useLabelStep,
   valueLabel,
 } from "@/components/charts/labels";
+import { ChartScroller } from "@/components/charts/ChartScroller";
 
 /** Delivered at the bottom, Order placed on top (design reference §3.2). */
 const STACK_ORDER = [...PO_STAGES].reverse();
@@ -52,7 +53,10 @@ function StageTooltip({
       {stages
         .filter((entry) => (entry.value ?? 0) > 0)
         .map((entry) => (
-          <p key={String(entry.dataKey)} className="text-[length:var(--text-caption)]">
+          <p
+            key={String(entry.dataKey)}
+            className="text-[length:var(--text-caption)]"
+          >
             {stageLabel(entry.dataKey as PoStage)}: {entry.value}
           </p>
         ))}
@@ -89,62 +93,79 @@ export function StackedStageChart({ points }: { points: StagePoint[] }) {
   const top = STACK_ORDER.length - 1;
 
   return (
-    <div className="h-72 w-full">
-      <ResponsiveContainer onResize={labels.onResize}>
-        {/* Room above the tallest bar for its label. */}
-        <ComposedChart data={points} barCategoryGap={dense ? 1 : 2} margin={{ top: 16 }}>
-          <CartesianGrid
-            vertical={false}
-            stroke="var(--color-hairline)"
-            strokeDasharray="0"
-          />
-          <XAxis
-            dataKey="label"
-            tickLine={false}
-            axisLine={false}
-            interval={Math.max(0, Math.ceil(points.length / 12) - 1)}
-            tick={{ fill: "var(--color-ink-tertiary)", fontSize: LABEL_FONT_SIZE }}
-          />
-          <YAxis
-            allowDecimals={false}
-            tickLine={false}
-            axisLine={false}
-            width={32}
-            tick={{ fill: "var(--color-ink-tertiary)", fontSize: LABEL_FONT_SIZE }}
-          />
-          <Tooltip
-            cursor={{ fill: "var(--color-surface-soft)" }}
-            content={<StageTooltip />}
-          />
-          {STACK_ORDER.map((stage, index) => (
-            <Bar
-              key={stage}
-              dataKey={stage}
-              stackId="a"
-              fill={colorFor(stage)}
-              {...CHART_ANIMATION}
-              // A 2px surface gap keeps adjacent fills apart, which is what
-              // discharges the CVD warning on the pink/aqua pair.
-              stroke="var(--color-canvas)"
-              strokeWidth={dense ? 1 : 2}
-              // Only the topmost segment is rounded.
-              radius={index === top ? [3, 3, 0, 0] : undefined}
+    // Bars need at least as much room per bucket as a line does; below that
+    // the stack becomes a smear (2026-09-06 review, A1).
+    <ChartScroller buckets={points.length} axisWidth={96} fade="surface">
+      <div className="h-72 w-full">
+        <ResponsiveContainer onResize={labels.onResize}>
+          {/* Room above the tallest bar for its label. */}
+          <ComposedChart
+            data={points}
+            barCategoryGap={dense ? 1 : 2}
+            margin={{ top: 16 }}
+          >
+            <CartesianGrid
+              vertical={false}
+              stroke="var(--color-hairline)"
+              strokeDasharray="0"
             />
-          ))}
-          {/* An invisible line at each bucket's total carries the label: a
+            <XAxis
+              dataKey="label"
+              tickLine={false}
+              axisLine={false}
+              interval={Math.max(0, Math.ceil(points.length / 12) - 1)}
+              tick={{
+                fill: "var(--color-ink-tertiary)",
+                fontSize: LABEL_FONT_SIZE,
+              }}
+            />
+            <YAxis
+              allowDecimals={false}
+              tickLine={false}
+              axisLine={false}
+              width={32}
+              tick={{
+                fill: "var(--color-ink-tertiary)",
+                fontSize: LABEL_FONT_SIZE,
+              }}
+            />
+            <Tooltip
+              cursor={{ fill: "var(--color-surface-soft)" }}
+              content={<StageTooltip />}
+            />
+            {STACK_ORDER.map((stage, index) => (
+              <Bar
+                key={stage}
+                dataKey={stage}
+                stackId="a"
+                fill={colorFor(stage)}
+                {...CHART_ANIMATION}
+                // A 2px surface gap keeps adjacent fills apart, which is what
+                // discharges the CVD warning on the pink/aqua pair.
+                stroke="var(--color-canvas)"
+                strokeWidth={dense ? 1 : 2}
+                // Only the topmost segment is rounded.
+                radius={index === top ? [3, 3, 0, 0] : undefined}
+              />
+            ))}
+            {/* An invisible line at each bucket's total carries the label: a
               LabelList on the top segment goes missing wherever that segment
               is zero, and every segment is zero somewhere. */}
-          <Line
-            dataKey="total"
-            stroke="none"
-            dot={false}
-            activeDot={false}
-            {...CHART_ANIMATION}
-          >
-            <LabelList dataKey="total" content={valueLabel(String, labelled)} />
-          </Line>
-        </ComposedChart>
-      </ResponsiveContainer>
-    </div>
+            <Line
+              dataKey="total"
+              stroke="none"
+              dot={false}
+              activeDot={false}
+              {...CHART_ANIMATION}
+            >
+              <LabelList
+                dataKey="total"
+                content={valueLabel(String, labelled)}
+              />
+            </Line>
+          </ComposedChart>
+        </ResponsiveContainer>
+      </div>
+    </ChartScroller>
   );
 }

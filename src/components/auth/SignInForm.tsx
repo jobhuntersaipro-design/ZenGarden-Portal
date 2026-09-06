@@ -75,7 +75,7 @@ export function SignInForm({ next }: { next: string }) {
             action={
               <Link
                 href="/forgot-password"
-                className="text-[length:var(--text-caption)] text-ink-tertiary underline-offset-2 hover:text-ink-secondary hover:underline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary"
+                className="text-[length:var(--text-caption)] text-ink-tertiary underline-offset-2 hover:text-ink-secondary hover:underline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-focus"
               >
                 Forgot password?
               </Link>
@@ -98,7 +98,9 @@ export function SignInForm({ next }: { next: string }) {
 
       <div className="flex items-center gap-sm" aria-hidden>
         <span className="h-px flex-1 bg-hairline" />
-        <span className="text-[length:var(--text-caption)] text-ink-tertiary">or</span>
+        <span className="text-[length:var(--text-caption)] text-ink-tertiary">
+          or
+        </span>
         <span className="h-px flex-1 bg-hairline" />
       </div>
 
