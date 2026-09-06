@@ -1,3 +1,12 @@
+/** One entity folded into the "Other" slice. */
+export type ShareMember = {
+  id: string;
+  label: string;
+  value: number;
+  /** Percent of the whole, 0-100 — of the whole, not of Other. */
+  share: number;
+};
+
 export type ShareSlice = {
   id: string;
   label: string;
@@ -5,6 +14,11 @@ export type ShareSlice = {
   /** Percent of the whole, 0-100. */
   share: number;
   isOther: boolean;
+  /**
+   * What "Other" is hiding, ranked, so the legend can unfold it. Present on
+   * the Other slice alone; every other slice is one entity already.
+   */
+  members?: ShareMember[];
 };
 
 /**
@@ -56,6 +70,14 @@ export function shareBy<Row>(
       value: otherValue,
       share: pct(otherValue),
       isOther: true,
+      // Kept so the legend can open it. Shares stay percentages of the whole,
+      // so an unfolded member reads on the same scale as a top-five slice.
+      members: rest.map((entry) => ({
+        id: entry.id,
+        label: entry.label,
+        value: entry.value,
+        share: pct(entry.value),
+      })),
     },
   ];
 }

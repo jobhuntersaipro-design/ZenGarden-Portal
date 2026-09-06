@@ -2,63 +2,51 @@
 
 ## Status
 
-Built and verified in the browser on `feature/dashboard-charts` — awaiting review and
-permission to commit and merge.
+Built and verified in the browser on `feature/dashboard-interactions` (branched off
+`feature/dashboard-charts`, which is pushed but not merged) — awaiting review.
 
 ## Goals
 
-The 2026-09-06 `/ui-ux-pro-max` dashboard request, six items, with the open design
-calls settled by one round of questions (every recommended pick taken):
+The second 2026-09-06 `/ui-ux-pro-max` request, three items, open decisions settled by
+one round of questions (every recommended pick taken):
 
-1. **Chart animation and value labels** on every Recharts chart (dashboard sales,
-   dashboard stage, buyer product trend, product price trend). Bars and lines grow
-   in on first load and morph on every data change (~800 ms ease-out), off under
-   `prefers-reduced-motion` (Recharts' `isAnimationActive="auto"`). Each point or
-   bar carries its value with **0 decimals** (`RM 47,950`, `1,240`, `4`). Labels
-   hide past 31 buckets so a daily "Last 3 months" stays readable.
-2. **Two chart cards instead of one.** The first is **Sales**, switchable to
-   **Quantity** (`?measure=sales|units`); Quantity is the sum of line-item
-   quantities per period. Heading reads `RM 737,667.95 across 30 days` or
-   `12,480 units across 30 days`.
-3. **Status breakdown · intake bar removed** from the dashboard. Needs review /
-   Extracting / Failed are read from the Purchase orders list chips.
-4. The second card is **Order stage**: the stacked stage chart (each period's
-   confirmed orders by the stage they are in now), heading `27 orders still
-   open` — the confirmed count dropped from the label. The 14px stage bar with its
-   counted, linked legend sits under the chart as its legend, replacing the plain
-   six-swatch row.
-5. Sidebar label **Purchase Orders** (title case, the one deliberate exception to
-   the sentence-case rule, at the user's request; page titles unchanged).
-6. The **Loving Hands wordmark links to the dashboard**. The dashboard is `/`
-   (`/dashboard` was retired in Phase 01), so the link goes to `/`.
+1. **Headline numbers count up over 2s.** KPI tiles on every page, the six "In this
+   range" tiles, the product KPI row, and the single-metric card headings (Sales over
+   time, Order stage, buyer Order trend). Not chart value labels, legend counts or
+   table cells.
+2. **Donut "Other" opens, and every entity name is a link.** `shareBy` keeps the
+   folded members, the legend row unfolds them in place, and buyer / product names
+   throughout the donuts, the What-they-buy bars and the price-drift list link to
+   their detail pages.
+3. **The sidebar is sticky and full height** instead of stopping at the fold.
 
 ## Notes
 
-- Deviation from `docs/specs/design/loving-hands-portal-design.md` §3.2: the
-  trend card splits in two, the intake bar leaves the dashboard, and chart
-  animation re-runs on data change (the spec's "never restarts" rule was written
-  for KPI numbers, which stay static).
-- Recharts 3.8: `isAnimationActive` defaults to `"auto"`, which is off during SSR
-  and under reduced motion, so removing the explicit `false` is the whole switch.
-- Value labels are drawn by one `content` renderer (`src/components/charts/labels.tsx`)
-  that hides zero buckets and spaces labels from the plot width (`useLabelStep` +
-  `labelledIndices`, walking busy buckets rather than sampling every nth index). The
-  stacked stage chart carries its totals on an invisible `Line` — a `LabelList` on
-  the top segment vanishes wherever that segment is zero — and its tooltip filters
-  the payload to stage keys so the label line never appears as ": 8".
-- Playwright's full-page screenshot resizes the viewport, which re-measures the
-  charts and restarts the animation, so a full-page capture always shows empty
-  plots. Element and viewport screenshots show the real chart.
-- **Pre-existing, not fixed (Phase 06):** `poDate` is `@db.Date`, and the range filter
-  is cast to a UTC calendar date while the buckets are built in Kuala Lumpur time. For
-  "Last 30 days" three orders dated 7 Aug are in the KPI, the summary and the table
-  (38 POs, RM 737,667.95) but outside the daily chart (RM 673,967.79). The weekly
-  view agrees with the KPI because the week of 3 Aug is a bucket. The fix belongs in
-  every query that filters `poDate` by range, not in the chart.
-- **Pre-existing, not fixed:** Recharts draws the average and list-price reference
-  labels at `position: "right"` past the svg edge, so they were never visible; both
-  now sit inside the plot. Line dots are white-filled by default, so a flat price
-  line reads as dashes; unchanged.
+- **Count-up is back after being cut the same day.** It was removed because the
+  review read the moving figures as "laggy / numbers jump". The rule that made the
+  old one unsafe is now fixed rather than repeated: the server figure is the initial
+  state, so the HTML and the first paint always hold the true number; the count runs
+  after mount; a range change continues from the frame on screen rather than
+  restarting at zero; and `prefers-reduced-motion` skips it. Verified on a hard load:
+  true value painted at 515 ms, zero at 648 ms, 194 frames, settled at 2543 ms.
+- The donut ring keeps one grey "Other" arc while the list is open. Unfolding it into
+  arcs would need hues past the six the palette validates, which is the rule the fold
+  exists to protect.
+- Folded members carry their share **of the whole**, not of Other, so an unfolded row
+  reads on the same scale as a top-five slice.
+- Three defects found and fixed while building:
+  - The count-up never ran on mount **in development only**. React runs effects twice;
+    the first pass was cancelled by its own cleanup before a frame fired, so the second
+    pass read the start ref as still holding the final value and skipped the animation.
+    The ref is now written synchronously when a run starts.
+  - The first two frames rendered **negative money** ("-RM 8,851.78" under Total sales).
+    An animation frame already in flight carries a timestamp from before the effect ran,
+    so progress went negative and an ease-out cubic of a negative progress is negative.
+    The clock now starts on the first frame.
+  - Linking the PO number in the product order history nested `<a>` inside `<a>` and
+    failed hydration — `DataTable` already wraps the first cell of every row in a link
+    to `rowHref`, so that cell was a link all along. Reverted.
+- Two donuts sit side by side, so the expanding panel's id comes from `useId`.
 
 ## History
 

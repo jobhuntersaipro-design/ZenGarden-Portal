@@ -4,8 +4,7 @@ import { usePathname, useSearchParams } from "next/navigation";
 import { pickMeasure, type SalesMeasure, type SalesSeries } from "@/lib/analytics/sales";
 import { SalesLineChart } from "@/components/dashboard/SalesLineChart";
 import { ChoiceButton } from "@/components/portal/ChoiceButton";
-import { formatMYR } from "@/lib/money";
-import { formatUnits } from "@/lib/units";
+import { CountUp } from "@/components/portal/CountUp";
 import { usePendingChoice } from "@/hooks/usePendingChoice";
 
 /**
@@ -46,9 +45,11 @@ export function SalesCard({
             {units ? "Quantity over time" : "Sales over time"}
           </p>
           <h2 className="font-display text-[length:var(--text-heading-md)] font-[650] tracking-[-0.91px] text-ink">
-            {units
-              ? `${formatUnits(picked.total)} units ${across}`
-              : `${formatMYR(picked.total.toFixed(2))} ${across}`}
+            <CountUp
+              value={picked.total}
+              format={units ? "grouped" : "money"}
+            />
+            {units ? ` units ${across}` : ` ${across}`}
           </h2>
           <p className="mt-xxs text-[length:var(--text-caption)] text-ink-tertiary">
             Totals per period · hover a point for the value

@@ -1,3 +1,4 @@
+import Link from "next/link";
 import type { PriceDrift } from "@/lib/analytics/price-drift";
 import { formatMYR } from "@/lib/money";
 
@@ -42,12 +43,13 @@ export function PriceDriftList({ drift }: { drift: PriceDrift }) {
           {drift.rows.map((row) => (
             <li key={row.productId} className="flex items-center gap-sm">
               <span className="min-w-0 flex-1">
-                <span
+                <Link
+                  href={`/products/${row.productId}`}
                   title={row.productName}
-                  className="block truncate text-[length:var(--text-body-sm)] text-ink"
+                  className="block truncate rounded-xxs text-[length:var(--text-body-sm)] text-ink underline-offset-2 hover:text-brand-link hover:underline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary"
                 >
                   {row.productName}
-                </span>
+                </Link>
                 <span className="text-[length:var(--text-caption)] text-ink-tertiary tabular-nums">
                   {formatMYR(row.previousPrice.toFixed(2))} →{" "}
                   {formatMYR(row.currentPrice.toFixed(2))} per unit

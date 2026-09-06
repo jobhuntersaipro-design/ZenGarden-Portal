@@ -1,6 +1,7 @@
 import type { ReactNode } from "react";
 import type { StagePoint } from "@/lib/analytics/fulfillment";
 import { StackedStageChart } from "@/components/dashboard/StackedStageChart";
+import { CountUp } from "@/components/portal/CountUp";
 
 /**
  * The second chart card: where each period's confirmed orders stand today.
@@ -24,9 +25,14 @@ export function StageCard({
           Order stage
         </p>
         <h2 className="font-display text-[length:var(--text-heading-md)] font-[650] tracking-[-0.91px] text-ink">
-          {openCount === 0
-            ? "Every order delivered"
-            : `${openCount} ${openCount === 1 ? "order" : "orders"} still open`}
+          {openCount === 0 ? (
+            "Every order delivered"
+          ) : (
+            <>
+              <CountUp value={openCount} />{" "}
+              {openCount === 1 ? "order" : "orders"} still open
+            </>
+          )}
         </h2>
         <p className="mt-xxs text-[length:var(--text-caption)] text-ink-tertiary">
           Where each period&apos;s orders stand today · hover a bar for the split
