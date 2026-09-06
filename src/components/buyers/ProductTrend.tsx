@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { usePathname, useRouter, useSearchParams } from "next/navigation";
+import { usePathname, useSearchParams } from "next/navigation";
 import { ChevronsUpDown } from "lucide-react";
 import {
   CartesianGrid,
@@ -16,6 +16,7 @@ import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover
 import { SHARE_VARS, cssVar } from "@/lib/analytics/palette";
 import type { ProductTrendPoint } from "@/lib/analytics/product-trend";
 import { formatMYR } from "@/lib/money";
+import { useUrlNavigation } from "@/hooks/useUrlNavigation";
 
 const MAX_PRODUCTS = 6;
 
@@ -44,7 +45,7 @@ export function ProductTrend({
   totalProducts: number;
 }) {
   const selected = slots.filter(Boolean);
-  const router = useRouter();
+  const { replace } = useUrlNavigation();
   const pathname = usePathname();
   const searchParams = useSearchParams();
   const [capWarning, setCapWarning] = useState(false);
@@ -57,7 +58,7 @@ export function ProductTrend({
     const params = new URLSearchParams(searchParams.toString());
     if (trimmed.length === 0) params.delete("products");
     else params.set("products", trimmed.join(","));
-    router.replace(`${pathname}?${params.toString()}`, { scroll: false });
+    replace(`${pathname}?${params.toString()}`);
   };
 
   const toggle = (id: string) => {

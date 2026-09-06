@@ -1,11 +1,13 @@
 "use client";
 
-import { usePathname, useRouter, useSearchParams } from "next/navigation";
+import { usePathname, useSearchParams } from "next/navigation";
 import { useCallback } from "react";
+import { useUrlNavigation } from "@/hooks/useUrlNavigation";
 
 /**
  * URL is state (00-master.md §4). Reads one searchParams key and writes it
- * back with router.replace, so filters survive reload and share.
+ * back through `useUrlNavigation`, so filters survive reload and share and
+ * the write reports itself to the progress bar.
  *
  * Changing any key other than `page` resets `page` to 1 — a filter that keeps
  * you on page 7 of a shorter result set shows an empty table.
@@ -14,7 +16,7 @@ export function useUrlState(
   key: string,
   defaultValue = "",
 ): [string, (next: string | null) => void] {
-  const router = useRouter();
+  const { replace } = useUrlNavigation();
   const pathname = usePathname();
   const searchParams = useSearchParams();
   const value = searchParams.get(key) ?? defaultValue;
@@ -28,11 +30,9 @@ export function useUrlState(
       if (key !== "page") params.delete("page");
 
       const query = params.toString();
-      router.replace(query ? `${pathname}?${query}` : pathname, {
-        scroll: false,
-      });
+      replace(query ? `${pathname}?${query}` : pathname);
     },
-    [key, pathname, router, searchParams],
+    [key, pathname, replace, searchParams],
   );
 
   return [value, set];

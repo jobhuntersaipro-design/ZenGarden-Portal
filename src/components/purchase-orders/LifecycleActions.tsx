@@ -38,7 +38,13 @@ export function LifecycleActions({
   const [note, setNote] = useState("");
   const [backNote, setBackNote] = useState("");
   const [backOpen, setBackOpen] = useState(false);
-  const [pending, setPending] = useState(false);
+  /**
+   * Two flags, not one: the Move back dialog and the Advance popover both read
+   * this, and a single flag would put "Moving back…" on a button while the
+   * other action is the one running (brief G1).
+   */
+  const [advancing, setAdvancing] = useState(false);
+  const [reverting, setReverting] = useState(false);
 
   const showMoveBack = canMoveBack && previous !== null;
   if (!next && !showMoveBack) return null;
@@ -82,11 +88,11 @@ export function LifecycleActions({
                   <Button
                     variant="secondary"
                     className="bg-ink text-canvas hover:bg-ink-deep"
-                    disabled={!backNote.trim() || pending}
+                    disabled={!backNote.trim() || reverting}
                     onClick={async () => {
-                      setPending(true);
+                      setReverting(true);
                       const result = await revertStage(poId, backNote);
-                      setPending(false);
+                      setReverting(false);
                       if (!result.success) {
                         toast.error(result.error);
                         return;
@@ -97,7 +103,7 @@ export function LifecycleActions({
                       router.refresh();
                     }}
                   >
-                    Move back
+                    {reverting ? "Moving back…" : "Move back"}
                   </Button>
                 </DialogFooter>
               </DialogContent>
@@ -121,11 +127,11 @@ export function LifecycleActions({
               />
               <Button
                 className="mt-sm w-full"
-                disabled={pending}
+                disabled={advancing}
                 onClick={async () => {
-                  setPending(true);
+                  setAdvancing(true);
                   const result = await advanceStage(poId, note);
-                  setPending(false);
+                  setAdvancing(false);
                   if (!result.success) {
                     toast.error(result.error);
                     return;
@@ -135,7 +141,9 @@ export function LifecycleActions({
                   router.refresh();
                 }}
               >
-                Confirm
+                {/* Names the work, and stays disabled while it runs, so a
+                    second click cannot post the same move twice (brief §4). */}
+                {advancing ? "Advancing…" : "Confirm"}
               </Button>
             </PopoverContent>
           </Popover>

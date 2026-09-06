@@ -1,11 +1,12 @@
 "use client";
 
-import { usePathname, useRouter, useSearchParams } from "next/navigation";
+import { usePathname, useSearchParams } from "next/navigation";
 import type { StagePoint } from "@/lib/analytics/fulfillment";
 import type { SalesSeries } from "@/lib/analytics/sales";
 import { SalesLineChart } from "@/components/dashboard/SalesLineChart";
 import { StackedStageChart } from "@/components/dashboard/StackedStageChart";
 import { formatMYR } from "@/lib/money";
+import { useUrlNavigation } from "@/hooks/useUrlNavigation";
 
 export type Trend = "fulfillment" | "sales";
 
@@ -31,14 +32,14 @@ export function TrendCard({
   confirmedCount: number;
   aggLabel: string;
 }) {
-  const router = useRouter();
+  const { replace } = useUrlNavigation();
   const pathname = usePathname();
   const searchParams = useSearchParams();
 
   const select = (next: Trend) => {
     const params = new URLSearchParams(searchParams.toString());
     params.set("trend", next);
-    router.replace(`${pathname}?${params.toString()}`, { scroll: false });
+    replace(`${pathname}?${params.toString()}`);
   };
 
   const fulfillment = trend !== "sales";

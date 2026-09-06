@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { Role } from "@/generated/prisma/enums";
+import { BackLink } from "@/components/portal/BackLink";
 import { PageHeader } from "@/components/portal/PageHeader";
 import { KpiTile } from "@/components/dashboard/KpiTile";
 import { OrderHistoryTable } from "@/components/products/OrderHistoryTable";
@@ -88,6 +89,7 @@ export default async function ProductPage({
 
   return (
     <>
+      <BackLink fallbackHref="/products" />
       <nav aria-label="Breadcrumb" className="mb-xs">
         <Link
           href="/products"

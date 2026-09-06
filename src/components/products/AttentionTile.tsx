@@ -1,7 +1,8 @@
 "use client";
 
-import { usePathname, useRouter, useSearchParams } from "next/navigation";
+import { usePathname, useSearchParams } from "next/navigation";
 import type { ProductFilter } from "@/lib/queries/products";
+import { useUrlNavigation } from "@/hooks/useUrlNavigation";
 
 /**
  * The breakdown is a to-do list, so each count is a click target that sets the
@@ -13,7 +14,7 @@ export function AttentionTile({
 }: {
   counts: { missingImage: number; inactive: number; notSold: number };
 }) {
-  const router = useRouter();
+  const { replace } = useUrlNavigation();
   const pathname = usePathname();
   const searchParams = useSearchParams();
 
@@ -30,7 +31,7 @@ export function AttentionTile({
     const params = new URLSearchParams(searchParams.toString());
     params.set("filter", filter);
     params.delete("page");
-    router.replace(`${pathname}?${params.toString()}`, { scroll: false });
+    replace(`${pathname}?${params.toString()}`);
   };
 
   return (

@@ -3,8 +3,8 @@ import { Role } from "@/generated/prisma/enums";
 import { PageHeader } from "@/components/portal/PageHeader";
 import { TablePagination } from "@/components/portal/TablePagination";
 import {
-  CountUpMoney,
-  CountUpNumber,
+  KpiMoney,
+  KpiNumber,
   KpiTile,
 } from "@/components/dashboard/KpiTile";
 import { AttentionTile } from "@/components/products/AttentionTile";
@@ -119,13 +119,13 @@ export default async function ProductsPage({
         <KpiTile
           compact
           label="Products"
-          value={<CountUpNumber value={all.count} />}
+          value={<KpiNumber value={all.count} />}
           caption={`${all.activeCount} active · ${all.categories} categories`}
         />
         <KpiTile
           compact
           label="Revenue · 12 months"
-          value={<CountUpMoney value={all.revenue} />}
+          value={<KpiMoney value={all.revenue} />}
           caption={`${Math.round(all.units).toLocaleString("en-MY")} units sold`}
         />
         <KpiTile
@@ -134,7 +134,7 @@ export default async function ProductsPage({
           value={
             <span
               title={all.best?.name}
-              className="block truncate text-[length:var(--text-heading-md)]"
+              className="block line-clamp-2 text-[length:var(--text-heading-md)] leading-tight"
             >
               {all.best?.name ?? "—"}
             </span>

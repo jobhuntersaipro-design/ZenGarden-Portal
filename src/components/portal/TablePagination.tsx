@@ -1,7 +1,8 @@
 "use client";
 
-import { usePathname, useRouter, useSearchParams } from "next/navigation";
+import { usePathname, useSearchParams } from "next/navigation";
 import { PAGE_SIZES, pageRange } from "@/lib/queries/pagination";
+import { useUrlNavigation } from "@/hooks/useUrlNavigation";
 
 /** The footer under every table (design reference §4). */
 export function TablePagination({
@@ -16,7 +17,7 @@ export function TablePagination({
   /** Must match what the page actually paginates by, or the footer lies. */
   sizes?: readonly number[];
 }) {
-  const router = useRouter();
+  const { replace } = useUrlNavigation();
   const pathname = usePathname();
   const searchParams = useSearchParams();
   const { from, to, pages } = pageRange(page, size, total);
@@ -27,7 +28,7 @@ export function TablePagination({
       if (value === null) params.delete(key);
       else params.set(key, value);
     }
-    router.replace(`${pathname}?${params.toString()}`, { scroll: false });
+    replace(`${pathname}?${params.toString()}`);
   };
 
   const step =

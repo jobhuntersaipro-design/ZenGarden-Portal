@@ -1,9 +1,11 @@
 "use client";
 
-import { usePathname, useRouter, useSearchParams } from "next/navigation";
+import { usePathname, useSearchParams } from "next/navigation";
 import type { BuyerRangePreset } from "@/lib/analytics/buyer-range";
 import { AGGREGATIONS } from "@/lib/analytics/range";
 import type { Aggregation } from "@/lib/dates";
+import { UpdatingHint } from "@/components/portal/UpdatingHint";
+import { useUrlNavigation } from "@/hooks/useUrlNavigation";
 
 /** One range drives the whole page, and it lives in the URL so it can be shared. */
 export function BuyerRangeChips({
@@ -20,7 +22,7 @@ export function BuyerRangeChips({
   aggregations?: Aggregation[];
   agg?: Aggregation;
 }) {
-  const router = useRouter();
+  const { replace } = useUrlNavigation();
   const pathname = usePathname();
   const searchParams = useSearchParams();
 
@@ -28,14 +30,14 @@ export function BuyerRangeChips({
     const params = new URLSearchParams(searchParams.toString());
     params.set("range", value);
     params.delete("page");
-    router.replace(`${pathname}?${params.toString()}`, { scroll: false });
+    replace(`${pathname}?${params.toString()}`);
   };
 
   const setAgg = (value: Aggregation) => {
     const params = new URLSearchParams(searchParams.toString());
     params.set("agg", value);
     params.delete("page");
-    router.replace(`${pathname}?${params.toString()}`, { scroll: false });
+    replace(`${pathname}?${params.toString()}`);
   };
 
   return (
@@ -60,6 +62,10 @@ export function BuyerRangeChips({
       <div className="flex flex-wrap items-center justify-between gap-sm">
         <p className="text-[length:var(--text-body-sm)] text-ink-secondary">
           {summary}
+          {/* The summary claims a count and a total. While the server is
+              recomputing them that claim is stale, so it says so here rather
+              than letting the figures move under the reader (brief G1). */}
+          <UpdatingHint />
         </p>
 
         {aggregations && agg ? (

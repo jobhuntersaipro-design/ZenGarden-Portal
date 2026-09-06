@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { usePathname, useRouter, useSearchParams } from "next/navigation";
+import { usePathname, useSearchParams } from "next/navigation";
 import { toast } from "sonner";
 import { requestPasswordReset } from "@/actions/auth";
 import { UserStatusBadge } from "@/components/admin/RingBadge";
@@ -22,6 +22,7 @@ import { useTableSort } from "@/hooks/useTableSort";
 import { formatDateTime } from "@/lib/dates";
 import type { AdminUserRow, UserStatusFilter } from "@/lib/queries/users";
 import type { SortDirection } from "@/lib/queries/pagination";
+import { useUrlNavigation } from "@/hooks/useUrlNavigation";
 
 const STATUSES: { value: UserStatusFilter; label: string }[] = [
   { value: "all", label: "All" },
@@ -54,7 +55,7 @@ export function UsersTable({
   openUserId: string | null;
 }) {
   const onSortChange = useTableSort();
-  const router = useRouter();
+  const { replace } = useUrlNavigation();
   const pathname = usePathname();
   const searchParams = useSearchParams();
   const [resetting, setResetting] = useState<AdminUserRow | null>(null);
@@ -66,10 +67,7 @@ export function UsersTable({
       if (value === null || value === "") params.delete(key);
       else params.set(key, value);
     }
-    router.replace(
-      params.toString() ? `${pathname}?${params.toString()}` : pathname,
-      { scroll: false },
-    );
+    replace(params.toString() ? `${pathname}?${params.toString()}` : pathname);
   };
 
   const openDrawer = (id: string) => write({ user: id });

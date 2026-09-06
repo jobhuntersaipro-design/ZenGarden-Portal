@@ -48,9 +48,13 @@ export function UserMenu({
             <span className="block truncate text-[length:var(--text-body-sm)] font-medium text-ink">
               {name}
             </span>
+            {/* Wraps to two lines rather than ellipsising (brief G3): the
+                sidebar is 240px and "aisha@lovinghandsportal.com" does not
+                fit on one, so a single clipped line was a dead end. `title`
+                stays for the rare address long enough to clip even at two. */}
             <span
               title={email}
-              className="block truncate text-[length:var(--text-caption)] text-ink-tertiary"
+              className="block line-clamp-2 break-all text-[length:var(--text-caption)] text-ink-tertiary"
             >
               {email}
             </span>

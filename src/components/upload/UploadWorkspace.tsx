@@ -14,7 +14,9 @@ export function UploadWorkspace({ hintBuyerId }: { hintBuyerId?: string }) {
       <Dropzone onFiles={add} />
       <UploadQueue rows={rows} onRemove={remove} onRetry={retry} />
       <UploadFooter rows={rows} />
-      {/* The sidebar has no Upload row (G1), so the way back is named here. */}
+      {/* Back sits above the title (brief G2); Cancel stays here beside the
+          footer, where someone who has decided to abandon a queue is already
+          looking. */}
       <div className="mt-md">
         <Link
           href="/purchase-orders"

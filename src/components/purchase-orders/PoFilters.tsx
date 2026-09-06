@@ -1,11 +1,12 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import { usePathname, useRouter, useSearchParams } from "next/navigation";
+import { usePathname, useSearchParams } from "next/navigation";
 import { Search } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { INTAKE_STATUS } from "@/components/portal/StatusBadge";
 import { PO_STAGES, stageLabel } from "@/lib/po-stages";
+import { useUrlNavigation } from "@/hooks/useUrlNavigation";
 
 export type StatusChip =
   | "all"
@@ -37,7 +38,7 @@ export function PoFilters({
   uploaders: { id: string; name: string }[];
   needsReview: number;
 }) {
-  const router = useRouter();
+  const { replace } = useUrlNavigation();
   const pathname = usePathname();
   const searchParams = useSearchParams();
 
@@ -54,10 +55,7 @@ export function PoFilters({
     // Every filter change goes back to page 1: page 7 of a longer result set
     // is usually past the end of a shorter one.
     params.delete("page");
-    router.replace(
-      params.toString() ? `${pathname}?${params.toString()}` : pathname,
-      { scroll: false },
-    );
+    replace(params.toString() ? `${pathname}?${params.toString()}` : pathname);
   };
 
   /**

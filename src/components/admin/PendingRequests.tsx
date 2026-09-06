@@ -23,7 +23,15 @@ export function PendingRequests({ requests }: { requests: PendingRequest[] }) {
   const router = useRouter();
   const [roles, setRoles] = useState<Record<string, Role>>({});
   const [notify, setNotify] = useState<Record<string, boolean>>({});
-  const [pending, setPending] = useState<string | null>(null);
+  /**
+   * Which request is in flight and which way it is going. The id alone would
+   * disable both buttons on that row — right — but could not say which of them
+   * to label, and a button that reads "Approving…" while a decline runs is
+   * worse than no label at all (brief G1).
+   */
+  const [pending, setPending] = useState<
+    { id: string; action: "approve" | "decline" } | null
+  >(null);
 
   // Hidden entirely when empty: an empty queue needs no furniture.
   if (requests.length === 0) return null;
@@ -94,9 +102,9 @@ export function PendingRequests({ requests }: { requests: PendingRequest[] }) {
             <div className="flex items-center gap-xs">
               <Button
                 variant="secondary"
-                disabled={pending === request.id}
+                disabled={pending?.id === request.id}
                 onClick={async () => {
-                  setPending(request.id);
+                  setPending({ id: request.id, action: "decline" });
                   const result = await declineAccessRequest(
                     request.id,
                     notify[request.id] ?? false,
@@ -109,12 +117,14 @@ export function PendingRequests({ requests }: { requests: PendingRequest[] }) {
                   }
                 }}
               >
-                Decline
+                {pending?.id === request.id && pending.action === "decline"
+                  ? "Declining…"
+                  : "Decline"}
               </Button>
               <Button
-                disabled={pending === request.id}
+                disabled={pending?.id === request.id}
                 onClick={async () => {
-                  setPending(request.id);
+                  setPending({ id: request.id, action: "approve" });
                   const result = await approveAccessRequest(
                     request.id,
                     roles[request.id] ?? Role.MEMBER,
@@ -127,7 +137,9 @@ export function PendingRequests({ requests }: { requests: PendingRequest[] }) {
                   }
                 }}
               >
-                Approve
+                {pending?.id === request.id && pending.action === "approve"
+                  ? "Approving…"
+                  : "Approve"}
               </Button>
             </div>
           </li>

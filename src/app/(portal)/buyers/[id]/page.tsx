@@ -2,11 +2,12 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { Role } from "@/generated/prisma/enums";
+import { BackLink } from "@/components/portal/BackLink";
 import { PageHeader } from "@/components/portal/PageHeader";
 import { StatusBar } from "@/components/dashboard/StatusBar";
 import {
-  CountUpMoney,
-  CountUpNumber,
+  KpiMoney,
+  KpiNumber,
   KpiTile,
 } from "@/components/dashboard/KpiTile";
 import { SalesLineChart } from "@/components/dashboard/SalesLineChart";
@@ -105,6 +106,7 @@ export default async function BuyerPage({
 
   return (
     <>
+      <BackLink fallbackHref="/buyers" />
       <nav aria-label="Breadcrumb" className="mb-xs">
         <Link
           href="/buyers"
@@ -144,19 +146,19 @@ export default async function BuyerPage({
           compact
           wide
           label="Purchases"
-          value={<CountUpMoney value={data.kpis.purchases} />}
+          value={<KpiMoney value={data.kpis.purchases} />}
           caption={`${data.kpis.orderCount} purchase orders in range${data.buyer.since ? ` · buyer since ${formatDate(data.buyer.since)}` : ""}`}
         />
         <KpiTile
           compact
           label="Share of sales"
-          value={<CountUpNumber value={data.kpis.shareOfSales} decimals={1} suffix="%" />}
+          value={<KpiNumber value={data.kpis.shareOfSales} decimals={1} suffix="%" />}
           caption="of all buyers in range"
         />
         <KpiTile
           compact
           label="Average PO"
-          value={<CountUpMoney value={data.kpis.averageOrder} />}
+          value={<KpiMoney value={data.kpis.averageOrder} />}
           caption={`${data.kpis.itemsPerOrder.toFixed(1)} items per order`}
         />
         <KpiTile
@@ -166,7 +168,7 @@ export default async function BuyerPage({
             data.kpis.cadenceDays === null ? (
               "—"
             ) : (
-              <CountUpNumber value={data.kpis.cadenceDays} />
+              <KpiNumber value={data.kpis.cadenceDays} />
             )
           }
           caption="days between orders"

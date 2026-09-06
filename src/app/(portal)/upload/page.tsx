@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import { BackLink } from "@/components/portal/BackLink";
 import { PageHeader } from "@/components/portal/PageHeader";
 import { UploadWorkspace } from "@/components/upload/UploadWorkspace";
 
@@ -17,6 +18,9 @@ export default async function UploadPage({
 
   return (
     <>
+      {/* Upload has no breadcrumb of its own, so this is the only way out
+          that is not the browser's own chrome (brief G2). */}
+      <BackLink fallbackHref="/purchase-orders" />
       <PageHeader eyebrow="Intake" title="Upload purchase orders" />
       <UploadWorkspace hintBuyerId={hintBuyerId} />
     </>
