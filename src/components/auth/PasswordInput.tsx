@@ -63,7 +63,7 @@ export function PasswordInput({
         aria-label={action}
         aria-pressed={revealed}
         aria-controls={id}
-        className="absolute inset-y-0 right-0 flex w-control-md items-center justify-center rounded-r-sm text-ink-tertiary transition-colors duration-[0.25s] ease-[cubic-bezier(0.5,0,0.5,1)] hover:text-ink focus-visible:outline-2 focus-visible:outline-primary"
+        className="absolute inset-y-0 right-0 flex w-control-md items-center justify-center rounded-r-sm text-ink-tertiary transition-colors duration-[0.25s] ease-[cubic-bezier(0.5,0,0.5,1)] hover:text-ink focus-visible:outline-2 focus-visible:outline-focus"
       >
         <Icon className="size-4" strokeWidth={1.75} aria-hidden />
       </button>

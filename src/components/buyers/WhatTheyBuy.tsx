@@ -59,7 +59,7 @@ function HBarList({
                   aria-expanded={openOther}
                   aria-controls={otherId}
                   onClick={() => setOpenOther((open) => !open)}
-                  className="flex min-w-0 flex-1 items-center gap-xs rounded-xxs text-left focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary"
+                  className="flex min-h-control-md min-w-0 flex-1 items-center gap-xs rounded-xxs text-left focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-focus sm:min-h-0"
                 >
                   {swatch}
                   <span className="min-w-0 truncate text-[length:var(--text-body-sm)] text-ink-disabled">
@@ -77,7 +77,7 @@ function HBarList({
                     <Link
                       href={`${hrefBase}/${slice.id}`}
                       title={slice.label}
-                      className="min-w-0 flex-1 truncate rounded-xxs text-[length:var(--text-body-sm)] text-ink underline-offset-2 hover:text-brand-link hover:underline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary"
+                      className="flex min-h-control-md min-w-0 flex-1 items-center truncate rounded-xxs text-[length:var(--text-body-sm)] text-ink underline-offset-2 hover:text-brand-link hover:underline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-focus sm:block sm:min-h-0"
                     >
                       {slice.label}
                     </Link>
@@ -98,7 +98,8 @@ function HBarList({
                 <span
                   className="block h-full rounded-xxs"
                   style={{
-                    width: largest > 0 ? `${(slice.value / largest) * 100}%` : "0%",
+                    width:
+                      largest > 0 ? `${(slice.value / largest) * 100}%` : "0%",
                     backgroundColor: colorFor(index, slice.isOther),
                   }}
                 />
@@ -123,7 +124,7 @@ function HBarList({
                       <Link
                         href={`${hrefBase}/${member.id}`}
                         title={member.label}
-                        className="min-w-0 flex-1 truncate rounded-xxs text-[length:var(--text-body-sm)] text-ink underline-offset-2 hover:text-brand-link hover:underline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary"
+                        className="flex min-h-control-md min-w-0 flex-1 items-center truncate rounded-xxs text-[length:var(--text-body-sm)] text-ink underline-offset-2 hover:text-brand-link hover:underline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-focus sm:block sm:min-h-0"
                       >
                         {member.label}
                       </Link>

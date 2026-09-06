@@ -53,7 +53,10 @@ export function ControlsSkeleton() {
       {/* Literal classes: Tailwind scans source text, so a `w-${n}` built at
           runtime produces no CSS at all. */}
       {["w-20", "w-24", "w-20", "w-28"].map((width, index) => (
-        <Shimmer key={index} className={`h-control-sm ${width} rounded-pill`} />
+        <Shimmer
+          key={index}
+          className={`h-control-md sm:h-control-sm ${width} rounded-pill`}
+        />
       ))}
     </div>
   );
@@ -76,7 +79,7 @@ export function KpiRowSkeleton({
 }) {
   return (
     <div
-      className={`mb-lg grid gap-md sm:grid-cols-2 ${columns === 6 ? "lg:grid-cols-6" : "lg:grid-cols-4"}`}
+      className={`mb-lg grid grid-cols-2 gap-md ${columns === 6 ? "lg:grid-cols-6" : "lg:grid-cols-4"}`}
     >
       {Array.from({ length: tiles }, (_, index) => (
         <div
@@ -136,7 +139,7 @@ export function TableSkeleton({
 /** A grid of product cards, at `ProductCard`'s aspect and spacing. */
 export function CardGridSkeleton({ cards = 12 }: { cards?: number }) {
   return (
-    <div className="grid gap-md sm:grid-cols-2 lg:grid-cols-4">
+    <div className="grid grid-cols-2 gap-md lg:grid-cols-4">
       {Array.from({ length: cards }, (_, index) => (
         <div
           key={index}

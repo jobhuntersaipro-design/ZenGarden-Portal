@@ -2,41 +2,20 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { FileText, LayoutDashboard, Package, Users } from "lucide-react";
-import {
-  Tooltip,
-  TooltipContent,
-  TooltipTrigger,
-} from "@/components/ui/tooltip";
 import { LinkSpinner } from "@/components/portal/LinkSpinner";
 import { UserMenu } from "@/components/portal/UserMenu";
 import { Wordmark } from "@/components/portal/Wordmark";
+import { NAV, isActive } from "@/components/portal/nav";
 
 /**
- * Destinations only. Upload is an action — the "Upload PO" primary in the page
- * header — never a nav row (00-master.md §4, design reference §3.0).
+ * The desktop sidebar, from `lg` up.
+ *
+ * Below `lg` this used to collapse to a 64px icon rail, which cost 16% of a
+ * 390px viewport for four unlabelled glyphs and left the page 246px to work
+ * with — the single measurement behind most of the 2026-09-06 mobile review.
+ * Small screens get `MobileTopBar` + `MobileTabBar` instead, so the rail is
+ * gone and this component is only ever rendered at its full width.
  */
-const NAV = [
-  { href: "/", label: "Dashboard", icon: LayoutDashboard },
-  // Title case at the user's request (2026-09-06) — the one label that is.
-  { href: "/purchase-orders", label: "Purchase Orders", icon: FileText },
-  { href: "/buyers", label: "Buyers", icon: Users },
-  { href: "/products", label: "Products", icon: Package },
-] as const;
-
-/** /upload and /review/[id] belong to the Purchase orders section. */
-function isActive(pathname: string, href: string): boolean {
-  if (href === "/") return pathname === "/";
-  if (href === "/purchase-orders") {
-    return (
-      pathname.startsWith("/purchase-orders") ||
-      pathname.startsWith("/upload") ||
-      pathname.startsWith("/review")
-    );
-  }
-  return pathname.startsWith(href);
-}
-
 export function Sidebar({
   userName,
   userEmail,
@@ -54,50 +33,43 @@ export function Sidebar({
     // right border hanging in the middle of a long dashboard. Pinned to the
     // top it fills the screen at every scroll position, and the nav and user
     // menu stay reachable from the bottom of the page.
-    <aside className="sticky top-0 flex h-dvh w-16 shrink-0 flex-col gap-xl self-start border-r border-hairline bg-surface px-xs py-lg lg:w-60 lg:px-md">
+    <aside className="sticky top-0 hidden h-dvh w-60 shrink-0 flex-col gap-xl self-start border-r border-hairline bg-surface px-md py-lg lg:flex">
       {/* The wordmark is the way home: the dashboard lives at `/`. */}
       <Link
         href="/"
         aria-label="Loving Hands — go to the dashboard"
-        className="block rounded-xxs px-xs transition-opacity duration-[0.25s] hover:opacity-80 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary"
+        className="block rounded-xxs px-xs transition-opacity duration-[0.25s] hover:opacity-80 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-focus"
       >
-        <Wordmark className="hidden lg:block" />
-        <div className="lg:hidden" aria-hidden>
-          <span className="bg-brand-gradient bg-clip-text font-display text-[length:var(--text-heading-md)] font-bold text-transparent">
-            L
-          </span>
-        </div>
+        <Wordmark />
       </Link>
 
-      <nav className="flex min-h-0 flex-1 flex-col gap-xxs overflow-y-auto" aria-label="Main">
+      <nav
+        className="flex min-h-0 flex-1 flex-col gap-xxs overflow-y-auto"
+        aria-label="Main"
+      >
         {NAV.map(({ href, label, icon: Icon }) => {
           const active = isActive(pathname, href);
-          const row = (
+          return (
             <Link
               key={href}
               href={href}
               aria-current={active ? "page" : undefined}
-              className={`flex h-11 items-center gap-sm rounded-sm px-sm text-[length:var(--text-body-sm)] transition-colors duration-[0.25s] ease-[cubic-bezier(0.5,0,0.5,1)] focus-visible:outline-2 focus-visible:outline-primary ${
+              className={`flex h-11 items-center gap-sm rounded-sm px-sm text-[length:var(--text-body-sm)] transition-colors duration-[0.25s] ease-[cubic-bezier(0.5,0,0.5,1)] focus-visible:outline-2 focus-visible:outline-focus ${
                 active
                   ? "bg-surface-soft font-semibold text-ink"
                   : "font-medium text-ink-secondary hover:bg-canvas hover:text-ink"
               }`}
             >
-              <Icon className="size-5 shrink-0" strokeWidth={1.75} aria-hidden />
-              <span className="hidden lg:inline">{label}</span>
+              <Icon
+                className="size-5 shrink-0"
+                strokeWidth={1.75}
+                aria-hidden
+              />
+              <span>{label}</span>
               {/* Spins from the click until the route commits and its
                   loading.tsx takes over. */}
-              <LinkSpinner className="ml-auto hidden lg:inline-block" />
+              <LinkSpinner className="ml-auto" />
             </Link>
-          );
-
-          return (
-            <Tooltip key={href}>
-              <TooltipTrigger asChild>{row}</TooltipTrigger>
-              <TooltipContent side="right" className="lg:hidden">
-                {label}
-              </TooltipContent>
-            </Tooltip>
           );
         })}
       </nav>

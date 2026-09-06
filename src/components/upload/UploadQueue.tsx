@@ -28,7 +28,9 @@ function ProgressBar({
         role="progressbar"
         aria-label="Reading the document"
       >
-        <div className={`h-full w-2/5 rounded-pill animate-indeterminate ${fill}`} />
+        <div
+          className={`h-full w-2/5 rounded-pill animate-indeterminate ${fill}`}
+        />
       </div>
     );
   }
@@ -97,7 +99,9 @@ export function UploadQueue({
   if (rows.length === 0) {
     return (
       <p className="mt-md rounded-lg border border-dashed border-hairline bg-canvas p-md text-center text-[length:var(--text-body-sm)] text-ink-secondary">
-        No files yet — drop POs above
+        {/* "Drop" is desktop language; the phone's route in is the camera. */}
+        <span className="sm:hidden">No files yet — add a PO above</span>
+        <span className="hidden sm:inline">No files yet — drop POs above</span>
       </p>
     );
   }
@@ -105,7 +109,9 @@ export function UploadQueue({
   return (
     <ul className="mt-md divide-y divide-hairline rounded-lg border border-hairline bg-canvas">
       {rows.map((row) => {
-        const Icon = row.name.toLowerCase().endsWith(".pdf") ? FileText : ImageIcon;
+        const Icon = row.name.toLowerCase().endsWith(".pdf")
+          ? FileText
+          : ImageIcon;
         return (
           <li key={row.id} className="flex flex-col gap-xs p-md">
             <div className="flex items-center gap-sm">
@@ -141,7 +147,7 @@ export function UploadQueue({
                 <button
                   type="button"
                   onClick={() => onRetry(row.id)}
-                  className="shrink-0 text-[length:var(--text-caption)] text-brand-link underline-offset-2 hover:underline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary"
+                  className="shrink-0 text-[length:var(--text-caption)] text-brand-link underline-offset-2 hover:underline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-focus"
                 >
                   Retry
                 </button>
@@ -150,7 +156,7 @@ export function UploadQueue({
                 type="button"
                 onClick={() => onRemove(row.id)}
                 aria-label={`Remove ${row.name}`}
-                className="flex size-8 shrink-0 items-center justify-center rounded-sm text-ink-tertiary transition-colors hover:bg-surface hover:text-ink focus-visible:outline-2 focus-visible:outline-primary"
+                className="flex size-8 shrink-0 items-center justify-center rounded-sm text-ink-tertiary transition-colors hover:bg-surface hover:text-ink focus-visible:outline-2 focus-visible:outline-focus"
               >
                 <X className="size-4" strokeWidth={1.75} aria-hidden />
               </button>

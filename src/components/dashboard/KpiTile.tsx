@@ -24,6 +24,7 @@ export function KpiTile({
   caption,
   wide = false,
   compact = false,
+  mobileFull = false,
 }: {
   label: string;
   value: ReactNode;
@@ -35,16 +36,32 @@ export function KpiTile({
    * is not a number any more.
    */
   compact?: boolean;
+  /**
+   * Full width on a phone, its normal share from `sm` up.
+   *
+   * KPI rows are two-up on mobile now — one tile per row put 630px of mostly
+   * empty box between the reader and the first buyer (2026-09-06 review, B5).
+   * A money value cannot live in half of a 390px screen, though, and the rule
+   * above forbids wrapping it, so money tiles take the whole row instead.
+   * `wide` already implies this: half of four columns is all of two.
+   */
+  mobileFull?: boolean;
 }) {
+  const span = wide
+    ? "col-span-2"
+    : mobileFull
+      ? "col-span-2 sm:col-span-1"
+      : "";
   return (
-    <div
-      className={`rounded-md border border-hairline bg-canvas p-md ${wide ? "sm:col-span-2" : ""}`}
-    >
+    <div className={`rounded-md border border-hairline bg-canvas p-md ${span}`}>
       <p className="font-mono text-[length:var(--text-eyebrow)] text-ink-tertiary">
         {label}
       </p>
+      {/* `break-words` because a KPI value is not always a number: "Northwind
+          Traders" in the Top buyer tile overflowed its own tile and was clipped
+          mid-word — "Northwii Traders" — at 768px (2026-09-06 review, A6). */}
       <p
-        className={`mt-xxs font-display font-[650] text-ink tabular-nums ${
+        className={`mt-xxs font-display font-[650] break-words text-ink tabular-nums ${
           compact
             ? "text-[length:var(--text-heading-md)] tracking-[-0.91px]"
             : "text-[length:var(--text-display-md)] tracking-[-1.36px]"

@@ -5,6 +5,7 @@ import type { BuyerRangePreset } from "@/lib/analytics/buyer-range";
 import { AGGREGATIONS } from "@/lib/analytics/range";
 import type { Aggregation } from "@/lib/dates";
 import { ChoiceButton } from "@/components/portal/ChoiceButton";
+import { SegmentGroup } from "@/components/portal/SegmentGroup";
 import { UpdatingHint } from "@/components/portal/UpdatingHint";
 import { usePendingChoice } from "@/hooks/usePendingChoice";
 
@@ -66,33 +67,25 @@ export function BuyerRangeChips({
         </p>
 
         {aggregations && agg ? (
-          <div className="flex items-center gap-xs">
-            <span className="font-mono text-[length:var(--text-eyebrow)] text-ink-tertiary">
-              Aggregate
-            </span>
-            <div
-              className="flex overflow-hidden rounded-sm border border-hairline"
-              aria-busy={aggs.pending || undefined}
-            >
-              {AGGREGATIONS.filter((option) =>
-                aggregations.includes(option.value),
-              ).map((option) => (
-                <ChoiceButton
-                  key={option.value}
-                  look="segment"
-                  compact
-                  selected={aggs.value === option.value}
-                  pending={aggs.isPending(option.value)}
-                  dimmed={aggs.pending && !aggs.isPending(option.value)}
-                  onClick={() =>
-                    aggs.choose(option.value, hrefFor("agg", option.value))
-                  }
-                >
-                  {option.label}
-                </ChoiceButton>
-              ))}
-            </div>
-          </div>
+          <SegmentGroup label="Aggregate" busy={aggs.pending}>
+            {AGGREGATIONS.filter((option) =>
+              aggregations.includes(option.value),
+            ).map((option) => (
+              <ChoiceButton
+                key={option.value}
+                look="segment"
+                compact
+                selected={aggs.value === option.value}
+                pending={aggs.isPending(option.value)}
+                dimmed={aggs.pending && !aggs.isPending(option.value)}
+                onClick={() =>
+                  aggs.choose(option.value, hrefFor("agg", option.value))
+                }
+              >
+                {option.label}
+              </ChoiceButton>
+            ))}
+          </SegmentGroup>
         ) : null}
       </div>
     </div>

@@ -6,11 +6,7 @@ import { BackLink } from "@/components/portal/BackLink";
 import { CountUp } from "@/components/portal/CountUp";
 import { PageHeader } from "@/components/portal/PageHeader";
 import { StatusBar } from "@/components/dashboard/StatusBar";
-import {
-  KpiMoney,
-  KpiNumber,
-  KpiTile,
-} from "@/components/dashboard/KpiTile";
+import { KpiMoney, KpiNumber, KpiTile } from "@/components/dashboard/KpiTile";
 import { SalesLineChart } from "@/components/dashboard/SalesLineChart";
 import { BuyerDetailsCard } from "@/components/buyers/BuyerDetailsCard";
 import { BuyerRangeChips } from "@/components/buyers/BuyerRangeChips";
@@ -71,7 +67,8 @@ export default async function BuyerPage({
   const previous = buyerPreviousPeriod(range);
   const aggParam = firstParam(query, "agg") as Aggregation | undefined;
   const agg = AGGS.includes(aggParam as Aggregation) ? aggParam! : "month";
-  const measure: MixMeasure = firstParam(query, "measure") === "qty" ? "qty" : "value";
+  const measure: MixMeasure =
+    firstParam(query, "measure") === "qty" ? "qty" : "value";
   // Raw, holes included: an empty slot is a colour that was freed and is kept
   // free, so the products after it never shift hue.
   const productSlots = firstParam(query, "products")?.split(",") ?? [];
@@ -83,7 +80,10 @@ export default async function BuyerPage({
   ]);
   if (!data) notFound();
 
-  const sort = parseSort(query, PO_LIST_SORT_KEYS, { key: "poDate", dir: "desc" });
+  const sort = parseSort(query, PO_LIST_SORT_KEYS, {
+    key: "poDate",
+    dir: "desc",
+  });
   const { page, size, skip, take } = parsePagination(query);
   const list = await listPurchaseOrders(
     { buyerId: id, status: "confirmed", from: range.from, to: range.to },
@@ -110,7 +110,7 @@ export default async function BuyerPage({
       <nav aria-label="Breadcrumb" className="mb-xs">
         <Link
           href="/buyers"
-          className="text-[length:var(--text-body-sm)] text-brand-link underline-offset-2 hover:underline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary"
+          className="inline-flex min-h-control-md items-center rounded-xxs text-[length:var(--text-body-sm)] text-brand-link underline-offset-2 hover:underline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-focus sm:min-h-0"
         >
           Buyers
         </Link>
@@ -126,7 +126,9 @@ export default async function BuyerPage({
         action={
           <Button asChild>
             {/* Pre-filled to this buyer, so the signal leads into the work. */}
-            <Link href={`/upload?buyer=${encodeURIComponent(id)}`}>Upload PO</Link>
+            <Link href={`/upload?buyer=${encodeURIComponent(id)}`}>
+              Upload PO
+            </Link>
           </Button>
         }
       />
@@ -141,7 +143,7 @@ export default async function BuyerPage({
 
       {/* Six columns, not five: the Purchases tile spans two, so five tiles
           occupy six tracks and the last one would otherwise wrap alone. */}
-      <div className="mb-lg grid gap-md sm:grid-cols-2 lg:grid-cols-6">
+      <div className="mb-lg grid grid-cols-2 gap-md lg:grid-cols-6">
         <KpiTile
           compact
           wide
@@ -152,11 +154,14 @@ export default async function BuyerPage({
         <KpiTile
           compact
           label="Share of sales"
-          value={<KpiNumber value={data.kpis.shareOfSales} decimals={1} suffix="%" />}
+          value={
+            <KpiNumber value={data.kpis.shareOfSales} decimals={1} suffix="%" />
+          }
           caption="of all buyers in range"
         />
         <KpiTile
           compact
+          mobileFull
           label="Average PO"
           value={<KpiMoney value={data.kpis.averageOrder} />}
           caption={`${data.kpis.itemsPerOrder.toFixed(1)} items per order`}
@@ -184,7 +189,9 @@ export default async function BuyerPage({
           caption={
             <span
               className={
-                data.kpis.quieterThanUsual ? "text-brand-amber" : "text-accent-green"
+                data.kpis.quieterThanUsual
+                  ? "text-brand-amber"
+                  : "text-accent-green"
               }
             >
               {data.kpis.quieterThanUsual
@@ -205,7 +212,8 @@ export default async function BuyerPage({
           {agg === "week" ? "weeks" : agg === "month" ? "months" : `${agg}s`}
         </h2>
         <p className="mt-xxs text-[length:var(--text-caption)] text-ink-tertiary">
-          {data.kpis.orderCount} purchase orders · hover a point for the value
+          {data.kpis.orderCount} purchase orders · tap or hover a point for the
+          value
         </p>
         <div className="mt-lg">
           <SalesLineChart series={data.sales} agg={agg} />
@@ -270,7 +278,13 @@ export default async function BuyerPage({
         <p className="mb-sm font-mono text-[length:var(--text-eyebrow)] text-ink-tertiary">
           Purchase orders
         </p>
-        <PoTable rows={rows} sort={sort} page={page} size={size} total={list.total} />
+        <PoTable
+          rows={rows}
+          sort={sort}
+          page={page}
+          size={size}
+          total={list.total}
+        />
       </section>
     </>
   );

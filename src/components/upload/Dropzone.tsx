@@ -1,18 +1,29 @@
 "use client";
 
 import { useCallback, useEffect, useRef, useState } from "react";
-import { Upload } from "lucide-react";
+import { Camera, Upload } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { ACCEPT_ATTRIBUTE, formatBytes, MAX_FILE_BYTES } from "@/lib/validation/upload";
+import {
+  ACCEPT_ATTRIBUTE,
+  formatBytes,
+  MAX_FILE_BYTES,
+} from "@/lib/validation/upload";
 
 /**
- * Drop, browse and paste all funnel into the same `onFiles` (design reference
- * §3.3). Paste matters more than it looks: a screenshot of a PO is the most
- * common thing an ops person has on the clipboard.
+ * Drop, browse, paste and the camera all funnel into the same `onFiles`
+ * (design reference §3.3). Paste matters more than it looks: a screenshot of a
+ * PO is the most common thing an ops person has on the clipboard.
+ *
+ * The camera is the mobile answer. "Drop PO files here" is meaningless on a
+ * phone, and photographing a PO is the native way to capture one on a product
+ * whose whole intake is PO photographs (2026-09-06 review, B6) — so below `sm`
+ * the heading changes and "Take a photo" leads.
  */
 export function Dropzone({ onFiles }: { onFiles: (files: File[]) => void }) {
   const [dragging, setDragging] = useState(false);
   const input = useRef<HTMLInputElement>(null);
+  /** A second input: `capture` cannot be toggled per click on one element. */
+  const camera = useRef<HTMLInputElement>(null);
   /** Drag events fire per child element; counting keeps the state from flickering. */
   const depth = useRef(0);
 
@@ -54,7 +65,7 @@ export function Dropzone({ onFiles }: { onFiles: (files: File[]) => void }) {
       }}
       className={`flex min-h-80 flex-col items-center justify-center gap-sm rounded-xxl border-2 border-dashed p-xl text-center transition-colors duration-[0.25s] ease-[cubic-bezier(0.5,0,0.5,1)] ${
         dragging
-          ? "border-primary bg-surface"
+          ? "border-focus bg-surface"
           : "border-hairline-strong bg-canvas"
       }`}
     >
@@ -65,18 +76,45 @@ export function Dropzone({ onFiles }: { onFiles: (files: File[]) => void }) {
         <Upload className="size-5 text-ink-secondary" strokeWidth={1.75} />
       </span>
       <h2 className="font-display text-[length:var(--text-heading-md)] font-[650] tracking-[-0.91px] text-ink">
-        Drop PO files here
+        <span className="sm:hidden">Add a purchase order</span>
+        <span className="hidden sm:inline">Drop PO files here</span>
       </h2>
       <p className="text-[length:var(--text-body-md)] text-ink-secondary">
         PDF, PNG, JPG — up to {formatBytes(MAX_FILE_BYTES)} each
       </p>
-      <Button
-        type="button"
-        variant="secondary"
-        onClick={() => input.current?.click()}
-      >
-        Browse files
-      </Button>
+      <div className="flex flex-col items-center gap-xs sm:flex-row">
+        {/* Phones only: `capture` is inert on a desktop browser, and the
+            button would be a dead end there. */}
+        <Button
+          type="button"
+          className="sm:hidden"
+          onClick={() => camera.current?.click()}
+        >
+          <Camera className="size-4" strokeWidth={1.75} aria-hidden />
+          Take a photo
+        </Button>
+        <Button
+          type="button"
+          variant="secondary"
+          onClick={() => input.current?.click()}
+        >
+          Browse files
+        </Button>
+      </div>
+      <input
+        ref={camera}
+        type="file"
+        accept="image/*"
+        // `environment` is the rear camera — the one pointed at paper.
+        capture="environment"
+        tabIndex={-1}
+        aria-hidden
+        className="sr-only"
+        onChange={(event) => {
+          handle(event.target.files);
+          event.target.value = "";
+        }}
+      />
       <input
         ref={input}
         type="file"

@@ -79,9 +79,17 @@ export function ProductGallery({
     const unavailable = images.length > 0;
     return (
       <section className="flex aspect-4/3 flex-col items-center justify-center gap-xs rounded-lg border border-dashed border-hairline-strong bg-surface p-lg text-center">
-        <ImageOff className="size-8 text-ink-disabled" strokeWidth={1.5} aria-hidden />
+        <ImageOff
+          className="size-8 text-ink-disabled"
+          strokeWidth={1.5}
+          aria-hidden
+        />
         <p className="text-[length:var(--text-body-sm)] text-ink-secondary">
-          {unavailable ? "Image unavailable" : canEdit ? "Add images" : "No images yet"}
+          {unavailable
+            ? "Image unavailable"
+            : canEdit
+              ? "Add images"
+              : "No images yet"}
         </p>
         <p className="text-[length:var(--text-caption)] text-ink-tertiary">
           {unavailable
@@ -124,7 +132,7 @@ export function ProductGallery({
                 aria-label={`Image ${index + 1} of ${usable.length}`}
                 aria-pressed={index === selected}
                 onClick={() => setSelected(index)}
-                className={`size-16 overflow-hidden rounded-sm bg-surface-soft focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary ${
+                className={`size-16 overflow-hidden rounded-sm bg-surface-soft focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-focus ${
                   index === selected ? "ring-2 ring-ink" : ""
                 }`}
               >

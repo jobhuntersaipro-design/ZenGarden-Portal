@@ -73,7 +73,7 @@ export function DocumentPreview({
               setSource(null);
               setAttempt((current) => current + 1);
             }}
-            className="text-[length:var(--text-body-sm)] text-brand-link underline-offset-2 hover:underline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary"
+            className="inline-flex min-h-control-md items-center rounded-xxs text-[length:var(--text-body-sm)] text-brand-link underline-offset-2 hover:underline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-focus sm:min-h-0"
           >
             Try preview again
           </button>
@@ -116,7 +116,9 @@ export function DocumentPreview({
         file={source.url}
         onLoadSuccess={({ numPages }) => setPages(numPages)}
         onLoadError={() => setError("We couldn't read that PDF.")}
-        loading={<div className="h-preview animate-pulse rounded-sm bg-surface-soft" />}
+        loading={
+          <div className="h-preview animate-pulse rounded-sm bg-surface-soft" />
+        }
       >
         <Page
           pageNumber={page}

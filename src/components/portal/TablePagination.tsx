@@ -36,10 +36,11 @@ export function TablePagination({
     return `${pathname}?${params.toString()}`;
   };
   const go = (next: Record<string, string | null>) => replace(hrefFor(next));
-  const stepTo = (target: number) => steps.choose(target, hrefFor({ page: String(target) }));
+  const stepTo = (target: number) =>
+    steps.choose(target, hrefFor({ page: String(target) }));
 
   const step =
-    "inline-flex items-center gap-xxs rounded-sm px-sm py-xxs text-[length:var(--text-body-sm)] text-ink transition hover:bg-surface focus-visible:outline-2 focus-visible:outline-primary disabled:pointer-events-none disabled:text-ink-disabled";
+    "inline-flex min-h-control-md items-center gap-xxs rounded-sm px-sm py-xxs text-[length:var(--text-body-sm)] text-ink transition hover:bg-surface focus-visible:outline-2 focus-visible:outline-focus disabled:pointer-events-none disabled:text-ink-disabled sm:min-h-0";
   const dimmed = (target: number) =>
     steps.pending && !steps.isPending(target) ? "opacity-60" : "";
 
@@ -58,7 +59,7 @@ export function TablePagination({
           // Changing the page size resets to page 1; page 7 of a longer list
           // is often past the end of a shorter one.
           onChange={(event) => go({ size: event.target.value, page: null })}
-          className="h-control-sm rounded-sm border border-hairline-strong bg-transparent px-xs text-[length:var(--text-body-sm)] text-ink focus-visible:border-primary focus-visible:outline-2 focus-visible:outline-primary"
+          className="h-control-md sm:h-control-sm rounded-sm border border-hairline-strong bg-transparent px-xs text-[length:var(--text-body-sm)] text-ink focus-visible:border-focus focus-visible:outline-2 focus-visible:outline-focus"
         >
           {sizes.map((option) => (
             <option key={option} value={option}>
@@ -68,7 +69,10 @@ export function TablePagination({
         </select>
       </div>
 
-      <div className="flex items-center gap-sm" aria-busy={steps.pending || undefined}>
+      <div
+        className="flex items-center gap-sm"
+        aria-busy={steps.pending || undefined}
+      >
         <button
           type="button"
           className={`${step} ${dimmed(page - 1)}`}

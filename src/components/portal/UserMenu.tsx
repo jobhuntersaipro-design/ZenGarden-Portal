@@ -35,7 +35,7 @@ export function UserMenu({
     <DropdownMenu>
       <DropdownMenuTrigger
         aria-label={`Account menu for ${name}`}
-        className="flex w-full items-center gap-xs rounded-sm p-xs text-left transition-colors duration-[0.25s] ease-[cubic-bezier(0.5,0,0.5,1)] hover:bg-canvas focus-visible:outline-2 focus-visible:outline-primary"
+        className="flex w-full items-center gap-xs rounded-sm p-xs text-left transition-colors duration-[0.25s] ease-[cubic-bezier(0.5,0,0.5,1)] hover:bg-canvas focus-visible:outline-2 focus-visible:outline-focus"
       >
         <Avatar className="size-8 shrink-0">
           {image ? <AvatarImage src={image} alt="" /> : null}

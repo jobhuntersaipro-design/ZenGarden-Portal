@@ -5,15 +5,12 @@ import { UploadPoButton } from "@/components/portal/UploadPoButton";
 import { ChurnList } from "@/components/dashboard/ChurnList";
 import { DonutShare } from "@/components/dashboard/DonutShare";
 import { InRangeGrid } from "@/components/dashboard/InRangeGrid";
-import {
-  KpiMoney,
-  KpiNumber,
-  KpiTile,
-} from "@/components/dashboard/KpiTile";
+import { KpiMoney, KpiNumber, KpiTile } from "@/components/dashboard/KpiTile";
 import { MoreAnalytics } from "@/components/dashboard/MoreAnalytics";
 import { PriceDriftList } from "@/components/dashboard/PriceDriftList";
 import { RangeControls } from "@/components/dashboard/RangeControls";
 import { StatusBar } from "@/components/dashboard/StatusBar";
+import { WorkQueue } from "@/components/dashboard/WorkQueue";
 import { SalesCard } from "@/components/dashboard/SalesCard";
 import { StageCard } from "@/components/dashboard/StageCard";
 import { PoTable, type PoRow } from "@/components/purchase-orders/PoTable";
@@ -44,7 +41,8 @@ export default async function DashboardPage({
 }) {
   const params = await searchParams;
   const range = parseRange(params);
-  const measure: SalesMeasure = firstParam(params, "measure") === "units" ? "units" : "sales";
+  const measure: SalesMeasure =
+    firstParam(params, "measure") === "units" ? "units" : "sales";
   const moreOpen = firstParam(params, "more") === "1";
 
   const data = await loadDashboard(range, range.agg);
@@ -52,7 +50,11 @@ export default async function DashboardPage({
   if (!data.hasAnyOrders) {
     return (
       <>
-        <PageHeader eyebrow="Overview" title="Dashboard" action={<UploadPoButton />} />
+        <PageHeader
+          eyebrow="Overview"
+          title="Dashboard"
+          action={<UploadPoButton />}
+        />
         <section className="rounded-xxl border border-hairline bg-canvas p-xl text-center">
           <p className="font-mono text-[length:var(--text-eyebrow)] text-ink-tertiary">
             Get started
@@ -79,7 +81,10 @@ export default async function DashboardPage({
 
   // The in-range table runs the Phase 05 query with the dates fixed, so the
   // rows under the page agree with the numbers above them.
-  const sort = parseSort(params, PO_LIST_SORT_KEYS, { key: "poDate", dir: "desc" });
+  const sort = parseSort(params, PO_LIST_SORT_KEYS, {
+    key: "poDate",
+    dir: "desc",
+  });
   const { page, size, skip, take } = parsePagination(params);
   const list = await listPurchaseOrders(
     { status: "confirmed", from: range.from, to: range.to },
@@ -95,7 +100,15 @@ export default async function DashboardPage({
 
   return (
     <>
-      <PageHeader eyebrow="Overview" title="Dashboard" action={<UploadPoButton />} />
+      <PageHeader
+        eyebrow="Overview"
+        title="Dashboard"
+        action={<UploadPoButton />}
+      />
+
+      {/* Before the range controls, because it does not obey them: a draft has
+          no PO date to filter on. */}
+      <WorkQueue intake={data.intake} />
 
       <RangeControls
         preset={range.preset}
@@ -107,18 +120,22 @@ export default async function DashboardPage({
 
       {/* 1. Three tiles. No "Awaiting review" here — the status bar below is
           the one place the dashboard reports the backlog. */}
-      <div className="grid gap-md sm:grid-cols-4">
+      <div className="grid grid-cols-2 gap-md sm:grid-cols-4">
         <KpiTile
           wide
           label="Total sales"
           value={<KpiMoney value={data.kpis.totalSales} />}
           caption={
             data.kpis.deltaPercent === null ? (
-              <span className="text-ink-tertiary">No prior period to compare</span>
+              <span className="text-ink-tertiary">
+                No prior period to compare
+              </span>
             ) : (
               <span
                 className={
-                  data.kpis.deltaPercent >= 0 ? "text-accent-green" : "text-accent-red"
+                  data.kpis.deltaPercent >= 0
+                    ? "text-accent-green"
+                    : "text-accent-red"
                 }
               >
                 {data.kpis.deltaPercent >= 0 ? "+" : ""}
@@ -214,12 +231,18 @@ export default async function DashboardPage({
           </p>
           <Link
             href={`/purchase-orders?from=${from}&to=${to}`}
-            className="text-[length:var(--text-body-sm)] text-brand-link underline-offset-2 hover:underline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary"
+            className="inline-flex min-h-control-md items-center rounded-xxs text-[length:var(--text-body-sm)] text-brand-link underline-offset-2 hover:underline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-focus sm:min-h-0"
           >
             View all →
           </Link>
         </div>
-        <PoTable rows={rows} sort={sort} page={page} size={size} total={list.total} />
+        <PoTable
+          rows={rows}
+          sort={sort}
+          page={page}
+          size={size}
+          total={list.total}
+        />
       </section>
     </>
   );

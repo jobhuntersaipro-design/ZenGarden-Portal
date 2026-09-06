@@ -7,7 +7,10 @@ import { PageHeader } from "@/components/portal/PageHeader";
 import { KpiTile } from "@/components/dashboard/KpiTile";
 import { CountUp } from "@/components/portal/CountUp";
 import { OrderHistoryTable } from "@/components/products/OrderHistoryTable";
-import { PriceTrendChart, type TrendMode } from "@/components/products/PriceTrendChart";
+import {
+  PriceTrendChart,
+  type TrendMode,
+} from "@/components/products/PriceTrendChart";
 import { ProductGallery } from "@/components/products/ProductGallery";
 import { ProductSheet } from "@/components/products/ProductSheet";
 import { Button } from "@/components/ui/button";
@@ -68,9 +71,13 @@ export default async function ProductPage({
   if (!data) notFound();
 
   const isSuperAdmin = user?.role === Role.SUPER_ADMIN;
-  const mode: TrendMode = firstParam(query, "trend") === "units" ? "units" : "price";
+  const mode: TrendMode =
+    firstParam(query, "trend") === "units" ? "units" : "price";
 
-  const sort = parseSort(query, HISTORY_SORT_KEYS, { key: "poDate", dir: "desc" });
+  const sort = parseSort(query, HISTORY_SORT_KEYS, {
+    key: "poDate",
+    dir: "desc",
+  });
   const { page, size, skip, take } = parsePagination(query);
 
   const sorted = [...data.history].sort((a, b) => {
@@ -94,7 +101,7 @@ export default async function ProductPage({
       <nav aria-label="Breadcrumb" className="mb-xs">
         <Link
           href="/products"
-          className="text-[length:var(--text-body-sm)] text-brand-link underline-offset-2 hover:underline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary"
+          className="inline-flex min-h-control-md items-center rounded-xxs text-[length:var(--text-body-sm)] text-brand-link underline-offset-2 hover:underline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-focus sm:min-h-0"
         >
           Products
         </Link>
@@ -183,15 +190,24 @@ export default async function ProductPage({
               ["SKU", data.product.sku],
               ["Category", data.product.category],
               ["Unit", data.product.unit],
-              ["First sold", data.stats.firstSold ? formatDate(data.stats.firstSold) : "—"],
-              ["Last sold", data.stats.lastSold ? formatDate(data.stats.lastSold) : "—"],
+              [
+                "First sold",
+                data.stats.firstSold ? formatDate(data.stats.firstSold) : "—",
+              ],
+              [
+                "Last sold",
+                data.stats.lastSold ? formatDate(data.stats.lastSold) : "—",
+              ],
               ["Updated", formatDateTime(data.product.updatedAt)],
             ].map(([label, value]) => (
               <div key={label}>
                 <dt className="font-mono text-[length:var(--text-eyebrow)] text-ink-tertiary">
                   {label}
                 </dt>
-                <dd title={value} className="truncate text-[length:var(--text-body-md)] text-ink">
+                <dd
+                  title={value}
+                  className="truncate text-[length:var(--text-body-md)] text-ink"
+                >
                   {value}
                 </dd>
               </div>
@@ -200,12 +216,15 @@ export default async function ProductPage({
         </section>
       </div>
 
-      <div className="mt-lg grid gap-md sm:grid-cols-2 lg:grid-cols-6">
+      <div className="mt-lg grid grid-cols-2 gap-md lg:grid-cols-6">
         {[
           {
             label: "Revenue · 12m",
             value: <CountUp value={data.stats.revenue} format="money" />,
             caption: `${data.revenueShare.toFixed(1)}% of all sales`,
+            // A full MYR figure does not fit half a phone, and money must not
+            // wrap (2026-09-06 review, B5).
+            mobileFull: true,
           },
           {
             label: "Units · 12m",
@@ -239,13 +258,20 @@ export default async function ProductPage({
           },
           {
             label: "Attach rate",
-            value: <CountUp value={data.stats.attachRate} format="percent" decimals={1} />,
+            value: (
+              <CountUp
+                value={data.stats.attachRate}
+                format="percent"
+                decimals={1}
+              />
+            ),
             caption: "of all POs in 12 months",
           },
         ].map((tile) => (
           <KpiTile
             key={tile.label}
             compact
+            mobileFull={"mobileFull" in tile}
             label={tile.label}
             value={tile.value}
             caption={tile.caption}

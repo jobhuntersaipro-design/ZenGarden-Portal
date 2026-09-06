@@ -1,9 +1,14 @@
 "use client";
 
 import { usePathname, useSearchParams } from "next/navigation";
-import { pickMeasure, type SalesMeasure, type SalesSeries } from "@/lib/analytics/sales";
+import {
+  pickMeasure,
+  type SalesMeasure,
+  type SalesSeries,
+} from "@/lib/analytics/sales";
 import { SalesLineChart } from "@/components/dashboard/SalesLineChart";
 import { ChoiceButton } from "@/components/portal/ChoiceButton";
+import { SegmentGroup } from "@/components/portal/SegmentGroup";
 import { CountUp } from "@/components/portal/CountUp";
 import { usePendingChoice } from "@/hooks/usePendingChoice";
 
@@ -52,14 +57,11 @@ export function SalesCard({
             {units ? ` units ${across}` : ` ${across}`}
           </h2>
           <p className="mt-xxs text-[length:var(--text-caption)] text-ink-tertiary">
-            Totals per period · hover a point for the value
+            Totals per period · tap or hover a point for the value
           </p>
         </div>
 
-        <div
-          className="flex overflow-hidden rounded-sm border border-hairline"
-          aria-busy={measures.pending || undefined}
-        >
+        <SegmentGroup label="Measure" hideLabel busy={measures.pending}>
           {(
             [
               ["sales", "Sales"],
@@ -77,7 +79,7 @@ export function SalesCard({
               {label}
             </ChoiceButton>
           ))}
-        </div>
+        </SegmentGroup>
       </div>
 
       <div className="mt-lg">

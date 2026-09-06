@@ -2,9 +2,14 @@
 
 import { useState } from "react";
 import { usePathname, useSearchParams } from "next/navigation";
-import { AGGREGATIONS, RANGE_PRESETS, type RangePreset } from "@/lib/analytics/range";
+import {
+  AGGREGATIONS,
+  RANGE_PRESETS,
+  type RangePreset,
+} from "@/lib/analytics/range";
 import type { Aggregation } from "@/lib/dates";
 import { ChoiceButton } from "@/components/portal/ChoiceButton";
+import { SegmentGroup } from "@/components/portal/SegmentGroup";
 import { UpdatingHint } from "@/components/portal/UpdatingHint";
 import { usePendingChoice } from "@/hooks/usePendingChoice";
 import { useUrlNavigation } from "@/hooks/useUrlNavigation";
@@ -78,7 +83,9 @@ export function RangeControls({
           type="button"
           aria-expanded={customOpen}
           onClick={() => setCustomOpen((open) => !open)}
-          className="ml-auto text-[length:var(--text-body-sm)] text-brand-link underline-offset-2 hover:underline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary"
+          // `inline-flex` + a touch-height minimum: as a bare text button this
+          // was a 21px tap target (2026-09-06 review, A7).
+          className="ml-auto inline-flex min-h-control-md items-center rounded-xxs text-[length:var(--text-body-sm)] text-brand-link underline-offset-2 hover:underline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-focus sm:min-h-0"
         >
           {customOpen ? "Hide custom range" : "Custom range"}
         </button>
@@ -98,7 +105,7 @@ export function RangeControls({
               onChange={(event) =>
                 set({ from: event.target.value, to, preset: null })
               }
-              className="h-control-md rounded-sm border border-hairline-strong bg-transparent px-xs text-[length:var(--text-body-sm)] text-ink focus-visible:border-primary focus-visible:outline-2 focus-visible:outline-primary"
+              className="h-control-md rounded-sm border border-hairline-strong bg-transparent px-xs text-[length:var(--text-body-sm)] text-ink focus-visible:border-focus focus-visible:outline-2 focus-visible:outline-focus"
             />
             <span className="text-[length:var(--text-caption)] text-ink-tertiary">
               to
@@ -114,7 +121,7 @@ export function RangeControls({
               onChange={(event) =>
                 set({ from, to: event.target.value, preset: null })
               }
-              className="h-control-md rounded-sm border border-hairline-strong bg-transparent px-xs text-[length:var(--text-body-sm)] text-ink focus-visible:border-primary focus-visible:outline-2 focus-visible:outline-primary"
+              className="h-control-md rounded-sm border border-hairline-strong bg-transparent px-xs text-[length:var(--text-body-sm)] text-ink focus-visible:border-focus focus-visible:outline-2 focus-visible:outline-focus"
             />
           </div>
         ) : null}
@@ -129,31 +136,23 @@ export function RangeControls({
           <UpdatingHint />
         </p>
 
-        <div className="flex items-center gap-xs">
-          <span className="font-mono text-[length:var(--text-eyebrow)] text-ink-tertiary">
-            Aggregate
-          </span>
-          <div
-            className="flex overflow-hidden rounded-sm border border-hairline"
-            aria-busy={aggs.pending || undefined}
-          >
-            {AGGREGATIONS.map((option) => (
-              <ChoiceButton
-                key={option.value}
-                look="segment"
-                compact
-                selected={aggs.value === option.value}
-                pending={aggs.isPending(option.value)}
-                dimmed={aggs.pending && !aggs.isPending(option.value)}
-                onClick={() =>
-                  aggs.choose(option.value, hrefFor({ agg: option.value }))
-                }
-              >
-                {option.label}
-              </ChoiceButton>
-            ))}
-          </div>
-        </div>
+        <SegmentGroup label="Aggregate" busy={aggs.pending}>
+          {AGGREGATIONS.map((option) => (
+            <ChoiceButton
+              key={option.value}
+              look="segment"
+              compact
+              selected={aggs.value === option.value}
+              pending={aggs.isPending(option.value)}
+              dimmed={aggs.pending && !aggs.isPending(option.value)}
+              onClick={() =>
+                aggs.choose(option.value, hrefFor({ agg: option.value }))
+              }
+            >
+              {option.label}
+            </ChoiceButton>
+          ))}
+        </SegmentGroup>
       </div>
     </div>
   );

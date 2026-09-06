@@ -7,6 +7,7 @@ import { Input } from "@/components/ui/input";
 import { PRODUCT_CATEGORIES } from "@/lib/product-categories";
 import type { ProductFilter, ProductSortKey } from "@/lib/queries/products";
 import { ChoiceButton } from "@/components/portal/ChoiceButton";
+import { SegmentGroup } from "@/components/portal/SegmentGroup";
 import { UpdatingHint } from "@/components/portal/UpdatingHint";
 import { usePendingChoice } from "@/hooks/usePendingChoice";
 import { useUrlNavigation } from "@/hooks/useUrlNavigation";
@@ -103,7 +104,7 @@ export function ProductToolbar({
                 SEARCH_DEBOUNCE_MS,
               );
             }}
-            className="h-control-sm w-72 pl-xl"
+            className="h-control-md sm:h-control-sm w-72 pl-xl"
           />
         </div>
 
@@ -111,7 +112,7 @@ export function ProductToolbar({
           aria-label="Category"
           value={searchParams.get("category") ?? ""}
           onChange={(event) => write({ category: event.target.value })}
-          className="h-control-sm rounded-sm border border-hairline-strong bg-transparent px-xs text-[length:var(--text-body-sm)] text-ink focus-visible:border-primary focus-visible:outline-2 focus-visible:outline-primary"
+          className="h-control-md sm:h-control-sm rounded-sm border border-hairline-strong bg-transparent px-xs text-[length:var(--text-body-sm)] text-ink focus-visible:border-focus focus-visible:outline-2 focus-visible:outline-focus"
         >
           <option value="">All categories</option>
           {PRODUCT_CATEGORIES.map((category) => (
@@ -121,42 +122,36 @@ export function ProductToolbar({
           ))}
         </select>
 
-        <div className="flex items-center gap-xs">
-          <span className="font-mono text-[length:var(--text-eyebrow)] text-ink-tertiary">
-            Sort
-          </span>
-          <div
-            className="flex overflow-hidden rounded-sm border border-hairline"
-            aria-busy={sorts.pending || undefined}
-          >
-            {SORTS.map((option) => (
-              <ChoiceButton
-                key={option.value}
-                look="segment"
-                selected={sorts.value === option.value}
-                pending={sorts.isPending(option.value)}
-                dimmed={sorts.pending && !sorts.isPending(option.value)}
-                // Writes the same ?sort= the table headers write, so the two
-                // controls share one piece of state and stay in step.
-                onClick={() =>
-                  sorts.choose(
-                    option.value,
-                    hrefFor({
-                      sort: option.value,
-                      dir: option.value === "name" ? "asc" : "desc",
-                    }),
-                  )
-                }
-              >
-                {option.label}
-              </ChoiceButton>
-            ))}
-          </div>
-        </div>
+        <SegmentGroup label="Sort" busy={sorts.pending}>
+          {SORTS.map((option) => (
+            <ChoiceButton
+              key={option.value}
+              look="segment"
+              selected={sorts.value === option.value}
+              pending={sorts.isPending(option.value)}
+              dimmed={sorts.pending && !sorts.isPending(option.value)}
+              // Writes the same ?sort= the table headers write, so the two
+              // controls share one piece of state and stay in step.
+              onClick={() =>
+                sorts.choose(
+                  option.value,
+                  hrefFor({
+                    sort: option.value,
+                    dir: option.value === "name" ? "asc" : "desc",
+                  }),
+                )
+              }
+            >
+              {option.label}
+            </ChoiceButton>
+          ))}
+        </SegmentGroup>
 
-        <div
-          className="ml-auto flex overflow-hidden rounded-sm border border-hairline"
-          aria-busy={views.pending || undefined}
+        <SegmentGroup
+          label="View"
+          hideLabel
+          busy={views.pending}
+          className="ml-auto"
         >
           {(
             [
@@ -176,7 +171,7 @@ export function ProductToolbar({
               {label}
             </ChoiceButton>
           ))}
-        </div>
+        </SegmentGroup>
       </div>
 
       <div className="flex flex-wrap items-center justify-between gap-sm">
@@ -192,7 +187,9 @@ export function ProductToolbar({
               selected={filters.value === chip.value}
               pending={filters.isPending(chip.value)}
               dimmed={filters.pending && !filters.isPending(chip.value)}
-              onClick={() => filters.choose(chip.value, hrefFor({ filter: chip.value }))}
+              onClick={() =>
+                filters.choose(chip.value, hrefFor({ filter: chip.value }))
+              }
             >
               {chip.label}
             </ChoiceButton>

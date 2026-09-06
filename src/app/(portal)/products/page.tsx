@@ -2,11 +2,7 @@ import type { Metadata } from "next";
 import { Role } from "@/generated/prisma/enums";
 import { PageHeader } from "@/components/portal/PageHeader";
 import { TablePagination } from "@/components/portal/TablePagination";
-import {
-  KpiMoney,
-  KpiNumber,
-  KpiTile,
-} from "@/components/dashboard/KpiTile";
+import { KpiMoney, KpiNumber, KpiTile } from "@/components/dashboard/KpiTile";
 import { AttentionTile } from "@/components/products/AttentionTile";
 import { ProductSheet } from "@/components/products/ProductSheet";
 import { Button } from "@/components/ui/button";
@@ -115,7 +111,7 @@ export default async function ProductsPage({
         }
       />
 
-      <div className="mb-lg grid gap-md sm:grid-cols-2 lg:grid-cols-4">
+      <div className="mb-lg grid grid-cols-2 gap-md lg:grid-cols-4">
         <KpiTile
           compact
           label="Products"
@@ -124,6 +120,7 @@ export default async function ProductsPage({
         />
         <KpiTile
           compact
+          mobileFull
           label="Revenue · 12 months"
           value={<KpiMoney value={all.revenue} />}
           caption={`${Math.round(all.units).toLocaleString("en-MY")} units sold`}
@@ -161,7 +158,7 @@ export default async function ProductsPage({
             No products match.
           </p>
         ) : (
-          <div className="grid gap-md sm:grid-cols-2 lg:grid-cols-4">
+          <div className="grid grid-cols-2 gap-md lg:grid-cols-4">
             {paged.map((product) => (
               <ProductCard
                 key={product.id}

@@ -88,8 +88,10 @@ export function AttentionStrip({
               title={empty ? "Nothing to fix here" : undefined}
               aria-pressed={selected}
               onClick={() => toggle(column.value)}
-              className={`p-lg text-left transition-colors focus-visible:outline-2 -outline-offset-2 focus-visible:outline-primary ${
-                selected ? "bg-surface-soft ring-1 ring-inset ring-hairline-strong" : ""
+              className={`p-lg text-left transition-colors focus-visible:outline-2 -outline-offset-2 focus-visible:outline-focus ${
+                selected
+                  ? "bg-surface-soft ring-1 ring-inset ring-hairline-strong"
+                  : ""
               } ${empty ? "cursor-default" : "hover:bg-surface"}`}
             >
               <span

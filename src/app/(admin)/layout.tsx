@@ -26,7 +26,11 @@ const initials = (name: string) =>
  * super admin. This check runs anyway — the proxy reads a JWT that can be up
  * to five minutes stale, and this one runs the `jwt` callback.
  */
-export default async function AdminLayout({ children }: { children: ReactNode }) {
+export default async function AdminLayout({
+  children,
+}: {
+  children: ReactNode;
+}) {
   const user = await getSessionUser();
   if (!user) redirect("/signin?next=/admin");
   if (user.role !== Role.SUPER_ADMIN) redirect("/");
@@ -44,7 +48,7 @@ export default async function AdminLayout({ children }: { children: ReactNode })
             </span>
             <Link
               href="/"
-              className="ml-auto text-[length:var(--text-body-sm)] text-brand-link underline-offset-2 hover:underline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary"
+              className="ml-auto text-[length:var(--text-body-sm)] text-brand-link underline-offset-2 hover:underline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-focus"
             >
               ‹ Back to portal
             </Link>

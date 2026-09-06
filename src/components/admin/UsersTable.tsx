@@ -86,7 +86,10 @@ export function UsersTable({
             </AvatarFallback>
           </Avatar>
           <span className="min-w-0">
-            <span title={row.name} className="block truncate font-medium text-ink">
+            <span
+              title={row.name}
+              className="block truncate font-medium text-ink"
+            >
               {row.name}
             </span>
             <span
@@ -129,7 +132,7 @@ export function UsersTable({
           <button
             type="button"
             onClick={() => setResetting(row)}
-            className="text-[length:var(--text-caption)] text-brand-link underline-offset-2 hover:underline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary"
+            className="text-[length:var(--text-caption)] text-brand-link underline-offset-2 hover:underline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-focus"
           >
             Reset password
           </button>
@@ -151,7 +154,7 @@ export function UsersTable({
         <button
           type="button"
           onClick={() => openDrawer(row.id)}
-          className="text-[length:var(--text-caption)] text-brand-link underline-offset-2 hover:underline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary"
+          className="text-[length:var(--text-caption)] text-brand-link underline-offset-2 hover:underline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-focus"
         >
           Edit
         </button>
@@ -160,7 +163,9 @@ export function UsersTable({
   ];
 
   const openUser =
-    openUserId === "new" ? null : (users.find((u) => u.id === openUserId) ?? null);
+    openUserId === "new"
+      ? null
+      : (users.find((u) => u.id === openUserId) ?? null);
 
   return (
     <>
@@ -174,7 +179,7 @@ export function UsersTable({
               setQuery(event.target.value);
               write({ q: event.target.value });
             }}
-            className="h-control-sm w-64"
+            className="h-control-md sm:h-control-sm w-64"
           />
           <div className="flex flex-wrap items-center gap-xxs">
             {STATUSES.map((option) => (
@@ -183,9 +188,11 @@ export function UsersTable({
                 type="button"
                 aria-pressed={status === option.value}
                 onClick={() =>
-                  write({ status: option.value === "all" ? null : option.value })
+                  write({
+                    status: option.value === "all" ? null : option.value,
+                  })
                 }
-                className={`h-control-sm rounded-pill px-md text-[length:var(--text-caption)] transition-colors focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary ${
+                className={`h-control-md sm:h-control-sm rounded-pill px-md text-[length:var(--text-caption)] transition-colors focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-focus ${
                   status === option.value
                     ? "bg-ink text-canvas"
                     : "bg-surface-soft text-ink-secondary hover:text-ink"

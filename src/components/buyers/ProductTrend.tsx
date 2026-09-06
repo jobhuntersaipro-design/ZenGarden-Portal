@@ -20,7 +20,12 @@ import {
   useLabelStep,
   valueLabel,
 } from "@/components/charts/labels";
-import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { ChartScroller } from "@/components/charts/ChartScroller";
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from "@/components/ui/popover";
 import { SHARE_VARS, cssVar } from "@/lib/analytics/palette";
 import type { ProductTrendPoint } from "@/lib/analytics/product-trend";
 import { Spinner } from "@/components/portal/Spinner";
@@ -32,7 +37,8 @@ const MAX_PRODUCTS = 6;
 
 export type ProductOption = { id: string; name: string; spend: number };
 
-const colorFor = (index: number) => cssVar(SHARE_VARS[index % SHARE_VARS.length]);
+const colorFor = (index: number) =>
+  cssVar(SHARE_VARS[index % SHARE_VARS.length]);
 
 /**
  * Colour follows the product, not its rank among the currently selected ones.
@@ -63,7 +69,8 @@ export function ProductTrend({
   const longest = points.reduce(
     (max, point) =>
       selected.reduce(
-        (inner, id) => Math.max(inner, formatUnits(Number(point[id] ?? 0)).length),
+        (inner, id) =>
+          Math.max(inner, formatUnits(Number(point[id] ?? 0)).length),
         max,
       ),
     0,
@@ -73,7 +80,8 @@ export function ProductTrend({
   const write = (next: string[], id: string) => {
     // Trailing holes carry no assignment, so they are dropped.
     const trimmed = [...next];
-    while (trimmed.length > 0 && trimmed[trimmed.length - 1] === "") trimmed.pop();
+    while (trimmed.length > 0 && trimmed[trimmed.length - 1] === "")
+      trimmed.pop();
 
     const params = new URLSearchParams(searchParams.toString());
     if (trimmed.length === 0) params.delete("products");
@@ -128,11 +136,14 @@ export function ProductTrend({
         </div>
 
         <Popover onOpenChange={(open) => !open && setCapWarning(false)}>
-          <PopoverTrigger className="flex h-control-md items-center gap-xs rounded-sm border border-hairline-strong bg-canvas px-sm text-[length:var(--text-body-sm)] text-ink focus-visible:border-primary focus-visible:outline-2 focus-visible:outline-primary">
+          <PopoverTrigger className="flex h-control-md items-center gap-xs rounded-sm border border-hairline-strong bg-canvas px-sm text-[length:var(--text-body-sm)] text-ink focus-visible:border-focus focus-visible:outline-2 focus-visible:outline-focus">
             <span className="max-w-56 truncate" title={label}>
               {label}
             </span>
-            <ChevronsUpDown className="size-4 shrink-0 text-ink-tertiary" aria-hidden />
+            <ChevronsUpDown
+              className="size-4 shrink-0 text-ink-tertiary"
+              aria-hidden
+            />
           </PopoverTrigger>
           <PopoverContent align="end" className="w-picker p-md shadow-md">
             <p
@@ -152,7 +163,7 @@ export function ProductTrend({
                     <button
                       type="button"
                       onClick={() => toggle(product.id)}
-                      className={`flex w-full items-center gap-xs rounded-sm px-xs py-xxs text-left hover:bg-surface focus-visible:outline-2 focus-visible:outline-primary ${full ? "text-ink-disabled" : "text-ink"}`}
+                      className={`flex w-full items-center gap-xs rounded-sm px-xs py-xxs text-left hover:bg-surface focus-visible:outline-2 focus-visible:outline-focus ${full ? "text-ink-disabled" : "text-ink"}`}
                     >
                       <span
                         aria-hidden
@@ -193,73 +204,90 @@ export function ProductTrend({
         </Popover>
       </div>
 
-      <div className="mt-lg h-72 w-full">
+      <div className="mt-lg">
         {selected.length === 0 ? (
           <p className="py-xl text-center text-[length:var(--text-body-sm)] text-ink-secondary">
             Pick a product to see its trend.
           </p>
         ) : (
-          <ResponsiveContainer onResize={labels.onResize}>
-            <LineChart data={points} margin={{ top: 16, right: 16 }}>
-              <CartesianGrid vertical={false} stroke="var(--color-hairline)" />
-              <XAxis
-                dataKey="label"
-                tickLine={false}
-                axisLine={false}
-                padding={{ left: 24, right: 24 }}
-                interval={Math.max(0, Math.ceil(points.length / 12) - 1)}
-                tick={{ fill: "var(--color-ink-tertiary)", fontSize: LABEL_FONT_SIZE }}
-              />
-              {/* Units, never money, so products of different price stay
-                  comparable — and one axis, never two. */}
-              <YAxis
-                allowDecimals={false}
-                tickLine={false}
-                axisLine={false}
-                width={40}
-                tick={{ fill: "var(--color-ink-tertiary)", fontSize: LABEL_FONT_SIZE }}
-              />
-              <Tooltip
-                contentStyle={{
-                  backgroundColor: "var(--color-ink)",
-                  border: "none",
-                  borderRadius: 12,
-                  color: "var(--color-canvas)",
-                  fontSize: 12,
-                }}
-                formatter={(value, key) => [
-                  `${Number(value ?? 0)} units`,
-                  products.find((product) => product.id === String(key))?.name ??
-                    String(key),
-                ]}
-              />
-              {slots.map((id, index) =>
-                id === "" ? null : (
-                <Line
-                  key={id}
-                  type="linear"
-                  dataKey={id}
-                  stroke={colorFor(index)}
-                  strokeWidth={2}
-                  {...CHART_ANIMATION}
-                  dot={{ r: 4, strokeWidth: 2, stroke: "var(--color-surface)" }}
-                >
-                  <LabelList
-                    dataKey={id}
-                    content={valueLabel(
-                      formatUnits,
-                      labelledIndices(
-                        points.map((point) => Number(point[id] ?? 0)),
-                        labels.step,
-                      ),
-                      10,
-                    )}
+          <ChartScroller buckets={points.length} axisWidth={128} fade="surface">
+            <div className="h-72 w-full">
+              <ResponsiveContainer onResize={labels.onResize}>
+                <LineChart data={points} margin={{ top: 16, right: 16 }}>
+                  <CartesianGrid
+                    vertical={false}
+                    stroke="var(--color-hairline)"
                   />
-                </Line>
-                ),
-              )}
-            </LineChart>
-          </ResponsiveContainer>
+                  <XAxis
+                    dataKey="label"
+                    tickLine={false}
+                    axisLine={false}
+                    padding={{ left: 24, right: 24 }}
+                    interval={Math.max(0, Math.ceil(points.length / 12) - 1)}
+                    tick={{
+                      fill: "var(--color-ink-tertiary)",
+                      fontSize: LABEL_FONT_SIZE,
+                    }}
+                  />
+                  {/* Units, never money, so products of different price stay
+                  comparable — and one axis, never two. */}
+                  <YAxis
+                    allowDecimals={false}
+                    tickLine={false}
+                    axisLine={false}
+                    width={40}
+                    tick={{
+                      fill: "var(--color-ink-tertiary)",
+                      fontSize: LABEL_FONT_SIZE,
+                    }}
+                  />
+                  <Tooltip
+                    contentStyle={{
+                      backgroundColor: "var(--color-ink)",
+                      border: "none",
+                      borderRadius: 12,
+                      color: "var(--color-canvas)",
+                      fontSize: 12,
+                    }}
+                    formatter={(value, key) => [
+                      `${Number(value ?? 0)} units`,
+                      products.find((product) => product.id === String(key))
+                        ?.name ?? String(key),
+                    ]}
+                  />
+                  {slots.map((id, index) =>
+                    id === "" ? null : (
+                      <Line
+                        key={id}
+                        type="linear"
+                        dataKey={id}
+                        stroke={colorFor(index)}
+                        strokeWidth={2}
+                        {...CHART_ANIMATION}
+                        dot={{
+                          r: 4,
+                          strokeWidth: 2,
+                          stroke: "var(--color-surface)",
+                        }}
+                      >
+                        <LabelList
+                          dataKey={id}
+                          content={valueLabel(
+                            formatUnits,
+                            labelledIndices(
+                              points.map((point) => Number(point[id] ?? 0)),
+                              labels.step,
+                            ),
+                            10,
+                          )}
+                        />
+                      </Line>
+                    ),
+                  )}
+                </LineChart>
+              </ResponsiveContainer>
+            </div>
+          </ChartScroller>
         )}
       </div>
 

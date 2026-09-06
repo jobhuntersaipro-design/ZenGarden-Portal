@@ -15,6 +15,16 @@
 @theme {
   /* Brand */
   --color-primary: #7612fa;
+  /* The same purple under a name that survives.
+     `--color-primary` is re-declared by the `@theme inline` block below as
+     `var(--primary)`, and `:root` sets `--primary` to ink — so from Phase 01
+     until the 2026-09-06 UI review every `outline-primary` focus ring in the
+     app resolved to #292d34, not the purple the design system specifies
+     (verified in the browser: `--color-primary` computes to #292d34).
+     Ink is the *right* answer for `bg-primary` — the ClickUp primary CTA is
+     the dark pill, never purple — so the rebinding stays and the focus ring
+     gets its own token instead. `--color-focus` is not in that block. */
+  --color-focus: #7612fa;
   --color-primary-deep: #4a2fff;
   --color-primary-soft: #b38cff;
   --color-brand-link: #7b68ee;
@@ -444,7 +454,7 @@
   --destructive: var(--color-accent-red);
   --border: var(--color-hairline);
   --input: var(--color-hairline-strong);
-  --ring: var(--color-primary);                /* 2px purple focus ring */
+  --ring: var(--color-focus);                  /* 2px purple focus ring */
   --radius: var(--radius-sm);                  /* 9px inputs and secondary buttons */
 
   /* Sidebar primitives inherit the same tokens; the product has one surface set. */

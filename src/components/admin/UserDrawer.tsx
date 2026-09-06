@@ -126,7 +126,7 @@ export function UserDrawer({
               id="user-role"
               value={form.role}
               onChange={(event) => set("role", event.target.value as Role)}
-              className="h-control-md rounded-sm border border-hairline-strong bg-transparent px-xs text-[length:var(--text-body-sm)] text-ink focus-visible:border-primary focus-visible:outline-2 focus-visible:outline-primary"
+              className="h-control-md rounded-sm border border-hairline-strong bg-transparent px-xs text-[length:var(--text-body-sm)] text-ink focus-visible:border-focus focus-visible:outline-2 focus-visible:outline-focus"
             >
               <option value={Role.MEMBER}>Member</option>
               <option value={Role.SUPER_ADMIN}>Super admin</option>
@@ -242,7 +242,10 @@ export function UserDrawer({
                 Type {user.email} to confirm
               </p>
               <DialogFooter>
-                <Button variant="secondary" onClick={() => setConfirmDelete(false)}>
+                <Button
+                  variant="secondary"
+                  onClick={() => setConfirmDelete(false)}
+                >
                   Cancel
                 </Button>
                 <Button
