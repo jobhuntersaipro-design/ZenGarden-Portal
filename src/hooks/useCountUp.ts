@@ -5,7 +5,17 @@ import { useEffect, useRef, useState } from "react";
 /** The duration the 2026-09-06 brief asked for. */
 export const COUNT_UP_MS = 2000;
 
-const easeOutCubic = (progress: number) => 1 - (1 - progress) ** 3;
+/**
+ * Ease-out quadratic: quick off the mark, decelerating to the target.
+ *
+ * Cubic was the first choice and it was too aggressive to read as motion. It
+ * puts 89% of the distance in the first second of a two-second run, so the
+ * figure sprints, arrives, and then dithers in its last digits for a second —
+ * which looks stalled rather than slowing. The square covers 75% by the
+ * halfway mark and still moves ~6% of the range through the final quarter
+ * second, so the deceleration is visible for the whole two seconds.
+ */
+const easeOut = (progress: number) => 1 - (1 - progress) ** 2;
 
 const reducedMotion = () =>
   typeof window !== "undefined" &&
@@ -63,7 +73,7 @@ export function useCountUp(value: number, duration = COUNT_UP_MS): number {
       if (startedAt === 0) startedAt = now;
       const progress = span === 0 ? 1 : Math.min(1, (now - startedAt) / span);
       const next =
-        progress === 1 ? value : from + (value - from) * easeOutCubic(progress);
+        progress === 1 ? value : from + (value - from) * easeOut(progress);
       shown.current = next;
       setDisplay(next);
       if (progress < 1) frame = requestAnimationFrame(tick);

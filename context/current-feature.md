@@ -29,6 +29,13 @@ one round of questions (every recommended pick taken):
   after mount; a range change continues from the frame on screen rather than
   restarting at zero; and `prefers-reduced-motion` skips it. Verified on a hard load:
   true value painted at 515 ms, zero at 648 ms, 194 frames, settled at 2543 ms.
+- **Easing.** The first build used an ease-out cubic, which put 89% of the distance
+  in the first second of a two-second run: the figure sprinted, arrived, then dithered
+  in its last digits: motion for one second and a frozen second after it. The curve is
+  now an ease-out **quadratic** — 50% of the distance in the first quarter of the time
+  (against 25% for a linear ramp), 78% by the halfway mark, and still ~6% of the range
+  moving through the final half second, so the deceleration is legible for the whole
+  two seconds. Duration constant 2000 ms; measured 1.9 s in the browser.
 - The donut ring keeps one grey "Other" arc while the list is open. Unfolding it into
   arcs would need hues past the six the palette validates, which is the rule the fold
   exists to protect.

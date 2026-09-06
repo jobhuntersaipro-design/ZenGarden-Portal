@@ -199,7 +199,9 @@ Nothing above the fold is a donut.
 > single-metric card headings count up over **2s**, reinstating the rule below
 > after its 2026-09-06 removal — the server value is the initial state and the
 > first paint, the count runs after mount, a range change continues from the
-> frame on screen, and `prefers-reduced-motion` skips it. Donut legends link
+> frame on screen, and `prefers-reduced-motion` skips it. The curve is an
+> ease-out quadratic: cubic front-loaded so hard that the second half of the
+> run read as frozen rather than slowing. Donut legends link
 > every named slice to its detail page and "Other (n)" unfolds in place, its
 > members sharing percentages of the whole; the ring keeps one grey Other arc.
 > The sidebar is `sticky top-0`, so it fills the screen at every scroll offset.
