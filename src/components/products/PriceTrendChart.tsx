@@ -1,6 +1,6 @@
 "use client";
 
-import { usePathname, useRouter, useSearchParams } from "next/navigation";
+import { usePathname, useSearchParams } from "next/navigation";
 import {
   CartesianGrid,
   Line,
@@ -13,6 +13,7 @@ import {
 } from "recharts";
 import type { PricePoint } from "@/lib/analytics/products";
 import { formatMYR } from "@/lib/money";
+import { useUrlNavigation } from "@/hooks/useUrlNavigation";
 
 export type TrendMode = "price" | "units";
 
@@ -52,14 +53,14 @@ export function PriceTrendChart({
   listPrice: number;
   mode: TrendMode;
 }) {
-  const router = useRouter();
+  const { replace } = useUrlNavigation();
   const pathname = usePathname();
   const searchParams = useSearchParams();
 
   const select = (next: TrendMode) => {
     const params = new URLSearchParams(searchParams.toString());
     params.set("trend", next);
-    router.replace(`${pathname}?${params.toString()}`, { scroll: false });
+    replace(`${pathname}?${params.toString()}`);
   };
 
   const sold = points.filter((point) => point.avgBilled !== null);

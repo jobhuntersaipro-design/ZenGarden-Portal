@@ -1,11 +1,13 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import { usePathname, useRouter, useSearchParams } from "next/navigation";
+import { usePathname, useSearchParams } from "next/navigation";
 import { LayoutGrid, List, Search } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { PRODUCT_CATEGORIES } from "@/lib/product-categories";
 import type { ProductFilter, ProductSortKey } from "@/lib/queries/products";
+import { UpdatingHint } from "@/components/portal/UpdatingHint";
+import { useUrlNavigation } from "@/hooks/useUrlNavigation";
 
 export type ProductView = "grid" | "list";
 
@@ -40,7 +42,7 @@ export function ProductToolbar({
   sortKey: ProductSortKey;
   summary: string;
 }) {
-  const router = useRouter();
+  const { replace } = useUrlNavigation();
   const pathname = usePathname();
   const searchParams = useSearchParams();
   const [query, setQuery] = useState(searchParams.get("q") ?? "");
@@ -60,10 +62,7 @@ export function ProductToolbar({
       else params.set(key, value);
     }
     params.delete("page");
-    router.replace(
-      params.toString() ? `${pathname}?${params.toString()}` : pathname,
-      { scroll: false },
-    );
+    replace(params.toString() ? `${pathname}?${params.toString()}` : pathname);
   };
 
   const chooseView = (next: ProductView) => {
@@ -198,6 +197,10 @@ export function ProductToolbar({
             a different one whenever a filter is on. */}
         <p className="text-[length:var(--text-body-sm)] text-ink-secondary">
           {summary}
+          {/* The summary claims a count and a total. While the server is
+              recomputing them that claim is stale, so it says so here rather
+              than letting the figures move under the reader (brief G1). */}
+          <UpdatingHint />
         </p>
       </div>
     </div>

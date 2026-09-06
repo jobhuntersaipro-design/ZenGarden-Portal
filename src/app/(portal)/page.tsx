@@ -6,8 +6,8 @@ import { ChurnList } from "@/components/dashboard/ChurnList";
 import { DonutShare } from "@/components/dashboard/DonutShare";
 import { InRangeGrid } from "@/components/dashboard/InRangeGrid";
 import {
-  CountUpMoney,
-  CountUpNumber,
+  KpiMoney,
+  KpiNumber,
   KpiTile,
 } from "@/components/dashboard/KpiTile";
 import { MoreAnalytics } from "@/components/dashboard/MoreAnalytics";
@@ -109,7 +109,7 @@ export default async function DashboardPage({
         <KpiTile
           wide
           label="Total sales"
-          value={<CountUpMoney value={data.kpis.totalSales} />}
+          value={<KpiMoney value={data.kpis.totalSales} />}
           caption={
             data.kpis.deltaPercent === null ? (
               <span className="text-ink-tertiary">No prior period to compare</span>
@@ -127,7 +127,7 @@ export default async function DashboardPage({
         />
         <KpiTile
           label="Purchase orders"
-          value={<CountUpNumber value={data.kpis.orderCount} />}
+          value={<KpiNumber value={data.kpis.orderCount} />}
           caption={`${formatMYR(data.kpis.averageOrder.toFixed(2))} average`}
         />
         <KpiTile
@@ -137,7 +137,9 @@ export default async function DashboardPage({
               <Link
                 href={`/buyers/${data.kpis.topBuyer.id}`}
                 title={data.kpis.topBuyer.name}
-                className="block truncate text-[length:var(--text-heading-md)] tracking-[-0.91px] hover:text-brand-link hover:underline"
+                // Two lines before it clips, so a buyer's name is readable
+                // rather than "Northwind Tr…" (brief G3).
+                className="block line-clamp-2 text-[length:var(--text-heading-md)] leading-tight tracking-[-0.91px] hover:text-brand-link hover:underline"
               >
                 {data.kpis.topBuyer.name}
               </Link>
@@ -168,35 +170,33 @@ export default async function DashboardPage({
 
       {/* 3. The backlog, directly under the trend. */}
       <section className="mt-lg grid gap-lg rounded-lg border border-hairline bg-canvas p-lg lg:grid-cols-2">
+        {/* Each count is the way into the rows it counts, so the intake
+            backlog leads into the work instead of sitting beside the sales
+            figures as a statistic (brief §2). */}
         <StatusBar
           eyebrow="Status breakdown · intake"
           caption={`${data.kpis.orderCount} purchase orders`}
-          segments={[
-            {
-              id: "confirmed",
-              label: "Confirmed",
-              count: data.intake.confirmed,
-              color: cssVar(INTAKE_VARS.confirmed),
-            },
-            {
-              id: "needs-review",
-              label: "Needs review",
-              count: data.intake.needsReview,
-              color: cssVar(INTAKE_VARS.needsReview),
-            },
-            {
-              id: "extracting",
-              label: "Extracting",
-              count: data.intake.extracting,
-              color: cssVar(INTAKE_VARS.extracting),
-            },
-            {
-              id: "failed",
-              label: "Failed",
-              count: data.intake.failed,
-              color: cssVar(INTAKE_VARS.failed),
-            },
-          ]}
+          segments={(
+            [
+              ["confirmed", "Confirmed", data.intake.confirmed, INTAKE_VARS.confirmed],
+              ["needs-review", "Needs review", data.intake.needsReview, INTAKE_VARS.needsReview],
+              ["extracting", "Extracting", data.intake.extracting, INTAKE_VARS.extracting],
+              ["failed", "Failed", data.intake.failed, INTAKE_VARS.failed],
+            ] as const
+          ).map(([id, label, count, tokenVar]) => ({
+            id,
+            label,
+            count,
+            color: cssVar(tokenVar),
+            // Only Confirmed carries the range. The other three are drafts
+            // with no PO date yet, and `listPurchaseOrders` drops the whole
+            // extraction branch the moment a date bound is present — so a
+            // dated link to "Needs review 3" would land on an empty table.
+            href:
+              id === "confirmed"
+                ? `/purchase-orders?status=${id}&from=${from}&to=${to}`
+                : `/purchase-orders?status=${id}`,
+          }))}
         />
         <div className="border-t border-hairline pt-lg lg:border-l lg:border-t-0 lg:pl-lg lg:pt-0">
           <StatusBar
@@ -207,6 +207,9 @@ export default async function DashboardPage({
               label: stageLabel(entry.stage),
               count: entry.count,
               color: cssVar(STAGE_VARS[PO_STAGES.indexOf(entry.stage)]),
+              // Only confirmed orders have a stage, so the status is pinned
+              // too — the list disables its stage filter otherwise.
+              href: `/purchase-orders?status=confirmed&stage=${entry.stage}&from=${from}&to=${to}`,
             }))}
           />
         </div>

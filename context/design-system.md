@@ -91,7 +91,7 @@ colors:
   ink-deep: "#202020"
   ink-darkest: "#090c1d"
   ink-secondary: "#646464"
-  ink-tertiary: "#838383"
+  ink-tertiary: "#6f6f6f"   # was #838383 — see the note below
   ink-disabled: "#b4b4b4"
   shadow-indigo: "#122ba5"
   shadow-navy: "#1b1754"
@@ -380,7 +380,8 @@ Page rhythm leans on a **workspace-app tile grid** rather than atmospheric color
 - **Surface soft (`#e9ebf0`)** — frequency 529. Used as bg (510), border (10), text (8). The light tile background carrying app-grid chips, secondary buttons, and the lighter strip dividers between hero sections.
 - **Ink secondary (`#646464`)** — frequency 201. Used as text (108), border (91), bg (2). Mapped to `--Core-Text-Secondary`; carries dimmed copy, nav-link inactive states, and footer labels.
 - **Brand link lavender (`#7b68ee`)** — frequency 46. Used as text (25), border (21). The `--color-brand-clickup` and `--color-link` value; scoped to inline links, "Learn more" affordances, and footer accent dots — never a button background.
-- **Ink tertiary (`#838383`)** — frequency 142. Used as text (71), border (71). Mapped to `--Core-Text-Tertiary`; the third tier of the warm-gray ramp for meta labels and caption copy.
+- **Ink tertiary (`#6f6f6f`, ClickUp `#838383`)** — frequency 142. Used as text (71), border (71). Mapped to `--Core-Text-Tertiary`; the third tier of the warm-gray ramp for meta labels and caption copy.
+  **Product deviation (2026-09-06 UI review, G4).** ClickUp's `#838383` reads 3.79:1 on canvas and 3.60:1 on surface. In this product the token carries every eyebrow, field label and caption — all of them 12-14px body text, which WCAG AA holds to 4.5:1, and the review flagged them as low-contrast on white. The portal ships `#6f6f6f`: 5.02:1 on canvas, 4.77:1 on surface, and still a visible step lighter than ink-secondary `#646464`.
 - **Ink deep (`#202020`)** — frequency 119. Used as text (50), border (54), bg (7). Mapped to `--Core-Text-Main` and `--Core-Button-Primary`; the deepest non-black ink, used for emphasis copy and the hover state of the dark pill CTA.
 - **Ink darkest (`#090c1d`)** — frequency 100. Used as text (50), border (50). A near-black navy used for compressed dark surfaces (the bottom CTA banner border, certain dark-mode product mockups).
 - **Accent blue (`#0091ff`)** — frequency 28. Used as gradient (17), text (5), border (5), shadow (1). The `--Core-Accents-Blue` value; appears in the in-product UI mockups for "Tasks" and "Calendar" tile icons and in the secondary CTA gradient halo.

@@ -1,11 +1,12 @@
 "use client";
 
-import { usePathname, useRouter, useSearchParams } from "next/navigation";
+import { usePathname, useSearchParams } from "next/navigation";
 import { DonutShare } from "@/components/dashboard/DonutShare";
 import { OTHER_VAR, SHARE_VARS, cssVar } from "@/lib/analytics/palette";
 import type { MixMeasure } from "@/lib/analytics/product-mix";
 import type { ShareSlice } from "@/lib/analytics/share";
 import { formatMYR } from "@/lib/money";
+import { useUrlNavigation } from "@/hooks/useUrlNavigation";
 
 const colorFor = (index: number, isOther: boolean) =>
   cssVar(isOther ? OTHER_VAR : SHARE_VARS[index % SHARE_VARS.length]);
@@ -78,14 +79,14 @@ export function WhatTheyBuy({
   heading?: string;
   showMeasureToggle?: boolean;
 }) {
-  const router = useRouter();
+  const { replace } = useUrlNavigation();
   const pathname = usePathname();
   const searchParams = useSearchParams();
 
   const select = (next: MixMeasure) => {
     const params = new URLSearchParams(searchParams.toString());
     params.set("measure", next);
-    router.replace(`${pathname}?${params.toString()}`, { scroll: false });
+    replace(`${pathname}?${params.toString()}`);
   };
 
   return (

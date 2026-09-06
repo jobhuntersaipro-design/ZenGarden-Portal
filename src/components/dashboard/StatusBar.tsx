@@ -1,9 +1,18 @@
+import Link from "next/link";
+
 export type BarSegment = {
   id: string;
   label: string;
   count: number;
   /** A CSS colour — a token var or a `bg-*` class is resolved by the caller. */
   color: string;
+  /**
+   * Where this slice of work lives, if anywhere. The Dashboard's intake and
+   * stage breakdowns are the backlog, and the review found them reading as
+   * decoration beside the sales KPIs — so each legend entry is the way into
+   * the rows it counts (brief §2).
+   */
+  href?: string;
 };
 
 /**
@@ -55,21 +64,38 @@ export function StatusBar({
       </div>
 
       <ul className="flex flex-wrap gap-md">
-        {segments.map((segment) => (
-          <li key={segment.id} className="flex items-center gap-xxs">
-            <span
-              aria-hidden
-              className="size-2.5 shrink-0 rounded-xxs"
-              style={{ backgroundColor: segment.color }}
-            />
-            <span className="text-[length:var(--text-caption)] text-ink-secondary">
-              {segment.label}
-            </span>
-            <span className="tabular-nums text-[length:var(--text-caption)] font-medium text-ink">
-              {segment.count}
-            </span>
-          </li>
-        ))}
+        {segments.map((segment) => {
+          const body = (
+            <>
+              <span
+                aria-hidden
+                className="size-2.5 shrink-0 rounded-xxs"
+                style={{ backgroundColor: segment.color }}
+              />
+              <span className="text-[length:var(--text-caption)] text-ink-secondary">
+                {segment.label}
+              </span>
+              <span className="tabular-nums text-[length:var(--text-caption)] font-medium text-ink">
+                {segment.count}
+              </span>
+            </>
+          );
+
+          return (
+            <li key={segment.id}>
+              {segment.href ? (
+                <Link
+                  href={segment.href}
+                  className="flex items-center gap-xxs rounded-xxs underline-offset-2 hover:underline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary"
+                >
+                  {body}
+                </Link>
+              ) : (
+                <span className="flex items-center gap-xxs">{body}</span>
+              )}
+            </li>
+          );
+        })}
       </ul>
     </div>
   );

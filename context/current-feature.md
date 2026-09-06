@@ -1,35 +1,68 @@
-# Current Feature
+# Current Feature: UI change — loading, back navigation and polish
 
-Phase 09 — Admin (`docs/specs/09-admin.md`)
+`docs/specs/20260906_UI_change.md` — Critiquito design review of the live
+portal, walked through as Aisha Rahman on 2026-09-06.
 
 ## Status
 
-Complete. Merged to `main` 2026-09-06. **Phase 09 is the last phase in the
-spec set** — all nine are now merged.
+In Progress.
 
 ## Goals
 
-- `(admin)` shell with its own top bar; the Phase 02 proxy already 404s
-  non-super-admins and the layout calls `requireSuperAdmin()` as well
-- Pending access requests with approve / decline, wired to the Phase 02 emails
-- Users table with status derivation, filters and the reset-password split:
-  a Google-only user gets an explanation, not a dead link
-- `UserDrawer` with create, update, set password and soft delete
-- The safety rules: no self-demote, no self-disable, never the last active
-  super admin, and delete gated on typing the exact email
+The brief's implementation checklist is the contract:
+
+- **G1 · loading (Must)** — one shared loading language: route-level
+  `loading.tsx` skeletons matching the final layout, an "Updating…" state on
+  every in-place filter/range change, and pending labels on buttons that wait
+  on the network (`Advancing…`).
+- **G1 · no silent revision (Must)** — Dashboard, Buyers and Products must
+  never paint a final-looking headline number that then changes.
+- **G2 · back (Must)** — a discoverable Back control above the title on PO
+  detail, Buyer detail, Product detail and Upload. Breadcrumbs stay; Back is
+  additive. `history.back()` only when the referrer is in-app, otherwise the
+  section list route.
+- **G3 · truncation (Should)** — sidebar email and Dashboard "Top buyer" wrap
+  rather than dead-ending in an ellipsis.
+- **G4 · label contrast (Should)** — secondary label text reaches ~4.5:1.
+- **G5 · table density (Should)** — horizontal scroll inside the table card
+  with a visible affordance, sticky first column, right-aligned money.
+- **G6 · line items (Must)** — Qty and Unit price must not run together
+  (`4 kitRM 3,428.15`).
+- **PO PDF preview error** — keep the message, add `Download original` and
+  `Try preview again` beside it.
+- **Product image error/empty state** — `Image unavailable`, never raw alt
+  text filling the hero.
+- **Upload queue** — `No files yet — drop POs above` before any file, so the
+  queue does not pop in and shift the layout.
 
 ## Notes
 
-- Read `docs/specs/00-master.md` before this phase file.
-- Pending and Invited are **neutral text inside an amber ring**, deliberately
-  distinct from the amber-*text* "Needs review" badge used for PO work (G2).
-- Disabling and setting a password both bump `sessionVersion`, which the Phase
-  02 `jwt` callback compares — that is what actually ends the session.
-- Deletion is a soft delete: the row stays so uploads and stage events keep
-  their attribution.
-- **Inherited, unchanged:** `R2_ACCOUNT_ID` and `ANTHROPIC_API_KEY` are still
-  placeholders. Nothing in this phase depends on either, but Phase 08's image
-  editor remains unbuilt for that reason.
+- **Root cause of "laggy" is the KPI count-up, not a refetch.** The reviewer
+  recorded Dashboard 13 POs / RM 254k → 38 / RM 737k. Both readings are 34% of
+  the final figure: that is `useCountUp` caught mid-animation, not a silent
+  data revision. Buyers 2 → 11 and Products 11 → 12 are the same hook on other
+  tiles. The brief's acceptance criterion — "never final-looking numbers that
+  still change" — cannot be met while a 900 ms count-up runs, so the animation
+  goes and the tiles render their server value only. **This departs from the
+  canvas and from `00-master.md` §4 "Numbers render final, then animate".**
+- The real navigation wait is unaddressed: every portal page is
+  `force-dynamic` with no `loading.tsx` anywhere in `src/app`, so a click
+  shows nothing at all until the server responds. `00-master.md` §4 says
+  "each page ships `loading.tsx` with skeletons" — none was ever built.
+- G4 moves `--color-ink-tertiary` from `#838383` (3.5:1 on white) to a value
+  that clears 4.5:1. That is a design-system token change, so
+  `context/design-system.md` is updated alongside it.
+- Out of scope per the brief: new modules, mobile redesign, rebrand, and
+  renaming the six lifecycle stages.
+- Also built, from the screen-by-screen section rather than the checklist:
+  the Dashboard's intake and stage counts are now links into the rows they
+  count (§2 Hierarchy, Should). Only the Confirmed link carries the date
+  range — drafts have no PO date, and `listPurchaseOrders` drops the whole
+  extraction branch when a date bound is present, so a dated link to
+  "Needs review 3" landed on an empty table until that was fixed.
+- Not built: per-status counts on the PO list chips (§3, Should) — the list
+  query returns `needsReview` alone, and the other three would need a new
+  aggregate; and an Account/Profile link, which the brief marks out of scope.
 
 ## History
 

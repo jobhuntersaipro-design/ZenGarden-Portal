@@ -1,7 +1,8 @@
 "use client";
 
-import { usePathname, useRouter, useSearchParams } from "next/navigation";
+import { usePathname, useSearchParams } from "next/navigation";
 import type { BuyerFilter } from "@/lib/queries/buyers";
+import { useUrlNavigation } from "@/hooks/useUrlNavigation";
 
 type Column = {
   value: Exclude<BuyerFilter, null>;
@@ -23,7 +24,7 @@ export function AttentionStrip({
   active: BuyerFilter;
   counts: { lapsed: number; atRisk: number; overdue: number };
 }) {
-  const router = useRouter();
+  const { replace } = useUrlNavigation();
   const pathname = usePathname();
   const searchParams = useSearchParams();
 
@@ -57,10 +58,7 @@ export function AttentionStrip({
     if (active === value) params.delete("filter");
     else params.set("filter", value);
     params.delete("page");
-    router.replace(
-      params.toString() ? `${pathname}?${params.toString()}` : pathname,
-      { scroll: false },
-    );
+    replace(params.toString() ? `${pathname}?${params.toString()}` : pathname);
   };
 
   return (

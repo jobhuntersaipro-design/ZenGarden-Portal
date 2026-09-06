@@ -2,6 +2,7 @@ import type { ReactNode } from "react";
 import Link from "next/link";
 import { redirect } from "next/navigation";
 import { Role } from "@/generated/prisma/enums";
+import { NavProgressProvider } from "@/components/portal/NavProgress";
 import { Wordmark } from "@/components/portal/Wordmark";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { TooltipProvider } from "@/components/ui/tooltip";
@@ -32,30 +33,34 @@ export default async function AdminLayout({ children }: { children: ReactNode })
 
   return (
     <TooltipProvider delayDuration={200}>
-      <div className="min-h-dvh bg-canvas">
-        <header className="flex h-topbar items-center gap-md border-b border-hairline px-lg">
-          <Wordmark />
-          <span className="font-mono text-[length:var(--text-eyebrow)] text-ink-tertiary">
-            Admin
-          </span>
-          <Link
-            href="/"
-            className="ml-auto text-[length:var(--text-body-sm)] text-brand-link underline-offset-2 hover:underline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary"
-          >
-            ‹ Back to portal
-          </Link>
-          <Avatar className="size-8 shrink-0">
-            {user.image ? <AvatarImage src={user.image} alt="" /> : null}
-            <AvatarFallback className="bg-surface-soft text-[length:var(--text-caption)] text-ink">
-              {initials(user.name)}
-            </AvatarFallback>
-          </Avatar>
-        </header>
+      {/* The users table filters and sorts through the same URL machinery as
+          the portal, so it gets the same progress bar (brief G1). */}
+      <NavProgressProvider>
+        <div className="min-h-dvh bg-canvas">
+          <header className="flex h-topbar items-center gap-md border-b border-hairline px-lg">
+            <Wordmark />
+            <span className="font-mono text-[length:var(--text-eyebrow)] text-ink-tertiary">
+              Admin
+            </span>
+            <Link
+              href="/"
+              className="ml-auto text-[length:var(--text-body-sm)] text-brand-link underline-offset-2 hover:underline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary"
+            >
+              ‹ Back to portal
+            </Link>
+            <Avatar className="size-8 shrink-0">
+              {user.image ? <AvatarImage src={user.image} alt="" /> : null}
+              <AvatarFallback className="bg-surface-soft text-[length:var(--text-caption)] text-ink">
+                {initials(user.name)}
+              </AvatarFallback>
+            </Avatar>
+          </header>
 
-        <main className="mx-auto w-full max-w-[var(--container-page)] p-xl">
-          {children}
-        </main>
-      </div>
+          <main className="mx-auto w-full max-w-[var(--container-page)] p-xl">
+            {children}
+          </main>
+        </div>
+      </NavProgressProvider>
       <Toaster />
     </TooltipProvider>
   );

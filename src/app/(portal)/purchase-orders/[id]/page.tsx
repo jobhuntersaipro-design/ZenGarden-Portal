@@ -3,6 +3,7 @@ import Link from "next/link";
 import { notFound, redirect } from "next/navigation";
 import { Role } from "@/generated/prisma/enums";
 import { DocumentPreview } from "@/components/review/DocumentPreviewLoader";
+import { BackLink } from "@/components/portal/BackLink";
 import { PageHeader } from "@/components/portal/PageHeader";
 import { StageBadge } from "@/components/portal/StatusBadge";
 import { ActivityList } from "@/components/purchase-orders/ActivityList";
@@ -92,7 +93,9 @@ export default async function PurchaseOrderPage({
 
   return (
     <>
-      {/* A detail page reached from four different places needs a way back. */}
+      {/* A detail page reached from four different places needs a way back:
+          the explicit control first, the breadcrumb under it (brief G2). */}
+      <BackLink fallbackHref="/purchase-orders" />
       <nav aria-label="Breadcrumb" className="mb-xs">
         <Link
           href="/purchase-orders"
@@ -256,7 +259,7 @@ export default async function PurchaseOrderPage({
                       <th
                         key={heading}
                         scope="col"
-                        className={`py-xs font-mono text-[length:var(--text-eyebrow)] font-normal text-ink-tertiary ${index > 0 ? "text-right" : ""}`}
+                        className={`py-xs font-mono text-[length:var(--text-eyebrow)] font-normal text-ink-tertiary ${index > 0 ? "pl-md text-right" : ""}`}
                       >
                         {heading}
                       </th>
@@ -279,14 +282,20 @@ export default async function PurchaseOrderPage({
                           </span>
                         ) : null}
                       </td>
-                      <td className="py-xs text-right tabular-nums text-[length:var(--text-body-sm)] text-ink">
+                      {/* `pl-md` on every numeric cell. Without it a
+                          right-aligned "4 kit" sits flush against the left
+                          edge of "RM 3,428.15" and the two read as one string
+                          — reported as `4 kitRM 3,428.15` (brief G6). The unit
+                          stays with the quantity and never joins the currency
+                          value. */}
+                      <td className="py-xs pl-md text-right tabular-nums text-[length:var(--text-body-sm)] text-ink">
                         {line.quantity.toString()}
                         {line.unit ? ` ${line.unit}` : ""}
                       </td>
-                      <td className="py-xs text-right tabular-nums text-[length:var(--text-body-sm)] text-ink">
+                      <td className="py-xs pl-md text-right tabular-nums text-[length:var(--text-body-sm)] text-ink">
                         {formatMYR(line.unitPrice)}
                       </td>
-                      <td className="py-xs text-right tabular-nums text-[length:var(--text-body-sm)] text-ink">
+                      <td className="py-xs pl-md text-right tabular-nums text-[length:var(--text-body-sm)] text-ink">
                         {formatMYR(line.amount)}
                       </td>
                     </tr>
@@ -306,7 +315,7 @@ export default async function PurchaseOrderPage({
                         {label}
                       </td>
                       <td
-                        className={`py-xxs text-right tabular-nums text-[length:var(--text-body-sm)] ${strong ? "font-semibold text-ink" : "text-ink-secondary"}`}
+                        className={`py-xxs pl-md text-right tabular-nums text-[length:var(--text-body-sm)] ${strong ? "font-semibold text-ink" : "text-ink-secondary"}`}
                       >
                         {formatMYR(value)}
                       </td>

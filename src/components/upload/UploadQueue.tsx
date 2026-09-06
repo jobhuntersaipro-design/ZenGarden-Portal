@@ -90,7 +90,17 @@ export function UploadQueue({
   onRemove: (id: string) => void;
   onRetry: (id: string) => void;
 }) {
-  if (rows.length === 0) return null;
+  // The queue region exists before the first file, so choosing one fills a
+  // space that is already there instead of pushing the footer down the page
+  // (brief §9). An empty list that renders nothing is a layout shift waiting
+  // to happen.
+  if (rows.length === 0) {
+    return (
+      <p className="mt-md rounded-lg border border-dashed border-hairline bg-canvas p-md text-center text-[length:var(--text-body-sm)] text-ink-secondary">
+        No files yet — drop POs above
+      </p>
+    );
+  }
 
   return (
     <ul className="mt-md divide-y divide-hairline rounded-lg border border-hairline bg-canvas">

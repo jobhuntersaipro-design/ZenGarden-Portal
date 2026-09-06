@@ -6,6 +6,7 @@ import "react-pdf/dist/Page/AnnotationLayer.css";
 import "react-pdf/dist/Page/TextLayer.css";
 import type { DocumentUrlResponse } from "@/app/api/documents/[documentId]/url/route";
 import { Button } from "@/components/ui/button";
+import { DownloadOriginal } from "@/components/purchase-orders/DownloadOriginal";
 
 // The worker ships with pdfjs-dist; resolving it through import.meta.url lets
 // the bundler fingerprint it instead of us pointing at a CDN.
@@ -30,6 +31,8 @@ export function DocumentPreview({
   const [pages, setPages] = useState(0);
   const [page, setPage] = useState(1);
   const [width, setWidth] = useState(0);
+  /** Bumped by "Try preview again"; re-runs the fetch below. */
+  const [attempt, setAttempt] = useState(0);
 
   useEffect(() => {
     let cancelled = false;
@@ -46,14 +49,35 @@ export function DocumentPreview({
     return () => {
       cancelled = true;
     };
-  }, [documentId]);
+  }, [documentId, attempt]);
 
   if (error) {
     return (
-      <div className="rounded-lg border border-hairline bg-surface p-lg">
+      // The message alone left the reader with nowhere to go: the only way to
+      // see the file was a Download button in the page header, which is not
+      // where anyone looks after reading an error (brief §4). Both recoveries
+      // now sit with the thing that failed.
+      <div className="flex flex-col items-start gap-sm rounded-lg border border-hairline bg-surface p-lg">
         <p className="text-[length:var(--text-body-sm)] text-ink-secondary">
           {error} The extracted data is still shown beside it.
         </p>
+        <div className="flex flex-wrap items-center gap-sm">
+          <DownloadOriginal documentId={documentId} />
+          <button
+            type="button"
+            onClick={() => {
+              // A fresh presigned URL and a fresh render. The usual cause is
+              // an expired link or a blip fetching it, and both survive a
+              // second attempt.
+              setError(null);
+              setSource(null);
+              setAttempt((current) => current + 1);
+            }}
+            className="text-[length:var(--text-body-sm)] text-brand-link underline-offset-2 hover:underline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary"
+          >
+            Try preview again
+          </button>
+        </div>
       </div>
     );
   }

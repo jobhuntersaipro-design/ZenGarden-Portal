@@ -1,9 +1,11 @@
 "use client";
 
 import { useState } from "react";
-import { usePathname, useRouter, useSearchParams } from "next/navigation";
+import { usePathname, useSearchParams } from "next/navigation";
 import { AGGREGATIONS, RANGE_PRESETS, type RangePreset } from "@/lib/analytics/range";
 import type { Aggregation } from "@/lib/dates";
+import { UpdatingHint } from "@/components/portal/UpdatingHint";
+import { useUrlNavigation } from "@/hooks/useUrlNavigation";
 
 /**
  * The preset chips are the primary control and sit alone on the first row. The
@@ -24,7 +26,7 @@ export function RangeControls({
   agg: Aggregation;
   summary: string;
 }) {
-  const router = useRouter();
+  const { replace } = useUrlNavigation();
   const pathname = usePathname();
   const searchParams = useSearchParams();
   const [customOpen, setCustomOpen] = useState(preset === null);
@@ -36,7 +38,7 @@ export function RangeControls({
       else params.set(key, value);
     }
     params.delete("page");
-    router.replace(`${pathname}?${params.toString()}`, { scroll: false });
+    replace(`${pathname}?${params.toString()}`);
   };
 
   return (
@@ -112,6 +114,10 @@ export function RangeControls({
       <div className="flex flex-wrap items-center justify-between gap-sm">
         <p className="text-[length:var(--text-body-sm)] text-ink-secondary">
           {summary}
+          {/* The summary claims a count and a total. While the server is
+              recomputing them that claim is stale, so it says so here rather
+              than letting the figures move under the reader (brief G1). */}
+          <UpdatingHint />
         </p>
 
         <div className="flex items-center gap-xs">

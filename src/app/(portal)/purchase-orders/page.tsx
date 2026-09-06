@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import { PageHeader } from "@/components/portal/PageHeader";
+import { UpdatingHint } from "@/components/portal/UpdatingHint";
 import { UploadPoButton } from "@/components/portal/UploadPoButton";
 import { PoFilters, type StatusChip } from "@/components/purchase-orders/PoFilters";
 import { PoTable, type PoRow } from "@/components/purchase-orders/PoTable";
@@ -99,6 +100,7 @@ export default async function PurchaseOrdersPage({
         <span className="tabular-nums">{total}</span>{" "}
         {total === 1 ? "purchase order" : "purchase orders"} ·{" "}
         <span className="tabular-nums">{formatMYR(sum)}</span>
+        <UpdatingHint />
       </p>
 
       <PoTable

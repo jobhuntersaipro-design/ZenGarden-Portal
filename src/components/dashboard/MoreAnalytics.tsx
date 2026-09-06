@@ -1,8 +1,9 @@
 "use client";
 
 import type { ReactNode } from "react";
-import { usePathname, useRouter, useSearchParams } from "next/navigation";
+import { usePathname, useSearchParams } from "next/navigation";
 import { Button } from "@/components/ui/button";
+import { useUrlNavigation } from "@/hooks/useUrlNavigation";
 
 /**
  * Collapsed by default, and nothing inside is mounted until it opens.
@@ -19,7 +20,7 @@ export function MoreAnalytics({
   open: boolean;
   children: ReactNode;
 }) {
-  const router = useRouter();
+  const { replace } = useUrlNavigation();
   const pathname = usePathname();
   const searchParams = useSearchParams();
 
@@ -27,7 +28,7 @@ export function MoreAnalytics({
     const params = new URLSearchParams(searchParams.toString());
     if (open) params.delete("more");
     else params.set("more", "1");
-    router.replace(`${pathname}?${params.toString()}`, { scroll: false });
+    replace(`${pathname}?${params.toString()}`);
   };
 
   return (

@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import { usePathname, useRouter, useSearchParams } from "next/navigation";
+import { usePathname, useSearchParams } from "next/navigation";
 import { Search } from "lucide-react";
 import { DataTable, type Column } from "@/components/portal/DataTable";
 import { TablePagination } from "@/components/portal/TablePagination";
@@ -16,6 +16,7 @@ import { formatDate } from "@/lib/dates";
 import { formatMYR } from "@/lib/money";
 import type { BuyerFilter, BuyerRosterRow } from "@/lib/queries/buyers";
 import type { SortDirection } from "@/lib/queries/pagination";
+import { useUrlNavigation } from "@/hooks/useUrlNavigation";
 
 const FILTER_LABEL: Record<Exclude<BuyerFilter, null>, string> = {
   lapsed: "lapsed",
@@ -41,7 +42,7 @@ export function BuyersTable({
   filter: BuyerFilter;
 }) {
   const onSortChange = useTableSort();
-  const router = useRouter();
+  const { replace } = useUrlNavigation();
   const pathname = usePathname();
   const searchParams = useSearchParams();
   const [query, setQuery] = useState(searchParams.get("q") ?? "");
@@ -61,10 +62,7 @@ export function BuyersTable({
       else params.set(key, value);
     }
     params.delete("page");
-    router.replace(
-      params.toString() ? `${pathname}?${params.toString()}` : pathname,
-      { scroll: false },
-    );
+    replace(params.toString() ? `${pathname}?${params.toString()}` : pathname);
   };
 
   const columns: Column<BuyerRosterRow>[] = [

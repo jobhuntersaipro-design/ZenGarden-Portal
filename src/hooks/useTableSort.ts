@@ -1,8 +1,9 @@
 "use client";
 
-import { usePathname, useRouter, useSearchParams } from "next/navigation";
+import { usePathname, useSearchParams } from "next/navigation";
 import { useCallback } from "react";
 import type { SortDirection } from "@/lib/queries/pagination";
+import { useUrlNavigation } from "@/hooks/useUrlNavigation";
 
 /**
  * Writes `?sort=&dir=` and hands the callback to whatever wants it. Kept out
@@ -11,7 +12,7 @@ import type { SortDirection } from "@/lib/queries/pagination";
  * state with the table headers and stay in step with them.
  */
 export function useTableSort(): (key: string, dir: SortDirection) => void {
-  const router = useRouter();
+  const { replace } = useUrlNavigation();
   const pathname = usePathname();
   const searchParams = useSearchParams();
 
@@ -22,8 +23,8 @@ export function useTableSort(): (key: string, dir: SortDirection) => void {
       params.set("dir", dir);
       // Sorting resets the page and leaves every filter alone.
       params.delete("page");
-      router.replace(`${pathname}?${params.toString()}`, { scroll: false });
+      replace(`${pathname}?${params.toString()}`);
     },
-    [pathname, router, searchParams],
+    [pathname, replace, searchParams],
   );
 }

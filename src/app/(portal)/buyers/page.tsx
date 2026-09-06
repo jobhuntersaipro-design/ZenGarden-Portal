@@ -5,8 +5,8 @@ import { AttentionStrip } from "@/components/buyers/AttentionStrip";
 import { BuyersTable } from "@/components/buyers/BuyersTable";
 import { BuyerRangeChips } from "@/components/buyers/BuyerRangeChips";
 import {
-  CountUpMoney,
-  CountUpNumber,
+  KpiMoney,
+  KpiNumber,
   KpiTile,
 } from "@/components/dashboard/KpiTile";
 import {
@@ -73,7 +73,7 @@ export default async function BuyersPage({
         <KpiTile
           compact
           label="Buyers with orders"
-          value={<CountUpNumber value={roster.kpis.buyersWithOrders} />}
+          value={<KpiNumber value={roster.kpis.buyersWithOrders} />}
           caption={`of ${roster.kpis.buyersOnRecord} on record`}
         />
         <KpiTile
@@ -81,7 +81,7 @@ export default async function BuyersPage({
           label="New buyers"
           value={
             roster.kpis.newUnknowable ? "—" : (
-              <CountUpNumber value={roster.kpis.newBuyers} />
+              <KpiNumber value={roster.kpis.newBuyers} />
             )
           }
           caption={
@@ -95,7 +95,7 @@ export default async function BuyersPage({
         <KpiTile
           compact
           label="At risk or lapsed"
-          value={<CountUpNumber value={roster.kpis.atRiskOrLapsed} />}
+          value={<KpiNumber value={roster.kpis.atRiskOrLapsed} />}
           caption={
             <span className={roster.kpis.atRiskOrLapsed > 0 ? "text-brand-amber" : undefined}>
               {roster.kpis.lapsedCount} lapsed · {roster.kpis.atRiskCount} at risk
@@ -105,7 +105,7 @@ export default async function BuyersPage({
         <KpiTile
           compact
           label="Revenue per buyer"
-          value={<CountUpMoney value={roster.kpis.revenuePerBuyer} />}
+          value={<KpiMoney value={roster.kpis.revenuePerBuyer} />}
           caption="average per buyer with orders"
         />
       </div>

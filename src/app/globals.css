@@ -44,7 +44,12 @@
   --color-ink-deep: #202020;
   --color-ink-darkest: #090c1d;
   --color-ink-secondary: #646464;
-  --color-ink-tertiary: #838383;
+  /* Darkened from the system's #838383 (3.79:1 on canvas) by the 2026-09-06 UI
+     review, G4: this token carries every eyebrow, field label and caption, all
+     of them 12-14px, and WCAG AA wants 4.5:1 there. #6f6f6f reads 5.02:1 on
+     canvas and 4.77:1 on surface while staying a visible step below
+     ink-secondary. See context/design-system.md. */
+  --color-ink-tertiary: #6f6f6f;
   --color-ink-disabled: #b4b4b4;
 
   /* Shadow tints — ClickUp shadows echo the brand purple, never neutral gray */
@@ -310,6 +315,10 @@
   .animate-indeterminate {
     animation: none;
     width: 100%;
+  }
+  /* Skeletons still hold the layout; they just stop breathing. */
+  .animate-pulse {
+    animation: none;
   }
 }
 
