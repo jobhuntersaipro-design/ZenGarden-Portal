@@ -3,6 +3,7 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { Role } from "@/generated/prisma/enums";
 import { BackLink } from "@/components/portal/BackLink";
+import { CountUp } from "@/components/portal/CountUp";
 import { PageHeader } from "@/components/portal/PageHeader";
 import { StatusBar } from "@/components/dashboard/StatusBar";
 import {
@@ -27,7 +28,6 @@ import { INTAKE_VARS, cssVar } from "@/lib/analytics/palette";
 import type { MixMeasure } from "@/lib/analytics/product-mix";
 import { getSessionUser } from "@/lib/auth-guards";
 import { formatDate, type Aggregation } from "@/lib/dates";
-import { formatMYR } from "@/lib/money";
 import { loadBuyer } from "@/lib/queries/buyer-detail";
 import {
   firstParam,
@@ -200,7 +200,8 @@ export default async function BuyerPage({
           Order trend
         </p>
         <h2 className="font-display text-[length:var(--text-heading-md)] font-[650] tracking-[-0.91px] text-ink">
-          {formatMYR(data.sales.total.toFixed(2))} across {data.sales.points.length}{" "}
+          <CountUp value={data.sales.total} format="money" /> across{" "}
+          {data.sales.points.length}{" "}
           {agg === "week" ? "weeks" : agg === "month" ? "months" : `${agg}s`}
         </h2>
         <p className="mt-xxs text-[length:var(--text-caption)] text-ink-tertiary">
@@ -221,7 +222,7 @@ export default async function BuyerPage({
       </div>
 
       <div className="mt-lg">
-        <WhatTheyBuy slices={data.mix} measure={measure} />
+        <WhatTheyBuy slices={data.mix} measure={measure} hrefBase="/products" />
       </div>
 
       <div className="mt-lg grid gap-lg lg:grid-cols-2">

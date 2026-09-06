@@ -195,6 +195,20 @@ weight burying the state of the business, so the order is now:
 
 Nothing above the fold is a donut.
 
+> **Revision 2026-09-06 (`feature/dashboard-interactions`).** KPI tiles and
+> single-metric card headings count up over **2s**, reinstating the rule below
+> after its 2026-09-06 removal — the server value is the initial state and the
+> first paint, the count runs after mount, a range change continues from the
+> frame on screen, and `prefers-reduced-motion` skips it. The curve is an
+> ease-out cubic, and — the part that actually carries the perception — the
+> repaint rhythm decelerates with it: every frame at the start, widening to
+> 150 ms gaps at the end, so the figure blurs off the mark and lands in
+> distinct, shrinking ticks. A value repainted sixty times a second reads as a
+> blur that stops, whatever the easing curve does to the increments. Donut legends link
+> every named slice to its detail page and "Other (n)" unfolds in place, its
+> members sharing percentages of the whole; the ring keeps one grey Other arc.
+> The sidebar is `sticky top-0`, so it fills the screen at every scroll offset.
+>
 > **Revision 2026-09-06 (`feature/dashboard-charts`).** Item 2 is now **two
 > cards**: *Sales over time* with a *Sales · Quantity* switch (`?measure=`,
 > Quantity = line-item units), then *Order stage* — the stacked stage chart

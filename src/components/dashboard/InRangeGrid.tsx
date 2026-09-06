@@ -2,16 +2,23 @@ import type { ReactNode } from "react";
 import Link from "next/link";
 import type { DashboardData } from "@/lib/queries/dashboard";
 import { formatMYR } from "@/lib/money";
+import { CountUp } from "@/components/portal/CountUp";
 
 /** Six small tiles. Concentration flips its tone above 60% (design ref §3.2). */
 export function InRangeGrid({ data }: { data: DashboardData }) {
   const { inRange, pipeline } = data;
   const concentrated = inRange.topThreeShare > 60;
 
-  const tiles: { label: string; value: string; caption: ReactNode }[] = [
+  // `value` is a node, not a string, so the numeric ones can count up while
+  // an absent figure stays a plain em dash.
+  const tiles: { label: string; value: ReactNode; caption: ReactNode }[] = [
     {
       label: "Largest PO",
-      value: inRange.largest ? formatMYR(inRange.largest.total.toFixed(2)) : "—",
+      value: inRange.largest ? (
+        <CountUp value={inRange.largest.total} format="money" />
+      ) : (
+        "—"
+      ),
       caption: inRange.largest ? (
         <Link
           href={`/purchase-orders/${inRange.largest.id}`}
@@ -25,12 +32,12 @@ export function InRangeGrid({ data }: { data: DashboardData }) {
     },
     {
       label: "New buyers",
-      value: String(inRange.newBuyers),
+      value: <CountUp value={inRange.newBuyers} />,
       caption: `${inRange.returningBuyers} returning`,
     },
     {
       label: "Top-3 concentration",
-      value: `${inRange.topThreeShare.toFixed(0)}%`,
+      value: <CountUp value={inRange.topThreeShare} format="percent" />,
       caption: (
         <span className={concentrated ? "text-brand-amber" : "text-accent-green"}>
           {concentrated
@@ -41,17 +48,17 @@ export function InRangeGrid({ data }: { data: DashboardData }) {
     },
     {
       label: "Items per PO",
-      value: inRange.itemsPerOrder.toFixed(1),
+      value: <CountUp value={inRange.itemsPerOrder} decimals={1} />,
       caption: `${inRange.totalUnits.toLocaleString("en-MY")} units in total`,
     },
     {
       label: "Extraction failures",
-      value: `${inRange.failureRate.toFixed(1)}%`,
+      value: <CountUp value={inRange.failureRate} format="percent" decimals={1} />,
       caption: `${inRange.failedCount} of ${inRange.uploadCount} uploads needed a retry`,
     },
     {
       label: "Open pipeline",
-      value: String(pipeline.openCount),
+      value: <CountUp value={pipeline.openCount} />,
       caption: `${formatMYR(pipeline.openValue.toFixed(2))} still to deliver${
         pipeline.averageDaysToDeliver === null
           ? ""

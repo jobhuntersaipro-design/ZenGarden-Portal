@@ -5,6 +5,7 @@ import { Role } from "@/generated/prisma/enums";
 import { BackLink } from "@/components/portal/BackLink";
 import { PageHeader } from "@/components/portal/PageHeader";
 import { KpiTile } from "@/components/dashboard/KpiTile";
+import { CountUp } from "@/components/portal/CountUp";
 import { OrderHistoryTable } from "@/components/products/OrderHistoryTable";
 import { PriceTrendChart, type TrendMode } from "@/components/products/PriceTrendChart";
 import { ProductGallery } from "@/components/products/ProductGallery";
@@ -203,35 +204,42 @@ export default async function ProductPage({
         {[
           {
             label: "Revenue · 12m",
-            value: formatMYR(data.stats.revenue.toFixed(2)),
+            value: <CountUp value={data.stats.revenue} format="money" />,
             caption: `${data.revenueShare.toFixed(1)}% of all sales`,
           },
           {
             label: "Units · 12m",
-            value: Math.round(data.stats.units).toLocaleString("en-MY"),
+            value: <CountUp value={data.stats.units} format="grouped" />,
             caption: `${data.stats.unitsPerOrder.toFixed(1)} units per order`,
           },
           {
             label: "Orders · 12m",
-            value: String(data.stats.orders),
+            value: <CountUp value={data.stats.orders} />,
             caption: `from ${data.stats.buyers} buyers`,
           },
           {
             label: "Price drift · 12m",
             value:
-              data.stats.driftPercent === null
-                ? "—"
-                : `${data.stats.driftPercent >= 0 ? "+" : ""}${data.stats.driftPercent.toFixed(1)}%`,
+              data.stats.driftPercent === null ? (
+                "—"
+              ) : (
+                <CountUp
+                  value={data.stats.driftPercent}
+                  format="percent"
+                  decimals={1}
+                  prefix={data.stats.driftPercent >= 0 ? "+" : ""}
+                />
+              ),
             caption: "first month billed → last",
           },
           {
             label: "Sales velocity",
-            value: data.stats.velocity.toFixed(1),
+            value: <CountUp value={data.stats.velocity} decimals={1} />,
             caption: "units per week, last 8 weeks",
           },
           {
             label: "Attach rate",
-            value: `${data.stats.attachRate.toFixed(1)}%`,
+            value: <CountUp value={data.stats.attachRate} format="percent" decimals={1} />,
             caption: "of all POs in 12 months",
           },
         ].map((tile) => (
@@ -255,6 +263,7 @@ export default async function ProductPage({
 
       <div className="mt-lg grid gap-lg lg:grid-cols-2">
         <WhatTheyBuy
+          hrefBase="/buyers"
           slices={data.buyers}
           measure="value"
           heading="Who buys it"

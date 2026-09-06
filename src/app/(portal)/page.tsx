@@ -190,11 +190,13 @@ export default async function DashboardPage({
             eyebrow="Market share by buyer"
             slices={data.buyerShare}
             centreLabel="top buyer"
+            hrefBase="/buyers"
           />
           <DonutShare
             eyebrow="Market share by product"
             slices={data.productShare}
             centreLabel="top product"
+            hrefBase="/products"
           />
         </div>
         <InRangeGrid data={data} />

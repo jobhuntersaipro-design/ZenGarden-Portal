@@ -65,3 +65,47 @@ describe("shareBy", () => {
     expect(zeroes.every((s) => s.share === 0)).toBe(true);
   });
 });
+
+describe("shareBy — the Other slice", () => {
+  const rows = [
+    { id: "a", label: "A", value: 100 },
+    { id: "b", label: "B", value: 50 },
+    { id: "c", label: "C", value: 30 },
+    { id: "d", label: "D", value: 12 },
+    { id: "e", label: "E", value: 6 },
+    { id: "f", label: "F", value: 1 },
+    { id: "g", label: "G", value: 1 },
+  ];
+  const slices = shareBy(
+    rows,
+    (row) => ({ id: row.id, label: row.label }),
+    (row) => row.value,
+  );
+  const other = slices[slices.length - 1];
+
+  it("keeps the folded entities so the legend can open them", () => {
+    expect(other.isOther).toBe(true);
+    expect(other.members?.map((member) => member.id)).toEqual(["f", "g"]);
+  });
+
+  it("gives a member its share of the whole, not of Other", () => {
+    // 1 of 200 is 0.5%. Of Other alone it would read 50%, which would rank a
+    // trivial buyer alongside the leader.
+    expect(other.members?.[0].share).toBeCloseTo(0.5);
+    expect(other.share).toBeCloseTo(1);
+  });
+
+  it("sums its members exactly", () => {
+    const summed = (other.members ?? []).reduce((sum, m) => sum + m.value, 0);
+    expect(summed).toBe(other.value);
+  });
+
+  it("has no members when nothing was folded", () => {
+    const short = shareBy(
+      rows.slice(0, 3),
+      (row) => ({ id: row.id, label: row.label }),
+      (row) => row.value,
+    );
+    expect(short.some((slice) => slice.isOther)).toBe(false);
+  });
+});

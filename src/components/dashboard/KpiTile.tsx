@@ -1,24 +1,22 @@
 import type { ReactNode } from "react";
-import { formatMYR } from "@/lib/money";
+import { CountUp } from "@/components/portal/CountUp";
 
 /**
- * A KPI tile. The value is whatever the server computed, and it does not move
- * afterwards.
+ * A KPI tile.
  *
- * These tiles used to count up over 900 ms — server-rendering the real figure
- * first, so a screenshot at t=0 was correct, then animating to it. The
- * 2026-09-06 review caught that animation and filed it as the "laggy /
- * unresponsive" complaint: Dashboard read 13 POs / RM 254k and then 38 POs /
- * RM 737k, both of them 34% of the final figures, which is one frame of an
- * ease-out cubic and not a data refetch at all. Buyers 2 → 11 and Products
- * 11 → 12 were the same hook on other tiles.
+ * These tiles counted up over 900 ms until 2026-09-06, when the review filed
+ * the animation as the "laggy / unresponsive" complaint: Dashboard read 13 POs
+ * / RM 254k and then 38 POs / RM 737k, both of them 34% of the final figures,
+ * which is one frame of an ease-out cubic and not a data refetch at all. The
+ * animation was cut and the tiles rendered their server value only.
  *
- * The brief's rule is that no headline number may look final and then change
- * (G1), and a count-up cannot satisfy it — the intermediate frames are
- * indistinguishable from a silent revision. So the animation is gone. This is
- * a deliberate departure from the canvas and from 00-master.md §4 "Numbers
- * render final, then animate"; what survives is the half of that rule that
- * mattered, which is that the first paint is the true value.
+ * It is back, at 2s, by request on the same day — with the rule that made the
+ * old one unsafe fixed rather than repeated. The server figure is the initial
+ * state, so the HTML and the first paint are always the true number and a
+ * static capture of the markup cannot be caught at zero; the count runs after
+ * mount as an enhancement, continues from the frame on screen when the range
+ * changes instead of restarting at nothing, and does not run at all under
+ * `prefers-reduced-motion`. See `useCountUp`.
  */
 export function KpiTile({
   label,
@@ -63,7 +61,7 @@ export function KpiTile({
 
 /** Money is never abbreviated in a KPI — `RM 1.2M` is banned here. */
 export function KpiMoney({ value }: { value: number }) {
-  return <>{formatMYR(value.toFixed(2))}</>;
+  return <CountUp value={value} format="money" />;
 }
 
 export function KpiNumber({
@@ -75,5 +73,5 @@ export function KpiNumber({
   decimals?: number;
   suffix?: string;
 }) {
-  return <>{`${value.toFixed(decimals)}${suffix}`}</>;
+  return <CountUp value={value} decimals={decimals} suffix={suffix} />;
 }

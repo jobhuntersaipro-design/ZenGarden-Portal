@@ -49,7 +49,12 @@ export function Sidebar({
   const pathname = usePathname();
 
   return (
-    <aside className="flex h-dvh w-16 shrink-0 flex-col gap-xl border-r border-hairline bg-surface px-xs py-lg lg:w-60 lg:px-md">
+    // Sticky, not merely tall: the shell grows with the page, so a plain
+    // `h-dvh` aside stopped at the fold and left the sidebar's surface and
+    // right border hanging in the middle of a long dashboard. Pinned to the
+    // top it fills the screen at every scroll position, and the nav and user
+    // menu stay reachable from the bottom of the page.
+    <aside className="sticky top-0 flex h-dvh w-16 shrink-0 flex-col gap-xl self-start border-r border-hairline bg-surface px-xs py-lg lg:w-60 lg:px-md">
       {/* The wordmark is the way home: the dashboard lives at `/`. */}
       <Link
         href="/"
@@ -64,7 +69,7 @@ export function Sidebar({
         </div>
       </Link>
 
-      <nav className="flex flex-1 flex-col gap-xxs" aria-label="Main">
+      <nav className="flex min-h-0 flex-1 flex-col gap-xxs overflow-y-auto" aria-label="Main">
         {NAV.map(({ href, label, icon: Icon }) => {
           const active = isActive(pathname, href);
           const row = (

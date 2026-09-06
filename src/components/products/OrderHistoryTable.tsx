@@ -33,6 +33,9 @@ export function OrderHistoryTable({
     {
       key: "poNumber",
       header: "PO number",
+      // Plain text on purpose: `DataTable` already wraps the first cell of
+      // every row in a link to `rowHref`, so a second anchor here would nest
+      // <a> inside <a> and fail hydration.
       cell: (row) => <span className="font-medium">{row.poNumber}</span>,
     },
     {
