@@ -1,68 +1,18 @@
-# Current Feature: UI change — loading, back navigation and polish
+# Current Feature
 
-`docs/specs/20260906_UI_change.md` — Critiquito design review of the live
-portal, walked through as Aisha Rahman on 2026-09-06.
+<!-- Feature name goes in the H1 above once loaded. -->
 
 ## Status
 
-In Progress.
+Not Started
 
 ## Goals
 
-The brief's implementation checklist is the contract:
-
-- **G1 · loading (Must)** — one shared loading language: route-level
-  `loading.tsx` skeletons matching the final layout, an "Updating…" state on
-  every in-place filter/range change, and pending labels on buttons that wait
-  on the network (`Advancing…`).
-- **G1 · no silent revision (Must)** — Dashboard, Buyers and Products must
-  never paint a final-looking headline number that then changes.
-- **G2 · back (Must)** — a discoverable Back control above the title on PO
-  detail, Buyer detail, Product detail and Upload. Breadcrumbs stay; Back is
-  additive. `history.back()` only when the referrer is in-app, otherwise the
-  section list route.
-- **G3 · truncation (Should)** — sidebar email and Dashboard "Top buyer" wrap
-  rather than dead-ending in an ellipsis.
-- **G4 · label contrast (Should)** — secondary label text reaches ~4.5:1.
-- **G5 · table density (Should)** — horizontal scroll inside the table card
-  with a visible affordance, sticky first column, right-aligned money.
-- **G6 · line items (Must)** — Qty and Unit price must not run together
-  (`4 kitRM 3,428.15`).
-- **PO PDF preview error** — keep the message, add `Download original` and
-  `Try preview again` beside it.
-- **Product image error/empty state** — `Image unavailable`, never raw alt
-  text filling the hero.
-- **Upload queue** — `No files yet — drop POs above` before any file, so the
-  queue does not pop in and shift the layout.
+<!-- Bullet points of what success looks like. -->
 
 ## Notes
 
-- **Root cause of "laggy" is the KPI count-up, not a refetch.** The reviewer
-  recorded Dashboard 13 POs / RM 254k → 38 / RM 737k. Both readings are 34% of
-  the final figure: that is `useCountUp` caught mid-animation, not a silent
-  data revision. Buyers 2 → 11 and Products 11 → 12 are the same hook on other
-  tiles. The brief's acceptance criterion — "never final-looking numbers that
-  still change" — cannot be met while a 900 ms count-up runs, so the animation
-  goes and the tiles render their server value only. **This departs from the
-  canvas and from `00-master.md` §4 "Numbers render final, then animate".**
-- The real navigation wait is unaddressed: every portal page is
-  `force-dynamic` with no `loading.tsx` anywhere in `src/app`, so a click
-  shows nothing at all until the server responds. `00-master.md` §4 says
-  "each page ships `loading.tsx` with skeletons" — none was ever built.
-- G4 moves `--color-ink-tertiary` from `#838383` (3.5:1 on white) to a value
-  that clears 4.5:1. That is a design-system token change, so
-  `context/design-system.md` is updated alongside it.
-- Out of scope per the brief: new modules, mobile redesign, rebrand, and
-  renaming the six lifecycle stages.
-- Also built, from the screen-by-screen section rather than the checklist:
-  the Dashboard's intake and stage counts are now links into the rows they
-  count (§2 Hierarchy, Should). Only the Confirmed link carries the date
-  range — drafts have no PO date, and `listPurchaseOrders` drops the whole
-  extraction branch when a date bound is present, so a dated link to
-  "Needs review 3" landed on an empty table until that was fixed.
-- Not built: per-status counts on the PO list chips (§3, Should) — the list
-  query returns `needsReview` alone, and the other three would need a new
-  aggregate; and an Account/Profile link, which the brief marks out of scope.
+<!-- Additional context, constraints or details from the spec. -->
 
 ## History
 
@@ -81,3 +31,4 @@ The brief's implementation checklist is the contract:
 - 2026-09-05: Phase 03 complete and merged — presign / complete / delete route handlers, `deleteOrphans()`, the `useUploadQueue` state machine (three concurrent XHR uploads, live progress, `beforeunload` guard), Dropzone with drop/browse/paste, one progress-bar geometry, plain-language failure reasons, the ready-only footer count, and "Upload PO" wired on Dashboard, Purchase orders and Buyers. **Criteria 1, 3, 4 and 8's enabled state are unverified**: R2 still holds placeholder credentials, so no browser PUT can reach the bucket. Re-run them once `docs/specs/SETUP-CHECKLIST.md` §2 is done. Fixed three defects found while building: `presignPut` pinned `ContentLength` to a ceiling rather than the file's exact size (S3 signs it exactly, so every real upload but one would have been refused); the `Document.r2Key` unique constraint needed a unique `pending:` placeholder because the key contains the row's own id; and the queue pump read a ref during render and drove state from an effect.
 - 2026-09-05: Phase 02 complete and merged — Auth.js v5 with Google (approval-gated) and Credentials, database-backed rate limiting, forgot/reset/change password, five email templates, `src/proxy.ts` route protection, real `auth-guards.ts`, and the sidebar reading the real session. `auth-auditor`: 0 Critical, 0 High; both Mediums and three of five Lows fixed, the two accepted ones reasoned in `docs/audit-results/AUTH_SECURITY_REVIEW.md`. Added the `/admin` stub that acceptance criterion 5 measures against but Phase 01 never shipped, a password reveal toggle on every password field (not yet on the canvas), and two `@theme` tokens: `--spacing-control-oauth` and `--container-auth-card`.
 - 2026-09-05: Phase 01 complete and merged — shadcn re-skinned to the tokens, Prisma 7 + Neon schema and first migration, deterministic seed, R2 / Resend / Claude / money / date / stage libraries with unit tests, App Shell with sidebar and placeholder pages.
+- 2026-09-06: UI change brief (`docs/specs/20260906_UI_change.md`) complete and merged — the 2026-09-06 Critiquito review of the live portal. **The reported "laggy / numbers jump" was the KPI count-up, not a refetch**: the recorded Dashboard readings, 13 POs / RM 254k then 38 / RM 737k, are both 34% of the final figures, which is one frame of `useCountUp`'s ease-out cubic; Buyers 2 → 11 and Products 11 → 12 were the same hook on other tiles, and the database holds 400 POs, 11 buyers and 12 products throughout. A count-up cannot satisfy the brief's rule that no headline number may look final and then change, so it is gone and the tiles render their server value only — **a deliberate departure from the canvas and from `00-master.md` §4 "Numbers render final, then animate"**. The real navigation wait had never been addressed: every portal page is `force-dynamic` and `src/app` held no `loading.tsx` at all, so a click showed nothing until the server answered. Shipped: ten route-level skeletons off a shared `Skeletons` kit; `useUrlNavigation`, through which every URL write in the app now runs, its transition driving one `NavProgress` top bar and the `UpdatingHint` in each summary line; pending labels on Advance, Move back, Approve and Decline; `BackLink` on PO, Buyer and Product detail and on Upload; two-line wrapping for the sidebar email and the Top buyer / Best seller KPIs; `--color-ink-tertiary` `#838383` → `#6f6f6f` (3.79:1 → 5.02:1 on canvas), recorded as a deviation in `context/design-system.md`; a sticky first column and scroll-edge fades in `DataTable`; `pl-md` on the PO detail numeric columns; `Download original` and `Try preview again` beside the PDF error; an "Image unavailable" tile that also catches an image which failed before hydration; the upload queue's reserved "No files yet" region; and the Dashboard intake and stage counts as links into the rows they count. Two defects found and fixed while building: those dashboard links first carried the date range on all four intake statuses, but drafts have no PO date and `listPurchaseOrders` drops the extraction branch the moment a date bound is present, so "Needs review 3" landed on an empty table — only Confirmed carries the range now, verified 3 counts → 3 rows; and `BackLink` first tested `document.referrer` alone as the brief's rule 5 says, but client-side navigation never rewrites the referrer, so Back discarded the user's filters — it now also compares `history.length` against a baseline captured in the shell when the document loaded, verified across `?status=confirmed&stage=DELIVERING` and a deep-linked product. **Not done:** per-status counts on the PO list chips (§3, Should) need a new aggregate — the list query returns `needsReview` alone. **Unverified:** the admin screen's progress bar, pending labels and skeleton are covered by build, types and lint but were not exercised in a browser, because the seeded member is not a super admin and the super admin is Google-only. R2 still holds placeholder credentials, so the PDF preview error state is what every document shows; that is the case the brief reported and it now recovers, but a successful preview was never seen.
