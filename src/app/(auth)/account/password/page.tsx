@@ -13,6 +13,11 @@ export default async function ChangePasswordPage() {
   if (!user) redirect("/signin?next=/account/password");
 
   const forced = user.mustChangePassword;
+  // A blanket redirect would ping-pong forever: the portal layout sends a
+  // `mustChangePassword` user *here*, so only the un-forced case may leave.
+  // The forced branch keeps this standalone AuthCard page, which must not
+  // depend on the portal shell.
+  if (!forced) redirect("/settings#password");
 
   return (
     <AuthCard

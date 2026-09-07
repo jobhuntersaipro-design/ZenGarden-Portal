@@ -1,10 +1,12 @@
 "use client";
 
+import Link from "next/link";
 import { signOut } from "next-auth/react";
 import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
+  DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { PersonAvatar } from "@/components/ui/person";
@@ -48,6 +50,13 @@ export function UserMenu({
         )}
       </DropdownMenuTrigger>
       <DropdownMenuContent align="start" className="w-56">
+        {/* Settings is reached from here, never as a nav row: NAV is
+            destinations only (00-master.md §4). MobileTopBar renders this same
+            menu, so both navs get it from one change. */}
+        <DropdownMenuItem asChild>
+          <Link href="/settings">Settings</Link>
+        </DropdownMenuItem>
+        <DropdownMenuSeparator />
         <DropdownMenuItem onSelect={() => signOut({ redirectTo: "/signin" })}>
           Sign out
         </DropdownMenuItem>
