@@ -91,6 +91,9 @@ export async function createUser(
         passwordHash: data.password
           ? await hash(data.password, BCRYPT_COST)
           : null,
+        // Set only where a hash is actually written; a Google-only row has
+        // never had a password, so "never changed" is the truth for it.
+        passwordChangedAt: data.password ? new Date() : null,
         // Only meaningful with a password; a Google user never sees the form.
         mustChangePassword: Boolean(data.password) && data.mustChangePassword,
       },
@@ -216,6 +219,7 @@ export async function setPassword(
         where: { id: userId },
         data: {
           passwordHash: await hash(parsed.data.password, BCRYPT_COST),
+          passwordChangedAt: new Date(),
           mustChangePassword: parsed.data.mustChange,
           // Ends every existing session at its next JWT refresh.
           sessionVersion: { increment: 1 },

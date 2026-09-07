@@ -177,6 +177,17 @@ describe("setPassword", () => {
   it("refuses a password that fails the shared rules", async () => {
     expect((await setPassword("other", "short")).success).toBe(false);
   });
+
+  // Without this, dropping the field would break nothing that is asserted:
+  // the Security card on /settings is its only reader.
+  it("records when the password was set", async () => {
+    await setPassword("other", "Password12");
+    expect(userUpdate).toHaveBeenCalledWith(
+      expect.objectContaining({
+        data: expect.objectContaining({ passwordChangedAt: expect.any(Date) }),
+      }),
+    );
+  });
 });
 
 describe("deleteUser", () => {

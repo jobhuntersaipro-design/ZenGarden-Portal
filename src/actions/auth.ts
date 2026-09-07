@@ -120,6 +120,7 @@ export async function resetPassword(
         where: { id: row.userId },
         data: {
           passwordHash,
+          passwordChangedAt: new Date(),
           mustChangePassword: false,
           // Whoever was signed in on the old password is signed out.
           sessionVersion: { increment: 1 },
@@ -188,6 +189,7 @@ export async function changePassword(input: {
       where: { id: session.id },
       data: {
         passwordHash,
+        passwordChangedAt: new Date(),
         mustChangePassword: false,
         // Signs out every other browser. This one is re-minted below, which is
         // what lets the flag clear without sending the user back to /signin.
