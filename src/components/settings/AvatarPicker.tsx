@@ -151,7 +151,11 @@ export function AvatarPicker({
             aria-pressed={style === preview.id}
             onClick={() => setStyle(preview.id)}
             className={cn(
-              "rounded-pill border px-md py-xs text-[length:var(--text-body-sm)]",
+              // h-control-md is the 44px token: the project's mobile pass
+              // requires standalone controls to clear 44px on a phone, and
+              // padding alone left these at 39px.
+              "flex h-control-md items-center rounded-pill border px-md",
+              "text-[length:var(--text-body-sm)]",
               "focus-visible:outline-2 focus-visible:outline-focus",
               style === preview.id
                 ? "border-focus text-ink"
