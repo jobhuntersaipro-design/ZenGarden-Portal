@@ -92,7 +92,20 @@ export function AvatarPicker({
   return (
     <div className="flex flex-col gap-md">
       <div className="flex flex-wrap items-center gap-md">
-        <PersonAvatar name={name} image={image} size="lg" />
+        {/* The tile spinner says which avatar you picked; this one says the
+            picture is changing. A save runs 3 s on a cold serverless start,
+            and the preview is the thing the user is watching. */}
+        <div className="relative">
+          <PersonAvatar name={name} image={image} size="lg" />
+          {busy !== null ? (
+            <span className="absolute inset-0 grid place-items-center rounded-full bg-canvas/70 text-ink">
+              <Spinner size="md" />
+            </span>
+          ) : null}
+        </div>
+        <p aria-live="polite" className="sr-only">
+          {busy !== null ? "Saving your picture" : ""}
+        </p>
         <div className="flex flex-wrap gap-xs">
           <label
             className={cn(
