@@ -1,10 +1,10 @@
 "use client";
 
 import { useState } from "react";
-import { useRouter } from "next/navigation";
 import { useSession } from "next-auth/react";
 import { toast } from "sonner";
 import { removeAvatar, setGeneratedAvatar } from "@/actions/profile";
+import { useAvatarSaving } from "@/components/portal/AvatarSaving";
 import { Spinner } from "@/components/portal/Spinner";
 import { Button } from "@/components/ui/button";
 import { PersonAvatar } from "@/components/ui/person";
@@ -12,8 +12,35 @@ import {
   AVATAR_STYLE_IDS,
   type AvatarStyleId,
 } from "@/lib/avatar-style-ids";
+import { useAwaitableRefresh } from "@/hooks/useAwaitableRefresh";
 import { AVATAR_ACCEPT_ATTRIBUTE } from "@/lib/validation/profile";
 import { cn } from "@/lib/utils";
+
+/** A picture the browser has not fetched yet paints after the spinner stops. */
+const PRELOAD_GIVE_UP_MS = 5000;
+
+/**
+ * Resolves once the browser holds the new picture — or gives up on it.
+ *
+ * The save writes a 256px WebP to R2 and hands back its URL; the sidebar and
+ * the preview then ask for that URL over the network. Without this wait the
+ * spinner stopped and the toast fired while both were still fetching, so the
+ * old picture stayed on screen for a beat after being told it had changed.
+ *
+ * `onerror` resolves too: a picture that will not load is a broken avatar, not
+ * a reason to hold a spinner open for ever.
+ */
+function preloadPicture(url: string | null | undefined): Promise<void> {
+  if (!url) return Promise.resolve();
+  return new Promise((resolve) => {
+    const image = new Image();
+    const settle = () => resolve();
+    image.onload = settle;
+    image.onerror = settle;
+    setTimeout(settle, PRELOAD_GIVE_UP_MS);
+    image.src = url;
+  });
+}
 
 export type StylePreview = {
   id: AvatarStyleId;
@@ -47,7 +74,8 @@ export function AvatarPicker({
   currentSeed: string | null;
 }) {
   const { update } = useSession();
-  const router = useRouter();
+  const refresh = useAwaitableRefresh();
+  const { setSaving } = useAvatarSaving();
   const [style, setStyle] = useState<AvatarStyleId>(
     currentStyle ?? AVATAR_STYLE_IDS[0],
   );
@@ -55,13 +83,40 @@ export function AvatarPicker({
 
   const active = previews.find((preview) => preview.id === style) ?? previews[0];
 
+  /**
+   * The whole change, start to finish: the write, the new picture fetched, the
+   * session cookie rewritten, and the server-rendered shell caught up. Only
+   * then do the spinners stop and the toast appear — a success message that
+   * lands while the sidebar still shows the old face is a lie, briefly.
+   */
+  async function settle(url: string | null | undefined) {
+    await preloadPicture(url);
+    // Two steps, both needed. `update()` runs the jwt callback with
+    // trigger "update", which rewrites the session cookie instead of waiting
+    // out its five-minute refresh — but the sidebar is a *server* component in
+    // the portal layout, so only a refresh makes it re-render against that new
+    // cookie. `refresh` is awaitable so this can wait for the repaint.
+    await update();
+    await refresh();
+  }
+
   async function run(
     label: string,
-    work: () => Promise<{ success: boolean; error?: string }>,
+    work: () => Promise<{
+      success: boolean;
+      error?: string;
+      data?: { url?: string };
+    }>,
     done?: string,
   ) {
     setBusy(label);
-    let result: { success: boolean; error?: string };
+    setSaving(true);
+    const stop = () => {
+      setBusy(null);
+      setSaving(false);
+    };
+
+    let result: { success: boolean; error?: string; data?: { url?: string } };
     try {
       result = await work();
     } catch {
@@ -70,23 +125,19 @@ export function AvatarPicker({
       // the promise rejected, `busy` never cleared, and every avatar stayed
       // disabled with nothing on screen to say why: the picker looked dead
       // until a reload. Reproduced by stopping the dev server mid-click.
-      setBusy(null);
+      stop();
       toast.error("We couldn't reach the server. Try again.");
       return;
     }
-    setBusy(null);
     if (!result.success) {
+      stop();
       toast.error(result.error ?? "That did not work.");
       return;
     }
+
+    await settle(result.data?.url);
+    stop();
     if (done) toast.success(done);
-    // Two steps, both needed. `update()` runs the jwt callback with
-    // trigger "update", which rewrites the session cookie instead of waiting
-    // out its five-minute refresh — but the sidebar is a *server* component in
-    // the portal layout, so only `router.refresh()` makes it re-render against
-    // that new cookie.
-    await update();
-    router.refresh();
   }
 
   return (
@@ -126,6 +177,7 @@ export function AvatarPicker({
                 event.target.value = "";
                 if (!file) return;
                 setBusy("upload");
+                setSaving(true);
                 const body = new FormData();
                 body.append("file", file);
                 let response: Response;
@@ -143,16 +195,19 @@ export function AvatarPicker({
                   // Same trap as `run`: a failed fetch left the label reading
                   // "Uploading…" for ever.
                   setBusy(null);
+                  setSaving(false);
                   toast.error("We couldn't reach the server. Try again.");
                   return;
                 }
-                setBusy(null);
                 if (!response.ok) {
+                  setBusy(null);
+                  setSaving(false);
                   toast.error(payload.error ?? "We couldn't save that picture.");
                   return;
                 }
-                await update();
-                router.refresh();
+                await settle(payload.url);
+                setBusy(null);
+                setSaving(false);
                 toast.success("Picture updated");
               }}
             />
