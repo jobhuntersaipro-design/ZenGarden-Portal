@@ -35,13 +35,15 @@ export function LineItemsTable({
     <div>
       <div className="relative">
         <div ref={scroller} onScroll={measure} className="overflow-x-auto">
-          <table className="w-full min-w-line-items border-collapse">
-            {/* Widths declared once here rather than repeated on every row. Without
-            them Description had no width at all and collapsed to whatever the
-            other six columns left over — about 88px. */}
+          <table className="w-full min-w-line-items table-fixed border-collapse">
             <colgroup>
-              <col className="min-w-60" />
+              {/* Order matches the headers below. `table-fixed` on the table is
+                  what makes these authoritative: under the default automatic
+                  layout a <col> width is only a hint, so a long description
+                  won the space and squeezed the code down to a few characters.
+                  They sum to --spacing-line-items (840px). */}
               <col className="w-44" />
+              <col className="w-60" />
               <col className="w-20" />
               <col className="w-20" />
               <col className="w-28" />
