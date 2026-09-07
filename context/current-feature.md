@@ -2,71 +2,121 @@
 
 ## Status
 
-Built and verified on `feature/product-matching` — awaiting review before commit.
+Built and verified on `feature/settings-and-avatars` — awaiting review before merge.
+373 tests, build and lint pass. All test data removed afterwards.
 
 ## Goals
 
-Backlog item 1: prove the intake loop works end to end. It never had — the seed writes
-`Document.r2Key` values without uploading anything, so every document in the database
-pointed at an object that did not exist. Prompted by a reported upload failure.
+Phase 10 — account settings and person avatars. Spec: `docs/specs/10-settings-and-avatars.md`.
+Plan: `docs/superpowers/plans/2026-09-07-settings-and-avatars.md`.
 
 ## Notes
 
-**The reported failure did not reproduce, and the pipeline is sound.** The message —
-"The upload was interrupted — check your connection" — comes from exactly one place,
-`xhr.onerror` on the browser's PUT to R2, which fires only for a network-level failure
-with no HTTP status; a refused upload would have said "Storage refused the file (403)"
-and a failed presign "We couldn't start that upload". Four uploads from a clean browser
-all succeeded (123 B, 96 KB with a spaced filename, and the 59 KB PO twice), presign →
-PUT → complete all 200. No `Document` row survives from the reported attempt, which is
-consistent either with a dismissed row (the ✕ fires a cleanup DELETE) or with a PUT that
-never started. **Most likely an extension or transient network blip in the reporter's own
-browser** — worth asking, since it is not reproducible here.
+**What shipped.** `/settings` with a Profile card (picture, display name, read-only
+email/role/member-since) and a Security card (password with its last-changed date, sign
+out on all devices), reached from the account menu — never a nav row. Pictures come from
+four sources — an uploaded photo, a generated DiceBear avatar in one of five styles, a
+Google photo, or initials — and all of them converge on one 256×256 WebP in R2 behind a
+stable URL, so nothing downstream can tell them apart. One `PersonChip` now covers every
+place the portal names a person; the Activity card, "Confirmed by" and "Moved here by"
+gained avatars, and `initials` went from four copies to one.
 
-**The loop now demonstrably works, for the first time.** A realistic PO — Pacific Timber
-Sdn Bhd, three catalogue SKUs, RM 13,100.00 — was rendered, uploaded, read, reviewed,
-confirmed and rolled back. Claude read every field correctly: PO number `PT-2026-4471`,
-both dates, currency, buyer reference `REQ-88231`, payment terms, three lines with exact
-quantities, unit prices and amounts, and subtotal/tax/total, with the totals gate
-agreeing ("Lines add up to RM 13,100.00"). The confirmed record carried the right buyer,
-stage `ORDER_PLACED`, a stage event and the confirming user. **The document preview
-rendered** — the first time one ever has, since it is the first document whose R2 object
-actually exists.
+**DiceBear is rendered locally and never called over HTTP.** Verified in the browser:
+zero requests to `api.dicebear.com` across a full picker session. Three of the five
+styles (`gaze`, `voxel-bot`, `clay`) are **absent from the API's own `/10.x` index**
+while shipping fine in npm, so those endpoints are unlisted; seeds are user names, which
+should not reach a third party either. `croodles` is CC BY 4.0 and carries a credit line
+under the picker; the other four are CC0.
 
-**What the test found: product matching was never implemented.** `toDraft` hardcoded
-`productId: null`, so every line of every PO arrived "Unmatched" and a reviewer had to
-pick each product by hand — on a twenty-line order, twenty pickers — even where the
-document printed the exact catalogue SKU and the exact catalogue name. The extraction
-schema did not capture the SKU at all and the prompt never mentioned it, so the column
-was read and discarded.
+**Two library facts found by running it, not by reading docs.** Option names are
+`` `${component}Variant` `` — the components are called `shape` and `animation`, but
+passing `{ shape: [...] }` throws `OptionsValidationError`, so it is `shapeVariant` and
+`animationVariant`, the same names the HTTP API uses. And passing a raw definition to
+`Avatar` is deprecated in 10.7.0 and removed in v11, so each definition is wrapped in
+`new Style(...)` once at module scope.
 
-Fixed: `sku` added to `PoLineItemSchema` (nullable, never optional — a missing key means
-the model forgot the field, and treating that as "no code" would quietly stop matching)
-and to the prompt, which now names the column's aliases and forbids deriving a code from
-the description. `matchProducts` resolves a line by exact SKU first, then exact
-case-insensitive name, in **one query for the whole document** rather than one per line.
-The rule is deliberately the same as the buyer's: exact only, never fuzzy, because
-silently attaching a line to the wrong product misprices an order and the reviewer
-cannot see it happened. Archived products are excluded, and two active products sharing
-a name match neither.
+**Four defects the build could not catch, all found in the browser.**
 
-Verified against the live pipeline by re-uploading the same PO: all three lines resolved
-to `PLT-BON-010`, `DEC-LAN-060` and `SCR-BAM-180`, the form showed them pre-selected,
-and the confirmed order's line items carry the right `productId`s.
+1. **`useSession` had no `SessionProvider`** anywhere in the app, so `/settings` threw on
+   render. Scoped to this route rather than the portal layout — it is the only screen
+   that changes a name or picture.
+2. **The sidebar never updated.** It read name and image from the **JWT**, which only
+   re-reads the database every `REFRESH_INTERVAL_MS` (5 min), so every table — which
+   joins the row directly — showed the new avatar while the shell showed the old one.
+   `update()` did not reliably rewrite the cookie (no POST to `/api/auth/session` ever
+   appeared in the network log). The portal layout now reads `name` and `image` from the
+   row: one indexed lookup by primary key, and `router.refresh()` makes it live.
+   Confirmed: the sidebar repaints on click with no reload.
+3. **~1 MB of DiceBear was being shipped to the browser** — the exact thing local
+   rendering existed to avoid. `AvatarPicker` is a client component and imported the id
+   list from `avatar-styles`, dragging `@dicebear/core` and all five definitions with it
+   (measured: 440 KB + 596 KB chunks). The ids now live in `avatar-style-ids.ts` with no
+   `@dicebear` imports; a production build has **no dicebear chunk at all**, only the
+   literal style-id strings the chip labels need.
+4. **The style chips were 39px tall** on a phone, under the 44px the mobile pass requires
+   of standalone controls. `h-control-md` is the existing 44px token.
 
-**Buyer matching is unchanged and still correct.** The document says "Pacific Timber Sdn
-Bhd" and the catalogue says "Pacific Timber", so it stayed unmatched and offered to
-create one — the deliberate behaviour, since a near match that guesses wrong is worse
-than asking. The reviewer picked the existing buyer in one click.
+**Beyond the spec, deliberately: a `googleImage` column.** "Use my Google photo" could
+not work without it — `image` is overwritten by an upload, and the Google URL was only
+ever written at row creation, so it was gone for exactly the people who would press that
+button. `googleImage` is recorded on create, on admin approval, and refreshed on every
+Google sign-in, while `image` itself stays untouched so an uploaded avatar survives
+signing in with Google.
 
-All test data was removed afterwards: 4 documents, 1 purchase order, its line items and
-stage event, and all 4 orphaned R2 objects. The database is back to 400 purchase orders.
+**Verified against the live database.** A 1200×700 JPEG uploaded and came back a
+256×256 WebP (14 KB → 1.8 KB) with `avatarStyle`/`avatarSeed` null, correctly marking it
+a photo; generated avatars from `gaze` and `clay` stored, round-tripped their selected
+state across a reload, and appeared in the sidebar, the PO table and the Activity card.
+The serve route returns `image/webp` with `private, max-age=31536000, immutable` and
+401s when signed out. **Zero orphaned R2 objects after four avatar changes** — the
+replace-then-delete path holds. `/account/password` redirects to `/settings#password`
+when not forced, and a `mustChangePassword` user lands on the standalone page from both
+directions **without looping**. `/settings` clean at 390, 768 and 1440. All test data
+removed: database back to 400 purchase orders and 406 documents, both users reset, no
+`avatars/` objects.
 
-**Known, unfixed.** Claude rejects images over 8000px on a side, and nothing in the app
-guards against it — a phone photo can exceed that, and the "Take a photo" path shipped
-this morning makes it likelier. It surfaces as a failed extraction with a raw API message.
+**Known, unfixed.** `croodles` and `notionists` are close to illegible at the 24px the PO
+table uses — measured before building and accepted, since both read well at 96px in the
+Profile card. `sharp` resolves to 0.35.4 for our code, which is patched; the `<0.35.0`
+libvips CVEs the audit reports are `next`'s own nested 0.34.5, used by its image
+optimizer and unrelated to this feature.
 
 ## History
+- 2026-09-07: Product matching built, verified and merged (`feature/product-matching`) —
+  prompted by a reported upload failure that **did not reproduce**. "The upload was
+  interrupted — check your connection" comes from exactly one place, `xhr.onerror` on
+  the browser's PUT to R2, which fires only for a network-level failure with no HTTP
+  status; a refused upload would have said "Storage refused the file (403)". Four
+  uploads from a clean browser all succeeded, presign → PUT → complete all 200, so it
+  was most likely an extension or a transient blip in the reporter's own browser.
+  **The intake loop was proven end to end for the first time**: a realistic PO —
+  Pacific Timber Sdn Bhd, three catalogue SKUs, RM 13,100.00 — was rendered, uploaded,
+  read, reviewed, confirmed and rolled back, with every field correct and the totals
+  gate agreeing, and **the document preview rendered** — the first time one ever has,
+  since it is the first document whose R2 object actually exists. **What the test found
+  is that product matching had never been implemented.** `toDraft` hardcoded
+  `productId: null`, so every line of every PO arrived "Unmatched" and a reviewer picked
+  each product by hand — twenty pickers on a twenty-line order — even where the document
+  printed the exact catalogue SKU. The extraction schema never captured the SKU and the
+  prompt never mentioned it, so the column was read and discarded. Fixed: `sku` added to
+  `PoLineItemSchema` (nullable, never optional — a missing key means the model forgot the
+  field, and treating that as "no code" would quietly stop matching) and to the prompt,
+  which now names the column's aliases and forbids deriving a code from the description.
+  `matchProducts` resolves by exact SKU first, then exact case-insensitive name, in **one
+  query for the whole document** rather than one per line. Exact only, never fuzzy —
+  silently attaching a line to the wrong product misprices an order and the reviewer
+  cannot see it happened; archived products are excluded and two active products sharing
+  a name match neither. Verified live: all three lines resolved, the form showed them
+  pre-selected, the confirmed order carried the right `productId`s. Buyer matching is
+  unchanged and still correctly declines a near miss ("Pacific Timber Sdn Bhd" vs
+  "Pacific Timber"). All test data removed afterwards — 4 documents, 1 purchase order,
+  its line items and stage event, and all 4 orphaned R2 objects. **Known, unfixed:**
+  Claude rejects images over 8000px on a side and nothing in the app guards against it,
+  so a phone photo can fail extraction with a raw API message.
+- 2026-09-07: R2 CORS origins doc fix merged (`fix/r2-cors-origins`) — the bucket policy
+  listed `lovinghandsportal.com` but not `www.`, so a presigned PUT from the www host
+  failed its preflight while localhost and `*.vercel.app` worked. Documentation only;
+  the policy is applied in the Cloudflare dashboard.
 - 2026-09-06: Weekly labels and the drawer clamp complete and merged (`feature/weekly-labels-and-po-edit`) — two reports on 2026-09-06. **A weekly axis labelled `6 Jul` reads as Monday's takings rather than the week's**, and the tooltip inherited the ambiguity; weeks start Monday, so the label now runs Monday to Sunday — `6–12 Jul`, or `29 Jun–5 Jul` where the week crosses a month, with the year left off because the range header above every chart already carries it. The bucket *key* is unchanged, so nothing that joins on it moved, and one label source feeds the sales, stage, buyer-trend and product-trend charts, so all four changed together. Two follow-ons the wider label forced: `ChartScroller`'s floor was a flat 24px a bucket — enough for `6 Jul`, nowhere near enough for `31 Aug–6 Sep` — so it now sizes from the longest label, counting only the ticks the axis will really print; and the `Math.ceil(n / 12) - 1` interval formula that decides that, duplicated in three charts, became `axisInterval` in `charts/labels.tsx` so the scroller and the axes cannot drift. The tooltip read `27 Jul–2 Aug — RM 252,487.41`, two dashes side by side, so its separator became the `·` used everywhere else. **The second report — "I can't edit" on the PO detail page — was not the edit sheet.** It opened correctly (page dimmed, ✕ present, the whole form inside) but the panel was **12px wide and off the right edge**. Tailwind v4 resolves `max-w-<name>` against `--spacing-<name>` before `--container-<name>`, and this system names its spacing steps `xs`, `sm`, `md`, `lg`, so the compiled CSS was literally `.max-w-sm{max-width:var(--spacing-sm)}` — **12px, not 24rem** — and `.max-w-xs` 8px, `.sm\:max-w-lg` 24px. **Every Sheet, Dialog and Tooltip in the app was clamped, and had been since Phase 01**: `sheet.tsx` is untouched since install and `tailwindcss: "^4"` floated to 4.3.3. `--container-panel-xs|sm|md|lg` are names the spacing scale cannot shadow, mapping 1:1 onto the sizes the primitives asked for; recorded in `context/design-system.md` beside the ink-tertiary deviation. Two further traps, both measured rather than assumed: `data-[side=right]:sm:max-w-*` outranks a caller's plain `sm:max-w-*` on specificity, so the drawer opened at 384px while asking for 512px — and *removing that prefix did not fix it*, because tailwind-merge does not treat `max-w-panel-sm` and `max-w-panel-lg` as one conflict group, keeps both, and lets stylesheet order hand it back to `panel-sm`; `SheetContent` now applies its default in code, guarded on whether the caller supplied a `max-w-`. Verified: the drawer opens at 512px on desktop and 75% of the viewport on a phone, and a real edit saved, toasted, appeared in the summary and logged to Activity as "Edited: buyer reference" before being rolled back (the two audit entries remain, which is correct); weekly labels checked at 9, 14 and 53 buckets, the 53-week axis thinning to every fifth tick with no overlap; a sweep over 9 routes × {390, 768, 1440} clean on all 27.
 - 2026-09-06: `poDate` range boundary fixed and merged (`fix/po-date-range-boundary`) — carried as "known, not fixed" since the dashboard-charts brief, where Last 30 days showed **38 purchase orders and RM 737,667.95** in the KPI, the summary and the table but **RM 673,967.79** in the daily chart. **Not a chart bug and not two queries:** both figures came from the same fetched rows. `poDate` is `@db.Date`, and a timestamp parameter compared against a `date` column is truncated to a **UTC** calendar date — midnight on 8 Aug in Kuala Lumpur is `2026-08-07T16:00:00Z`, whose UTC date is the **7th**, so `gte` admitted a whole extra day. Confirmed by binding the bounds directly: `gte 2026-08-07T16:00Z` returned **38** rows, `gte 2026-08-08T00:00Z` returned **35**. `salesSeries` then dropped the three 7 Aug orders (RM 63,700.16) because their KL bucket key was not on the axis — correctly; the query was a day too wide, not the chart. The `to` end was always right (23:59 KL is 15:59 UTC the same day), which is why only the opening day was ever wrong and why the weekly view appeared to agree — the extra day fell inside a bucket it happened to draw. `dateColumnRange` in `src/lib/dates.ts` returns UTC midnight of each end's KL calendar day, making the truncation a no-op; applied to all nine `poDate` range filters, including the raw `UNION` behind the purchase-order list, its count and its total. Verified against the live database: KPI and chart totals agree for every preset × aggregation with **zero orders outside their buckets**, and the boundary is exact both ways — `from=2026-08-07` returns the three orders, `from=2026-08-08` returns none. **The dashboard's headline figures changed as a result**: Last 30 days is now 35 orders and RM 673,967.79. The old numbers counted a day outside the range the page claimed, and the comparison period no longer overlaps the current one, so the "vs. previous period" delta moved too.
 - 2026-09-06: Mobile and engagement pass complete and merged (`feature/mobile-and-engagement`) — the 2026-09-06 `/ui-review` request, the third of the day. Desktop passed; **mobile failed**, and three findings were unreadable rather than merely cramped. One measurement caused most of it: the shell left **246px of a 390px viewport** for content (64px icon rail + 40px padding a side), which is why the buyer trend chart had **86px of plot for 13 buckets** and `StageStepper`'s `grid-cols-6` handed **29px cells to 48–73px labels** ("Ipeodductpiassveedhouse"). The rail is gone below `lg` — `MobileTopBar` (wordmark + account, sticky, painted into the top safe-area inset) and `MobileTabBar` (four 56px destinations, fixed, `env(safe-area-inset-bottom)`), with `NAV`/`isActive` extracted to `components/portal/nav.ts` so the two navs cannot drift — and `main` steps `p-md sm:p-lg lg:p-xl`. Content went to **350px**, which is what made everything else fixable without special-casing. Shipped: `ChartScroller` (a floor of `axisWidth + buckets × 24px`, scrolled inside the card with edge fades, round all four Recharts charts — dashboard sales plot **86px → 768px**), the stepper vertical below `sm` sharing one `StageNode` with the canvas's horizontal track above, `DataTable` card mode below `md` (title from column one, the rest a `<dl>`, `mobileHidden` dropping both avatar columns from the PO list, sorting moved to a select since a card has no header to click — all five consumers at once), `SegmentGroup` replacing five copies of one strip class that clipped instead of scrolling and alone caused the dashboard's **122px** and Products' **38px** document overflow, two-up KPI rows with `break-words` (Top buyer clipped to "Northwii Traders" at 768px) and `mobileFull` for money (**"RM 29,175.52" measures 161px against 125px** of a half tile, and the spec forbids wrapping money), 44px touch targets below `sm`, `SkipLink`, and a `viewport` export with `viewportFit: "cover"` — without which every safe-area inset is 0. Engagement: `WorkQueue` leads the dashboard, reading `data.intake` which was already loaded and unused, and **renders only when there is work**, so it is not the always-on intake bar deliberately removed earlier the same day; its links carry no date range because a draft has no `poDate`. "hover a point" → "tap or hover"; the sales area fill went from ink at 0.06 (invisible) to the brand purple while the line and extremes keep their meanings; Upload leads with **Take a photo** and a rear-camera `capture` input below `sm`; product cards two-up. **`--color-primary` computed to `#292d34`, not `#7612fa`** — the `@theme inline` block re-declares it as `var(--primary)` and `:root` points that at ink, so **no focus ring in the app had ever been purple** since Phase 01; ink is right for `bg-primary`, so the rebinding stays and the ring moved to a new unshadowed `--color-focus`, 37 files swapped, recorded in `context/design-system.md`. The `DataTable` edge-fade logic came out into `useEdgeFades` rather than being written twice. Verified by a scripted sweep over 8 routes × {390, 768, 1440}: zero horizontal overflow, zero clipped text, zero sub-44px standalone controls on phone, all 24 combinations clean; 326 tests, build and lint pass. Prettier reformatted ~40 files it was not asked to touch (semicolons across every shadcn primitive, imports re-wrapped in `ReviewForm` and `useUploadQueue`); every formatting-only diff was reverted before commit. **Known, not fixed:** a KPI row mixing half tiles with a full-width money tile leaves one empty cell where the money tile starts a new row — every fix trades away either the canvas's tile order or DOM/reading order.
