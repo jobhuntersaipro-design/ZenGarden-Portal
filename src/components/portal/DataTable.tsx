@@ -112,7 +112,11 @@ export function DataTable<Row extends { id: string }>({
    * link is left alone rather than navigated twice.
    */
   const openRow = (event: MouseEvent<HTMLElement>, href: string) => {
-    if ((event.target as HTMLElement).closest("a")) return;
+    // A control inside the row acts on the row; it does not open it. Without
+    // `button` here, a row action navigates away the moment it is clicked —
+    // and a dialog it opened then lands the user on a page for the very row
+    // they just deleted.
+    if ((event.target as HTMLElement).closest("a, button")) return;
     if (window.getSelection()?.toString()) return;
     router.push(href);
   };
