@@ -13,6 +13,33 @@ Not Started
 <!-- Constraints, decisions and anything the spec leaves implicit. -->
 
 ## History
+- 2026-09-08: The shell picture waits too, and the toast waits for it, merged
+  (`feature/avatar-saving-everywhere`) and verified on production. Two reports,
+  one cause: the picture in the sidebar and the mobile top bar is the same
+  picture `/settings` changes, but it lives in the portal **layout** — a
+  different subtree, re-rendered on the server — so it sat unchanged and
+  unmarked for the whole save, and "Picture updated" fired the moment the
+  action returned, before the session cookie was rewritten, before the shell
+  re-rendered and before the browser had even fetched the new file. A success
+  message that is briefly untrue. `AvatarSavingProvider` carries one flag from
+  the picker to `UserMenu` — it sits in the layout because that is the only
+  tree holding both — so the shell picture takes the same scrim and ring as the
+  preview. The order is now write → fetch the new picture (`preloadPicture`,
+  resolving on error too rather than holding a spinner open) → rewrite the
+  session cookie → await the refresh → stop the spinners → toast.
+  `useAwaitableRefresh` is what makes the last step waitable at all:
+  `router.refresh()` returns `undefined`, so wrapping it in a transition is the
+  only way to know the server-rendered shell has caught up; it gives up after
+  8 s rather than stranding a spinner, the same failure class as the unguarded
+  action promise. Measured locally at 1150 ms for the shell picture and 1250 ms
+  for the toast; on production all three spinners showed and the picture and
+  the toast landed in the same 50 ms sample after a 4.8 s cold start. **A
+  verification trap worth remembering:** the first production run appeared to
+  fail — no shell spinner, toast 3.7 s before the picture — because the
+  deployment had not finished and the old `UserMenu` was still being served.
+  The marker that settled it is the wrapper element's exact class, not a
+  deployment id, which changes on an intermediate build. Test pictures removed
+  from production and locally afterwards.
 - 2026-09-08: A saving spinner on the picture itself, merged
   (`feature/avatar-saving-spinner`) and verified on production. The clicked
   tile already carried the 14px ring, but it is a small mark on a 64px
