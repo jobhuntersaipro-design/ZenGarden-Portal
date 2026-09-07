@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { useRouter } from "next/navigation";
 import { useSession } from "next-auth/react";
 import { toast } from "sonner";
 import { updateProfile } from "@/actions/profile";
@@ -10,7 +11,7 @@ import {
 } from "@/components/settings/AvatarPicker";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import type { AvatarStyleId } from "@/lib/avatar-styles";
+import type { AvatarStyleId } from "@/lib/avatar-style-ids";
 import { formatDate } from "@/lib/dates";
 
 const LABEL = "font-mono text-[length:var(--text-eyebrow)] text-ink-tertiary";
@@ -28,6 +29,7 @@ export function ProfileCard(props: {
   attribution: { style: string; name: string; url: string } | null;
 }) {
   const { update } = useSession();
+  const router = useRouter();
   const [name, setName] = useState(props.name);
   const [pending, setPending] = useState(false);
 
@@ -62,7 +64,10 @@ export function ProfileCard(props: {
               toast.error(result.error);
               return;
             }
+            // update() rewrites the session cookie; refresh() is what makes
+            // the server-rendered sidebar read it.
             await update();
+            router.refresh();
             toast.success("Saved");
           }}
         >

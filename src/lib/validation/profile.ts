@@ -1,5 +1,5 @@
 import { z } from "zod";
-import { AVATAR_STYLE_IDS } from "@/lib/avatar-styles";
+import { AVATAR_STYLE_IDS } from "@/lib/avatar-style-ids";
 import { formatBytes } from "@/lib/validation/upload";
 
 /**

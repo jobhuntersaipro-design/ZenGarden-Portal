@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import { redirect } from "next/navigation";
+import { SessionProvider } from "next-auth/react";
 import type { StylePreview } from "@/components/settings/AvatarPicker";
 import { ProfileCard } from "@/components/settings/ProfileCard";
 import { SecurityCard } from "@/components/settings/SecurityCard";
@@ -66,40 +67,45 @@ export default async function SettingsPage({
   );
 
   return (
-    <div className="flex flex-col gap-lg">
-      <h1 className="font-display text-[length:var(--text-heading-md)] text-ink">
-        Settings
-      </h1>
+    // Scoped to this route rather than the portal layout: `useSession().update()`
+    // is what repaints the sidebar the moment a name or picture changes, and
+    // /settings is the only screen that changes them.
+    <SessionProvider>
+      <div className="flex flex-col gap-lg">
+        <h1 className="font-display text-[length:var(--text-heading-md)] text-ink">
+          Settings
+        </h1>
 
-      <ProfileCard
-        name={user.name}
-        email={user.email}
-        image={user.image}
-        roleLabel={user.role === Role.SUPER_ADMIN ? "Super admin" : "Member"}
-        createdAt={user.createdAt.toISOString()}
-        seeds={seeds}
-        previews={previews}
-        currentStyle={
-          user.avatarStyle && isAvatarStyleId(user.avatarStyle)
-            ? user.avatarStyle
-            : null
-        }
-        currentSeed={user.avatarSeed}
-        attribution={
-          credited?.attribution
-            ? {
-                style: credited.label,
-                name: credited.attribution.name,
-                url: credited.attribution.url,
-              }
-            : null
-        }
-      />
+        <ProfileCard
+          name={user.name}
+          email={user.email}
+          image={user.image}
+          roleLabel={user.role === Role.SUPER_ADMIN ? "Super admin" : "Member"}
+          createdAt={user.createdAt.toISOString()}
+          seeds={seeds}
+          previews={previews}
+          currentStyle={
+            user.avatarStyle && isAvatarStyleId(user.avatarStyle)
+              ? user.avatarStyle
+              : null
+          }
+          currentSeed={user.avatarSeed}
+          attribution={
+            credited?.attribution
+              ? {
+                  style: credited.label,
+                  name: credited.attribution.name,
+                  url: credited.attribution.url,
+                }
+              : null
+          }
+        />
 
-      <SecurityCard
-        hasPassword={Boolean(user.passwordHash)}
-        passwordChangedAt={user.passwordChangedAt?.toISOString() ?? null}
-      />
-    </div>
+        <SecurityCard
+          hasPassword={Boolean(user.passwordHash)}
+          passwordChangedAt={user.passwordChangedAt?.toISOString() ?? null}
+        />
+      </div>
+    </SessionProvider>
   );
 }

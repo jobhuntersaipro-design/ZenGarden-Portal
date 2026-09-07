@@ -4,6 +4,7 @@ import croodles from "@dicebear/styles/croodles.json" with { type: "json" };
 import gaze from "@dicebear/styles/gaze.json" with { type: "json" };
 import notionists from "@dicebear/styles/notionists.json" with { type: "json" };
 import voxelBot from "@dicebear/styles/voxel-bot.json" with { type: "json" };
+import type { AvatarStyleId } from "@/lib/avatar-style-ids";
 
 /**
  * Rendered locally, never from api.dicebear.com. Three reasons, all measured
@@ -16,15 +17,11 @@ import voxelBot from "@dicebear/styles/voxel-bot.json" with { type: "json" };
  * components here are called `shape` and `animation`, but passing
  * `{ shape: [...] }` throws OptionsValidationError.
  */
-export const AVATAR_STYLE_IDS = [
-  "gaze",
-  "voxel-bot",
-  "clay",
-  "croodles",
-  "notionists",
-] as const;
-
-export type AvatarStyleId = (typeof AVATAR_STYLE_IDS)[number];
+export {
+  AVATAR_STYLE_IDS,
+  isAvatarStyleId,
+  type AvatarStyleId,
+} from "@/lib/avatar-style-ids";
 
 /** Every style renders still; see the note on the module above. */
 const STILL = { animationVariant: ["none"] } as const;
@@ -91,9 +88,6 @@ export const AVATAR_STYLES: Record<AvatarStyleId, StyleEntry> = {
     options: { ...STILL },
   },
 };
-
-export const isAvatarStyleId = (value: string): value is AvatarStyleId =>
-  (AVATAR_STYLE_IDS as readonly string[]).includes(value);
 
 /** SVG markup for one avatar. `size` is a square edge in px. */
 export function renderAvatarSvg(

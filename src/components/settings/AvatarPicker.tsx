@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { useRouter } from "next/navigation";
 import { useSession } from "next-auth/react";
 import { toast } from "sonner";
 import {
@@ -11,7 +12,10 @@ import {
 import { useUrlNavigation } from "@/hooks/useUrlNavigation";
 import { Button } from "@/components/ui/button";
 import { PersonAvatar } from "@/components/ui/person";
-import { AVATAR_STYLE_IDS, type AvatarStyleId } from "@/lib/avatar-styles";
+import {
+  AVATAR_STYLE_IDS,
+  type AvatarStyleId,
+} from "@/lib/avatar-style-ids";
 import { AVATAR_ACCEPT_ATTRIBUTE } from "@/lib/validation/profile";
 import { cn } from "@/lib/utils";
 
@@ -49,6 +53,7 @@ export function AvatarPicker({
   attribution: { style: string; name: string; url: string } | null;
 }) {
   const { update } = useSession();
+  const router = useRouter();
   const { pending: navigating, replace } = useUrlNavigation();
   const [style, setStyle] = useState<AvatarStyleId>(
     currentStyle ?? AVATAR_STYLE_IDS[0],
@@ -68,9 +73,13 @@ export function AvatarPicker({
       toast.error(result.error ?? "That did not work.");
       return;
     }
-    // Repaints the sidebar now, rather than waiting out the jwt callback's
-    // five-minute refresh.
+    // Two steps, both needed. `update()` runs the jwt callback with
+    // trigger "update", which rewrites the session cookie instead of waiting
+    // out its five-minute refresh — but the sidebar is a *server* component in
+    // the portal layout, so only `router.refresh()` makes it re-render against
+    // that new cookie.
     await update();
+    router.refresh();
   }
 
   return (
@@ -113,6 +122,7 @@ export function AvatarPicker({
                   return;
                 }
                 await update();
+                router.refresh();
                 toast.success("Picture updated");
               }}
             />

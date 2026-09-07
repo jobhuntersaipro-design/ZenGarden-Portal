@@ -1,6 +1,7 @@
 import type { ReactNode } from "react";
 import { redirect } from "next/navigation";
 import { getSessionUser } from "@/lib/auth-guards";
+import { prisma } from "@/lib/prisma";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { Toaster } from "@/components/ui/sonner";
 import { NavProgressProvider } from "@/components/portal/NavProgress";
@@ -20,6 +21,18 @@ export default async function PortalLayout({
   if (!user) redirect("/signin");
   if (user.mustChangePassword) redirect("/account/password");
 
+  // Name and picture come from the row, not the JWT. The token only re-reads
+  // the database every REFRESH_INTERVAL_MS, so a change made on /settings
+  // would otherwise sit stale in the shell for up to five minutes while every
+  // table — which joins the row directly — already showed the new one. One
+  // indexed lookup by primary key is the cheaper half of that trade.
+  const profile = await prisma.user.findUnique({
+    where: { id: user.id },
+    select: { name: true, image: true },
+  });
+  const displayName = profile?.name ?? user.name;
+  const displayImage = profile?.image ?? null;
+
   return (
     <TooltipProvider delayDuration={200}>
       {/* Every in-place filter, sort, range and page change reports its
@@ -30,18 +43,18 @@ export default async function PortalLayout({
         <SkipLink />
         <div className="flex min-h-dvh bg-canvas">
           <Sidebar
-            userName={user.name}
+            userName={displayName}
             userEmail={user.email}
-            userImage={user.image}
+            userImage={displayImage}
           />
           {/* `min-w-0` on the column, not just the main: a flex child defaults
               to `min-width: auto`, so without it a wide table would widen the
               shell instead of scrolling inside its own container. */}
           <div className="flex min-w-0 flex-1 flex-col">
             <MobileTopBar
-              userName={user.name}
+              userName={displayName}
               userEmail={user.email}
-              userImage={user.image}
+              userImage={displayImage}
             />
             {/* Padding steps with the viewport. A flat `p-xl` spent 80px of a
                 390px screen on margins — with the old 64px rail that left the
