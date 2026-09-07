@@ -212,7 +212,12 @@ export function ReviewForm({
         </div>
       ) : null}
 
-      <div className="flex flex-col gap-md">
+      {/* `min-w-0` on both this column and the line-items section below: a flex
+          item and a block inside a grid track both default to
+          `min-width: auto`, so without it the 840px line-items table hands its
+          own width back up the chain and the *page* scrolls sideways on a
+          phone instead of the table scrolling inside its own container. */}
+      <div className="flex min-w-0 flex-col gap-md">
         {/* Buyer leads on its own full-width row so a long buyer name is never
             the value that truncates (G4, design reference §3.4). */}
         <FieldShell label="Buyer" confidence={confidence.buyerName}>
@@ -281,7 +286,7 @@ export function ReviewForm({
           />
         </div>
 
-        <section>
+        <section className="min-w-0">
           <div className="flex items-baseline justify-between gap-sm">
             <h2 className="font-mono text-[length:var(--text-eyebrow)] text-ink-tertiary">
               Line items

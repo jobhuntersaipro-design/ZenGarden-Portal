@@ -167,7 +167,11 @@
      skeleton, the PDF loader and the poller all reserve the same space; and
      the minimum the line-item table needs before it scrolls horizontally. */
   --spacing-preview: 600px;
-  --spacing-line-items: 720px;
+  /* Sum of the per-column minimums declared in LineItemsTable's colgroup:
+     240 + 176 + 80 + 80 + 112 + 112 + 40. At 720px the Description and Product
+     headers collided and Amount was clipped off the card (measured
+     2026-09-07). */
+  --spacing-line-items: 840px;
 
   /* Share palette — the donuts' six categorical hues, in rank order.
      Deliberately NOT named `--color-chart-*` or reusing `--color-primary`:
