@@ -201,7 +201,13 @@ export function boughtTogether(
     .slice(0, 5);
 }
 
-export type AttentionFlag = "missing-image" | "inactive" | "not-sold-60d" | "price-moved";
+export type AttentionFlag =
+  | "missing-image"
+  | "inactive"
+  | "not-sold-60d"
+  | "price-moved"
+  /** Created from a purchase order code; its category and price are guesses. */
+  | "needs-review";
 
 export type ProductFlags = {
   productId: string;
@@ -213,7 +219,12 @@ const PRICE_MOVED_PERCENT = 3;
 
 /** The maintenance to-do list behind the quick-filter chips. */
 export function needsAttention(
-  products: { id: string; active: boolean; imageCount: number }[],
+  products: {
+    id: string;
+    active: boolean;
+    imageCount: number;
+    needsReview: boolean;
+  }[],
   statsById: Map<string, { lastSold: Date | null; driftPercent: number | null }>,
   now: Date = new Date(),
 ): ProductFlags[] {
@@ -222,6 +233,9 @@ export function needsAttention(
   return products.map((product) => {
     const stats = statsById.get(product.id);
     const flags: AttentionFlag[] = [];
+    // First, because it is the only flag saying the row itself is provisional
+    // rather than saying something about a real catalogue entry.
+    if (product.needsReview) flags.push("needs-review");
     if (product.imageCount === 0) flags.push("missing-image");
     if (!product.active) flags.push("inactive");
     // Never sold counts as not sold: there is nothing more to wait for.

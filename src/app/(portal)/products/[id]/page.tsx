@@ -132,6 +132,7 @@ export default async function ProductPage({
                   listPrice: data.product.listPrice.toFixed(2),
                   description: data.product.description,
                   active: data.product.active,
+                  needsReview: data.product.needsReview,
                 }}
                 trigger={<Button>Edit product</Button>}
               />

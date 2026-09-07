@@ -173,6 +173,22 @@ describe("boughtTogether", () => {
 });
 
 describe("needsAttention", () => {
+  it("flags a product created from a purchase order", () => {
+    const [flags] = needsAttention(
+      [{ id: "p1", active: true, imageCount: 1, needsReview: true }],
+      new Map([["p1", { lastSold: new Date(), driftPercent: 0 }]]),
+    );
+    expect(flags.flags).toContain("needs-review");
+  });
+
+  it("does not flag an ordinary product for review", () => {
+    const [flags] = needsAttention(
+      [{ id: "p1", active: true, imageCount: 1, needsReview: false }],
+      new Map([["p1", { lastSold: new Date(), driftPercent: 0 }]]),
+    );
+    expect(flags.flags).not.toContain("needs-review");
+  });
+
   // `??` would swallow an explicit null and hand back the default date, which
   // is exactly the case "never sold" needs to express.
   const stats = (over: Partial<{ lastSold: Date | null; driftPercent: number | null }>) => ({
@@ -182,7 +198,7 @@ describe("needsAttention", () => {
 
   it("flags a product with no images", () => {
     const flags = needsAttention(
-      [{ id: "p1", active: true, imageCount: 0 }],
+      [{ id: "p1", active: true, imageCount: 0, needsReview: false }],
       new Map([["p1", stats({})]]),
       NOW,
     );
@@ -191,7 +207,7 @@ describe("needsAttention", () => {
 
   it("flags an inactive product", () => {
     const flags = needsAttention(
-      [{ id: "p1", active: false, imageCount: 2 }],
+      [{ id: "p1", active: false, imageCount: 2, needsReview: false }],
       new Map([["p1", stats({})]]),
       NOW,
     );
@@ -200,14 +216,14 @@ describe("needsAttention", () => {
 
   it("flags a product not sold in sixty days, and one never sold at all", () => {
     const stale = needsAttention(
-      [{ id: "p1", active: true, imageCount: 1 }],
+      [{ id: "p1", active: true, imageCount: 1, needsReview: false }],
       new Map([["p1", stats({ lastSold: new Date("2026-06-01T04:00:00Z") })]]),
       NOW,
     );
     expect(stale[0].flags).toContain("not-sold-60d");
 
     const never = needsAttention(
-      [{ id: "p2", active: true, imageCount: 1 }],
+      [{ id: "p2", active: true, imageCount: 1, needsReview: false }],
       new Map([["p2", stats({ lastSold: null })]]),
       NOW,
     );
@@ -216,12 +232,12 @@ describe("needsAttention", () => {
 
   it("flags a price that moved more than three percent, either way", () => {
     const up = needsAttention(
-      [{ id: "p1", active: true, imageCount: 1 }],
+      [{ id: "p1", active: true, imageCount: 1, needsReview: false }],
       new Map([["p1", stats({ driftPercent: 4 })]]),
       NOW,
     );
     const down = needsAttention(
-      [{ id: "p1", active: true, imageCount: 1 }],
+      [{ id: "p1", active: true, imageCount: 1, needsReview: false }],
       new Map([["p1", stats({ driftPercent: -4 })]]),
       NOW,
     );
@@ -231,7 +247,7 @@ describe("needsAttention", () => {
 
   it("leaves a healthy product unflagged", () => {
     const flags = needsAttention(
-      [{ id: "p1", active: true, imageCount: 3 }],
+      [{ id: "p1", active: true, imageCount: 3, needsReview: false }],
       new Map([["p1", stats({ driftPercent: 1 })]]),
       NOW,
     );

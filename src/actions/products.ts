@@ -125,6 +125,9 @@ export async function updateProduct(
           listPrice: nextPrice,
           description: data.description,
           active: data.active,
+          // Saving is the review. A product created from a purchase order
+          // carried guessed values; a person has now looked at them.
+          needsReview: false,
         },
       });
       // Appended only when the price actually moved: a row per save would
