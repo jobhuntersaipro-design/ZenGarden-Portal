@@ -1,13 +1,15 @@
 "use client";
 
+import Link from "next/link";
 import { signOut } from "next-auth/react";
 import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
+  DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import { PersonAvatar } from "@/components/ui/person";
 
 export type UserMenuProps = {
   name: string;
@@ -15,15 +17,6 @@ export type UserMenuProps = {
   image?: string | null;
   collapsed?: boolean;
 };
-
-const initials = (name: string) =>
-  name
-    .split(" ")
-    .map((part) => part[0])
-    .filter(Boolean)
-    .slice(0, 2)
-    .join("")
-    .toUpperCase();
 
 export function UserMenu({
   name,
@@ -37,12 +30,7 @@ export function UserMenu({
         aria-label={`Account menu for ${name}`}
         className="flex w-full items-center gap-xs rounded-sm p-xs text-left transition-colors duration-[0.25s] ease-[cubic-bezier(0.5,0,0.5,1)] hover:bg-canvas focus-visible:outline-2 focus-visible:outline-focus"
       >
-        <Avatar className="size-8 shrink-0">
-          {image ? <AvatarImage src={image} alt="" /> : null}
-          <AvatarFallback className="bg-surface-soft text-[length:var(--text-caption)] text-ink">
-            {initials(name)}
-          </AvatarFallback>
-        </Avatar>
+        <PersonAvatar name={name} image={image} size="md" />
         {collapsed ? null : (
           <span className="min-w-0 flex-1">
             <span className="block truncate text-[length:var(--text-body-sm)] font-medium text-ink">
@@ -62,6 +50,13 @@ export function UserMenu({
         )}
       </DropdownMenuTrigger>
       <DropdownMenuContent align="start" className="w-56">
+        {/* Settings is reached from here, never as a nav row: NAV is
+            destinations only (00-master.md §4). MobileTopBar renders this same
+            menu, so both navs get it from one change. */}
+        <DropdownMenuItem asChild>
+          <Link href="/settings">Settings</Link>
+        </DropdownMenuItem>
+        <DropdownMenuSeparator />
         <DropdownMenuItem onSelect={() => signOut({ redirectTo: "/signin" })}>
           Sign out
         </DropdownMenuItem>

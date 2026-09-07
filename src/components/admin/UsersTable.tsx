@@ -7,7 +7,7 @@ import { requestPasswordReset } from "@/actions/auth";
 import { UserStatusBadge } from "@/components/admin/RingBadge";
 import { UserDrawer } from "@/components/admin/UserDrawer";
 import { DataTable, type Column } from "@/components/portal/DataTable";
-import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import { PersonAvatar } from "@/components/ui/person";
 import { Button } from "@/components/ui/button";
 import {
   Dialog,
@@ -33,15 +33,6 @@ const STATUSES: { value: UserStatusFilter; label: string }[] = [
 
 const GOOGLE_ONLY_TITLE =
   "This user signs in with Google; there is no password to reset. Set one in the drawer if they need email sign-in.";
-
-const initials = (name: string) =>
-  name
-    .split(" ")
-    .map((part) => part[0])
-    .filter(Boolean)
-    .slice(0, 2)
-    .join("")
-    .toUpperCase();
 
 export function UsersTable({
   users,
@@ -79,12 +70,7 @@ export function UsersTable({
       header: "User",
       cell: (row) => (
         <span className="flex items-center gap-xs">
-          <Avatar className="size-7 shrink-0">
-            {row.image ? <AvatarImage src={row.image} alt="" /> : null}
-            <AvatarFallback className="bg-surface-soft text-[length:var(--text-caption)] text-ink">
-              {initials(row.name)}
-            </AvatarFallback>
-          </Avatar>
+          <PersonAvatar name={row.name} image={row.image} size="md" />
           <span className="min-w-0">
             <span
               title={row.name}

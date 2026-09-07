@@ -36,6 +36,9 @@ export async function resolveGoogleSignIn(
     // on `?error=AccessDenied`; returning the path lands the user on the
     // `?error=disabled` copy the spec actually asks for.
     if (existing.disabledAt) return "/signin?error=disabled";
+
+    // `image` is deliberately not written here — only on create below. An
+    // uploaded avatar must survive its owner signing in with Google again.
     return true;
   }
 

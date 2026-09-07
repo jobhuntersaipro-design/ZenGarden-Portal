@@ -4,19 +4,10 @@ import { redirect } from "next/navigation";
 import { Role } from "@/generated/prisma/enums";
 import { NavProgressProvider } from "@/components/portal/NavProgress";
 import { Wordmark } from "@/components/portal/Wordmark";
-import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import { PersonAvatar } from "@/components/ui/person";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { Toaster } from "@/components/ui/sonner";
 import { getSessionUser } from "@/lib/auth-guards";
-
-const initials = (name: string) =>
-  name
-    .split(" ")
-    .map((part) => part[0])
-    .filter(Boolean)
-    .slice(0, 2)
-    .join("")
-    .toUpperCase();
 
 /**
  * Its own shell, without the portal sidebar: admin is not a destination in the
@@ -52,12 +43,7 @@ export default async function AdminLayout({
             >
               ‹ Back to portal
             </Link>
-            <Avatar className="size-8 shrink-0">
-              {user.image ? <AvatarImage src={user.image} alt="" /> : null}
-              <AvatarFallback className="bg-surface-soft text-[length:var(--text-caption)] text-ink">
-                {initials(user.name)}
-              </AvatarFallback>
-            </Avatar>
+            <PersonAvatar name={user.name} image={user.image} size="md" />
           </header>
 
           <main className="mx-auto w-full max-w-[var(--container-page)] p-xl">
