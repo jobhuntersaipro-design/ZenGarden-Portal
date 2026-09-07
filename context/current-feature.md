@@ -13,6 +13,34 @@ Not Started
 <!-- Constraints, decisions and anything the spec leaves implicit. -->
 
 ## History
+- 2026-09-08: **Avatars had never worked in production** — fixed and merged
+  (`fix/sharp-libvips-tracing`), verified live on `www.lovinghandsportal.com`.
+  Reported as "clicking an avatar shows *We couldn't reach the server*"; the
+  toast was telling the truth, and the same failure had been silent before that
+  morning's feedback fix. Probing production separated the paths: the
+  `/settings` page (renders 48 DiceBear previews server-side), `/api/upload/presign`
+  and `/api/avatars/[userId]` all answered normally, while **choosing an avatar
+  and uploading a photo — the only two paths that import `src/lib/avatar-store.ts`
+  — both returned Next's own 500 page**, before `setGeneratedAvatar`'s own
+  try/catch could run, and wrote nothing. The same production build ran fine
+  locally under `npm start`, which pointed at the runtime rather than the code.
+  The Vercel log named it exactly: `Could not load the "sharp" module using the
+  linux-x64 runtime — ERR_DLOPEN_FAILED: libvips-cpp.so.8.18.6: cannot open
+  shared object file`. **Not a missing dependency.** `@img/sharp-linux-x64` was
+  in the bundle — sharp got far enough to raise its own loader error — but the
+  libvips package it dlopens was not, because **Next's build trace drops it on
+  purpose when the build runs on Vercel**: `collect-build-traces.ts` adds
+  `**/@img/sharp-libvips*/**/*` to `serverIgnores` whenever `hasNextSupport` is
+  true, dating from when the platform supplied sharp for image optimization.
+  That is why no amount of local testing could reproduce it — a macOS build
+  traces the darwin packages, which are not ignored.
+  `outputFileTracingIncludes` in `next.config.ts` re-adds `sharp` and `@img/**`
+  for the two entry points that reach them, checked against the emitted
+  `.nft.json` files before pushing. Verified on production after the deploy:
+  a clay avatar saved in 3.2 s with the spinner showing, toasted "Picture
+  updated", replaced the picture and the top bar, and survived a reload; an
+  upload returned 200. Both test pictures were removed afterwards, so the
+  account is back to initials with no stray R2 object.
 - 2026-09-08: Avatar choice feedback fixed and merged (`fix/avatar-choice-feedback`)
   — reported as "let the user choose an avatar; the chosen one should replace the
   Avatar", with a screenshot showing a style chip selected and the initials
