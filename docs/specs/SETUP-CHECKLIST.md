@@ -33,7 +33,7 @@ project settings for Preview and Production.
 ```json
 [
   {
-    "AllowedOrigins": ["http://localhost:3000", "https://lovinghandsportal.com", "https://*.vercel.app"],
+    "AllowedOrigins": ["http://localhost:3000", "https://www.lovinghandsportal.com", "https://lovinghandsportal.com", "https://*.vercel.app"],
     "AllowedMethods": ["GET", "PUT", "HEAD"],
     "AllowedHeaders": ["Content-Type", "Content-Length"],
     "ExposeHeaders": ["ETag"],
