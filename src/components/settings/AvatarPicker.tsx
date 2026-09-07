@@ -5,7 +5,6 @@ import { useRouter } from "next/navigation";
 import { useSession } from "next-auth/react";
 import { toast } from "sonner";
 import { removeAvatar, setGeneratedAvatar } from "@/actions/profile";
-import { useUrlNavigation } from "@/hooks/useUrlNavigation";
 import { Button } from "@/components/ui/button";
 import { PersonAvatar } from "@/components/ui/person";
 import {
@@ -18,18 +17,18 @@ import { cn } from "@/lib/utils";
 export type StylePreview = {
   id: AvatarStyleId;
   label: string;
-  /** Six `data:image/svg+xml` URIs, in the same order as `seeds`. */
+  /** One `data:image/svg+xml` URI per seed, in the same order as `seeds`. */
   variants: string[];
 };
 
 /**
- * The picture picker: upload a photo, choose a generated style, use a Google
- * photo, or fall back to initials. Every source ends up as the same 256px WebP
- * in R2, so nothing downstream can tell them apart.
+ * The picture picker: upload a photo, choose one of the generated avatars, or
+ * fall back to initials. Every source ends up as the same 256px WebP in R2, so
+ * nothing downstream can tell them apart.
  *
  * The previews are rendered on the server and arrive as data URIs. Rendering
- * them here would ship all five DiceBear definitions to the browser and defeat
- * the tree-shaking that keeps the other 56 out of the bundle.
+ * them here would ship all four DiceBear definitions to the browser and defeat
+ * the tree-shaking that keeps the other 57 out of the bundle.
  */
 export function AvatarPicker({
   name,
@@ -38,7 +37,6 @@ export function AvatarPicker({
   previews,
   currentStyle,
   currentSeed,
-  attribution,
 }: {
   name: string;
   image: string | null;
@@ -46,11 +44,9 @@ export function AvatarPicker({
   previews: StylePreview[];
   currentStyle: AvatarStyleId | null;
   currentSeed: string | null;
-  attribution: { style: string; name: string; url: string } | null;
 }) {
   const { update } = useSession();
   const router = useRouter();
-  const { pending: navigating, replace } = useUrlNavigation();
   const [style, setStyle] = useState<AvatarStyleId>(
     currentStyle ?? AVATAR_STYLE_IDS[0],
   );
@@ -195,38 +191,6 @@ export function AvatarPicker({
           })}
         </div>
       </fieldset>
-
-      <div className="flex flex-wrap items-center gap-sm">
-        <Button
-          variant="secondary"
-          pending={navigating}
-          // Re-seeding is a server round trip on purpose: see the note above.
-          onClick={() =>
-            replace(
-              `/settings?seeds=${Array.from({ length: seeds.length }, () =>
-                crypto.randomUUID().slice(0, 8),
-              ).join(",")}`,
-            )
-          }
-        >
-          Shuffle
-        </Button>
-      </div>
-
-      {attribution ? (
-        <p className="text-[length:var(--text-caption)] text-ink-tertiary">
-          {attribution.style} by{" "}
-          <a
-            href={attribution.url}
-            target="_blank"
-            rel="noreferrer"
-            className="text-brand-link underline-offset-2 hover:underline"
-          >
-            {attribution.name}
-          </a>{" "}
-          · CC BY 4.0
-        </p>
-      ) : null}
     </div>
   );
 }

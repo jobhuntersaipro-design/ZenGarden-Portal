@@ -18,14 +18,14 @@ export const metadata: Metadata = {
   title: "Settings · Loving Hands Portal",
 };
 
-/** Enough to find one you like without becoming a contact sheet. */
-const VARIANTS = 6;
+/**
+ * The gallery is a fixed set, identical on every visit and for every person:
+ * picking a face is a choice, not a lottery, so there is nothing to re-roll.
+ * Twelve is enough to find one you like without becoming a contact sheet.
+ */
+const SEEDS = Array.from({ length: 12 }, (_, i) => `option-${i + 1}`);
 
-export default async function SettingsPage({
-  searchParams,
-}: {
-  searchParams: Promise<Record<string, string | string[] | undefined>>;
-}) {
+export default async function SettingsPage() {
   const session = await getSessionUser();
   if (!session) redirect("/signin?next=/settings");
 
@@ -45,26 +45,13 @@ export default async function SettingsPage({
   });
   if (!user) redirect("/signin");
 
-  // Seeds live in the URL so Shuffle is a server round trip. Without them the
-  // seed is the user's own name, so a first look is already personal.
-  const params = await searchParams;
-  const raw = typeof params.seeds === "string" ? params.seeds : "";
-  const seeds = raw
-    ? raw.split(",").filter(Boolean).slice(0, VARIANTS)
-    : Array.from({ length: VARIANTS }, (_, i) => `${user.name}-${i}`);
-
   // Rendered here, never in the browser: shipping the definitions to the
-  // client would defeat the tree-shaking that keeps 56 unused styles out.
+  // client would defeat the tree-shaking that keeps 57 unused styles out.
   const previews: StylePreview[] = AVATAR_STYLE_IDS.map((id) => ({
     id,
     label: AVATAR_STYLES[id].label,
-    variants: seeds.map((seed) => renderAvatarDataUri(id, seed)),
+    variants: SEEDS.map((seed) => renderAvatarDataUri(id, seed)),
   }));
-
-  // Only croodles carries one; the other four are CC0.
-  const credited = AVATAR_STYLE_IDS.map((id) => AVATAR_STYLES[id]).find(
-    (entry) => entry.attribution,
-  );
 
   return (
     // Scoped to this route rather than the portal layout: `useSession().update()`
@@ -82,7 +69,7 @@ export default async function SettingsPage({
           image={user.image}
           roleLabel={user.role === Role.SUPER_ADMIN ? "Super admin" : "Member"}
           createdAt={user.createdAt.toISOString()}
-          seeds={seeds}
+          seeds={SEEDS}
           previews={previews}
           currentStyle={
             user.avatarStyle && isAvatarStyleId(user.avatarStyle)
@@ -90,15 +77,6 @@ export default async function SettingsPage({
               : null
           }
           currentSeed={user.avatarSeed}
-          attribution={
-            credited?.attribution
-              ? {
-                  style: credited.label,
-                  name: credited.attribution.name,
-                  url: credited.attribution.url,
-                }
-              : null
-          }
         />
 
         <SecurityCard
