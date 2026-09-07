@@ -1,18 +1,28 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 const poFindUnique = vi.fn();
+const extractionFindUnique = vi.fn();
+const extractionDeleteMany = vi.fn();
+const documentDelete = vi.fn();
+const deleteObject = vi.fn();
 const poDelete = vi.fn();
 const extractionUpdateMany = vi.fn();
 
 const tx = {
   purchaseOrder: { delete: poDelete },
-  extraction: { updateMany: extractionUpdateMany },
+  extraction: { updateMany: extractionUpdateMany, deleteMany: extractionDeleteMany },
+  document: { delete: documentDelete },
 };
 
 vi.mock("@/lib/prisma", () => ({
   prisma: {
     purchaseOrder: { findUnique: poFindUnique, delete: poDelete },
-    extraction: { updateMany: extractionUpdateMany },
+    extraction: {
+      updateMany: extractionUpdateMany,
+      findUnique: extractionFindUnique,
+      deleteMany: extractionDeleteMany,
+    },
+    document: { delete: documentDelete },
     $transaction: (arg: unknown) =>
       typeof arg === "function"
         ? (arg as (client: typeof tx) => unknown)(tx)
@@ -33,8 +43,17 @@ vi.mock("@/lib/env", () => ({
   env: { R2_BUCKET: "test", ANTHROPIC_API_KEY: "test", EXTRACTION_MODEL: "test" },
 }));
 vi.mock("next/cache", () => ({ revalidatePath: vi.fn() }));
+vi.mock("@/lib/r2", () => ({
+  deleteObject: (key: string) => deleteObject(key),
+  isPendingKey: (key: string) => key.startsWith("pending:"),
+}));
+vi.mock("@/lib/extraction/resolve-products", () => ({
+  resolveProducts: (lines: unknown[]) => Promise.resolve(lines.map(() => null)),
+}));
 
-const { deletePurchaseOrder } = await import("@/actions/purchase-orders");
+const { deletePurchaseOrder, deleteUpload } = await import(
+  "@/actions/purchase-orders"
+);
 
 beforeEach(() => {
   vi.resetAllMocks();
@@ -101,5 +120,56 @@ describe("deletePurchaseOrder", () => {
     const result = await deletePurchaseOrder({ id: "po1", typedPoNumber: "" });
     expect(result.success).toBe(false);
     expect(poFindUnique).not.toHaveBeenCalled();
+  });
+});
+
+describe("deleteUpload", () => {
+  beforeEach(() => {
+    extractionFindUnique.mockResolvedValue({
+      id: "ex1",
+      status: "SUCCEEDED",
+      document: { id: "doc1", r2Key: "po/2026/09/doc1.pdf", originalName: "scan.pdf" },
+    });
+    extractionDeleteMany.mockResolvedValue({ count: 1 });
+    documentDelete.mockResolvedValue({});
+    deleteObject.mockResolvedValue(undefined);
+  });
+
+  it("removes the extraction, the document and the stored file", async () => {
+    const result = await deleteUpload("ex1");
+    expect(result.success).toBe(true);
+    expect(extractionDeleteMany).toHaveBeenCalledWith({ where: { documentId: "doc1" } });
+    expect(documentDelete).toHaveBeenCalledWith({ where: { id: "doc1" } });
+    expect(deleteObject).toHaveBeenCalledWith("po/2026/09/doc1.pdf");
+  });
+
+  // A confirmed upload is a sales record behind a purchase order; deleting it
+  // here would bypass the super-admin gate on deleting an order.
+  it("refuses a confirmed upload", async () => {
+    extractionFindUnique.mockResolvedValue({
+      id: "ex1",
+      status: "CONFIRMED",
+      document: { id: "doc1", r2Key: "k", originalName: "scan.pdf" },
+    });
+    const result = await deleteUpload("ex1");
+    expect(result.success).toBe(false);
+    expect(documentDelete).not.toHaveBeenCalled();
+  });
+
+  it("fails cleanly when the upload is already gone", async () => {
+    extractionFindUnique.mockResolvedValue(null);
+    const result = await deleteUpload("ex1");
+    expect(result.success).toBe(false);
+    expect(documentDelete).not.toHaveBeenCalled();
+  });
+
+  // The row is what the user asked to remove; an object left behind in R2 is
+  // cheaper than telling them the delete failed when the database is already
+  // consistent.
+  it("still succeeds when the stored file cannot be removed", async () => {
+    deleteObject.mockRejectedValue(new Error("NoSuchKey"));
+    const result = await deleteUpload("ex1");
+    expect(result.success).toBe(true);
+    expect(documentDelete).toHaveBeenCalled();
   });
 });

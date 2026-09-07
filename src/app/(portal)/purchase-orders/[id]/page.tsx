@@ -346,9 +346,12 @@ export default async function PurchaseOrderPage({
                         >
                           {line.description}
                         </span>
-                        {line.product ? (
-                          <span className="text-[length:var(--text-caption)] text-ink-tertiary">
-                            {line.product.sku}
+                        {/* The code the document printed, not the catalogue's.
+                            They are the same once a line is linked, but a line
+                            whose code created nothing still has one to show. */}
+                        {line.sku ?? line.product?.sku ? (
+                          <span className="block font-mono text-[length:var(--text-caption)] text-ink-tertiary">
+                            {line.sku ?? line.product?.sku}
                           </span>
                         ) : null}
                       </td>

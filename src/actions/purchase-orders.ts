@@ -16,7 +16,7 @@ import { extractPurchaseOrder } from "@/lib/extraction/extract-po";
 import { formatMYR } from "@/lib/money";
 import { prisma } from "@/lib/prisma";
 import { resolveProducts } from "@/lib/extraction/resolve-products";
-import { getObjectBytes } from "@/lib/r2";
+import { deleteObject, getObjectBytes, isPendingKey } from "@/lib/r2";
 import {
   PoDraftSchema,
   checkTotals,
@@ -462,5 +462,68 @@ export async function deletePurchaseOrder(input: {
     }
     console.error("[po] deletePurchaseOrder", cause);
     return { success: false, error: "We could not delete that order." };
+  }
+}
+
+/**
+ * Removes an upload that never became an order — a draft, an extraction still
+ * running, or one that failed — together with its stored file.
+ *
+ * Deliberately not the same thing as `discardExtraction`, which marks a file
+ * DISCARDED and keeps it. This is for clearing the list.
+ *
+ * A CONFIRMED extraction is refused: that document belongs to a purchase
+ * order, and removing it here would go around the super-admin gate on
+ * deleting an order.
+ */
+export async function deleteUpload(extractionId: string): Promise<ActionResult> {
+  try {
+    await requireUser();
+
+    const extraction = await prisma.extraction.findUnique({
+      where: { id: extractionId },
+      select: {
+        id: true,
+        status: true,
+        document: { select: { id: true, r2Key: true, originalName: true } },
+      },
+    });
+    if (!extraction?.document) {
+      return { success: false, error: "That upload no longer exists." };
+    }
+    if (extraction.status === ExtractionStatus.CONFIRMED) {
+      return {
+        success: false,
+        error: "That one is a confirmed order. Delete the order instead.",
+      };
+    }
+
+    const { id: documentId, r2Key } = extraction.document;
+
+    await prisma.$transaction(async (tx) => {
+      // Every extraction for the document, not just this one: a retry leaves
+      // more than one, and the document cannot go while any of them points at it.
+      await tx.extraction.deleteMany({ where: { documentId } });
+      await tx.document.delete({ where: { id: documentId } });
+    });
+
+    // After the rows, and never fatal. The user asked for the row gone; an
+    // object left in R2 is cheaper than reporting a failure once the database
+    // is already consistent.
+    try {
+      if (!isPendingKey(r2Key)) await deleteObject(r2Key);
+    } catch (cause) {
+      console.error("[po] deleteUpload could not remove the object", cause);
+    }
+
+    revalidatePath("/purchase-orders");
+    revalidatePath("/", "layout");
+    return { success: true, data: undefined };
+  } catch (cause) {
+    if (cause instanceof UnauthorizedError) {
+      return { success: false, error: cause.message };
+    }
+    console.error("[po] deleteUpload", cause);
+    return { success: false, error: "We couldn't delete that upload." };
   }
 }
