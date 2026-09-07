@@ -17,6 +17,10 @@ model User {
   email              String    @unique
   name               String
   image              String?
+  avatarKey          String?                   // R2 object key for the stored picture
+  avatarStyle        String?                   // DiceBear style id, when generated
+  avatarSeed         String?                   // the seed that generated it
+  passwordChangedAt  DateTime?                 // when passwordHash was last written
   emailVerified      DateTime?                 // Auth.js adapter field
   role               Role      @default(MEMBER)
   passwordHash       String?                   // null = no password; Google always works
