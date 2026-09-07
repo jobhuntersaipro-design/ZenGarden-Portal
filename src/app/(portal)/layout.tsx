@@ -4,6 +4,7 @@ import { getSessionUser } from "@/lib/auth-guards";
 import { prisma } from "@/lib/prisma";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { Toaster } from "@/components/ui/sonner";
+import { AvatarSavingProvider } from "@/components/portal/AvatarSaving";
 import { NavProgressProvider } from "@/components/portal/NavProgress";
 import { MobileTabBar, MobileTopBar } from "@/components/portal/MobileNav";
 import { SkipLink } from "@/components/portal/SkipLink";
@@ -40,41 +41,45 @@ export default async function PortalLayout({
           The sidebar sits inside it but is never disabled by it: a slow query
           on one screen must not block navigating away from that screen. */}
       <NavProgressProvider>
-        <SkipLink />
-        <div className="flex min-h-dvh bg-canvas">
-          <Sidebar
-            userName={displayName}
-            userEmail={user.email}
-            userImage={displayImage}
-          />
-          {/* `min-w-0` on the column, not just the main: a flex child defaults
-              to `min-width: auto`, so without it a wide table would widen the
-              shell instead of scrolling inside its own container. */}
-          <div className="flex min-w-0 flex-1 flex-col">
-            <MobileTopBar
+        {/* Wraps the shell *and* the page: /settings writes the flag, the
+            sidebar and mobile top bar read it. */}
+        <AvatarSavingProvider>
+          <SkipLink />
+          <div className="flex min-h-dvh bg-canvas">
+            <Sidebar
               userName={displayName}
               userEmail={user.email}
               userImage={displayImage}
             />
-            {/* Padding steps with the viewport. A flat `p-xl` spent 80px of a
+            {/* `min-w-0` on the column, not just the main: a flex child defaults
+              to `min-width: auto`, so without it a wide table would widen the
+              shell instead of scrolling inside its own container. */}
+            <div className="flex min-w-0 flex-1 flex-col">
+              <MobileTopBar
+                userName={displayName}
+                userEmail={user.email}
+                userImage={displayImage}
+              />
+              {/* Padding steps with the viewport. A flat `p-xl` spent 80px of a
                 390px screen on margins — with the old 64px rail that left the
                 page 246px (2026-09-06 review, A5). */}
-            <main id="main" className="min-w-0 flex-1 p-md sm:p-lg lg:p-xl">
-              <div className="mx-auto w-full max-w-[var(--container-page)]">
-                {children}
-              </div>
-            </main>
-            {/* The tab bar is fixed, so it paints over the end of the page
+              <main id="main" className="min-w-0 flex-1 p-md sm:p-lg lg:p-xl">
+                <div className="mx-auto w-full max-w-[var(--container-page)]">
+                  {children}
+                </div>
+              </main>
+              {/* The tab bar is fixed, so it paints over the end of the page
                 unless the page reserves its height — 56px plus the home
                 indicator. Nothing to reserve once the bar is gone at `lg`. */}
-            <div
-              aria-hidden
-              className="lg:hidden"
-              style={{ height: "calc(3.5rem + env(safe-area-inset-bottom))" }}
-            />
+              <div
+                aria-hidden
+                className="lg:hidden"
+                style={{ height: "calc(3.5rem + env(safe-area-inset-bottom))" }}
+              />
+            </div>
           </div>
-        </div>
-        <MobileTabBar />
+          <MobileTabBar />
+        </AvatarSavingProvider>
       </NavProgressProvider>
       <Toaster />
     </TooltipProvider>

@@ -2,6 +2,8 @@
 
 import Link from "next/link";
 import { signOut } from "next-auth/react";
+import { useAvatarSaving } from "@/components/portal/AvatarSaving";
+import { Spinner } from "@/components/portal/Spinner";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -24,13 +26,24 @@ export function UserMenu({
   image = null,
   collapsed = false,
 }: UserMenuProps) {
+  // This menu only ever names the signed-in person, so the flag needs no
+  // identity: if a picture is saving, it is theirs.
+  const { saving } = useAvatarSaving();
+
   return (
     <DropdownMenu>
       <DropdownMenuTrigger
         aria-label={`Account menu for ${name}`}
         className="flex w-full items-center gap-xs rounded-sm p-xs text-left transition-colors duration-[0.25s] ease-[cubic-bezier(0.5,0,0.5,1)] hover:bg-canvas focus-visible:outline-2 focus-visible:outline-focus"
       >
-        <PersonAvatar name={name} image={image} size="md" />
+        <span className="relative shrink-0">
+          <PersonAvatar name={name} image={image} size="md" />
+          {saving ? (
+            <span className="absolute inset-0 grid place-items-center rounded-full bg-canvas/70 text-ink">
+              <Spinner />
+            </span>
+          ) : null}
+        </span>
         {collapsed ? null : (
           <span className="min-w-0 flex-1">
             <span className="block truncate text-[length:var(--text-body-sm)] font-medium text-ink">
