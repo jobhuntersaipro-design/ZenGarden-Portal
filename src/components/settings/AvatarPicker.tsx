@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { useSession } from "next-auth/react";
 import { toast } from "sonner";
 import { removeAvatar, setGeneratedAvatar } from "@/actions/profile";
+import { Spinner } from "@/components/portal/Spinner";
 import { Button } from "@/components/ui/button";
 import { PersonAvatar } from "@/components/ui/person";
 import {
@@ -57,14 +58,28 @@ export function AvatarPicker({
   async function run(
     label: string,
     work: () => Promise<{ success: boolean; error?: string }>,
+    done?: string,
   ) {
     setBusy(label);
-    const result = await work();
+    let result: { success: boolean; error?: string };
+    try {
+      result = await work();
+    } catch {
+      // A server action can *throw* rather than return an error — the server
+      // is down, a deploy is mid-flight, the session has gone. Without this
+      // the promise rejected, `busy` never cleared, and every avatar stayed
+      // disabled with nothing on screen to say why: the picker looked dead
+      // until a reload. Reproduced by stopping the dev server mid-click.
+      setBusy(null);
+      toast.error("We couldn't reach the server. Try again.");
+      return;
+    }
     setBusy(null);
     if (!result.success) {
       toast.error(result.error ?? "That did not work.");
       return;
     }
+    if (done) toast.success(done);
     // Two steps, both needed. `update()` runs the jwt callback with
     // trigger "update", which rewrites the session cookie instead of waiting
     // out its five-minute refresh — but the sidebar is a *server* component in
@@ -100,14 +115,24 @@ export function AvatarPicker({
                 setBusy("upload");
                 const body = new FormData();
                 body.append("file", file);
-                const response = await fetch("/api/avatars", {
-                  method: "POST",
-                  body,
-                });
-                const payload = (await response.json()) as {
-                  url?: string;
-                  error?: string;
-                };
+                let response: Response;
+                let payload: { url?: string; error?: string };
+                try {
+                  response = await fetch("/api/avatars", {
+                    method: "POST",
+                    body,
+                  });
+                  payload = (await response.json()) as {
+                    url?: string;
+                    error?: string;
+                  };
+                } catch {
+                  // Same trap as `run`: a failed fetch left the label reading
+                  // "Uploading…" for ever.
+                  setBusy(null);
+                  toast.error("We couldn't reach the server. Try again.");
+                  return;
+                }
                 setBusy(null);
                 if (!response.ok) {
                   toast.error(payload.error ?? "We couldn't save that picture.");
@@ -159,33 +184,55 @@ export function AvatarPicker({
         ))}
       </div>
 
+      <p className="-mb-xs text-[length:var(--text-caption)] text-ink-tertiary">
+        Pick one to use it as your picture.
+      </p>
+
       <fieldset className="m-0 border-0 p-0">
-        <legend className="sr-only">Choose a {active.label} avatar</legend>
-        <div className="flex flex-wrap gap-sm">
+        <legend className="sr-only">
+          Choose a {active.label} avatar — the one you pick becomes your picture
+        </legend>
+        <div
+          className="flex flex-wrap gap-sm"
+          aria-busy={busy?.startsWith("variant:") ?? false}
+        >
           {active.variants.map((dataUri, index) => {
             const seed = seeds[index];
             const selected = currentStyle === active.id && currentSeed === seed;
+            const pending = busy === `variant:${seed}`;
             return (
               <button
                 key={seed}
                 type="button"
                 aria-pressed={selected}
-                aria-label={`${active.label} avatar, option ${index + 1}`}
+                aria-label={`Use this ${active.label} avatar, option ${index + 1}`}
+                title="Use this avatar"
                 disabled={busy !== null}
                 onClick={() =>
-                  run("variant", () =>
-                    setGeneratedAvatar({ style: active.id, seed }),
+                  run(
+                    `variant:${seed}`,
+                    () => setGeneratedAvatar({ style: active.id, seed }),
+                    "Picture updated",
                   )
                 }
                 className={cn(
-                  "size-16 overflow-hidden rounded-pill border bg-surface-soft",
+                  "relative size-16 overflow-hidden rounded-pill border bg-surface-soft transition",
                   "focus-visible:outline-2 focus-visible:outline-focus",
+                  "hover:border-hairline-strong",
                   selected ? "border-focus" : "border-hairline",
+                  // The clicked one keeps its colour; the rest step back, the
+                  // same way a busy group of chips reads elsewhere.
+                  busy !== null && !pending ? "opacity-60" : "",
                 )}
               >
                 {/* Decorative — the button's aria-label carries the meaning. */}
                 {/* eslint-disable-next-line @next/next/no-img-element */}
                 <img src={dataUri} alt="" className="size-full" />
+                {pending ? (
+                  <span className="absolute inset-0 grid place-items-center bg-canvas/70 text-ink">
+                    <Spinner />
+                  </span>
+                ) : null}
               </button>
             );
           })}
