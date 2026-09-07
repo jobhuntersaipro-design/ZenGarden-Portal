@@ -78,11 +78,12 @@ export function EditPurchaseOrderSheet({
               htmlFor="edit-notes"
               className="font-mono text-[length:var(--text-eyebrow)] text-ink-tertiary"
             >
-              Notes
+              Remark
             </label>
             <Textarea
               id="edit-notes"
               rows={3}
+              maxLength={2000}
               value={patch.notes ?? ""}
               onChange={(event) => set("notes", event.target.value)}
             />

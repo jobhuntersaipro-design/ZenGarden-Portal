@@ -264,6 +264,17 @@ export default async function PurchaseOrderPage({
                   </dd>
                 </div>
               ))}
+              {/* Prose, so it wraps across the full width rather than
+                  truncating — unlike every other row on this card, whose `dd`
+                  sets `title={value}` and clips. */}
+              <div className="sm:col-span-2">
+                <dt className="font-mono text-[length:var(--text-eyebrow)] text-ink-tertiary">
+                  Remark
+                </dt>
+                <dd className="whitespace-pre-wrap text-[length:var(--text-body-md)] text-ink">
+                  {po.notes?.trim() ? po.notes : "—"}
+                </dd>
+              </div>
               {/* Its own block rather than a row in the map above: that map's
                   `dd` sets `title={value}` and expects a string. */}
               <div>

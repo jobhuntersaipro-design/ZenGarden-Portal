@@ -28,7 +28,13 @@ const purchaseOrderPatchSchema = z.object({
   poNumber: z.string().min(1, "PO number is required"),
   poDate: isoDate,
   paymentTerms: emptyToNull,
-  notes: emptyToNull,
+  // The remark is the one free-prose field on an order, so it gets a bound.
+  notes: emptyToNull.pipe(
+    z
+      .string()
+      .max(2000, "That remark is too long — 2000 characters at most")
+      .nullable(),
+  ),
 });
 
 const guard = async () => {
