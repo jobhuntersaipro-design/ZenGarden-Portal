@@ -1,7 +1,6 @@
 "use client";
 
 import Link from "next/link";
-import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { DataTable, type Column } from "@/components/portal/DataTable";
 import { TablePagination } from "@/components/portal/TablePagination";
 import {
@@ -9,6 +8,7 @@ import {
   StatusBadge,
   type IntakeStatus,
 } from "@/components/portal/StatusBadge";
+import { PersonChip } from "@/components/ui/person";
 import { useTableSort } from "@/hooks/useTableSort";
 import { formatDate } from "@/lib/dates";
 import { formatMYR } from "@/lib/money";
@@ -41,41 +41,6 @@ const FILE_LABEL: Record<string, string> = {
   "image/jpeg": "JPG",
 };
 
-const initials = (name: string) =>
-  name
-    .split(" ")
-    .map((part) => part[0])
-    .filter(Boolean)
-    .slice(0, 2)
-    .join("")
-    .toUpperCase();
-
-function Person({
-  name,
-  image,
-}: {
-  name: string | null;
-  image: string | null;
-}) {
-  if (!name) {
-    // Visible from the list and sortable to the top: the backlog is the point.
-    return <span className="text-ink-disabled">Not confirmed</span>;
-  }
-  return (
-    <span className="flex items-center gap-xs">
-      <Avatar className="size-6 shrink-0">
-        {image ? <AvatarImage src={image} alt="" /> : null}
-        <AvatarFallback className="bg-surface-soft text-[length:var(--text-caption)] text-ink">
-          {initials(name)}
-        </AvatarFallback>
-      </Avatar>
-      {/* Ellipsised values always carry the full one (G4). */}
-      <span className="truncate" title={name}>
-        {name}
-      </span>
-    </span>
-  );
-}
 
 export function PoTable({
   rows,
@@ -173,9 +138,12 @@ export function PoTable({
       // Two avatars per card is noise when you are scanning for a PO; both
       // are still on the detail page and in the desktop table.
       mobileHidden: true,
-      cell: (row) => (
-        <Person name={row.uploadedByName} image={row.uploadedByImage} />
-      ),
+      cell: (row) =>
+        row.uploadedByName ? (
+          <PersonChip name={row.uploadedByName} image={row.uploadedByImage} />
+        ) : (
+          <span className="text-ink-disabled">Not confirmed</span>
+        ),
     },
     {
       key: "confirmedBy",
@@ -183,9 +151,13 @@ export function PoTable({
       // Two avatars per card is noise when you are scanning for a PO; both
       // are still on the detail page and in the desktop table.
       mobileHidden: true,
-      cell: (row) => (
-        <Person name={row.confirmedByName} image={row.confirmedByImage} />
-      ),
+      // Visible from the list and sortable to the top: the backlog is the point.
+      cell: (row) =>
+        row.confirmedByName ? (
+          <PersonChip name={row.confirmedByName} image={row.confirmedByImage} />
+        ) : (
+          <span className="text-ink-disabled">Not confirmed</span>
+        ),
     },
   ];
 
