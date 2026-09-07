@@ -23,6 +23,7 @@ import {
 } from "@/lib/po-stages";
 import { PO_STAGES } from "@/lib/po-stages";
 import { prisma } from "@/lib/prisma";
+import { PersonChip } from "@/components/ui/person";
 
 export const dynamic = "force-dynamic";
 
@@ -54,14 +55,14 @@ export default async function PurchaseOrderPage({
     include: {
       buyer: true,
       document: { select: { id: true, originalName: true } },
-      confirmedBy: { select: { name: true } },
+      confirmedBy: { select: { name: true, image: true } },
       lineItems: {
         orderBy: { position: "asc" },
         include: { product: { select: { name: true, sku: true } } },
       },
       stageEvents: {
         orderBy: { changedAt: "desc" },
-        include: { changedBy: { select: { name: true } } },
+        include: { changedBy: { select: { name: true, image: true } } },
       },
       supersededBy: { select: { id: true, revision: true } },
       revisionOf: { select: { id: true, poNumber: true, confirmedAt: true } },
@@ -173,9 +174,17 @@ export default async function PurchaseOrderPage({
                 : `${stageLabel(current)} · stage ${stageIndex(current) + 1} of ${PO_STAGES.length}`}
             </h2>
             <p className="mt-xxs text-[length:var(--text-caption)] text-ink-tertiary">
-              {latestStageEvent?.changedBy?.name
-                ? `Moved here by ${latestStageEvent.changedBy.name}`
-                : "Order placed by System"}{" "}
+              {latestStageEvent?.changedBy?.name ? (
+                <span className="inline-flex items-center gap-xxs align-middle">
+                  Moved here by
+                  <PersonChip
+                    name={latestStageEvent.changedBy.name}
+                    image={latestStageEvent.changedBy.image}
+                  />
+                </span>
+              ) : (
+                "Order placed by System"
+              )}{" "}
               on {formatDate(enteredStageAt)} · {daysInStage}{" "}
               {daysInStage === 1 ? "day" : "days"} in this stage
               {latestStageEvent?.note ? ` · “${latestStageEvent.note}”` : ""}
@@ -198,6 +207,7 @@ export default async function PurchaseOrderPage({
               toStage: event.toStage,
               changedAt: event.changedAt.toISOString(),
               changedByName: event.changedBy?.name ?? null,
+              changedByImage: event.changedBy?.image ?? null,
             }))}
         />
       </section>
@@ -231,7 +241,6 @@ export default async function PurchaseOrderPage({
                 ],
                 ["Buyer reference", po.buyerReference ?? "—"],
                 ["Payment terms", po.paymentTerms ?? "—"],
-                ["Confirmed by", po.confirmedBy?.name ?? "—"],
                 ["Confirmed at", formatDateTime(po.confirmedAt)],
               ].map(([label, value]) => (
                 <div key={label}>
@@ -246,6 +255,23 @@ export default async function PurchaseOrderPage({
                   </dd>
                 </div>
               ))}
+              {/* Its own block rather than a row in the map above: that map's
+                  `dd` sets `title={value}` and expects a string. */}
+              <div>
+                <dt className="font-mono text-[length:var(--text-eyebrow)] text-ink-tertiary">
+                  Confirmed by
+                </dt>
+                <dd className="text-[length:var(--text-body-md)] text-ink">
+                  {po.confirmedBy?.name ? (
+                    <PersonChip
+                      name={po.confirmedBy.name}
+                      image={po.confirmedBy.image}
+                    />
+                  ) : (
+                    "—"
+                  )}
+                </dd>
+              </div>
               <div>
                 <dt className="font-mono text-[length:var(--text-eyebrow)] text-ink-tertiary">
                   Buyer
@@ -361,9 +387,11 @@ export default async function PurchaseOrderPage({
           note: event.note,
           changedAt: event.changedAt.toISOString(),
           changedByName: event.changedBy?.name ?? null,
+          changedByImage: event.changedBy?.image ?? null,
         }))}
         confirmedAt={po.confirmedAt.toISOString()}
         confirmedByName={po.confirmedBy?.name ?? null}
+        confirmedByImage={po.confirmedBy?.image ?? null}
       />
     </>
   );
