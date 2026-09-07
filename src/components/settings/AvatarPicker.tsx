@@ -4,11 +4,7 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { useSession } from "next-auth/react";
 import { toast } from "sonner";
-import {
-  removeAvatar,
-  setGeneratedAvatar,
-  useGooglePhoto,
-} from "@/actions/profile";
+import { removeAvatar, setGeneratedAvatar } from "@/actions/profile";
 import { useUrlNavigation } from "@/hooks/useUrlNavigation";
 import { Button } from "@/components/ui/button";
 import { PersonAvatar } from "@/components/ui/person";
@@ -214,13 +210,6 @@ export function AvatarPicker({
           }
         >
           Shuffle
-        </Button>
-        <Button
-          variant="secondary"
-          pending={busy === "google"}
-          onClick={() => run("google", useGooglePhoto)}
-        >
-          Use my Google photo
         </Button>
       </div>
 

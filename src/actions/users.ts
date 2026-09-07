@@ -323,9 +323,6 @@ export async function approveAccessRequest(
             email: request.email,
             name: request.name,
             image: request.image,
-            // The request's picture came from Google, so it is also what
-            // "Use my Google photo" should offer back later.
-            googleImage: request.image,
             role,
             emailVerified: new Date(),
           },

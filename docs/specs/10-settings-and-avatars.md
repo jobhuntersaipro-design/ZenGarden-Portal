@@ -119,11 +119,17 @@ documents already produce, and the fallback initials are the correct response.
 ### Remove
 
 `removeAvatar()` clears `avatarKey`, sets `image = null`, deletes the object.
-For a Google user this falls back to **initials, not their Google photo** —
-otherwise "Remove" visibly removes nothing. Their Google photo is offered back
-as a separate, explicit "Use my Google photo" action, which reads the picture
-off their linked `Account` and writes it to `image` with `avatarKey` left null.
-That action is shown only to a user with a Google `Account` row.
+This falls back to **initials** for everyone, including a Google user.
+
+**There is no "Use my Google photo".** It was built, then removed on
+2026-09-07 at the user's instruction. It cannot work without somewhere to keep
+the Google URL: `image` is overwritten the moment someone uploads a photo or
+picks a generated avatar, and the Google picture is written only when the row
+is created — `resolveGoogleSignIn` deliberately does not touch `image` on
+subsequent sign-ins, so an uploaded avatar survives. The linked `Account` row
+stores tokens, not a picture. A button that could never restore anything is
+worse than no button, so both went. Reinstating it means a column to hold the
+Google URL, which is a spec decision, not a silent edit.
 
 ## 3. Generated avatars — DiceBear
 
@@ -284,8 +290,6 @@ Picture
    ( six seed variants of the selected style )        [ Shuffle ]
 
    Croodles by vijay verma · CC BY 4.0
-
-   [ Use my Google photo ]      ← only for a Google-linked user
 ```
 
 - **Upload a photo** goes through §2, with a spinner on the button. No progress
@@ -294,8 +298,7 @@ Picture
   from `toDataUri()` with no network and no write. Nothing is stored until a
   variant is clicked. The currently-saved variant is marked selected, which is
   what `avatarStyle`/`avatarSeed` are for.
-- **Remove** falls back to initials, never silently to the Google photo.
-- **Use my Google photo** is shown only where a Google `Account` row exists.
+- **Remove** falls back to initials.
 
 The variant grid is a radio group, not a row of buttons — arrow keys move
 between variants and each carries an `aria-label` naming its style, since the
@@ -348,7 +351,6 @@ change.
 - `updateProfile({ name })`
 - `setGeneratedAvatar({ style, seed })` — style must be one of the five
 - `removeAvatar()`
-- `useGooglePhoto()`
 - `signOutEverywhere()`
 
 `src/lib/validation/profile.ts` holds `displayNameSchema` and the avatar file
@@ -383,8 +385,7 @@ Browser, against the live database, all test data removed afterwards:
 2. Pick each of the five styles in turn; the six variants render, Shuffle
    changes them, and the chosen one survives a reload and appears everywhere an
    uploaded photo would
-3. Remove it; initials come back, and a Google user is offered "Use my Google
-   photo" which restores the Google image
+3. Remove it; initials come back
 4. Change the password from `/settings`; the session survives, `passwordChangedAt`
    updates, and the card reads the new date
 5. "Sign out on all devices" lands on `/signin` and the old cookie is dead
@@ -402,8 +403,8 @@ Browser, against the live database, all test data removed afterwards:
 2. An uploaded picture is stored in R2 as a 256×256 WebP and served from a
    stable URL that changes when the picture changes.
 3. The R2 bucket stays private; no avatar is reachable signed-out.
-4. A Google user's photo is never overwritten by an upload, and never restored
-   silently after a removal.
+4. A Google user's photo is never overwritten by an upload, and an upload
+   survives them signing in with Google again.
 5. A user can choose a generated avatar from the five styles without leaving
    the page, and no request reaches `api.dicebear.com` at any point — in the
    picker, on save, or on any later render.
@@ -422,6 +423,7 @@ Browser, against the live database, all test data removed afterwards:
 
 ## 9. Out of scope
 
+- Restoring a Google profile photo after an upload has replaced it — see §2.
 - Changing your own email address. It is the identity key, the Google link and
   how an admin finds a user, so it needs a verify-new-address round trip
   through Resend — which has never successfully sent (deferred backlog item 4).

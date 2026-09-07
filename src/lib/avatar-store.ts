@@ -145,9 +145,9 @@ export function storeGeneratedAvatar(input: {
 }
 
 /**
- * Drops the stored picture. `nextImage` is null for "Remove" — which falls
- * back to initials, never silently to a Google photo — and a URL for
- * "Use my Google photo".
+ * Drops the stored picture. `nextImage` is null for "Remove", which falls back
+ * to initials; the parameter stays a URL-or-null so a future caller can swap
+ * in a picture from elsewhere rather than clearing it.
  */
 export async function clearAvatar(
   userId: string,

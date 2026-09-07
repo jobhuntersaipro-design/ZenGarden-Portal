@@ -100,37 +100,6 @@ export async function removeAvatar(): Promise<ActionResult> {
 }
 
 /**
- * `googleImage` is recorded separately from `image` on every Google sign-in
- * precisely so this survives an upload having overwritten `image`.
- */
-export async function useGooglePhoto(): Promise<ActionResult<{ url: string }>> {
-  try {
-    const session = await requireUser();
-    const stored = await prisma.user.findUnique({
-      where: { id: session.id },
-      select: { googleImage: true },
-    });
-
-    if (!stored?.googleImage) {
-      return {
-        success: false,
-        error: "We don't have a Google photo for you. Sign in with Google to add one.",
-      };
-    }
-
-    await clearAvatar(session.id, stored.googleImage);
-    revalidateEverywhere();
-    return { success: true, data: { url: stored.googleImage } };
-  } catch (cause) {
-    if (cause instanceof UnauthorizedError) {
-      return { success: false, error: cause.message };
-    }
-    console.error("[profile] useGooglePhoto", cause);
-    return { success: false, error: "We could not use your Google photo." };
-  }
-}
-
-/**
  * Unlike `changePassword`, this deliberately does **not** re-mint the current
  * session: it ends this one too, which is the point. The caller signs out and
  * lands on /signin.

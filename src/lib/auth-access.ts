@@ -37,16 +37,8 @@ export async function resolveGoogleSignIn(
     // `?error=disabled` copy the spec actually asks for.
     if (existing.disabledAt) return "/signin?error=disabled";
 
-    // `image` is deliberately not touched — an uploaded avatar must survive a
-    // Google sign-in. `googleImage` is a separate record of what Google last
-    // showed us, which is what lets "Use my Google photo" in /settings work
-    // after an upload has overwritten `image`.
-    if (profile.image && profile.image !== existing.googleImage) {
-      await prisma.user.update({
-        where: { id: existing.id },
-        data: { googleImage: profile.image },
-      });
-    }
+    // `image` is deliberately not written here — only on create below. An
+    // uploaded avatar must survive its owner signing in with Google again.
     return true;
   }
 
@@ -68,7 +60,6 @@ export async function resolveGoogleSignIn(
         email,
         name: profile.name,
         image: profile.image,
-        googleImage: profile.image,
         role: Role.MEMBER,
         emailVerified: new Date(),
       },

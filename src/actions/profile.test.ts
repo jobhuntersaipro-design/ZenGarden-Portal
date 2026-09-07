@@ -29,7 +29,6 @@ const {
   setGeneratedAvatar,
   signOutEverywhere,
   updateProfile,
-  useGooglePhoto,
 } = await import("@/actions/profile");
 
 const SESSION = { id: "u1", email: "aisha@test", name: "Aisha Rahman" };
@@ -89,28 +88,6 @@ describe("removeAvatar", () => {
     const result = await removeAvatar();
     expect(result.success).toBe(true);
     expect(clearAvatar).toHaveBeenCalledWith("u1", null);
-  });
-});
-
-describe("useGooglePhoto", () => {
-  it("restores the recorded Google photo", async () => {
-    userFindUnique.mockResolvedValue({
-      googleImage: "https://lh3.googleusercontent.com/a/abc",
-    });
-    clearAvatar.mockResolvedValue(undefined);
-    const result = await useGooglePhoto();
-    expect(result.success).toBe(true);
-    expect(clearAvatar).toHaveBeenCalledWith(
-      "u1",
-      "https://lh3.googleusercontent.com/a/abc",
-    );
-  });
-
-  it("refuses when no Google photo was ever recorded", async () => {
-    userFindUnique.mockResolvedValue({ googleImage: null });
-    const result = await useGooglePhoto();
-    expect(result.success).toBe(false);
-    expect(clearAvatar).not.toHaveBeenCalled();
   });
 });
 

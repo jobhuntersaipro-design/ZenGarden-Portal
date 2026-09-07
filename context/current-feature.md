@@ -3,7 +3,8 @@
 ## Status
 
 Built and verified on `feature/settings-and-avatars` — awaiting review before merge.
-373 tests, build and lint pass. All test data removed afterwards.
+371 tests, build and lint pass. All test data removed afterwards: database back to
+400 purchase orders and 406 documents, both users reset, zero R2 `avatars/` objects.
 
 ## Goals
 
@@ -15,8 +16,8 @@ Plan: `docs/superpowers/plans/2026-09-07-settings-and-avatars.md`.
 **What shipped.** `/settings` with a Profile card (picture, display name, read-only
 email/role/member-since) and a Security card (password with its last-changed date, sign
 out on all devices), reached from the account menu — never a nav row. Pictures come from
-four sources — an uploaded photo, a generated DiceBear avatar in one of five styles, a
-Google photo, or initials — and all of them converge on one 256×256 WebP in R2 behind a
+three sources — an uploaded photo, a generated DiceBear avatar in one of five styles,
+or initials — and all of them converge on one 256×256 WebP in R2 behind a
 stable URL, so nothing downstream can tell them apart. One `PersonChip` now covers every
 place the portal names a person; the Activity card, "Confirmed by" and "Moved here by"
 gained avatars, and `initials` went from four copies to one.
@@ -56,12 +57,17 @@ passing `{ shape: [...] }` throws `OptionsValidationError`, so it is `shapeVaria
 4. **The style chips were 39px tall** on a phone, under the 44px the mobile pass requires
    of standalone controls. `h-control-md` is the existing 44px token.
 
-**Beyond the spec, deliberately: a `googleImage` column.** "Use my Google photo" could
-not work without it — `image` is overwritten by an upload, and the Google URL was only
-ever written at row creation, so it was gone for exactly the people who would press that
-button. `googleImage` is recorded on create, on admin approval, and refreshed on every
-Google sign-in, while `image` itself stays untouched so an uploaded avatar survives
-signing in with Google.
+**"Use my Google photo" was built, then removed on the user's instruction.** It briefly
+had a `googleImage` column behind it, because it cannot work without one: `image` is
+overwritten the moment someone uploads a photo or picks a generated avatar, the Google
+picture is written only at row creation, and the linked `Account` row holds tokens, not
+a picture. The user asked for the column gone, so the button went with it rather than
+leaving one that silently fails. Removed in the same shape it was added — column,
+migration, the `resolveGoogleSignIn` and `approveAccessRequest` writes, the action and
+its two tests. **`image` is still deliberately not written on a Google sign-in for an
+existing user**, which is what lets an uploaded avatar survive signing in with Google;
+that behaviour predates this phase and is unchanged. Reinstating the feature needs a
+column again — a spec decision, not a silent edit.
 
 **Verified against the live database.** A 1200×700 JPEG uploaded and came back a
 256×256 WebP (14 KB → 1.8 KB) with `avatarStyle`/`avatarSeed` null, correctly marking it
