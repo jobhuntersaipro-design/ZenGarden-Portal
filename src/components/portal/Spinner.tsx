@@ -10,11 +10,24 @@
  * (its pending label, or `aria-busy` on the group). The ring is the picture,
  * not the announcement.
  */
-export function Spinner({ className = "" }: { className?: string }) {
+const SIZES = {
+  /** Beside a label, inside a control. */
+  sm: "size-3.5 border-2",
+  /** Alone on a surface, where the control it describes is the picture. */
+  md: "size-7 border-2",
+} as const;
+
+export function Spinner({
+  size = "sm",
+  className = "",
+}: {
+  size?: keyof typeof SIZES;
+  className?: string;
+}) {
   return (
     <span
       aria-hidden
-      className={`inline-block size-3.5 shrink-0 animate-spinner rounded-full border-2 border-current border-r-transparent ${className}`}
+      className={`inline-block shrink-0 animate-spinner rounded-full border-current border-r-transparent ${SIZES[size]} ${className}`}
     />
   );
 }
