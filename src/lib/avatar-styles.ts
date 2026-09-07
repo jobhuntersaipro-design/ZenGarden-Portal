@@ -1,6 +1,5 @@
 import { Avatar, Style } from "@dicebear/core";
 import clay from "@dicebear/styles/clay.json" with { type: "json" };
-import croodles from "@dicebear/styles/croodles.json" with { type: "json" };
 import gaze from "@dicebear/styles/gaze.json" with { type: "json" };
 import notionists from "@dicebear/styles/notionists.json" with { type: "json" };
 import voxelBot from "@dicebear/styles/voxel-bot.json" with { type: "json" };
@@ -37,11 +36,10 @@ const GAZE_SHAPES = [
   "diamond",
 ] as const;
 
+/** Every style offered here is CC0, so nothing needs a visible credit. */
 export type StyleEntry = {
   label: string;
   blurb: string;
-  /** CC0 styles need no credit; croodles does. */
-  attribution: { name: string; url: string } | null;
   style: Style;
   options: Record<string, unknown>;
 };
@@ -52,38 +50,24 @@ export const AVATAR_STYLES: Record<AvatarStyleId, StyleEntry> = {
   gaze: {
     label: "gaze",
     blurb: "Abstract geometric shape",
-    attribution: null,
     style: new Style(gaze),
     options: { ...STILL, shapeVariant: [...GAZE_SHAPES] },
   },
   "voxel-bot": {
     label: "voxel-bot",
     blurb: "Blocky isometric robot",
-    attribution: null,
     style: new Style(voxelBot),
     options: { ...STILL },
   },
   clay: {
     label: "clay",
     blurb: "Soft 3D clay render",
-    attribution: null,
     style: new Style(clay),
-    options: { ...STILL },
-  },
-  croodles: {
-    label: "croodles",
-    blurb: "Hand-drawn doodle face",
-    attribution: {
-      name: "vijay verma",
-      url: "https://www.instagram.com/vijay_verma.zip/",
-    },
-    style: new Style(croodles),
     options: { ...STILL },
   },
   notionists: {
     label: "notionists",
     blurb: "Hand-drawn person",
-    attribution: null,
     style: new Style(notionists),
     options: { ...STILL },
   },

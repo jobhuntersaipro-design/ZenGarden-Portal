@@ -26,7 +26,6 @@ export function ProfileCard(props: {
   previews: StylePreview[];
   currentStyle: AvatarStyleId | null;
   currentSeed: string | null;
-  attribution: { style: string; name: string; url: string } | null;
 }) {
   const { update } = useSession();
   const router = useRouter();
@@ -49,7 +48,6 @@ export function ProfileCard(props: {
             previews={props.previews}
             currentStyle={props.currentStyle}
             currentSeed={props.currentSeed}
-            attribution={props.attribution}
           />
         </div>
 

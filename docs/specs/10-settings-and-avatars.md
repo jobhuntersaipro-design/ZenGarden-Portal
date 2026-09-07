@@ -137,28 +137,27 @@ Rendered **locally**. `@dicebear/core` (MIT) and `@dicebear/styles` are added as
 dependencies and `api.dicebear.com` is never called at runtime — not for a
 render and not for a picker preview. Three reasons, all checked rather than
 assumed: the API can be down or rate-limit; seeds are user names, and hot-linking
-would tell a third party who the staff are; and three of the five styles below
+would tell a third party who the staff are; and three of the four styles below
 are **absent from the public API's own `/10.x` index** while shipping perfectly
 well in npm, so those endpoints are unlisted and could move without notice.
 
-### The five styles
+### The four styles
 
-`src/lib/avatar-styles.ts` imports exactly five definitions, so the bundler
-drops the other 56 in the package:
+`src/lib/avatar-styles.ts` imports exactly four definitions, so the bundler
+drops the other 57 in the package:
 
 | Id | Reads as | Licence |
 |---|---|---|
 | `gaze` | abstract geometric shape | CC0 1.0 |
 | `voxel-bot` | blocky 3D robot | CC0 1.0 |
 | `clay` | soft 3D clay render | CC0 1.0 |
-| `croodles` | hand-drawn doodle face | **CC BY 4.0**, vijay verma |
 | `notionists` | hand-drawn person | CC0 1.0 |
 
-**`croodles` obliges attribution.** A single line of `text-ink-tertiary`
-`text-caption` sits under the style picker — "Croodles by vijay verma · CC BY
-4.0", the name linking to the creator's page. It appears where avatars are
-chosen; it is not required on every page that renders one. If croodles is ever
-dropped, drop the line with it.
+**Every style offered is CC0, which is the point.** `croodles` shipped in
+Phase 10 and was dropped on 2026-09-08: it is CC BY 4.0, so it obliged a
+visible credit line under the picker, and the user asked for that line gone.
+Dropping the style is what keeps the licence satisfied. Any style added later
+must be CC0 for the same reason, or bring its credit line back with it.
 
 ### Rendering
 
@@ -199,11 +198,15 @@ property`. This was found by running it, not by reading the docs.
 
 ### Seeds
 
-The seed defaults to the user's display name, so a first look at the picker
-shows something already personal. **Shuffle** replaces it with a fresh
-`randomUUID()`. The picker renders six seed variants per style as inline
-`toDataUri()` SVGs — no network, no R2 write — and nothing is stored until a
-variant is chosen.
+The seeds are the fixed list `option-1` … `option-12`, identical on every visit
+and for every person. The picker renders all twelve per style as inline
+`toDataUri()` SVGs — no network, no R2 write — and nothing is stored until one
+is chosen.
+
+Phase 10 seeded from the user's display name and offered a **Shuffle** button
+that re-rolled them through `?seeds=`; both were dropped on 2026-09-08, because
+a gallery you re-roll is a lottery and the brief asked for a set to choose
+from.
 
 On choose: render at 256, rasterize through the same `sharp` step as §2, store
 in R2, and record `avatarStyle` and `avatarSeed` alongside `avatarKey`.
@@ -277,7 +280,7 @@ Profile card's Save.
 
 #### The picture picker
 
-One control, four sources, in this order:
+One control, three sources, in this order:
 
 ```
 Picture
@@ -285,19 +288,23 @@ Picture
    ( 96px preview )   [ Upload a photo ]  [ Remove ]
 
    Or choose a style
-   [ gaze ] [ voxel-bot ] [ clay ] [ croodles ] [ notionists ]
+   [ gaze ] [ voxel-bot ] [ clay ] [ notionists ]
 
-   ( six seed variants of the selected style )        [ Shuffle ]
-
-   Croodles by vijay verma · CC BY 4.0
+   ( twelve avatars in the selected style, the saved one ringed )
 ```
 
 - **Upload a photo** goes through §2, with a spinner on the button. No progress
   bar: a 5 MB cap and one round trip does not need one.
-- **The style row** selects a style; the six variants below re-render inline
-  from `toDataUri()` with no network and no write. Nothing is stored until a
-  variant is clicked. The currently-saved variant is marked selected, which is
-  what `avatarStyle`/`avatarSeed` are for.
+- **The style row** selects a style; the twelve avatars below re-render inline
+  from `toDataUri()` with no network and no write. Nothing is stored until one
+  is clicked. The currently-saved one is marked selected, which is what
+  `avatarStyle`/`avatarSeed` are for.
+- **The gallery is fixed**, not random: the seeds are `option-1` … `option-12`,
+  the same set on every visit and for every person, so choosing a face is a
+  choice and not a lottery. There is no Shuffle and no `?seeds=` parameter —
+  both were dropped on 2026-09-08 with the same brief. A user whose avatar was
+  saved from an older, name-derived seed keeps that picture; it simply is not
+  one of the twelve, so no tile is ringed until they pick again.
 - **Remove** falls back to initials.
 
 The variant grid is a radio group, not a row of buttons — arrow keys move
@@ -317,12 +324,12 @@ row and passes it down, per `context/coding-standard.md`.
 | Row | Behaviour |
 |---|---|
 | Password | `passwordHash` present: "Last changed {date}", or "Never changed" where `passwordChangedAt` is null, and the existing `ChangePasswordForm` in a `Sheet` at `max-w-panel-sm`. `passwordHash` null: the static "Password managed by Google" line the admin table already uses, with the same explanatory `title`. |
-| Sessions | "Sign out on all devices", a `Dialog` confirm, then `signOutEverywhere()` |
-
-`signOutEverywhere()` bumps `sessionVersion` and does **not** re-mint the
-current session — unlike `changePassword`, which re-mints deliberately. It ends
-this session too, so the button label and the confirm dialog say so plainly
-("This signs you out here as well") and the action redirects to `/signin`.
+Password is the card's only row. A **Sessions** row — "Sign out on all
+devices", a `Dialog` confirm, then `signOutEverywhere()` — shipped in Phase 10
+and was removed from the screen on 2026-09-08 at the user's request. The action
+itself stays in `src/actions/profile.ts`, tested and unused: it bumps
+`sessionVersion`, which is still how disabling a user and setting their password
+sign them out everywhere.
 
 ### `/account/password` — the loop this avoids
 
@@ -349,9 +356,9 @@ change.
 `{ success, data } | { success, error }`:
 
 - `updateProfile({ name })`
-- `setGeneratedAvatar({ style, seed })` — style must be one of the five
+- `setGeneratedAvatar({ style, seed })` — style must be one of the four
 - `removeAvatar()`
-- `signOutEverywhere()`
+- `signOutEverywhere()` — kept and tested, no longer reachable from the UI
 
 `src/lib/validation/profile.ts` holds `displayNameSchema` and the avatar file
 rules, so the route handler and the actions validate against one source.
@@ -367,28 +374,27 @@ Unit (Vitest):
 - avatar file rules: rejects a PDF, a 6 MB PNG, a 9000px image; accepts a 2 MB JPEG
 - `signOutEverywhere` increments `sessionVersion` by exactly one
 - `updateProfile` rejects an empty name without writing
-- each of the five style definitions loads and renders: `new Avatar(style,
+- each of the four style definitions loads and renders: `new Avatar(style,
   { seed: "Aisha Rahman", size: 256 }).toString()` returns SVG markup
 - rendering is **deterministic**: the same style and seed produce byte-identical
   SVG across two calls
-- no rendered SVG among the five contains `@keyframes`
+- no rendered SVG among the four contains `@keyframes`
 - `gaze` never renders a `pill`, `column`, `egg` or `arch` shape across 200 seeds
 - an unknown option key throws rather than being silently ignored, so a future
   DiceBear upgrade that renames an option fails the suite instead of quietly
   dropping the pin
-- `setGeneratedAvatar` rejects a style id outside the five
+- `setGeneratedAvatar` rejects a style id outside the four
 
 Browser, against the live database, all test data removed afterwards:
 
 1. Upload a real picture; it appears in the profile card, the sidebar **without
    a reload**, the Activity card and the PO table
-2. Pick each of the five styles in turn; the six variants render, Shuffle
-   changes them, and the chosen one survives a reload and appears everywhere an
-   uploaded photo would
+2. Pick each of the four styles in turn; all twelve avatars render, the same
+   twelve on a reload, and the chosen one survives a reload and appears
+   everywhere an uploaded photo would
 3. Remove it; initials come back
 4. Change the password from `/settings`; the session survives, `passwordChangedAt`
    updates, and the card reads the new date
-5. "Sign out on all devices" lands on `/signin` and the old cookie is dead
 6. A `mustChangePassword` user still lands on the standalone `/account/password`
    and is not redirected into a loop
 7. `/settings` at 390, 768 and 1440px: no horizontal overflow, no clipped text,
@@ -405,17 +411,16 @@ Browser, against the live database, all test data removed afterwards:
 3. The R2 bucket stays private; no avatar is reachable signed-out.
 4. A Google user's photo is never overwritten by an upload, and an upload
    survives them signing in with Google again.
-5. A user can choose a generated avatar from the five styles without leaving
+5. A user can choose a generated avatar from the four styles without leaving
    the page, and no request reaches `api.dicebear.com` at any point — in the
    picker, on save, or on any later render.
-6. The croodles attribution is visible wherever the styles are offered.
+6. Every style offered is CC0, so the picker needs no credit line.
 7. Generated avatars are static: no rendered avatar contains an animation.
 8. Every place the portal names a person shows that person beside the name,
    with initials where there is no picture and a neutral glyph for "System".
 9. `initials` is defined once for people, and `signin/pending`'s unrelated
    email monogram is left as it is.
-10. A user can change their display name and their password from `/settings`,
-   and can sign out on all devices.
+10. A user can change their display name and their password from `/settings`.
 11. Email, role and member-since are visible and clearly not editable.
 12. The forced-password-change flow is unchanged and cannot loop.
 13. No raw hex, px font size or arbitrary Tailwind value is added; every new
@@ -429,10 +434,10 @@ Browser, against the live database, all test data removed afterwards:
   through Resend — which has never successfully sent (deferred backlog item 4).
 - Notification, theme and locale preferences. No such subsystem exists; each
   would be a new column plus a fallback path in every page that reads it.
-- The other 56 DiceBear styles. Five is a picker; sixty is a catalogue, and
+- The other 57 DiceBear styles. Four is a picker; sixty is a catalogue, and
   every extra style is another licence to track.
 - Per-style options beyond the pinned `shape` and `animation` — hair, colour,
-  background and the rest. The seed plus Shuffle already gives enough variety.
+  background and the rest. Twelve avatars across four styles is enough choice.
 - Cropping or rotating before upload. `fit: "cover"` centre-crops; a real
   cropper is the same deferred work as the Phase 08 product image editor.
 - Avatars in the "Uploaded by" filter — see §4.

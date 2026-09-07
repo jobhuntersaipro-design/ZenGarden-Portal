@@ -8,12 +8,13 @@ import {
 const SEED = "Aisha Rahman";
 
 describe("avatar styles", () => {
-  it("offers exactly the five styles the spec names", () => {
+  // croodles was dropped on 2026-09-08: it is CC BY 4.0, and the visible
+  // credit its licence requires was removed from the picker.
+  it("offers exactly the four CC0 styles the spec names", () => {
     expect([...AVATAR_STYLE_IDS]).toEqual([
       "gaze",
       "voxel-bot",
       "clay",
-      "croodles",
       "notionists",
     ]);
   });

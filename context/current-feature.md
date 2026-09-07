@@ -2,89 +2,97 @@
 
 ## Status
 
-Built and verified on `feature/po-revamp` — awaiting review before merge.
-394 tests, typecheck, lint and build pass. All test data removed afterwards:
-400 purchase orders, 406 documents, 12 products, 0 needs-review, roles reverted,
-no stray R2 objects.
+Built and verified in the browser on `feature/avatar-gallery` — awaiting review
+before merge. 398 tests, typecheck, lint and build pass. The test avatar was
+removed afterwards, so the seeded member is back to initials with no R2 object
+left behind.
 
 ## Goals
 
-Phase 11 — purchase order revamp. Spec: `docs/specs/11-po-revamp.md`.
-Plan: `docs/superpowers/plans/2026-09-07-po-revamp.md`.
+Three changes to `/settings`, from the 2026-09-08 brief:
 
-Six changes: super admin delete, delivery date and buyer reference removed, a
-zoomable original document, a visible remark, product codes that build the
-catalogue, and a line-items table that stops clipping itself.
+1. The avatar gallery is something you **choose from** rather than re-roll.
+2. Shuffle and the croodles credit line are gone.
+3. The Sessions row is gone.
 
 ## Notes
 
-**Product codes now build the catalogue.** Exact code matching stays,
-case-insensitive and never fuzzy — that rule is from the 2026-09-06 work and
-still holds. What changed is the miss case: an unknown code creates a product
-rather than leaving the line unmatched. **Description matching is deliberately
-gone**, because two active products can share a name and the old fallback would
-attach a line to the wrong product *and* skip creating the right one. Cost stays
-bounded per document (one read, at most one write, at most one re-read).
-`createManyAndReturn`, not `createMany`, because the new ids are needed to link
-the lines. Verified live: a known code linked, an unknown one created exactly one
-row (`Uncategorised`, `needsReview: true`), two case-variant lines shared one id,
-a line with no code stayed null.
+**The gallery is a fixed set now.** Phase 10 seeded the six previews from the
+user's own display name and offered Shuffle, which rewrote `?seeds=` with fresh
+`randomUUID()`s on a server round trip. That is a lottery, not a choice: the
+face you liked two rolls ago was unrecoverable. The seeds are now
+`option-1` … `option-12`, the same twelve for every person on every visit, so
+`searchParams` left the page entirely and `useUrlNavigation` left the picker.
+Clicking still saves immediately, as it always did.
 
-**The known cost, stated:** products are created at extraction time, so **a
-discarded draft leaves its products behind**. The user chose this over creating
-them at confirm. `needsReview` is what makes the junk visible and fixable rather
-than silent; moving creation into `confirmPurchaseOrder`'s transaction is the fix
-if it proves noisy.
+**Dropping croodles is what keeps the licence satisfied.** croodles is CC BY
+4.0 and the credit line under the picker was its attribution, so removing the
+line while keeping the style would have left the condition unmet. The other
+four styles are CC0, so with croodles gone there is nothing to attribute and
+the `attribution` field is gone from `StyleEntry` as well — an empty hook
+invites someone to re-add a CC BY style without noticing what it obliges. The
+spec now says any style added later must be CC0 or bring its line back.
 
-**Deleting keeps the document.** Line items and stage events cascade; the
-`Document` and its R2 object stay, and the `Extraction` goes back to `SUCCEEDED`
-so the upload returns to the review queue rather than being stranded in no queue
-with no order. Verified end to end on a throwaway order.
+**`signOutEverywhere` stays, unreachable.** The Sessions row, its dialog and
+the `next-auth/react` `signOut` import are gone from `SecurityCard`, but the
+action and its test remain: `sessionVersion` is still what disabling a user and
+setting their password bump, and deleting the action would have taken a tested
+safety rule with it for no gain.
 
-**The dialog's revision warning is the reverse of what the plan assumed.** A
-superseded order redirects to its newer revision, so the detail page only ever
-shows the current one and "a later revision will survive" was unreachable. The
-real consequence is that deleting a revision brings the order it superseded back
-into view.
+**A user who picked an avatar before today keeps it.** Their `avatarSeed` is
+name-derived, so it is not one of the twelve and no tile is ringed until they
+choose again — the picture itself is untouched, since it lives in R2.
 
-**`needs-review` joined `AttentionFlag`** rather than becoming a parallel
-mechanism, so it inherited the chip, the filter and the count. The widened
-`needsAttention` signature caught every existing fixture, which is the type
-system doing its job.
-
-**Three things the browser found that neither the build nor the plan did:**
-
-1. **A second filter allow-list.** `products/page.tsx` has its own `FILTERS`
-   array beside the type union; the chip changed the URL but the page ignored it
-   and showed all 13 products. Adding the union member was not enough.
-2. **The line-items table pushed the *page* sideways at 390px** rather than
-   scrolling in its own container — the flex column and the section between it
-   and the grid track both defaulted to `min-width: auto`, handing 840px back up
-   the chain. `min-w-0` on both.
-3. **The table had no scroll affordance**, which is what "overlayed" described.
-   The form column is 540px on every viewport, so it always scrolls; it now uses
-   the same `useEdgeFades` hook as `DataTable`, whose own comment says a
-   container that clips with no visible edge looks like a table missing a column.
-   "+ Add line" also sat inside the scroller and drifted; it is outside now.
-
-**Measured, before and after.** Description input 88px → 228px; header
-collisions 2 → 0; page horizontal overflow at 390px → none. Zoom: 100% → 200%
-moves the image 514px → 1028px, scrolls inside the card, and
-`pageScrollsSideways` is false at every step.
-
-**Delivery date and buyer reference** are gone from every screen, from the
-extraction schema and from the prompt; the Prisma columns stay, so the data on
-400 existing orders survives and the decision is reversible. Removing them
-touched `stages.ts` in six places including the change-detection block that
-builds Activity entries.
-
-**Not verified in a browser:** the PDF zoom path. Every seeded document returns
-`NoSuchKey`, so the only document that loads is a freshly uploaded one, and the
-one uploaded for this test was an image — which exercises the `<img>` branch.
-The react-pdf branch is covered by types, the shared `stepZoom` unit tests and
-the build, but not by a real render.
+**Verified in the browser** against the live database, at 1440px and 390px:
+four style chips, twelve tiles, no Shuffle, no credit line, no Sessions row;
+clay option 5 saved on click, repainted the preview and the sidebar without a
+reload, and was still ringed after a reload; zero requests to
+`api.dicebear.com`; no horizontal overflow at 390px, where the twelve tiles
+wrap to three rows of four at 64px. Remove put the initials back and
+`clearAvatar` deleted the R2 object.
 
 ## History
+- 2026-09-07: Phase 11 — purchase order revamp — built, verified and merged
+  (`feature/po-revamp`, spec `docs/specs/11-po-revamp.md`), with the product-code
+  and upload-delete follow-ons merged after it. Six changes: super admin delete,
+  delivery date and buyer reference removed, a zoomable original document, a
+  visible remark, product codes that build the catalogue, and a line-items table
+  that stops clipping itself. **Product codes now build the catalogue** — exact
+  code matching, case-insensitive and never fuzzy, but an unknown code now
+  *creates* a product rather than leaving the line unmatched; **description
+  matching is deliberately gone**, because two active products can share a name
+  and the old fallback would attach a line to the wrong product *and* skip
+  creating the right one. Cost stays bounded per document (one read, at most one
+  write, at most one re-read), and `createManyAndReturn` rather than `createMany`
+  because the new ids link the lines. **The known cost, stated:** products are
+  created at extraction time, so **a discarded draft leaves its products
+  behind** — the user chose this over creating them at confirm, and
+  `needsReview` is what makes the junk visible rather than silent; moving
+  creation into `confirmPurchaseOrder`'s transaction is the fix if it proves
+  noisy. **Deleting keeps the document**: line items and stage events cascade,
+  the `Document` and its R2 object stay, and the `Extraction` goes back to
+  `SUCCEEDED` so the upload returns to the review queue. The dialog's revision
+  warning turned out to be the reverse of the plan's assumption — a superseded
+  order redirects to its newer revision, so the real consequence is that deleting
+  a revision brings the order it superseded back into view. `needs-review` joined
+  `AttentionFlag` rather than becoming a parallel mechanism, inheriting the chip,
+  the filter and the count. **Three things the browser found that the build did
+  not**: `products/page.tsx` had its own `FILTERS` allow-list beside the type
+  union, so the new chip changed the URL and the page ignored it; the line-items
+  table pushed the *page* sideways at 390px because the flex column and the
+  section between it and the grid both defaulted to `min-width: auto` (`min-w-0`
+  on both); and the table had no scroll affordance, so it now uses the same
+  `useEdgeFades` hook as `DataTable`, with "+ Add line" moved outside the
+  scroller. Measured: description input 88px → 228px, header collisions 2 → 0,
+  page overflow at 390px → none, and zoom 100% → 200% moving the image
+  514px → 1028px inside the card. **Delivery date and buyer reference** are gone
+  from every screen, from the extraction schema and from the prompt; the Prisma
+  columns stay, so the data on 400 existing orders survives and the decision is
+  reversible. **Not verified in a browser:** the PDF zoom path — every seeded
+  document returns `NoSuchKey`, so the only document that loads is a freshly
+  uploaded one, and the one used for this test was an image, which exercises the
+  `<img>` branch. All test data was removed afterwards: 400 purchase orders, 406
+  documents, 12 products, roles reverted, no stray R2 objects.
 - 2026-09-07: Phase 10 — account settings and person avatars — built, verified and merged
   (`feature/settings-and-avatars`), then **deployed to production** (Vercel Ready, 1m
   build, so `prisma migrate deploy` applied its migrations to the production Neon
