@@ -13,6 +13,25 @@ Not Started
 <!-- Constraints, decisions and anything the spec leaves implicit. -->
 
 ## History
+- 2026-09-08: Avatar choice feedback fixed and merged (`fix/avatar-choice-feedback`)
+  — reported as "let the user choose an avatar; the chosen one should replace the
+  Avatar", with a screenshot showing a style chip selected and the initials
+  unchanged. **Choosing always worked** — reproduced end to end on voxel-bot and
+  clay — but it takes ~550 ms and drew nothing while it did, so a click looked
+  inert. **The real defect was the failure path**: `run()` awaited the server
+  action with no try/catch, so a *thrown* action (server unreachable, deploy
+  mid-flight, session gone) rejected the promise, `setBusy(null)` never ran, and
+  **all twelve tiles stayed permanently disabled with no message** — the picker
+  was dead until a reload. Reproduced by stopping the dev server mid-click:
+  12 of 12 disabled, zero toasts; after the fix, "We couldn't reach the server.
+  Try again." inside 100 ms and every tile live. The upload `fetch` carried the
+  same trap and the same fix. Feedback reuses the click-feedback pass's
+  vocabulary rather than inventing one — the clicked tile takes the ring
+  `Spinner` over a canvas scrim, the other eleven drop to 60%, the group takes
+  `aria-busy`, and success toasts "Picture updated" as an upload already did. The
+  tiles were also the only control on the screen that never said what clicking
+  them did, hence the "Pick one to use it as your picture" caption and a
+  "Use this avatar" label on each.
 - 2026-09-08: Settings avatar gallery and page trim — built, verified in the
   browser and merged (`feature/avatar-gallery`); spec
   `docs/specs/10-settings-and-avatars.md` updated to match. **The gallery is a
