@@ -2,56 +2,46 @@
 
 ## Status
 
-Built and verified in the browser on `feature/avatar-gallery` — awaiting review
-before merge. 398 tests, typecheck, lint and build pass. The test avatar was
-removed afterwards, so the seeded member is back to initials with no R2 object
-left behind.
+Not Started
 
 ## Goals
 
-Three changes to `/settings`, from the 2026-09-08 brief:
-
-1. The avatar gallery is something you **choose from** rather than re-roll.
-2. Shuffle and the croodles credit line are gone.
-3. The Sessions row is gone.
+<!-- What success looks like, one bullet per goal. -->
 
 ## Notes
 
-**The gallery is a fixed set now.** Phase 10 seeded the six previews from the
-user's own display name and offered Shuffle, which rewrote `?seeds=` with fresh
-`randomUUID()`s on a server round trip. That is a lottery, not a choice: the
-face you liked two rolls ago was unrecoverable. The seeds are now
-`option-1` … `option-12`, the same twelve for every person on every visit, so
-`searchParams` left the page entirely and `useUrlNavigation` left the picker.
-Clicking still saves immediately, as it always did.
-
-**Dropping croodles is what keeps the licence satisfied.** croodles is CC BY
-4.0 and the credit line under the picker was its attribution, so removing the
-line while keeping the style would have left the condition unmet. The other
-four styles are CC0, so with croodles gone there is nothing to attribute and
-the `attribution` field is gone from `StyleEntry` as well — an empty hook
-invites someone to re-add a CC BY style without noticing what it obliges. The
-spec now says any style added later must be CC0 or bring its line back.
-
-**`signOutEverywhere` stays, unreachable.** The Sessions row, its dialog and
-the `next-auth/react` `signOut` import are gone from `SecurityCard`, but the
-action and its test remain: `sessionVersion` is still what disabling a user and
-setting their password bump, and deleting the action would have taken a tested
-safety rule with it for no gain.
-
-**A user who picked an avatar before today keeps it.** Their `avatarSeed` is
-name-derived, so it is not one of the twelve and no tile is ringed until they
-choose again — the picture itself is untouched, since it lives in R2.
-
-**Verified in the browser** against the live database, at 1440px and 390px:
-four style chips, twelve tiles, no Shuffle, no credit line, no Sessions row;
-clay option 5 saved on click, repainted the preview and the sidebar without a
-reload, and was still ringed after a reload; zero requests to
-`api.dicebear.com`; no horizontal overflow at 390px, where the twelve tiles
-wrap to three rows of four at 64px. Remove put the initials back and
-`clearAvatar` deleted the R2 object.
+<!-- Constraints, decisions and anything the spec leaves implicit. -->
 
 ## History
+- 2026-09-08: Settings avatar gallery and page trim — built, verified in the
+  browser and merged (`feature/avatar-gallery`); spec
+  `docs/specs/10-settings-and-avatars.md` updated to match. **The gallery is a
+  fixed set now.** Phase 10 seeded six previews from the user's own display name
+  and offered Shuffle, which rewrote `?seeds=` with fresh `randomUUID()`s on a
+  server round trip — a lottery, not a choice, since the face you liked two rolls
+  ago was unrecoverable. The seeds are `option-1` … `option-12`, the same twelve
+  for every person on every visit, so `searchParams` left the page entirely and
+  `useUrlNavigation` left the picker; clicking still saves immediately.
+  **croodles was dropped rather than merely losing its credit line**: it is CC BY
+  4.0 and that line *was* its attribution, so keeping the style without it would
+  have left the licence condition unmet. The other four styles are CC0, which is
+  why `attribution` is gone from `StyleEntry` as well — an empty hook invites
+  someone to re-add a CC BY style without noticing what it obliges, and the spec
+  now says any style added later must be CC0 or bring its line back. **The
+  Sessions row, its dialog and the `next-auth/react` `signOut` import left
+  `SecurityCard`**, leaving Password as the card's only row; `signOutEverywhere`
+  stays in `src/actions/profile.ts`, tested and unreachable, because
+  `sessionVersion` is still what disabling a user and setting their password
+  bump. **A user who picked an avatar before today keeps the picture** — their
+  `avatarSeed` is name-derived, so it is not one of the twelve and no tile is
+  ringed until they choose again. Verified against the live database at 1440px
+  and 390px: four chips, twelve tiles, no Shuffle, no credit line, no Sessions
+  row; clay option 5 saved on click, repainted the preview and the sidebar
+  without a reload and was still ringed after one; zero requests to
+  `api.dicebear.com`; no horizontal overflow at 390px, where the tiles wrap to
+  three rows of four at 64px. Remove put the initials back and `clearAvatar`
+  deleted the R2 object, so no test data was left behind. 398 tests, typecheck,
+  lint and build pass.
 - 2026-09-07: Phase 11 — purchase order revamp — built, verified and merged
   (`feature/po-revamp`, spec `docs/specs/11-po-revamp.md`), with the product-code
   and upload-delete follow-ons merged after it. Six changes: super admin delete,
