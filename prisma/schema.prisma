@@ -20,6 +20,7 @@ model User {
   avatarKey          String?                   // R2 object key for the stored picture
   avatarStyle        String?                   // DiceBear style id, when generated
   avatarSeed         String?                   // the seed that generated it
+  googleImage        String?                   // their Google photo, kept so "Use my Google photo" survives an upload
   passwordChangedAt  DateTime?                 // when passwordHash was last written
   emailVerified      DateTime?                 // Auth.js adapter field
   role               Role      @default(MEMBER)
