@@ -45,6 +45,90 @@ project settings for Preview and Production.
 4. Leave the bucket private. Never enable public access; the app serves files
    through presigned URLs only.
 
+### 2.1 A separate bucket for development — required
+
+**One bucket shared by development and production is dangerous, and it has
+already cost real data.** On 2026-09-07 a maintenance script listed the objects
+in the bucket, deleted every key not referenced by a `Document` row, and used
+the *development* database as its reference. Production's documents are
+referenced only in the *production* database, so all of them looked like
+orphans and were deleted. R2 has no versioning and no undelete, so they were
+unrecoverable. The purchase orders themselves survived — only the original
+scans were lost.
+
+Two buckets make that class of mistake impossible rather than merely
+discouraged.
+
+1. R2 → Create bucket `loving-hands-portal-dev`, same location.
+2. Give it its own CORS policy. Development never runs on the production
+   domain, so the origins are narrower:
+
+```json
+[
+  {
+    "AllowedOrigins": ["http://localhost:3000", "https://*.vercel.app"],
+    "AllowedMethods": ["GET", "PUT", "HEAD"],
+    "AllowedHeaders": ["Content-Type", "Content-Length"],
+    "ExposeHeaders": ["ETag"],
+    "MaxAgeSeconds": 3600
+  }
+]
+```
+
+3. The API token from step 2.2 is scoped to a single bucket, so either widen it
+   to both buckets or create a second *Object Read & Write* token scoped to the
+   dev bucket and use that one locally.
+4. In `.env.local`, set `R2_BUCKET=loving-hands-portal-dev`. In Vercel, leave
+   Production on `loving-hands-portal`. Preview should use the dev bucket too.
+5. The dev bucket starts empty. That changes nothing: `prisma/seed.ts` writes
+   `Document.r2Key` values without uploading anything, so seeded documents
+   already fail to preview. Only files you upload yourself will resolve.
+
+**While you are in `.env.local`, check it defines `DATABASE_URL` and
+`DIRECT_URL` exactly once.** A duplicate pair means the last one silently wins,
+and you cannot tell from the top of the file which database a script will hit.
+
+### 2.2 Lock the purchase order documents — required
+
+A bucket lock refuses deletes and overwrites for objects under a prefix. It is
+the only mechanism that would have prevented the incident above: **an
+object-scoped API token cannot add, change or remove a lock rule**, so no
+script running with the app's credentials can get past one.
+
+```bash
+npx wrangler r2 bucket lock add loving-hands-portal \
+  protect-po-documents po/ --retention-days 90
+```
+
+Check it, and confirm nothing else is locked:
+
+```bash
+npx wrangler r2 bucket lock list loving-hands-portal
+```
+
+What this does and does not do:
+
+- **Applies to existing objects too**, not only new ones.
+- **Blocks overwrites as well as deletes.** That is safe here: `documentKey()`
+  names every object after its `Document` id, so the app never overwrites one.
+- **Takes precedence over lifecycle rules**, so no future expiry rule can
+  quietly remove a document early.
+- **A rule can be removed by an account-level token**, so this is a guard
+  against accidents and automation, not a compliance hold. That is the right
+  level here — the failure it prevents is a script, not an adversary.
+- **The dashboard refuses to empty the bucket** while any rule is active.
+
+**It changes one behaviour in the app, by design.** "Delete upload" on the
+Purchase orders list removes the document row and then deletes the R2 object.
+Under a lock that object delete fails — and `deleteUpload` already logs the
+failure and carries on rather than reporting an error, because the row is what
+the user asked to remove. So the upload still disappears from the list; its
+file simply survives until the lock lapses. That is the trade a lock buys, and
+it is the right way round.
+
+Do **not** lock `avatars/`. Those are replaced routinely, they are not records,
+and a lock there would leave an object behind on every picture change.
+
 ## 3. Google OAuth
 
 1. console.cloud.google.com → new project `Loving Hands Portal` → APIs &
