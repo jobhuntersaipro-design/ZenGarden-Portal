@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { Document, Page, pdfjs } from "react-pdf";
 import "react-pdf/dist/Page/AnnotationLayer.css";
 import "react-pdf/dist/Page/TextLayer.css";
@@ -37,6 +37,23 @@ export function DocumentPreview({
   const [page, setPage] = useState(1);
   const [width, setWidth] = useState(0);
   const [zoom, setZoom] = useState<Zoom>("fit");
+
+  /**
+   * Measures the scrolling container, not the card around it: the card carries
+   * `p-sm`, and `clientWidth` includes padding, so measuring the card rendered
+   * the page a padding-width too wide and pushed the review page sideways on a
+   * phone.
+   *
+   * A ResizeObserver rather than a single measurement on mount, because "Fit"
+   * has to stay honest when the viewport changes — rotating a phone otherwise
+   * leaves the page at the width it had in the other orientation.
+   */
+  const viewportRef = useCallback((node: HTMLDivElement | null) => {
+    if (!node) return;
+    const observer = new ResizeObserver(() => setWidth(node.clientWidth));
+    observer.observe(node);
+    return () => observer.disconnect();
+  }, []);
 
   // "fit" is 1× of the container width; a number is a multiple of it. Keeping
   // the resolved number in one place is what lets the controls show an honest
@@ -117,14 +134,14 @@ export function DocumentPreview({
 
   if (source.mimeType !== "application/pdf") {
     return (
-      <div className="rounded-lg border border-hairline bg-surface p-sm">
+      <div className="min-w-0 rounded-lg border border-hairline bg-surface p-sm">
         <div className="mb-sm flex justify-end">
           <ZoomControls scale={scale} onChange={setZoom} />
         </div>
         {/* The scroll container is here, not on the image: a zoomed scan must
             scroll inside its own card and never widen the page. */}
         <div
-          className="max-h-preview overflow-auto"
+          className="max-h-preview min-w-0 overflow-auto"
           onWheel={onWheel}
           onDoubleClick={toggleFit}
         >
@@ -144,19 +161,15 @@ export function DocumentPreview({
   }
 
   return (
-    <div
-      ref={(node) => {
-        if (node && width === 0) setWidth(node.clientWidth);
-      }}
-      className="rounded-lg border border-hairline bg-surface p-sm"
-    >
+    <div className="min-w-0 rounded-lg border border-hairline bg-surface p-sm">
       <div className="mb-sm flex justify-end">
         <ZoomControls scale={scale} onChange={setZoom} />
       </div>
       {/* The scroll container is here, not on the page: a zoomed document must
           scroll inside its own card and never widen the layout. */}
       <div
-        className="max-h-preview overflow-auto"
+        ref={viewportRef}
+        className="max-h-preview min-w-0 overflow-auto"
         onWheel={onWheel}
         onDoubleClick={toggleFit}
       >
