@@ -2,92 +2,118 @@
 
 ## Status
 
-Built and verified on `feature/settings-and-avatars` — awaiting review before merge.
-371 tests, build and lint pass. All test data removed afterwards: database back to
-400 purchase orders and 406 documents, both users reset, zero R2 `avatars/` objects.
+Built and verified on `feature/po-revamp` — awaiting review before merge.
+394 tests, typecheck, lint and build pass. All test data removed afterwards:
+400 purchase orders, 406 documents, 12 products, 0 needs-review, roles reverted,
+no stray R2 objects.
 
 ## Goals
 
-Phase 10 — account settings and person avatars. Spec: `docs/specs/10-settings-and-avatars.md`.
-Plan: `docs/superpowers/plans/2026-09-07-settings-and-avatars.md`.
+Phase 11 — purchase order revamp. Spec: `docs/specs/11-po-revamp.md`.
+Plan: `docs/superpowers/plans/2026-09-07-po-revamp.md`.
+
+Six changes: super admin delete, delivery date and buyer reference removed, a
+zoomable original document, a visible remark, product codes that build the
+catalogue, and a line-items table that stops clipping itself.
 
 ## Notes
 
-**What shipped.** `/settings` with a Profile card (picture, display name, read-only
-email/role/member-since) and a Security card (password with its last-changed date, sign
-out on all devices), reached from the account menu — never a nav row. Pictures come from
-three sources — an uploaded photo, a generated DiceBear avatar in one of five styles,
-or initials — and all of them converge on one 256×256 WebP in R2 behind a
-stable URL, so nothing downstream can tell them apart. One `PersonChip` now covers every
-place the portal names a person; the Activity card, "Confirmed by" and "Moved here by"
-gained avatars, and `initials` went from four copies to one.
+**Product codes now build the catalogue.** Exact code matching stays,
+case-insensitive and never fuzzy — that rule is from the 2026-09-06 work and
+still holds. What changed is the miss case: an unknown code creates a product
+rather than leaving the line unmatched. **Description matching is deliberately
+gone**, because two active products can share a name and the old fallback would
+attach a line to the wrong product *and* skip creating the right one. Cost stays
+bounded per document (one read, at most one write, at most one re-read).
+`createManyAndReturn`, not `createMany`, because the new ids are needed to link
+the lines. Verified live: a known code linked, an unknown one created exactly one
+row (`Uncategorised`, `needsReview: true`), two case-variant lines shared one id,
+a line with no code stayed null.
 
-**DiceBear is rendered locally and never called over HTTP.** Verified in the browser:
-zero requests to `api.dicebear.com` across a full picker session. Three of the five
-styles (`gaze`, `voxel-bot`, `clay`) are **absent from the API's own `/10.x` index**
-while shipping fine in npm, so those endpoints are unlisted; seeds are user names, which
-should not reach a third party either. `croodles` is CC BY 4.0 and carries a credit line
-under the picker; the other four are CC0.
+**The known cost, stated:** products are created at extraction time, so **a
+discarded draft leaves its products behind**. The user chose this over creating
+them at confirm. `needsReview` is what makes the junk visible and fixable rather
+than silent; moving creation into `confirmPurchaseOrder`'s transaction is the fix
+if it proves noisy.
 
-**Two library facts found by running it, not by reading docs.** Option names are
-`` `${component}Variant` `` — the components are called `shape` and `animation`, but
-passing `{ shape: [...] }` throws `OptionsValidationError`, so it is `shapeVariant` and
-`animationVariant`, the same names the HTTP API uses. And passing a raw definition to
-`Avatar` is deprecated in 10.7.0 and removed in v11, so each definition is wrapped in
-`new Style(...)` once at module scope.
+**Deleting keeps the document.** Line items and stage events cascade; the
+`Document` and its R2 object stay, and the `Extraction` goes back to `SUCCEEDED`
+so the upload returns to the review queue rather than being stranded in no queue
+with no order. Verified end to end on a throwaway order.
 
-**Four defects the build could not catch, all found in the browser.**
+**The dialog's revision warning is the reverse of what the plan assumed.** A
+superseded order redirects to its newer revision, so the detail page only ever
+shows the current one and "a later revision will survive" was unreachable. The
+real consequence is that deleting a revision brings the order it superseded back
+into view.
 
-1. **`useSession` had no `SessionProvider`** anywhere in the app, so `/settings` threw on
-   render. Scoped to this route rather than the portal layout — it is the only screen
-   that changes a name or picture.
-2. **The sidebar never updated.** It read name and image from the **JWT**, which only
-   re-reads the database every `REFRESH_INTERVAL_MS` (5 min), so every table — which
-   joins the row directly — showed the new avatar while the shell showed the old one.
-   `update()` did not reliably rewrite the cookie (no POST to `/api/auth/session` ever
-   appeared in the network log). The portal layout now reads `name` and `image` from the
-   row: one indexed lookup by primary key, and `router.refresh()` makes it live.
-   Confirmed: the sidebar repaints on click with no reload.
-3. **~1 MB of DiceBear was being shipped to the browser** — the exact thing local
-   rendering existed to avoid. `AvatarPicker` is a client component and imported the id
-   list from `avatar-styles`, dragging `@dicebear/core` and all five definitions with it
-   (measured: 440 KB + 596 KB chunks). The ids now live in `avatar-style-ids.ts` with no
-   `@dicebear` imports; a production build has **no dicebear chunk at all**, only the
-   literal style-id strings the chip labels need.
-4. **The style chips were 39px tall** on a phone, under the 44px the mobile pass requires
-   of standalone controls. `h-control-md` is the existing 44px token.
+**`needs-review` joined `AttentionFlag`** rather than becoming a parallel
+mechanism, so it inherited the chip, the filter and the count. The widened
+`needsAttention` signature caught every existing fixture, which is the type
+system doing its job.
 
-**"Use my Google photo" was built, then removed on the user's instruction.** It briefly
-had a `googleImage` column behind it, because it cannot work without one: `image` is
-overwritten the moment someone uploads a photo or picks a generated avatar, the Google
-picture is written only at row creation, and the linked `Account` row holds tokens, not
-a picture. The user asked for the column gone, so the button went with it rather than
-leaving one that silently fails. Removed in the same shape it was added — column,
-migration, the `resolveGoogleSignIn` and `approveAccessRequest` writes, the action and
-its two tests. **`image` is still deliberately not written on a Google sign-in for an
-existing user**, which is what lets an uploaded avatar survive signing in with Google;
-that behaviour predates this phase and is unchanged. Reinstating the feature needs a
-column again — a spec decision, not a silent edit.
+**Three things the browser found that neither the build nor the plan did:**
 
-**Verified against the live database.** A 1200×700 JPEG uploaded and came back a
-256×256 WebP (14 KB → 1.8 KB) with `avatarStyle`/`avatarSeed` null, correctly marking it
-a photo; generated avatars from `gaze` and `clay` stored, round-tripped their selected
-state across a reload, and appeared in the sidebar, the PO table and the Activity card.
-The serve route returns `image/webp` with `private, max-age=31536000, immutable` and
-401s when signed out. **Zero orphaned R2 objects after four avatar changes** — the
-replace-then-delete path holds. `/account/password` redirects to `/settings#password`
-when not forced, and a `mustChangePassword` user lands on the standalone page from both
-directions **without looping**. `/settings` clean at 390, 768 and 1440. All test data
-removed: database back to 400 purchase orders and 406 documents, both users reset, no
-`avatars/` objects.
+1. **A second filter allow-list.** `products/page.tsx` has its own `FILTERS`
+   array beside the type union; the chip changed the URL but the page ignored it
+   and showed all 13 products. Adding the union member was not enough.
+2. **The line-items table pushed the *page* sideways at 390px** rather than
+   scrolling in its own container — the flex column and the section between it
+   and the grid track both defaulted to `min-width: auto`, handing 840px back up
+   the chain. `min-w-0` on both.
+3. **The table had no scroll affordance**, which is what "overlayed" described.
+   The form column is 540px on every viewport, so it always scrolls; it now uses
+   the same `useEdgeFades` hook as `DataTable`, whose own comment says a
+   container that clips with no visible edge looks like a table missing a column.
+   "+ Add line" also sat inside the scroller and drifted; it is outside now.
 
-**Known, unfixed.** `croodles` and `notionists` are close to illegible at the 24px the PO
-table uses — measured before building and accepted, since both read well at 96px in the
-Profile card. `sharp` resolves to 0.35.4 for our code, which is patched; the `<0.35.0`
-libvips CVEs the audit reports are `next`'s own nested 0.34.5, used by its image
-optimizer and unrelated to this feature.
+**Measured, before and after.** Description input 88px → 228px; header
+collisions 2 → 0; page horizontal overflow at 390px → none. Zoom: 100% → 200%
+moves the image 514px → 1028px, scrolls inside the card, and
+`pageScrollsSideways` is false at every step.
+
+**Delivery date and buyer reference** are gone from every screen, from the
+extraction schema and from the prompt; the Prisma columns stay, so the data on
+400 existing orders survives and the decision is reversible. Removing them
+touched `stages.ts` in six places including the change-detection block that
+builds Activity entries.
+
+**Not verified in a browser:** the PDF zoom path. Every seeded document returns
+`NoSuchKey`, so the only document that loads is a freshly uploaded one, and the
+one uploaded for this test was an image — which exercises the `<img>` branch.
+The react-pdf branch is covered by types, the shared `stepZoom` unit tests and
+the build, but not by a real render.
 
 ## History
+- 2026-09-07: Phase 10 — account settings and person avatars — built, verified and merged
+  (`feature/settings-and-avatars`), then **deployed to production** (Vercel Ready, 1m
+  build, so `prisma migrate deploy` applied its migrations to the production Neon
+  branch). `/settings` with a Profile card (picture, display name, read-only
+  email/role/member-since) and a Security card (password with its last-changed date,
+  sign out on all devices), reached from the account menu, never a nav row. Pictures
+  come from three sources — an uploaded photo, a generated DiceBear avatar in one of
+  five styles, or initials — all converging on one 256×256 WebP in R2 behind a stable
+  `?v={hash}` URL, which is what makes the `immutable` cache header safe. One
+  `PersonChip` now covers every place the portal names a person; the Activity card,
+  "Confirmed by" and "Moved here by" gained avatars and `initials` went from four
+  copies to one. **DiceBear renders locally and never over HTTP** — verified in the
+  browser, zero requests to `api.dicebear.com`; three of the five styles (`gaze`,
+  `voxel-bot`, `clay`) are absent from the API's own `/10.x` index while shipping fine
+  in npm. Two library facts found by running it: option names are
+  `` `${component}Variant` `` (passing `{ shape: [...] }` throws), and a raw definition
+  passed to `Avatar` is deprecated in 10.7.0, so each is wrapped in `new Style(...)`
+  once at module scope. **Four defects the build could not catch**: `useSession` had no
+  `SessionProvider` anywhere in the app; the sidebar read name and image from the JWT,
+  which only re-reads the database every five minutes, so every table showed the new
+  avatar while the shell showed the old one (the layout now reads the row); **~1 MB of
+  DiceBear was being shipped to the browser** because a client component imported the
+  id list from `avatar-styles`, fixed by splitting `avatar-style-ids.ts`; and the style
+  chips were 39px on a phone. **`googleImage` was added and then removed at the user's
+  request**, taking "Use my Google photo" with it — it cannot work without somewhere to
+  keep the Google URL, and a button that always fails is worse than none. `image` is
+  still deliberately not written on a Google sign-in for an existing user, which is
+  what lets an uploaded avatar survive. Known: `croodles` and `notionists` are close to
+  illegible at the 24px the PO table uses — measured before building and accepted.
 - 2026-09-07: Product matching built, verified and merged (`feature/product-matching`) —
   prompted by a reported upload failure that **did not reproduce**. "The upload was
   interrupted — check your connection" comes from exactly one place, `xhr.onerror` on

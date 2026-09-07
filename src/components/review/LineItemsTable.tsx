@@ -5,6 +5,7 @@ import type { Dispatch } from "react";
 import { Combobox, type ComboboxOption } from "@/components/review/Combobox";
 import type { DraftAction } from "@/components/review/draft-reducer";
 import { Input } from "@/components/ui/input";
+import { useEdgeFades } from "@/hooks/useEdgeFades";
 import { formatMYR } from "@/lib/money";
 import type { DraftLineItem } from "@/lib/validation/purchase-orders";
 
@@ -24,155 +25,197 @@ export function LineItemsTable({
   products: ProductOption[];
   dispatch: Dispatch<DraftAction>;
 }) {
-  return (
-    <div className="overflow-x-auto">
-      <table className="w-full min-w-line-items border-collapse">
-        <thead>
-          <tr className="border-b border-hairline text-left">
-            {[
-              "Description",
-              "Product",
-              "Qty",
-              "Unit",
-              "Unit price",
-              "Amount",
-              "",
-            ].map((heading) => (
-              <th
-                key={heading}
-                scope="col"
-                className="py-sm pr-sm font-mono text-[length:var(--text-eyebrow)] font-normal text-ink-tertiary"
-              >
-                {heading}
-              </th>
-            ))}
-          </tr>
-        </thead>
-        <tbody>
-          {lineItems.map((line, index) => (
-            <tr key={index} className="border-b border-hairline align-top">
-              <td className="py-sm pr-sm">
-                <Input
-                  aria-label={`Description, line ${index + 1}`}
-                  value={line.description}
-                  title={line.description || undefined}
-                  onChange={(event) =>
-                    dispatch({
-                      type: "line",
-                      index,
-                      field: "description",
-                      value: event.target.value,
-                    })
-                  }
-                />
-              </td>
-              <td className="w-44 py-sm pr-sm">
-                <Combobox
-                  ariaLabel={`Product, line ${index + 1}`}
-                  value={line.productId ?? null}
-                  options={products}
-                  placeholder="Unmatched"
-                  onSelect={(option) =>
-                    dispatch({
-                      type: "lineProduct",
-                      index,
-                      productId: option.id,
-                      name: option.label,
-                      unit:
-                        products.find((product) => product.id === option.id)
-                          ?.unit ?? null,
-                    })
-                  }
-                />
-              </td>
-              <td className="w-24 py-sm pr-sm">
-                <Input
-                  aria-label={`Quantity, line ${index + 1}`}
-                  inputMode="decimal"
-                  className="tabular-nums"
-                  value={line.quantity}
-                  onChange={(event) =>
-                    dispatch({
-                      type: "line",
-                      index,
-                      field: "quantity",
-                      value: event.target.value,
-                    })
-                  }
-                />
-              </td>
-              <td className="w-24 py-sm pr-sm">
-                <Input
-                  aria-label={`Unit, line ${index + 1}`}
-                  value={line.unit ?? ""}
-                  onChange={(event) =>
-                    dispatch({
-                      type: "line",
-                      index,
-                      field: "unit",
-                      value: event.target.value || null,
-                    })
-                  }
-                />
-              </td>
-              <td className="w-32 py-sm pr-sm">
-                <Input
-                  aria-label={`Unit price, line ${index + 1}`}
-                  inputMode="decimal"
-                  className="tabular-nums"
-                  value={line.unitPrice}
-                  onChange={(event) =>
-                    dispatch({
-                      type: "line",
-                      index,
-                      field: "unitPrice",
-                      value: event.target.value,
-                    })
-                  }
-                />
-              </td>
-              <td className="w-32 py-sm pr-sm">
-                <div className="flex items-center gap-xxs">
-                  <Input
-                    aria-label={`Amount, line ${index + 1}`}
-                    inputMode="decimal"
-                    className="tabular-nums"
-                    value={line.amount}
-                    onChange={(event) =>
-                      dispatch({
-                        type: "line",
-                        index,
-                        field: "amount",
-                        value: event.target.value,
-                      })
-                    }
-                  />
-                  {/* Says the amount is no longer following quantity × price. */}
-                  {line.amountManual ? (
-                    <span
-                      title="Typed by hand — no longer recalculated"
-                      aria-label="Amount typed by hand"
-                      className="size-1.5 shrink-0 rounded-full bg-ink-tertiary"
-                    />
-                  ) : null}
-                </div>
-              </td>
-              <td className="py-sm">
-                <button
-                  type="button"
-                  aria-label={`Remove line ${index + 1}`}
-                  disabled={lineItems.length === 1}
-                  onClick={() => dispatch({ type: "removeLine", index })}
-                  className="flex size-8 items-center justify-center rounded-sm text-ink-tertiary transition-colors hover:bg-surface hover:text-ink focus-visible:outline-2 focus-visible:outline-focus disabled:opacity-40"
-                >
-                  <Trash2 className="size-4" strokeWidth={1.75} aria-hidden />
-                </button>
-              </td>
-            </tr>
-          ))}
-        </tbody>
-      </table>
+  // Seven columns need 840px and the review screen's form column is narrower
+  // than that on every viewport, so this table always scrolls. A container that
+  // clips with no visible edge does not look scrollable — it looks like a table
+  // missing a column, which is exactly how it was reported.
+  const { ref: scroller, clipped, measure } = useEdgeFades<HTMLDivElement>();
 
+  return (
+    <div>
+      <div className="relative">
+        <div ref={scroller} onScroll={measure} className="overflow-x-auto">
+          <table className="w-full min-w-line-items border-collapse">
+            {/* Widths declared once here rather than repeated on every row. Without
+            them Description had no width at all and collapsed to whatever the
+            other six columns left over — about 88px. */}
+            <colgroup>
+              <col className="min-w-60" />
+              <col className="w-44" />
+              <col className="w-20" />
+              <col className="w-20" />
+              <col className="w-28" />
+              <col className="w-28" />
+              <col className="w-10" />
+            </colgroup>
+            <thead>
+              <tr className="border-b border-hairline text-left">
+                {[
+                  "Description",
+                  "Product Code",
+                  "Qty",
+                  "Unit",
+                  "Unit price",
+                  "Amount",
+                  "",
+                ].map((heading) => (
+                  <th
+                    key={heading}
+                    scope="col"
+                    className="py-sm pr-sm font-mono text-[length:var(--text-eyebrow)] font-normal text-ink-tertiary"
+                  >
+                    {heading}
+                  </th>
+                ))}
+              </tr>
+            </thead>
+            <tbody>
+              {lineItems.map((line, index) => (
+                <tr key={index} className="border-b border-hairline align-top">
+                  <td className="py-sm pr-sm">
+                    <Input
+                      aria-label={`Description, line ${index + 1}`}
+                      value={line.description}
+                      title={line.description || undefined}
+                      onChange={(event) =>
+                        dispatch({
+                          type: "line",
+                          index,
+                          field: "description",
+                          value: event.target.value,
+                        })
+                      }
+                    />
+                  </td>
+                  <td className="py-sm pr-sm">
+                    <Combobox
+                      ariaLabel={`Product code, line ${index + 1}`}
+                      value={line.productId ?? null}
+                      options={products}
+                      placeholder="Unmatched"
+                      onSelect={(option) =>
+                        dispatch({
+                          type: "lineProduct",
+                          index,
+                          productId: option.id,
+                          name: option.label,
+                          unit:
+                            products.find((product) => product.id === option.id)
+                              ?.unit ?? null,
+                        })
+                      }
+                    />
+                  </td>
+                  <td className="w-24 py-sm pr-sm">
+                    <Input
+                      aria-label={`Quantity, line ${index + 1}`}
+                      inputMode="decimal"
+                      className="tabular-nums"
+                      value={line.quantity}
+                      onChange={(event) =>
+                        dispatch({
+                          type: "line",
+                          index,
+                          field: "quantity",
+                          value: event.target.value,
+                        })
+                      }
+                    />
+                  </td>
+                  <td className="w-24 py-sm pr-sm">
+                    <Input
+                      aria-label={`Unit, line ${index + 1}`}
+                      value={line.unit ?? ""}
+                      onChange={(event) =>
+                        dispatch({
+                          type: "line",
+                          index,
+                          field: "unit",
+                          value: event.target.value || null,
+                        })
+                      }
+                    />
+                  </td>
+                  <td className="w-32 py-sm pr-sm">
+                    <Input
+                      aria-label={`Unit price, line ${index + 1}`}
+                      inputMode="decimal"
+                      className="tabular-nums"
+                      value={line.unitPrice}
+                      onChange={(event) =>
+                        dispatch({
+                          type: "line",
+                          index,
+                          field: "unitPrice",
+                          value: event.target.value,
+                        })
+                      }
+                    />
+                  </td>
+                  <td className="w-32 py-sm pr-sm">
+                    <div className="flex items-center gap-xxs">
+                      <Input
+                        aria-label={`Amount, line ${index + 1}`}
+                        inputMode="decimal"
+                        className="tabular-nums"
+                        value={line.amount}
+                        onChange={(event) =>
+                          dispatch({
+                            type: "line",
+                            index,
+                            field: "amount",
+                            value: event.target.value,
+                          })
+                        }
+                      />
+                      {/* Says the amount is no longer following quantity × price. */}
+                      {line.amountManual ? (
+                        <span
+                          title="Typed by hand — no longer recalculated"
+                          aria-label="Amount typed by hand"
+                          className="size-1.5 shrink-0 rounded-full bg-ink-tertiary"
+                        />
+                      ) : null}
+                    </div>
+                  </td>
+                  <td className="py-sm">
+                    <button
+                      type="button"
+                      aria-label={`Remove line ${index + 1}`}
+                      disabled={lineItems.length === 1}
+                      onClick={() => dispatch({ type: "removeLine", index })}
+                      className="flex size-8 items-center justify-center rounded-sm text-ink-tertiary transition-colors hover:bg-surface hover:text-ink focus-visible:outline-2 focus-visible:outline-focus disabled:opacity-40"
+                    >
+                      <Trash2
+                        className="size-4"
+                        strokeWidth={1.75}
+                        aria-hidden
+                      />
+                    </button>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+        {/* Each fade appears only while there is something on that side to
+            reach. */}
+        {clipped.left ? (
+          <div
+            aria-hidden
+            className="pointer-events-none absolute inset-y-0 left-0 w-xl bg-linear-to-r from-canvas to-transparent"
+          />
+        ) : null}
+        {clipped.right ? (
+          <div
+            aria-hidden
+            className="pointer-events-none absolute inset-y-0 right-0 w-xl bg-linear-to-l from-canvas to-transparent"
+          />
+        ) : null}
+      </div>
+
+      {/* Outside the scroller: it is an action on the list, not a column of
+          it, and it should not drift sideways when the table scrolls. */}
       <button
         type="button"
         onClick={() => dispatch({ type: "addLine" })}

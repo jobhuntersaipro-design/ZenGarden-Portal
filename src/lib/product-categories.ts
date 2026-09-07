@@ -11,6 +11,12 @@ export const PRODUCT_CATEGORIES = [
   "Water",
   "Screens & fencing",
   "Structures",
+  /**
+   * Auto-created from a purchase order code, where the document gives no
+   * category. A real member of this list rather than free text: the whole
+   * point of the fixed list is that categories cannot fragment.
+   */
+  "Uncategorised",
 ] as const;
 
 export type ProductCategory = (typeof PRODUCT_CATEGORIES)[number];

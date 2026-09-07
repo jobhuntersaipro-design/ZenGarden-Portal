@@ -10,9 +10,7 @@ const sample = {
   poNumber: "PO-2026-0917",
   buyerName: "Acme Industrial Sdn Bhd",
   poDate: "2026-09-17",
-  deliveryDate: "2026-10-01",
   currency: "MYR",
-  buyerReference: "REQ-889",
   paymentTerms: "30 days",
   lineItems: [
     {
@@ -47,8 +45,6 @@ describe("PoExtractionSchema", () => {
     expect(
       PoExtractionSchema.safeParse({
         ...sample,
-        deliveryDate: null,
-        buyerReference: null,
         paymentTerms: null,
         lineItems: [{ ...sample.lineItems[0], unit: null, sku: null }],
       }).success,

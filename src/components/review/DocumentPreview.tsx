@@ -6,6 +6,11 @@ import "react-pdf/dist/Page/AnnotationLayer.css";
 import "react-pdf/dist/Page/TextLayer.css";
 import type { DocumentUrlResponse } from "@/app/api/documents/[documentId]/url/route";
 import { Button } from "@/components/ui/button";
+import {
+  ZoomControls,
+  type Zoom,
+  stepZoom,
+} from "@/components/review/ZoomControls";
 import { DownloadOriginal } from "@/components/purchase-orders/DownloadOriginal";
 
 // The worker ships with pdfjs-dist; resolving it through import.meta.url lets
@@ -31,6 +36,25 @@ export function DocumentPreview({
   const [pages, setPages] = useState(0);
   const [page, setPage] = useState(1);
   const [width, setWidth] = useState(0);
+  const [zoom, setZoom] = useState<Zoom>("fit");
+
+  // "fit" is 1× of the container width; a number is a multiple of it. Keeping
+  // the resolved number in one place is what lets the controls show an honest
+  // percentage and the wheel step from wherever the page actually is.
+  const scale = zoom === "fit" ? 1 : zoom;
+
+  /**
+   * Ctrl/Cmd + wheel zooms; a plain wheel scrolls the document, untouched.
+   * The listener is passive:false via onWheel on a div, so preventDefault
+   * works and the page behind does not zoom with it.
+   */
+  const onWheel = (event: React.WheelEvent) => {
+    if (!event.ctrlKey && !event.metaKey) return;
+    event.preventDefault();
+    setZoom(stepZoom(scale, event.deltaY < 0 ? 1 : -1));
+  };
+
+  const toggleFit = () => setZoom((current) => (current === "fit" ? 1 : "fit"));
   /** Bumped by "Try preview again"; re-runs the fetch below. */
   const [attempt, setAttempt] = useState(0);
 
@@ -93,15 +117,29 @@ export function DocumentPreview({
 
   if (source.mimeType !== "application/pdf") {
     return (
-      // A presigned R2 URL is short-lived and host-specific, so it cannot be a
-      // configured next/image remote pattern; this is the scan itself, shown
-      // once, not a gallery image worth optimising.
-      // eslint-disable-next-line @next/next/no-img-element
-      <img
-        src={source.url}
-        alt={`Scan of ${originalName}`}
-        className="w-full rounded-lg border border-hairline"
-      />
+      <div className="rounded-lg border border-hairline bg-surface p-sm">
+        <div className="mb-sm flex justify-end">
+          <ZoomControls scale={scale} onChange={setZoom} />
+        </div>
+        {/* The scroll container is here, not on the image: a zoomed scan must
+            scroll inside its own card and never widen the page. */}
+        <div
+          className="max-h-preview overflow-auto"
+          onWheel={onWheel}
+          onDoubleClick={toggleFit}
+        >
+          {/* A presigned R2 URL is short-lived and host-specific, so it cannot
+              be a configured next/image remote pattern; this is the scan
+              itself, shown once, not a gallery image worth optimising. */}
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img
+            src={source.url}
+            alt={`Scan of ${originalName}`}
+            className="max-w-none rounded-sm"
+            style={{ width: `${scale * 100}%` }}
+          />
+        </div>
+      </div>
     );
   }
 
@@ -112,6 +150,16 @@ export function DocumentPreview({
       }}
       className="rounded-lg border border-hairline bg-surface p-sm"
     >
+      <div className="mb-sm flex justify-end">
+        <ZoomControls scale={scale} onChange={setZoom} />
+      </div>
+      {/* The scroll container is here, not on the page: a zoomed document must
+          scroll inside its own card and never widen the layout. */}
+      <div
+        className="max-h-preview overflow-auto"
+        onWheel={onWheel}
+        onDoubleClick={toggleFit}
+      >
       <Document
         file={source.url}
         onLoadSuccess={({ numPages }) => setPages(numPages)}
@@ -122,10 +170,12 @@ export function DocumentPreview({
       >
         <Page
           pageNumber={page}
-          width={width || undefined}
+          // react-pdf sizes by width, so scaling the width *is* the zoom.
+          width={width ? width * scale : undefined}
           renderAnnotationLayer={false}
         />
       </Document>
+      </div>
       {pages > 1 ? (
         <div className="mt-sm flex items-center justify-center gap-md">
           <Button

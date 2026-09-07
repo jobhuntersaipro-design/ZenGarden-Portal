@@ -235,6 +235,7 @@ model Product {
   listPrice   Decimal        @db.Decimal(14, 2)
   description String?
   active      Boolean        @default(true)
+  needsReview Boolean        @default(false)  // created from a PO; details not filled in yet
   images      ProductImage[]
   prices      ProductPrice[]
   lineItems   LineItem[]

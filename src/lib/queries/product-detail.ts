@@ -41,6 +41,7 @@ export type ProductDetail = {
     listPrice: number;
     description: string | null;
     active: boolean;
+    needsReview: boolean;
     updatedAt: string;
   };
   images: { id: string; url: string | null; position: number }[];
@@ -76,6 +77,7 @@ export async function loadProduct(
       listPrice: true,
       description: true,
       active: true,
+      needsReview: true,
       updatedAt: true,
       images: {
         orderBy: { position: "asc" },
@@ -210,6 +212,7 @@ export async function loadProduct(
       listPrice,
       description: product.description,
       active: product.active,
+      needsReview: product.needsReview,
       updatedAt: product.updatedAt.toISOString(),
     },
     images,

@@ -19,8 +19,6 @@ import { Textarea } from "@/components/ui/textarea";
 const LABELS: { key: keyof PurchaseOrderPatch; label: string; type?: string }[] = [
   { key: "poNumber", label: "PO number" },
   { key: "poDate", label: "PO date", type: "date" },
-  { key: "deliveryDate", label: "Delivery date", type: "date" },
-  { key: "buyerReference", label: "Buyer reference" },
   { key: "paymentTerms", label: "Payment terms" },
 ];
 
@@ -80,11 +78,12 @@ export function EditPurchaseOrderSheet({
               htmlFor="edit-notes"
               className="font-mono text-[length:var(--text-eyebrow)] text-ink-tertiary"
             >
-              Notes
+              Remark
             </label>
             <Textarea
               id="edit-notes"
               rows={3}
+              maxLength={2000}
               value={patch.notes ?? ""}
               onChange={(event) => set("notes", event.target.value)}
             />

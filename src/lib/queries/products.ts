@@ -42,6 +42,7 @@ export type ProductFilter =
   | "inactive"
   | "price-moved"
   | "not-sold-60d"
+  | "needs-review"
   | null;
 
 const LATEST_ONLY = { supersededBy: { is: null } } as const;
@@ -70,6 +71,7 @@ export async function listProducts(
         unit: true,
         listPrice: true,
         active: true,
+        needsReview: true,
         images: {
           orderBy: { position: "asc" },
           select: { thumbKey: true, r2Key: true },
@@ -143,6 +145,7 @@ export async function listProducts(
         id: product.id,
         active: product.active,
         imageCount: product.images.length,
+        needsReview: product.needsReview,
       })),
       new Map(
         withStats.map(({ product, stats }) => [
@@ -260,6 +263,7 @@ export function summarise(products: ProductRow[]) {
       inactive: products.filter((p) => p.flags.includes("inactive")).length,
       notSold: products.filter((p) => p.flags.includes("not-sold-60d")).length,
       priceMoved: products.filter((p) => p.flags.includes("price-moved")).length,
+      needsReview: products.filter((p) => p.flags.includes("needs-review")).length,
     },
   };
 }

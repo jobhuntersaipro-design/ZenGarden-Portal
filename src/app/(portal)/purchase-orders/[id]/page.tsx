@@ -8,11 +8,12 @@ import { PageHeader } from "@/components/portal/PageHeader";
 import { StageBadge } from "@/components/portal/StatusBadge";
 import { ActivityList } from "@/components/purchase-orders/ActivityList";
 import { DownloadOriginal } from "@/components/purchase-orders/DownloadOriginal";
+import { DeletePoDialog } from "@/components/purchase-orders/DeletePoDialog";
 import { EditPurchaseOrderSheet } from "@/components/purchase-orders/EditPurchaseOrderSheet";
 import { LifecycleActions } from "@/components/purchase-orders/LifecycleActions";
 import { StageStepper } from "@/components/purchase-orders/StageStepper";
 import { getSessionUser } from "@/lib/auth-guards";
-import { formatDate, formatDateTime } from "@/lib/dates";
+import { formatDate, formatDateTime, TIME_ZONE } from "@/lib/dates";
 import { formatMYR } from "@/lib/money";
 import {
   isFinalStage,
@@ -65,7 +66,9 @@ export default async function PurchaseOrderPage({
         include: { changedBy: { select: { name: true, image: true } } },
       },
       supersededBy: { select: { id: true, revision: true } },
-      revisionOf: { select: { id: true, poNumber: true, confirmedAt: true } },
+      revisionOf: {
+        select: { id: true, poNumber: true, confirmedAt: true, revision: true },
+      },
     },
   });
   if (!po) notFound();
@@ -137,14 +140,25 @@ export default async function PurchaseOrderPage({
               initial={{
                 poNumber: po.poNumber,
                 poDate: po.poDate.toISOString().slice(0, 10),
-                deliveryDate: po.deliveryDate
-                  ? po.deliveryDate.toISOString().slice(0, 10)
-                  : null,
-                buyerReference: po.buyerReference,
                 paymentTerms: po.paymentTerms,
                 notes: po.notes,
               }}
             />
+            {/* Super admin only. Deliberately not on the list: opening the
+                order first means seeing what is about to go. */}
+            {user?.role === Role.SUPER_ADMIN ? (
+              <DeletePoDialog
+                poId={po.id}
+                poNumber={po.poNumber}
+                lineItemCount={po.lineItems.length}
+                monthLabel={po.poDate.toLocaleDateString("en-GB", {
+                  month: "long",
+                  year: "numeric",
+                  timeZone: TIME_ZONE,
+                })}
+                supersedesRevision={po.revisionOf?.revision ?? null}
+              />
+            ) : null}
           </div>
         }
       />
@@ -235,11 +249,6 @@ export default async function PurchaseOrderPage({
               {[
                 ["PO number", po.poNumber],
                 ["PO date", formatDate(po.poDate)],
-                [
-                  "Delivery date",
-                  po.deliveryDate ? formatDate(po.deliveryDate) : "—",
-                ],
-                ["Buyer reference", po.buyerReference ?? "—"],
                 ["Payment terms", po.paymentTerms ?? "—"],
                 ["Confirmed at", formatDateTime(po.confirmedAt)],
               ].map(([label, value]) => (
@@ -255,6 +264,17 @@ export default async function PurchaseOrderPage({
                   </dd>
                 </div>
               ))}
+              {/* Prose, so it wraps across the full width rather than
+                  truncating — unlike every other row on this card, whose `dd`
+                  sets `title={value}` and clips. */}
+              <div className="sm:col-span-2">
+                <dt className="font-mono text-[length:var(--text-eyebrow)] text-ink-tertiary">
+                  Remark
+                </dt>
+                <dd className="whitespace-pre-wrap text-[length:var(--text-body-md)] text-ink">
+                  {po.notes?.trim() ? po.notes : "—"}
+                </dd>
+              </div>
               {/* Its own block rather than a row in the map above: that map's
                   `dd` sets `title={value}` and expects a string. */}
               <div>

@@ -42,7 +42,7 @@ export function ProductSheet({
   product,
   trigger,
 }: {
-  product?: ProductInput & { id: string };
+  product?: ProductInput & { id: string; needsReview?: boolean };
   trigger: React.ReactNode;
 }) {
   const router = useRouter();
@@ -69,6 +69,15 @@ export function ProductSheet({
         </SheetHeader>
 
         <div className="flex flex-col gap-md p-md">
+          {/* Its category and price were taken from the line that created it,
+              so they are guesses until someone says otherwise. Saving clears
+              the flag: a person has now looked. */}
+          {product?.needsReview ? (
+            <p className="rounded-sm bg-surface-soft p-sm text-[length:var(--text-caption)] text-ink-secondary">
+              Added automatically from a purchase order. Check its category and
+              list price, then save.
+            </p>
+          ) : null}
           <div className="flex flex-col gap-xxs">
             <label htmlFor="product-name" className={label}>
               Name

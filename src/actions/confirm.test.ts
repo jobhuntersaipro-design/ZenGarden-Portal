@@ -48,9 +48,7 @@ const draft = (over: Record<string, unknown> = {}) => ({
   poNumber: "PO-2026-0917",
   buyerId: "buyer-1",
   poDate: "2026-09-17",
-  deliveryDate: null,
   currency: "MYR",
-  buyerReference: null,
   paymentTerms: null,
   lineItems: [
     {

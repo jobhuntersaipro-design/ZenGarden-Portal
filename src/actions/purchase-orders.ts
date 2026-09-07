@@ -7,7 +7,11 @@ import {
   PoEventKind,
   PoStage,
 } from "@/generated/prisma/enums";
-import { UnauthorizedError, requireUser } from "@/lib/auth-guards";
+import {
+  UnauthorizedError,
+  requireSuperAdmin,
+  requireUser,
+} from "@/lib/auth-guards";
 import { extractPurchaseOrder } from "@/lib/extraction/extract-po";
 import { formatMYR } from "@/lib/money";
 import { prisma } from "@/lib/prisma";
@@ -16,6 +20,7 @@ import {
   PoDraftSchema,
   checkTotals,
   confirmOptionsSchema,
+  deletePurchaseOrderSchema,
   type PoDraft,
 } from "@/lib/validation/purchase-orders";
 
@@ -216,9 +221,7 @@ export async function confirmPurchaseOrder(
           revisionOfId,
           buyerId,
           poDate: new Date(data.poDate),
-          deliveryDate: data.deliveryDate ? new Date(data.deliveryDate) : null,
           currency: data.currency,
-          buyerReference: data.buyerReference,
           paymentTerms: data.paymentTerms,
           subtotal: new Prisma.Decimal(data.subtotal),
           tax: new Prisma.Decimal(data.tax),
@@ -383,4 +386,63 @@ export async function retryExtraction(
   });
 
   return { success: true, data: { status: result.status, error: result.error } };
+}
+
+/**
+ * Hard delete, super admin only. Line items and stage events cascade; the
+ * `Document` and its R2 object are kept deliberately, so the original PDF
+ * survives and the upload can be re-reviewed rather than re-requested from
+ * the buyer.
+ *
+ * The extraction goes back to SUCCEEDED. Leaving it CONFIRMED would strand the
+ * document: in no queue, and with no order behind it.
+ *
+ * `revisionOfId` is ON DELETE SET NULL, so deleting a superseded original does
+ * not error — it leaves the newer revision intact but unlinked. That is why
+ * the dialog says so before you confirm.
+ */
+export async function deletePurchaseOrder(input: {
+  id: string;
+  typedPoNumber: string;
+}): Promise<ActionResult> {
+  const parsed = deletePurchaseOrderSchema.safeParse(input);
+  if (!parsed.success) {
+    return { success: false, error: "Type the PO number to confirm." };
+  }
+
+  try {
+    await requireSuperAdmin();
+
+    const po = await prisma.purchaseOrder.findUnique({
+      where: { id: parsed.data.id },
+      select: { id: true, poNumber: true, documentId: true },
+    });
+    if (!po) return { success: false, error: "That order no longer exists." };
+
+    // Same shape as deleteUser's email check in Phase 09.
+    if (
+      parsed.data.typedPoNumber.trim().toLowerCase() !==
+      po.poNumber.trim().toLowerCase()
+    ) {
+      return { success: false, error: "That is not the PO number." };
+    }
+
+    await prisma.$transaction(async (tx) => {
+      await tx.purchaseOrder.delete({ where: { id: po.id } });
+      await tx.extraction.updateMany({
+        where: { documentId: po.documentId, status: "CONFIRMED" },
+        data: { status: "SUCCEEDED" },
+      });
+    });
+
+    revalidatePath("/purchase-orders");
+    revalidatePath("/", "layout");
+    return { success: true, data: undefined };
+  } catch (cause) {
+    if (cause instanceof UnauthorizedError) {
+      return { success: false, error: cause.message };
+    }
+    console.error("[po] deletePurchaseOrder", cause);
+    return { success: false, error: "We could not delete that order." };
+  }
 }

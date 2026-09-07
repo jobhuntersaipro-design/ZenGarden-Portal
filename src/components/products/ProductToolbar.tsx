@@ -18,6 +18,7 @@ const VIEW_STORAGE_KEY = "products.view";
 
 const CHIPS: { value: ProductFilter; label: string }[] = [
   { value: null, label: "All" },
+  { value: "needs-review", label: "Needs review" },
   { value: "missing-image", label: "Missing image" },
   { value: "inactive", label: "Inactive" },
   { value: "price-moved", label: "Price moved > 3%" },
