@@ -8,11 +8,12 @@ import { PageHeader } from "@/components/portal/PageHeader";
 import { StageBadge } from "@/components/portal/StatusBadge";
 import { ActivityList } from "@/components/purchase-orders/ActivityList";
 import { DownloadOriginal } from "@/components/purchase-orders/DownloadOriginal";
+import { DeletePoDialog } from "@/components/purchase-orders/DeletePoDialog";
 import { EditPurchaseOrderSheet } from "@/components/purchase-orders/EditPurchaseOrderSheet";
 import { LifecycleActions } from "@/components/purchase-orders/LifecycleActions";
 import { StageStepper } from "@/components/purchase-orders/StageStepper";
 import { getSessionUser } from "@/lib/auth-guards";
-import { formatDate, formatDateTime } from "@/lib/dates";
+import { formatDate, formatDateTime, TIME_ZONE } from "@/lib/dates";
 import { formatMYR } from "@/lib/money";
 import {
   isFinalStage,
@@ -65,7 +66,9 @@ export default async function PurchaseOrderPage({
         include: { changedBy: { select: { name: true, image: true } } },
       },
       supersededBy: { select: { id: true, revision: true } },
-      revisionOf: { select: { id: true, poNumber: true, confirmedAt: true } },
+      revisionOf: {
+        select: { id: true, poNumber: true, confirmedAt: true, revision: true },
+      },
     },
   });
   if (!po) notFound();
@@ -141,6 +144,21 @@ export default async function PurchaseOrderPage({
                 notes: po.notes,
               }}
             />
+            {/* Super admin only. Deliberately not on the list: opening the
+                order first means seeing what is about to go. */}
+            {user?.role === Role.SUPER_ADMIN ? (
+              <DeletePoDialog
+                poId={po.id}
+                poNumber={po.poNumber}
+                lineItemCount={po.lineItems.length}
+                monthLabel={po.poDate.toLocaleDateString("en-GB", {
+                  month: "long",
+                  year: "numeric",
+                  timeZone: TIME_ZONE,
+                })}
+                supersedesRevision={po.revisionOf?.revision ?? null}
+              />
+            ) : null}
           </div>
         }
       />

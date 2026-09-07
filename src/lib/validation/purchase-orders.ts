@@ -130,3 +130,13 @@ export function checkTotals(draft: {
 export function lineAmount(quantity: string, unitPrice: string): string {
   return decimalOrZero(quantity).times(decimalOrZero(unitPrice)).toFixed(2);
 }
+
+/**
+ * Deleting is confirmed by typing the PO number back, the same shape as
+ * `deleteUser`'s email check in Phase 09. The comparison itself lives in the
+ * action, so it can be trimmed and case-insensitive against the real value.
+ */
+export const deletePurchaseOrderSchema = z.object({
+  id: z.string().min(1),
+  typedPoNumber: z.string().min(1),
+});
