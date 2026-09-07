@@ -7,9 +7,7 @@ const base: PoDraft = {
   buyerId: "b1",
   newBuyerName: null,
   poDate: "2026-09-17",
-  deliveryDate: null,
   currency: "MYR",
-  buyerReference: null,
   paymentTerms: null,
   lineItems: [
     {

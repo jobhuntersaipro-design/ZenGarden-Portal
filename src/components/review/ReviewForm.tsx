@@ -264,30 +264,11 @@ export function ReviewForm({
             onChange={(value) => dispatch({ type: "field", field: "poDate", value })}
           />
           <Field
-            id="deliveryDate"
-            label="Delivery date"
-            type="date"
-            value={draft.deliveryDate ?? ""}
-            confidence={confidence.deliveryDate}
-            onChange={(value) =>
-              dispatch({ type: "field", field: "deliveryDate", value: value || null })
-            }
-          />
-          <Field
             id="currency"
             label="Currency"
             value={draft.currency}
             confidence={confidence.currency}
             onChange={(value) => dispatch({ type: "field", field: "currency", value })}
-          />
-          <Field
-            id="buyerReference"
-            label="Buyer reference"
-            value={draft.buyerReference ?? ""}
-            confidence={confidence.buyerReference}
-            onChange={(value) =>
-              dispatch({ type: "field", field: "buyerReference", value: value || null })
-            }
           />
           <Field
             id="paymentTerms"

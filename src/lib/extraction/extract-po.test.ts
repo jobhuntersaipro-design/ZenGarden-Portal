@@ -12,9 +12,7 @@ const parsedOutput = {
   poNumber: "PO-2026-0917",
   buyerName: "Acme Industrial Sdn Bhd",
   poDate: "2026-09-17",
-  deliveryDate: null,
   currency: "MYR",
-  buyerReference: null,
   paymentTerms: null,
   lineItems: [
     {

@@ -179,9 +179,7 @@ async function toDraft(extraction: PoExtraction, extractionId: string) {
     buyerId,
     newBuyerName: buyerId ? null : extraction.buyerName,
     poDate: extraction.poDate,
-    deliveryDate: extraction.deliveryDate,
     currency: extraction.currency,
-    buyerReference: extraction.buyerReference,
     paymentTerms: extraction.paymentTerms,
     lineItems: extraction.lineItems.map((line, index) => ({
       description: line.description,

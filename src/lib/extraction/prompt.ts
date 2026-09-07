@@ -13,7 +13,6 @@ company is the buyer.
 
 Dates. Return every date as ISO, YYYY-MM-DD. Malaysian purchase orders are
 usually written day-first, so 03/09/2026 is 3 September 2026, not 9 March.
-deliveryDate is null when the document does not give one.
 
 Money. Return bare numbers: no currency symbol, no thousands separator. 
 "RM 12,400.00" is 12400.00. Do not convert between currencies; report the

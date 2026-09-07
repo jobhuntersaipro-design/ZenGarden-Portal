@@ -18,9 +18,7 @@ const emptyDraft = (): PoDraft => ({
   buyerId: null,
   newBuyerName: null,
   poDate: todayISO(),
-  deliveryDate: null,
   currency: "MYR",
-  buyerReference: null,
   paymentTerms: null,
   lineItems: [
     {

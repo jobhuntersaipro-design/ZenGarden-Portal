@@ -137,10 +137,6 @@ export default async function PurchaseOrderPage({
               initial={{
                 poNumber: po.poNumber,
                 poDate: po.poDate.toISOString().slice(0, 10),
-                deliveryDate: po.deliveryDate
-                  ? po.deliveryDate.toISOString().slice(0, 10)
-                  : null,
-                buyerReference: po.buyerReference,
                 paymentTerms: po.paymentTerms,
                 notes: po.notes,
               }}
@@ -235,11 +231,6 @@ export default async function PurchaseOrderPage({
               {[
                 ["PO number", po.poNumber],
                 ["PO date", formatDate(po.poDate)],
-                [
-                  "Delivery date",
-                  po.deliveryDate ? formatDate(po.deliveryDate) : "—",
-                ],
-                ["Buyer reference", po.buyerReference ?? "—"],
                 ["Payment terms", po.paymentTerms ?? "—"],
                 ["Confirmed at", formatDateTime(po.confirmedAt)],
               ].map(([label, value]) => (

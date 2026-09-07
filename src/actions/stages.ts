@@ -27,8 +27,6 @@ const emptyToNull = z
 const purchaseOrderPatchSchema = z.object({
   poNumber: z.string().min(1, "PO number is required"),
   poDate: isoDate,
-  deliveryDate: isoDate.nullable(),
-  buyerReference: emptyToNull,
   paymentTerms: emptyToNull,
   notes: emptyToNull,
 });
@@ -176,8 +174,6 @@ export async function revertStage(
 export type PurchaseOrderPatch = {
   poNumber: string;
   poDate: string;
-  deliveryDate: string | null;
-  buyerReference: string | null;
   paymentTerms: string | null;
   notes: string | null;
 };
@@ -185,10 +181,8 @@ export type PurchaseOrderPatch = {
 const FIELD_LABELS: Record<keyof PurchaseOrderPatch, string> = {
   poNumber: "PO number",
   poDate: "PO date",
-  deliveryDate: "delivery date",
-  buyerReference: "buyer reference",
   paymentTerms: "payment terms",
-  notes: "notes",
+  notes: "remark",
 };
 
 /**
@@ -219,8 +213,6 @@ export async function updatePurchaseOrder(
         stage: true,
         poNumber: true,
         poDate: true,
-        deliveryDate: true,
-        buyerReference: true,
         paymentTerms: true,
         notes: true,
       },
@@ -233,12 +225,6 @@ export async function updatePurchaseOrder(
     const changed: string[] = [];
     if (po.poNumber !== data.poNumber) changed.push(FIELD_LABELS.poNumber);
     if (asDay(po.poDate) !== data.poDate) changed.push(FIELD_LABELS.poDate);
-    if (asDay(po.deliveryDate) !== data.deliveryDate) {
-      changed.push(FIELD_LABELS.deliveryDate);
-    }
-    if ((po.buyerReference ?? null) !== data.buyerReference) {
-      changed.push(FIELD_LABELS.buyerReference);
-    }
     if ((po.paymentTerms ?? null) !== data.paymentTerms) {
       changed.push(FIELD_LABELS.paymentTerms);
     }
@@ -253,8 +239,6 @@ export async function updatePurchaseOrder(
         data: {
           poNumber: data.poNumber,
           poDate: new Date(data.poDate),
-          deliveryDate: data.deliveryDate ? new Date(data.deliveryDate) : null,
-          buyerReference: data.buyerReference,
           paymentTerms: data.paymentTerms,
           notes: data.notes,
         },
