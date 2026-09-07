@@ -13,6 +13,18 @@ Not Started
 <!-- Constraints, decisions and anything the spec leaves implicit. -->
 
 ## History
+- 2026-09-08: A saving spinner on the picture itself, merged
+  (`feature/avatar-saving-spinner`) and verified on production. The clicked
+  tile already carried the 14px ring, but it is a small mark on a 64px
+  thumbnail and the thing being watched is the 96px picture above it, which sat
+  unchanged for the whole save — 3.2 s on a cold serverless start. The preview
+  now takes a scrim and a 28px ring while any picture change is in flight
+  (choose, upload or remove), with an `aria-live` "Saving your picture" line
+  for anyone who cannot see it; `Spinner` grew one size rather than a second
+  spinner being invented, and every existing caller keeps the 14px default.
+  Photographed locally with a 4 s delay patched into `fetch`, then confirmed
+  live: both spinners, eleven tiles dimmed, "Picture updated" after 3.4 s. Test
+  pictures removed from production and from the local database afterwards.
 - 2026-09-08: **Avatars had never worked in production** — fixed and merged
   (`fix/sharp-libvips-tracing`), verified live on `www.lovinghandsportal.com`.
   Reported as "clicking an avatar shows *We couldn't reach the server*"; the
