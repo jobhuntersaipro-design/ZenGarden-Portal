@@ -34,6 +34,7 @@ export const metadata: Metadata = { title: "Products · Loving Hands Portal" };
 export const dynamic = "force-dynamic";
 
 const FILTERS: ProductFilter[] = [
+  "needs-review",
   "missing-image",
   "inactive",
   "price-moved",
