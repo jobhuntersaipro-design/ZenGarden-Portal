@@ -5,11 +5,11 @@ export type DraftAction =
   | { type: "field"; field: keyof PoDraft; value: string | null }
   | { type: "buyer"; buyerId: string | null; newBuyerName: string | null }
   | { type: "line"; index: number; field: keyof DraftLineItem; value: string | null }
-  | { type: "lineProduct"; index: number; productId: string | null; name: string; unit: string | null }
   | { type: "addLine" }
   | { type: "removeLine"; index: number };
 
 const EMPTY_LINE: DraftLineItem = {
+  sku: null,
   description: "",
   productId: null,
   quantity: "1",
@@ -47,22 +47,6 @@ export function draftReducer(state: PoDraft, action: DraftAction): PoDraft {
         }
         return next;
       });
-      return { ...state, lineItems };
-    }
-
-    case "lineProduct": {
-      const lineItems = state.lineItems.map((line, index) =>
-        index === action.index
-          ? {
-              ...line,
-              productId: action.productId,
-              // Only fills an empty description: a reviewer who typed the
-              // document's own wording keeps it.
-              description: line.description || action.name,
-              unit: line.unit ?? action.unit,
-            }
-          : line,
-      );
       return { ...state, lineItems };
     }
 

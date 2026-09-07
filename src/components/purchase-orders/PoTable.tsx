@@ -8,6 +8,7 @@ import {
   StatusBadge,
   type IntakeStatus,
 } from "@/components/portal/StatusBadge";
+import { DeleteUploadButton } from "@/components/purchase-orders/DeleteUploadButton";
 import { PersonChip } from "@/components/ui/person";
 import { useTableSort } from "@/hooks/useTableSort";
 import { formatDate } from "@/lib/dates";
@@ -158,6 +159,19 @@ export function PoTable({
         ) : (
           <span className="text-ink-disabled">Not confirmed</span>
         ),
+    },
+    {
+      key: "actions",
+      header: "",
+      // Nothing to sort, and nothing to say in a card either: the card's own
+      // title already links to the row.
+      sortable: false,
+      cell: (row) =>
+        // Uploads only. A confirmed order is a sales record and keeps the
+        // heavier super-admin delete on its detail page.
+        row.kind === "DRAFT" ? (
+          <DeleteUploadButton extractionId={row.id} fileName={row.poNumber} />
+        ) : null,
     },
   ];
 

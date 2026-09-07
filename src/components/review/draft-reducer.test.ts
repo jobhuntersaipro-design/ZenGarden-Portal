@@ -11,6 +11,7 @@ const base: PoDraft = {
   paymentTerms: null,
   lineItems: [
     {
+      sku: null,
       description: "Stone lantern",
       productId: null,
       quantity: "2",
@@ -63,24 +64,6 @@ describe("draftReducer", () => {
     // The document's printed amount survives; only the quantity moved.
     expect(afterQuantity.lineItems[0].amount).toBe("180.00");
     expect(afterQuantity.lineItems[0].quantity).toBe("10");
-  });
-
-  it("fills an empty description from the chosen product but never overwrites one", () => {
-    const empty = draftReducer(
-      { ...base, lineItems: [{ ...base.lineItems[0], description: "" }] },
-      { type: "lineProduct", index: 0, productId: "p1", name: "Granite step", unit: "piece" },
-    );
-    expect(empty.lineItems[0].description).toBe("Granite step");
-
-    const typed = draftReducer(base, {
-      type: "lineProduct",
-      index: 0,
-      productId: "p1",
-      name: "Granite step",
-      unit: "piece",
-    });
-    expect(typed.lineItems[0].description).toBe("Stone lantern");
-    expect(typed.lineItems[0].productId).toBe("p1");
   });
 
   it("swaps buyer id for a new buyer name and back", () => {
