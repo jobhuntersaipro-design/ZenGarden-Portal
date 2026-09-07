@@ -40,6 +40,11 @@ vi.mock("@/lib/auth-guards", () => ({
 vi.mock("@/lib/env", () => ({
   env: { ANTHROPIC_API_KEY: "k", EXTRACTION_MODEL: "m" },
 }));
+// Confirm re-resolves product codes so an edited one relinks; these assertions
+// are about the totals gate, so the resolver is stubbed to "nothing linked".
+vi.mock("@/lib/extraction/resolve-products", () => ({
+  resolveProducts: (lines: unknown[]) => Promise.resolve(lines.map(() => null)),
+}));
 vi.mock("next/cache", () => ({ revalidatePath: vi.fn() }));
 
 const { confirmPurchaseOrder } = await import("@/actions/purchase-orders");
@@ -52,6 +57,7 @@ const draft = (over: Record<string, unknown> = {}) => ({
   paymentTerms: null,
   lineItems: [
     {
+      sku: null,
       description: "Stone lantern 60cm",
       quantity: "20",
       unit: "piece",
@@ -181,8 +187,8 @@ describe("confirmPurchaseOrder — buyers and validation", () => {
       "ext-1",
       draft({
         lineItems: [
-          { description: "A", quantity: "1", unit: null, unitPrice: "1.00", amount: "1.00" },
-          { description: "B", quantity: "1", unit: null, unitPrice: "1.00", amount: "1.00" },
+          { sku: null, description: "A", quantity: "1", unit: null, unitPrice: "1.00", amount: "1.00" },
+          { sku: null, description: "B", quantity: "1", unit: null, unitPrice: "1.00", amount: "1.00" },
         ],
         subtotal: "2.00",
         tax: "0.00",

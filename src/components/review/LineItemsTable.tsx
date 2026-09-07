@@ -2,7 +2,7 @@
 
 import { Trash2 } from "lucide-react";
 import type { Dispatch } from "react";
-import { Combobox, type ComboboxOption } from "@/components/review/Combobox";
+import type { ComboboxOption } from "@/components/review/Combobox";
 import type { DraftAction } from "@/components/review/draft-reducer";
 import { Input } from "@/components/ui/input";
 import { useEdgeFades } from "@/hooks/useEdgeFades";
@@ -51,8 +51,8 @@ export function LineItemsTable({
             <thead>
               <tr className="border-b border-hairline text-left">
                 {[
-                  "Description",
                   "Product Code",
+                  "Description",
                   "Qty",
                   "Unit",
                   "Unit price",
@@ -72,6 +72,36 @@ export function LineItemsTable({
             <tbody>
               {lineItems.map((line, index) => (
                 <tr key={index} className="border-b border-hairline align-top">
+                  {/* The code leads: since Phase 11 it *is* the line's
+                      identity — an existing one links, an unknown one creates —
+                      so it is read and corrected before anything else. */}
+                  <td className="py-sm pr-sm">
+                    <Input
+                      aria-label={`Product code, line ${index + 1}`}
+                      placeholder="No code"
+                      className="font-mono"
+                      value={line.sku ?? ""}
+                      title={line.sku || undefined}
+                      onChange={(event) =>
+                        dispatch({
+                          type: "line",
+                          index,
+                          field: "sku",
+                          value: event.target.value || null,
+                        })
+                      }
+                    />
+                    {/* What this code currently points at, so a reviewer can
+                        see a wrong link without opening a picker. */}
+                    <span className="mt-xxs block truncate text-[length:var(--text-caption)] text-ink-tertiary">
+                      {line.productId
+                        ? (products.find((p) => p.id === line.productId)?.label ??
+                          "Linked")
+                        : line.sku?.trim()
+                          ? "New product"
+                          : "No product"}
+                    </span>
+                  </td>
                   <td className="py-sm pr-sm">
                     <Input
                       aria-label={`Description, line ${index + 1}`}
@@ -83,25 +113,6 @@ export function LineItemsTable({
                           index,
                           field: "description",
                           value: event.target.value,
-                        })
-                      }
-                    />
-                  </td>
-                  <td className="py-sm pr-sm">
-                    <Combobox
-                      ariaLabel={`Product code, line ${index + 1}`}
-                      value={line.productId ?? null}
-                      options={products}
-                      placeholder="Unmatched"
-                      onSelect={(option) =>
-                        dispatch({
-                          type: "lineProduct",
-                          index,
-                          productId: option.id,
-                          name: option.label,
-                          unit:
-                            products.find((product) => product.id === option.id)
-                              ?.unit ?? null,
                         })
                       }
                     />

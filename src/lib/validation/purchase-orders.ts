@@ -28,6 +28,12 @@ const isoDate = z
   .regex(/^\d{4}-\d{2}-\d{2}$/, "Use an ISO date, YYYY-MM-DD");
 
 export const DraftLineItemSchema = z.object({
+  /**
+   * The product code as printed on the document. It is the line's identity:
+   * an existing code links to that product, an unknown one creates it. Editing
+   * it re-resolves at confirm, which is why it is a field and not derived.
+   */
+  sku: z.string().nullable(),
   description: z.string().min(1, "Describe the line"),
   productId: z.string().nullable().optional(),
   quantity: decimalString("Quantity"),

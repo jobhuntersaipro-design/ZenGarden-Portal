@@ -22,6 +22,7 @@ const emptyDraft = (): PoDraft => ({
   paymentTerms: null,
   lineItems: [
     {
+      sku: null,
       description: "",
       productId: null,
       quantity: "1",

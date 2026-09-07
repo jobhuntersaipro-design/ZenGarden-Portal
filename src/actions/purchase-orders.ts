@@ -15,6 +15,7 @@ import {
 import { extractPurchaseOrder } from "@/lib/extraction/extract-po";
 import { formatMYR } from "@/lib/money";
 import { prisma } from "@/lib/prisma";
+import { resolveProducts } from "@/lib/extraction/resolve-products";
 import { getObjectBytes } from "@/lib/r2";
 import {
   PoDraftSchema,
@@ -180,6 +181,20 @@ export async function confirmPurchaseOrder(
     return { success: false, error: "The totals don't match the document." };
   }
 
+  // Resolved again here, not only at extraction: a reviewer can edit a code, and
+  // the link has to follow what they typed. Idempotent — an existing code links,
+  // an unknown one creates — so running it a second time costs nothing. It also
+  // means a draft that is discarded never creates anything, because nothing
+  // reaches this point.
+  const resolved = await resolveProducts(
+    data.lineItems.map((line) => ({
+      description: line.description,
+      sku: line.sku,
+      unit: line.unit,
+      unitPrice: line.unitPrice,
+    })),
+  );
+
   try {
     const poId = await prisma.$transaction(async (tx) => {
       const buyerId = data.buyerId
@@ -238,8 +253,9 @@ export async function confirmPurchaseOrder(
         data: data.lineItems.map((line, index) => ({
           purchaseOrderId: po.id,
           position: index,
+          sku: line.sku?.trim() || null,
           description: line.description,
-          productId: line.productId ?? null,
+          productId: resolved[index] ?? line.productId ?? null,
           quantity: new Prisma.Decimal(line.quantity),
           unit: line.unit,
           unitPrice: new Prisma.Decimal(line.unitPrice),
@@ -426,6 +442,8 @@ export async function deletePurchaseOrder(input: {
     ) {
       return { success: false, error: "That is not the PO number." };
     }
+
+
 
     await prisma.$transaction(async (tx) => {
       await tx.purchaseOrder.delete({ where: { id: po.id } });

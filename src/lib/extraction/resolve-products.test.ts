@@ -127,6 +127,20 @@ describe("resolveProducts", () => {
     ).toBeLessThanOrEqual(3);
   });
 
+  // Confirm re-runs this over whatever the reviewer typed, so a second pass
+  // across the same codes must link rather than create a duplicate.
+  it("is idempotent: a second run over the same codes creates nothing new", async () => {
+    findMany.mockResolvedValueOnce([]);
+    createManyAndReturn.mockResolvedValueOnce([{ id: "new1", sku: "NEW-1" }]);
+    const first = await resolveProducts([line({ sku: "NEW-1" })]);
+
+    findMany.mockResolvedValueOnce([{ id: "new1", sku: "NEW-1" }]);
+    const second = await resolveProducts([line({ sku: "NEW-1" })]);
+
+    expect(second).toEqual(first);
+    expect(createManyAndReturn).toHaveBeenCalledTimes(1);
+  });
+
   it("returns all nulls for an empty document", async () => {
     expect(await resolveProducts([])).toEqual([]);
     expect(findMany).not.toHaveBeenCalled();

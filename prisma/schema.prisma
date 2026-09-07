@@ -272,7 +272,8 @@ model LineItem {
   purchaseOrder   PurchaseOrder @relation(fields: [purchaseOrderId], references: [id], onDelete: Cascade)
   position        Int
   description     String                     // as printed on the PO
-  productId       String?                    // matched during review; null if unmatched
+  sku             String?                    // the product code as printed on the PO
+  productId       String?                    // resolved from `sku`; null if the line carries no code
   product         Product?      @relation(fields: [productId], references: [id])
   quantity        Decimal       @db.Decimal(12, 3)
   unit            String?

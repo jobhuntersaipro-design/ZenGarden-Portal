@@ -140,6 +140,7 @@ async function toDraft(extraction: PoExtraction, extractionId: string) {
     currency: extraction.currency,
     paymentTerms: extraction.paymentTerms,
     lineItems: extraction.lineItems.map((line, index) => ({
+      sku: line.sku,
       description: line.description,
       productId: products[index],
       quantity: new Prisma.Decimal(line.quantity).toFixed(3),

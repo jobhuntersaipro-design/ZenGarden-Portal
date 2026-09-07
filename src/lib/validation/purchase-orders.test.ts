@@ -94,6 +94,7 @@ describe("PoDraftSchema", () => {
     paymentTerms: null,
     lineItems: [
       {
+        sku: null,
         description: "Stone lantern 60cm",
         quantity: "20",
         unit: "piece",
