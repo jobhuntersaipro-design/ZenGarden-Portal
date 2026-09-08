@@ -7,6 +7,7 @@ const valid = {
   category: "Stone" as const,
   unit: "piece",
   listPrice: "42.50",
+  market: "Malaysia",
   description: "Flamed finish.",
   active: true,
 };
@@ -62,5 +63,29 @@ describe("productSchema", () => {
 
   it("requires a unit", () => {
     expect(productSchema.safeParse({ ...valid, unit: "" }).success).toBe(false);
+  });
+
+  it("accepts a product with no market", () => {
+    // Nullable, never optional: the key is always sent, so a call site that
+    // forgets the field fails to typecheck instead of silently clearing it.
+    const parsed = productSchema.parse({ ...valid, market: null });
+    expect(parsed.market).toBeNull();
+  });
+
+  it("turns a blank market into null rather than an empty string", () => {
+    // Otherwise listMarkets() offers "" as a market anyone can pick.
+    expect(productSchema.parse({ ...valid, market: "   " }).market).toBeNull();
+  });
+
+  it("trims a market, so the same market cannot enter the list twice", () => {
+    expect(productSchema.parse({ ...valid, market: " Malaysia " }).market).toBe(
+      "Malaysia",
+    );
+  });
+
+  it("refuses a market longer than any real country name", () => {
+    expect(
+      productSchema.safeParse({ ...valid, market: "x".repeat(57) }).success,
+    ).toBe(false);
   });
 });

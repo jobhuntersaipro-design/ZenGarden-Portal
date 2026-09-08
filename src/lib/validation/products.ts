@@ -30,6 +30,20 @@ export const productSchema = z.object({
   category: z.enum(PRODUCT_CATEGORIES),
   unit: z.string().min(1, "A unit is required").max(24),
   listPrice: decimalString,
+  /**
+   * The market a formulation is made for — a country (Vietnam, India) or a
+   * customer (Mydin, Hero Market), which is how the ops team's own sheet
+   * labels its product blocks. Nullable, never optional: the form always
+   * sends the key, so a call site that forgets it fails to typecheck rather
+   * than silently clearing a market somebody entered. Trimmed to null because
+   * `listMarkets()` builds the picker from the values stored here, and a
+   * blank or padded one would show up in it as a market you can choose.
+   */
+  market: z
+    .string()
+    .max(56, "Use at most 56 characters")
+    .nullable()
+    .transform((value) => value?.trim() || null),
   description: z
     .string()
     .nullable()

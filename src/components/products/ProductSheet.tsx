@@ -3,11 +3,8 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
-import {
-  archiveProduct,
-  createProduct,
-  updateProduct,
-} from "@/actions/products";
+import { archiveProduct, updateProduct } from "@/actions/products";
+import { MarketPicker } from "@/components/products/MarketPicker";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import {
@@ -23,31 +20,27 @@ import { Textarea } from "@/components/ui/textarea";
 import { PRODUCT_CATEGORIES } from "@/lib/product-categories";
 import type { ProductInput } from "@/lib/validation/products";
 
-const BLANK: ProductInput = {
-  name: "",
-  sku: "",
-  category: PRODUCT_CATEGORIES[0],
-  unit: "",
-  listPrice: "",
-  description: null,
-  active: true,
-};
-
 /**
- * Create and edit. Images are not here yet — the upload path needs R2, which
- * is not configured, and shipping an editor nobody can run would be worse than
- * saying so (see context/current-feature.md).
+ * Editing an existing product. Creating one is `/products/new` — a page, not a
+ * drawer, because entering eight empty fields is a task of its own, while
+ * changing one field on the product you are already reading is not.
+ *
+ * Images are not here yet — the upload path needs R2, which is not configured,
+ * and shipping an editor nobody can run would be worse than saying so (see
+ * context/current-feature.md).
  */
 export function ProductSheet({
   product,
+  markets,
   trigger,
 }: {
-  product?: ProductInput & { id: string; needsReview?: boolean };
+  product: ProductInput & { id: string; needsReview?: boolean };
+  markets: string[];
   trigger: React.ReactNode;
 }) {
   const router = useRouter();
   const [open, setOpen] = useState(false);
-  const [form, setForm] = useState<ProductInput>(product ?? BLANK);
+  const [form, setForm] = useState<ProductInput>(product);
   const [pending, setPending] = useState(false);
   /** Its own flag: "Saving…" must never show while an archive is what runs. */
   const [archiving, setArchiving] = useState(false);
@@ -62,7 +55,7 @@ export function ProductSheet({
       <SheetTrigger asChild>{trigger}</SheetTrigger>
       <SheetContent className="w-full overflow-y-auto sm:max-w-panel-lg">
         <SheetHeader>
-          <SheetTitle>{product ? "Edit product" : "New product"}</SheetTitle>
+          <SheetTitle>Edit product</SheetTitle>
           <SheetDescription>
             Images are added once storage is configured.
           </SheetDescription>
@@ -72,7 +65,7 @@ export function ProductSheet({
           {/* Its category and price were taken from the line that created it,
               so they are guesses until someone says otherwise. Saving clears
               the flag: a person has now looked. */}
-          {product?.needsReview ? (
+          {product.needsReview ? (
             <p className="rounded-sm bg-surface-soft p-sm text-[length:var(--text-caption)] text-ink-secondary">
               Added automatically from a purchase order. Check its category and
               list price, then save.
@@ -160,6 +153,18 @@ export function ProductSheet({
           </div>
 
           <div className="flex flex-col gap-xxs">
+            <span className={label}>Market</span>
+            <MarketPicker
+              value={form.market ?? null}
+              markets={markets}
+              onChange={(market) => set("market", market)}
+            />
+            <p className="text-[length:var(--text-caption)] text-ink-tertiary">
+              Country or customer it&rsquo;s made for — type to add one
+            </p>
+          </div>
+
+          <div className="flex flex-col gap-xxs">
             <label htmlFor="product-description" className={label}>
               Description
             </label>
@@ -185,27 +190,21 @@ export function ProductSheet({
               pending={pending}
               onClick={async () => {
                 setPending(true);
-                const result = product
-                  ? await updateProduct(product.id, form)
-                  : await createProduct(form);
+                const result = await updateProduct(product.id, form);
                 setPending(false);
                 if (!result.success) {
                   toast.error(result.error);
                   return;
                 }
                 setOpen(false);
-                toast.success(product ? "Product saved" : "Product created");
+                toast.success("Product saved");
                 router.refresh();
               }}
             >
-              {pending
-                ? "Saving…"
-                : product
-                  ? "Save changes"
-                  : "Create product"}
+              {pending ? "Saving…" : "Save changes"}
             </Button>
 
-            {product && form.active ? (
+            {form.active ? (
               <Button
                 variant="secondary"
                 disabled={pending}

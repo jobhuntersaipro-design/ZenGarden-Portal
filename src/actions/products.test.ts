@@ -45,6 +45,7 @@ const input = {
   category: "Stone" as const,
   unit: "piece",
   listPrice: "42.50",
+  market: "Malaysia",
   description: null,
   active: true,
 };
@@ -106,6 +107,16 @@ describe("createProduct", () => {
     expect(result.success).toBe(false);
     expect(productCreate).not.toHaveBeenCalled();
   });
+
+  it("persists the market", async () => {
+    await createProduct({ ...input, market: "Vietnam" });
+    expect(productCreate.mock.calls[0][0].data.market).toBe("Vietnam");
+  });
+
+  it("stores a blank market as null, so the picker never offers an empty row", async () => {
+    await createProduct({ ...input, market: "  " });
+    expect(productCreate.mock.calls[0][0].data.market).toBeNull();
+  });
 });
 
 describe("updateProduct — price history", () => {
@@ -127,6 +138,17 @@ describe("updateProduct — price history", () => {
     await updateProduct("prod-1", { ...input, name: "Renamed" });
     expect(productUpdate).toHaveBeenCalledOnce();
     expect(productUpdate.mock.calls[0][0].data.name).toBe("Renamed");
+  });
+
+  it("saves a changed market", async () => {
+    await updateProduct("prod-1", { ...input, market: "Mydin" });
+    expect(productUpdate.mock.calls[0][0].data.market).toBe("Mydin");
+  });
+
+  it("clears the market when it is emptied", async () => {
+    // Editing to blank must remove the market, not keep the previous one.
+    await updateProduct("prod-1", { ...input, market: null });
+    expect(productUpdate.mock.calls[0][0].data.market).toBeNull();
   });
 
   it("reports a missing product rather than throwing", async () => {
