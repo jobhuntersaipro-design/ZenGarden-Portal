@@ -232,6 +232,7 @@ model Product {
   name        String
   category    String
   unit        String
+  market      String?                          // country or customer the formulation is made for; free-growing list, see listMarkets()
   listPrice   Decimal        @db.Decimal(14, 2)
   description String?
   active      Boolean        @default(true)

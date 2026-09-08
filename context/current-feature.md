@@ -2,17 +2,102 @@
 
 ## Status
 
-Not Started
+`feature/product-create-page` merged. Next: `feature/catalog-model` — brand,
+variant and pack size on Product, the nine personal-care categories, the
+SKU scheme and the XLSX import — approved 2026-09-08, waiting on the
+customer's inventory sheet as XLSX. Production's landscaping demo data is to
+be deleted by the import script.
 
 ## Goals
 
-<!-- What success looks like, one bullet per goal. -->
+- Creating a product happens on its own page, `/products/new`, shaped like the
+  product detail view, instead of inside the right-hand drawer. `+ New product`
+  becomes a real link, so cmd-click still opens it in a browser tab.
+- A product carries a market — the country or customer its formulation is
+  made for, which is how the ops team's own inventory sheet labels each block.
+  Optional, shown on the detail page beside SKU / Category / Unit, and
+  editable wherever a product is edited.
 
 ## Notes
+
+- **Built as `country` ("where it comes from"), renamed to `market` before
+  commit.** The customer's sheet (ZEN GARDEN DC INVENTORY 2026) prefixes each
+  product block with VIETNAM, INDIA, ARAB… *and* MYDIN, HERO MARKET, AA
+  PHARMACY — destinations and customers, never origins; everything is made in
+  Malaysia. The second migration is a `RENAME COLUMN`, not Prisma's proposed
+  drop-and-add, so it keeps data wherever it runs.
+- The market list is not hardcoded. The combobox offers every market already
+  used on a product (`listMarkets()`), and typing a new one gives the
+  `+ Add "…"` row the existing `Combobox` already renders — so super admins
+  build the list by using it. A fresh create pre-fills `Malaysia`; the value is
+  merged into the option list, because `Combobox` shows its placeholder for any
+  value absent from `options`.
+- The column is nullable and nothing is backfilled: the twelve existing
+  products and anything auto-created from a purchase order show `—`.
+- `ProductSheet` becomes edit-only. Create moving to its own page removes its
+  `BLANK` constant and the three `product ? … : …` branches in its title,
+  description and button label; `product` is now required. Editing stays a
+  drawer on the detail page.
+- The create page carries the detail view's chrome — back link, breadcrumb,
+  `PageHeader`, the `lg:grid-cols-[5fr_7fr]` band with the gallery panel — but
+  none of its analytics. Six em-dash KPI tiles and an empty chart on a form
+  would be furniture, not information.
+- **Deviation from the canvas:** `CLAUDE.md` makes the Claude Design canvas the
+  source of truth for every screen and there is no `/products/new` artboard.
+  This layout is derived from the product detail artboard; the canvas is behind
+  the code until someone draws it.
 
 <!-- Constraints, decisions and anything the spec leaves implicit. -->
 
 ## History
+- 2026-09-08: Product creation moved to its own page and products gained a
+  market (built as "country of origin", renamed `market` the same day once the
+  customer's inventory sheet showed the values are destinations and customers —
+  see Notes), built, verified in the browser and merged
+  (`feature/product-create-page`). **`/products/new` is shaped like
+  `/products/[id]`** — same back link, breadcrumb, eyebrow and
+  `lg:grid-cols-[5fr_7fr]` band — so the screen you fill in is the screen you
+  read afterwards; the name is the title field and the list price the display
+  figure, and the eyebrow fills in live (`STN-BAS-060 · Stone · per slab` while
+  typing). None of the analytics are mirrored: a product that does not exist
+  has no history, and six em-dash tiles over an empty chart would be furniture.
+  `+ New product` is a real `<a href>` styled as the ink pill rather than a
+  drawer trigger, so cmd-click opens a browser tab for free without the stale
+  catalog a forced `target="_blank"` would leave behind. **`ProductSheet`
+  became edit-only**, losing `BLANK` and the three `product ? … : …` branches
+  in its title, description and button; `product` is now required, which is
+  what made TypeScript find every construction of `ProductInput` when the
+  country key was added. **The country list is not hardcoded.** The user asked
+  for a fixed short list and then that it "be input by super admin users", and
+  the two reconcile as a `Combobox` whose options are `listCountries()` — every
+  country already on a product — plus the `+ Add "…"` row it already renders,
+  so the list is built by using it. `PRODUCT_CATEGORIES` stays fixed for the
+  opposite reason: share charts group by category, and a fragmented list makes
+  them quietly wrong, while a country is a label on one product. Nullable and
+  never optional, trimmed to null, `max(56)`; the twelve existing products show
+  `—` and nothing was backfilled. **Verification needed a super admin and the
+  only one is Google-only**, so the seeded member was promoted on the
+  development branch (`ep-mute-frog`) and reverted afterwards — the first
+  attempt was blocked by the permission classifier and the user approved it
+  explicitly. Verified live: created a product with a typed-in country, landed
+  on its detail page with the eyebrow, title, `RM 128.00` and
+  `Country Indonesia` all matching what was entered; the next create then
+  offered Indonesia, and typing `indonesia` lower-case offered the existing
+  entry with **no `+ Add` row**, so the list cannot fork on casing; "No country"
+  cleared it back to `—`; an empty form toasted "A name is required" and a
+  reused SKU "That SKU is already in use.", both keeping the typed values.
+  **Two defects the build could not catch, both at 390px**: the name input was
+  squeezed to 180px because the Create button shared its flex row (the header
+  now stacks below `sm`, 180px → 350px), and the `aspect-4/3` gallery
+  placeholder filled the screen so every field sat below the fold (`h-32` below
+  `sm`, first field now at y=547 of an 844px viewport). A hydration mismatch
+  seen during this pass was a stale dev-server bundle, not a defect — a restart
+  cleared it, and the console is empty on a fresh load. **Deviation from the
+  canvas:** there is no `/products/new` artboard, so this layout is derived
+  from the product detail one; `CLAUDE.md` makes the canvas the source of truth
+  and it is behind the code until someone draws it. Test data removed: the
+  product and its price row deleted, no country values left in the database,
+  the member's role reverted. 406 tests, typecheck, lint and build pass.
 - 2026-09-08: Super admin access confirmed on both databases and
   `scripts/grant-super-admin.ts` added. Asked for as "make
   jobhunters.ai.pro@gmail.com super admin on production and development" —

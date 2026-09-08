@@ -38,6 +38,7 @@ export type ProductDetail = {
     name: string;
     category: string;
     unit: string;
+    market: string | null;
     listPrice: number;
     description: string | null;
     active: boolean;
@@ -74,6 +75,7 @@ export async function loadProduct(
       name: true,
       category: true,
       unit: true,
+      market: true,
       listPrice: true,
       description: true,
       active: true,
@@ -209,6 +211,7 @@ export async function loadProduct(
       name: product.name,
       category: product.category,
       unit: product.unit,
+      market: product.market,
       listPrice,
       description: product.description,
       active: product.active,

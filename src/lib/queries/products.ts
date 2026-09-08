@@ -177,6 +177,23 @@ export async function listProducts(
 }
 
 /** Filtering, searching and sorting happen after the stats exist. */
+/**
+ * The markets already used on a product, which is the whole of the market
+ * picker's list. There is no hardcoded catalogue: super admins build it by
+ * typing a market once, and every later product can pick it. Nulls are
+ * dropped by the `not` clause, and the schema stores no blanks, so nothing
+ * empty can reach the dropdown.
+ */
+export async function listMarkets(): Promise<string[]> {
+  const rows = await prisma.product.findMany({
+    where: { market: { not: null } },
+    distinct: ["market"],
+    select: { market: true },
+    orderBy: { market: "asc" },
+  });
+  return rows.map((row) => row.market!).filter(Boolean);
+}
+
 export function selectProducts(
   products: ProductRow[],
   {

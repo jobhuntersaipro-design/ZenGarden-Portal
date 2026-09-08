@@ -20,6 +20,7 @@ import { formatDate, formatDateTime } from "@/lib/dates";
 import { formatMYR } from "@/lib/money";
 import { presignGet } from "@/lib/r2";
 import { loadProduct } from "@/lib/queries/product-detail";
+import { listMarkets } from "@/lib/queries/products";
 import {
   firstParam,
   parsePagination,
@@ -64,9 +65,10 @@ export default async function ProductPage({
   const { id } = await params;
   const query = await searchParams;
 
-  const [data, user] = await Promise.all([
+  const [data, user, markets] = await Promise.all([
     loadProduct(id, presignGet),
     getSessionUser(),
+    listMarkets(),
   ]);
   if (!data) notFound();
 
@@ -129,11 +131,13 @@ export default async function ProductPage({
                   sku: data.product.sku,
                   category: data.product.category as never,
                   unit: data.product.unit,
+                  market: data.product.market,
                   listPrice: data.product.listPrice.toFixed(2),
                   description: data.product.description,
                   active: data.product.active,
                   needsReview: data.product.needsReview,
                 }}
+                markets={markets}
                 trigger={<Button>Edit product</Button>}
               />
             ) : (
@@ -191,6 +195,7 @@ export default async function ProductPage({
               ["SKU", data.product.sku],
               ["Category", data.product.category],
               ["Unit", data.product.unit],
+              ["Market", data.product.market ?? "—"],
               [
                 "First sold",
                 data.stats.firstSold ? formatDate(data.stats.firstSold) : "—",

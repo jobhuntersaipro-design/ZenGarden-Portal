@@ -1,10 +1,10 @@
 import type { Metadata } from "next";
+import Link from "next/link";
 import { Role } from "@/generated/prisma/enums";
 import { PageHeader } from "@/components/portal/PageHeader";
 import { TablePagination } from "@/components/portal/TablePagination";
 import { KpiMoney, KpiNumber, KpiTile } from "@/components/dashboard/KpiTile";
 import { AttentionTile } from "@/components/products/AttentionTile";
-import { ProductSheet } from "@/components/products/ProductSheet";
 import { Button } from "@/components/ui/button";
 import { ProductCard } from "@/components/products/ProductCard";
 import { ProductsList } from "@/components/products/ProductsList";
@@ -103,7 +103,11 @@ export default async function ProductsPage({
         title="Products"
         action={
           user?.role === Role.SUPER_ADMIN ? (
-            <ProductSheet trigger={<Button>+ New product</Button>} />
+            // A real link, not a drawer trigger: cmd-click, middle-click and
+            // "Open in new tab" all work, and the form has a URL to return to.
+            <Button asChild>
+              <Link href="/products/new">+ New product</Link>
+            </Button>
           ) : (
             <span className="rounded-full bg-surface-soft px-sm py-xxs text-[length:var(--text-caption)] text-ink-secondary">
               View only · ask a super admin to change products
