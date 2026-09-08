@@ -13,6 +13,25 @@ Not Started
 <!-- Constraints, decisions and anything the spec leaves implicit. -->
 
 ## History
+- 2026-09-08: A picture change now reaches every open tab, merged
+  (`fix/avatar-across-tabs`) and verified on production. Reported from the
+  Activity card — the sidebar showed the new picture while the Activity rows
+  still showed initials. **The data path was never wrong**: every screen reads
+  `User.image` on the server, and a fresh load of the very purchase order in
+  the report showed all four of that person's Activity rows carrying the new
+  picture (checked on production before changing anything). What is wrong is a
+  page rendered *before* the change that never re-renders, and two tabs
+  reproduce it exactly: change the picture in one and the other keeps the old
+  sidebar, table avatars and Activity rows indefinitely, because
+  `router.refresh()` only ever reaches the tab it runs in. A `BroadcastChannel`
+  closes it — the picker posts once the save has settled, and
+  `AvatarChangeListener`, mounted once in the portal layout, refreshes every
+  other tab, dropping its client router cache with it. A channel never delivers
+  to the context that posted, so the saving tab is not refreshed twice.
+  Verified with a watcher installed in the second tab *before* the change, on
+  production: all four Activity rows and the sidebar moved to the new picture
+  with no navigation, no reload and no click in that tab. Test pictures removed
+  from production and locally afterwards.
 - 2026-09-08: The shell picture waits too, and the toast waits for it, merged
   (`feature/avatar-saving-everywhere`) and verified on production. Two reports,
   one cause: the picture in the sidebar and the mobile top bar is the same
