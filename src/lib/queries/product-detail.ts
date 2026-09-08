@@ -38,6 +38,9 @@ export type ProductDetail = {
     name: string;
     category: string;
     unit: string;
+    brand: string | null;
+    variant: string | null;
+    packSize: number | null;
     market: string | null;
     listPrice: number;
     description: string | null;
@@ -75,6 +78,9 @@ export async function loadProduct(
       name: true,
       category: true,
       unit: true,
+      brand: true,
+      variant: true,
+      packSize: true,
       market: true,
       listPrice: true,
       description: true,
@@ -211,6 +217,9 @@ export async function loadProduct(
       name: product.name,
       category: product.category,
       unit: product.unit,
+      brand: product.brand,
+      variant: product.variant,
+      packSize: product.packSize,
       market: product.market,
       listPrice,
       description: product.description,

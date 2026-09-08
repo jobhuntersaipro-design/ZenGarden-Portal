@@ -230,6 +230,9 @@ model Product {
   id          String         @id @default(cuid())
   sku         String         @unique
   name        String
+  brand       String?                          // ZEN GARDEN, MR. KING, L.HANDS…; free-growing list
+  variant     String?                          // Goat's Milk, Lavender, Lemon…; free-growing list
+  packSize    Int?                             // pieces per carton (6, 12, 24)
   category    String
   unit        String
   market      String?                          // country or customer the formulation is made for; free-growing list, see listMarkets()

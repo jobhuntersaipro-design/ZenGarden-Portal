@@ -59,16 +59,29 @@ export default async function ProductsPage({
   const filter = FILTERS.includes(filterParam) ? filterParam : null;
   const q = firstParam(params, "q")?.trim() || undefined;
   const category = firstParam(params, "category") || undefined;
+  const brand = firstParam(params, "brand") || undefined;
   const sort = parseSort(params, PRODUCT_SORT_KEYS, {
     key: "revenue",
     dir: "desc",
   });
 
+  // From the rows already fetched, so the filter can never offer a brand that
+  // would match nothing.
+  const brands = [
+    ...new Set(products.map((product) => product.brand).filter(Boolean)),
+  ].sort() as string[];
+
   const viewParam = firstParam(params, "view");
   // URL first; the stored preference is applied client-side when absent.
   const view: ProductView = viewParam === "list" ? "list" : "grid";
 
-  const selected = selectProducts(products, { q, category, filter, sort });
+  const selected = selectProducts(products, {
+    q,
+    category,
+    brand,
+    filter,
+    sort,
+  });
 
   // The KPI row describes every product; the footer describes the filter. With
   // nothing applied the two read from the same list and must be identical.
@@ -155,6 +168,7 @@ export default async function ProductsPage({
         filter={filter}
         sortKey={sort.key as ProductSortKey}
         summary={`${shown.count} ${shown.count === 1 ? "product" : "products"} · ${formatMYR(shown.revenue.toFixed(2))} in 12 months`}
+        brands={brands}
       />
 
       {view === "grid" ? (
