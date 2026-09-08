@@ -13,6 +13,33 @@ Not Started
 <!-- Constraints, decisions and anything the spec leaves implicit. -->
 
 ## History
+- 2026-09-08: Super admin access confirmed on both databases and
+  `scripts/grant-super-admin.ts` added. Asked for as "make
+  jobhunters.ai.pro@gmail.com super admin on production and development" —
+  **it already was on both**, checked before anything was written and then
+  written anyway so the state is explicit rather than assumed. The two
+  databases are genuinely separate branches: development is `ep-mute-frog…`,
+  the block appended at the bottom of `.env.local` — the pair above it labelled
+  "development branch", `ep-red-hat…`, still rejects its password after the
+  2026-09-06 endpoint move, and both Next and node's `--env-file` take the last
+  duplicate key, which is why the app works at all — while production is
+  `ep-polished-wildflower…`, read from `vercel env pull --environment=production`
+  and deleted again afterwards. Each row carries `emailVerified` and no
+  password, which is exactly what lets `allowDangerousEmailAccountLinking`
+  attach the Google account on first sign-in; neither database had an `Account`
+  row yet. **`SEED_SUPER_ADMIN_EMAIL` had drifted to
+  `superadmin@lovinghandsportal.com`** — an address that can sign in by neither
+  route — so a `--reset` reseed would have truncated the real super admin and
+  replaced them with an unusable one; `.env.local` now names the Gmail address,
+  with `SEED_SUPER_ADMIN_NAME` holding the display name the row already
+  carries. The localhost callback is registered on the OAuth client — the
+  button reaches Google's account chooser with no `redirect_uri_mismatch` — and
+  production shares the same client id. **Unverified:** the production callback
+  URI, because the browser held a signed-in production session and checking
+  meant either ending it or authenticating as the user. **Noticed, not acted
+  on:** production holds 405 purchase orders, the demo seed
+  `docs/specs/SETUP-CHECKLIST.md` §1 forbids there, and `APP_URL` is absent
+  from the pulled production environment although `src/lib/env.ts` requires it.
 - 2026-09-08: A picture change now reaches every open tab, merged
   (`fix/avatar-across-tabs`) and verified on production. Reported from the
   Activity card — the sidebar showed the new picture while the Activity rows
