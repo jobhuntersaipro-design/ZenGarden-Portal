@@ -4,6 +4,7 @@ import { useState } from "react";
 import { useSession } from "next-auth/react";
 import { toast } from "sonner";
 import { removeAvatar, setGeneratedAvatar } from "@/actions/profile";
+import { announceAvatarChange } from "@/components/portal/AvatarBroadcast";
 import { useAvatarSaving } from "@/components/portal/AvatarSaving";
 import { Spinner } from "@/components/portal/Spinner";
 import { Button } from "@/components/ui/button";
@@ -98,6 +99,10 @@ export function AvatarPicker({
     // cookie. `refresh` is awaitable so this can wait for the repaint.
     await update();
     await refresh();
+    // This tab is up to date; every other one still shows the old face until
+    // it is told. Posted after the refresh so a listening tab re-reads a row
+    // that has certainly been written.
+    announceAvatarChange();
   }
 
   async function run(

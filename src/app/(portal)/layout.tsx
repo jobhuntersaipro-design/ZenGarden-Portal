@@ -4,6 +4,7 @@ import { getSessionUser } from "@/lib/auth-guards";
 import { prisma } from "@/lib/prisma";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { Toaster } from "@/components/ui/sonner";
+import { AvatarChangeListener } from "@/components/portal/AvatarBroadcast";
 import { AvatarSavingProvider } from "@/components/portal/AvatarSaving";
 import { NavProgressProvider } from "@/components/portal/NavProgress";
 import { MobileTabBar, MobileTopBar } from "@/components/portal/MobileNav";
@@ -44,6 +45,8 @@ export default async function PortalLayout({
         {/* Wraps the shell *and* the page: /settings writes the flag, the
             sidebar and mobile top bar read it. */}
         <AvatarSavingProvider>
+          {/* A picture changed in another tab has to reach this one. */}
+          <AvatarChangeListener />
           <SkipLink />
           <div className="flex min-h-dvh bg-canvas">
             <Sidebar
