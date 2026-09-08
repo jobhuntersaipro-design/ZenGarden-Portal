@@ -40,11 +40,14 @@ export function ProductToolbar({
   filter,
   sortKey,
   summary,
+  brands,
 }: {
   view: ProductView;
   filter: ProductFilter;
   sortKey: ProductSortKey;
   summary: string;
+  /** Every brand on a product, for the filter; the page derives it from the rows. */
+  brands: string[];
 }) {
   const { replace } = useUrlNavigation();
   // One transition per group, so a chip click never spins the sort strip.
@@ -108,6 +111,24 @@ export function ProductToolbar({
             className="h-control-md sm:h-control-sm w-72 pl-xl"
           />
         </div>
+
+        {/* Only offered once there is more than one brand to choose between;
+            a dropdown with a single option is a label, not a filter. */}
+        {brands.length > 1 ? (
+          <select
+            aria-label="Brand"
+            value={searchParams.get("brand") ?? ""}
+            onChange={(event) => write({ brand: event.target.value })}
+            className="h-control-md sm:h-control-sm rounded-sm border border-hairline-strong bg-transparent px-xs text-[length:var(--text-body-sm)] text-ink focus-visible:border-focus focus-visible:outline-2 focus-visible:outline-focus"
+          >
+            <option value="">All brands</option>
+            {brands.map((brand) => (
+              <option key={brand} value={brand}>
+                {brand}
+              </option>
+            ))}
+          </select>
+        ) : null}
 
         <select
           aria-label="Category"

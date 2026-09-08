@@ -20,7 +20,7 @@ import { formatDate, formatDateTime } from "@/lib/dates";
 import { formatMYR } from "@/lib/money";
 import { presignGet } from "@/lib/r2";
 import { loadProduct } from "@/lib/queries/product-detail";
-import { listMarkets } from "@/lib/queries/products";
+import { listAllLabels } from "@/lib/queries/products";
 import {
   firstParam,
   parsePagination,
@@ -65,10 +65,10 @@ export default async function ProductPage({
   const { id } = await params;
   const query = await searchParams;
 
-  const [data, user, markets] = await Promise.all([
+  const [data, user, labels] = await Promise.all([
     loadProduct(id, presignGet),
     getSessionUser(),
-    listMarkets(),
+    listAllLabels(),
   ]);
   if (!data) notFound();
 
@@ -96,6 +96,20 @@ export default async function ProductPage({
     .map((row) => ({ ...row, id: row.lineItemId }));
 
   const below = data.stats.vsListPercent < 0;
+  // An imported product carries 0.00 until someone prices it; "0.0% above
+  // list" for that would be a comparison against nothing.
+  const unpriced = data.product.listPrice <= 0;
+
+  const eyebrow = [
+    data.product.sku,
+    data.product.category,
+    data.product.packSize
+      ? `${data.product.packSize} per ${data.product.unit}`
+      : `per ${data.product.unit}`,
+    data.product.market,
+  ]
+    .filter(Boolean)
+    .join(" · ");
 
   return (
     <>
@@ -114,7 +128,7 @@ export default async function ProductPage({
       </nav>
 
       <PageHeader
-        eyebrow={`${data.product.sku} · ${data.product.category} · per ${data.product.unit}`}
+        eyebrow={eyebrow}
         title={data.product.name}
         action={
           <div className="flex items-center gap-sm">
@@ -131,13 +145,16 @@ export default async function ProductPage({
                   sku: data.product.sku,
                   category: data.product.category as never,
                   unit: data.product.unit,
+                  brand: data.product.brand,
+                  variant: data.product.variant,
+                  packSize: data.product.packSize,
                   market: data.product.market,
                   listPrice: data.product.listPrice.toFixed(2),
                   description: data.product.description,
                   active: data.product.active,
                   needsReview: data.product.needsReview,
                 }}
-                markets={markets}
+                labels={labels}
                 trigger={<Button>Edit product</Button>}
               />
             ) : (
@@ -179,7 +196,9 @@ export default async function ProductPage({
               >
                 {data.stats.units === 0
                   ? "No sales in this window"
-                  : `${Math.abs(data.stats.vsListPercent).toFixed(1)}% ${below ? "below" : "above"} list on average`}
+                  : unpriced
+                    ? "No list price set yet"
+                    : `${Math.abs(data.stats.vsListPercent).toFixed(1)}% ${below ? "below" : "above"} list on average`}
               </p>
             </div>
           </div>
@@ -193,8 +212,15 @@ export default async function ProductPage({
           <dl className="mt-md grid gap-sm sm:grid-cols-3">
             {[
               ["SKU", data.product.sku],
+              ["Brand", data.product.brand ?? "—"],
+              ["Variant", data.product.variant ?? "—"],
               ["Category", data.product.category],
-              ["Unit", data.product.unit],
+              [
+                "Pack",
+                data.product.packSize
+                  ? `${data.product.packSize} per ${data.product.unit}`
+                  : `per ${data.product.unit}`,
+              ],
               ["Market", data.product.market ?? "—"],
               [
                 "First sold",

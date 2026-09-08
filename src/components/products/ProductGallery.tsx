@@ -78,7 +78,10 @@ export function ProductGallery({
     /** Images on record but none of them usable: they exist and will not load. */
     const unavailable = images.length > 0;
     return (
-      <section className="flex aspect-4/3 flex-col items-center justify-center gap-xs rounded-lg border border-dashed border-hairline-strong bg-surface p-lg text-center">
+      // `self-start`: stretched to the details card's height, the aspect
+      // ratio would set this panel's width from that height and push the card
+      // off the screen once the card grew past 4/3 of the column (2026-09-09).
+      <section className="flex aspect-4/3 flex-col items-center justify-center gap-xs self-start rounded-lg border border-dashed border-hairline-strong bg-surface p-lg text-center">
         <ImageOff
           className="size-8 text-ink-disabled"
           strokeWidth={1.5}

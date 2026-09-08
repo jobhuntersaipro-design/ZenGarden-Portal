@@ -42,9 +42,12 @@ const admin = {
 const input = {
   name: "Granite stepping stone 40cm",
   sku: "STN-GRA-040",
-  category: "Stone" as const,
-  unit: "piece",
+  category: "Shower cream & gel" as const,
+  unit: "carton",
   listPrice: "42.50",
+  brand: "ZEN GARDEN",
+  variant: "Goat's Milk",
+  packSize: 6,
   market: "Malaysia",
   description: null,
   active: true,
@@ -106,6 +109,16 @@ describe("createProduct", () => {
     const result = await createProduct({ ...input, listPrice: "0" });
     expect(result.success).toBe(false);
     expect(productCreate).not.toHaveBeenCalled();
+  });
+
+  it("persists brand, variant and pack size", async () => {
+    await createProduct({ ...input, packSize: "12" });
+    const { data } = productCreate.mock.calls[0][0];
+    expect([data.brand, data.variant, data.packSize]).toEqual([
+      "ZEN GARDEN",
+      "Goat's Milk",
+      12,
+    ]);
   });
 
   it("persists the market", async () => {

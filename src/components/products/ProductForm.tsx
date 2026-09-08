@@ -4,30 +4,38 @@ import { useState } from "react";
 import { ImageOff } from "lucide-react";
 import { toast } from "sonner";
 import { createProduct } from "@/actions/products";
-import { MarketPicker } from "@/components/products/MarketPicker";
+import { GrowingListPicker } from "@/components/products/GrowingListPicker";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Switch } from "@/components/ui/switch";
 import { Textarea } from "@/components/ui/textarea";
 import { useUrlNavigation } from "@/hooks/useUrlNavigation";
 import { PRODUCT_CATEGORIES } from "@/lib/product-categories";
+import type { GrowingLabel } from "@/lib/queries/products";
+import { generateSku } from "@/lib/sku";
 import type { ProductInput } from "@/lib/validation/products";
 
 /**
- * Malaysia is the home market and the common case, so it is the starting
- * value rather than a blank the reader has to fill in every time. It is a
- * default, not an assertion: "No market" is the first option in the picker.
+ * Malaysia is the home market and a carton the unit everything ships in, so
+ * both start filled rather than blank. Defaults, not assertions: "No market"
+ * is the first option in its picker and the unit is an ordinary text field.
  */
 const BLANK: ProductInput = {
   name: "",
   sku: "",
   category: PRODUCT_CATEGORIES[0],
-  unit: "",
+  unit: "carton",
+  brand: null,
+  variant: null,
+  packSize: "",
   market: "Malaysia",
   listPrice: "",
   description: null,
   active: true,
 };
+
+/** "ZEN Shower Cream 2.1L — Goat's Milk" → "2.1L", for the SKU's size segment. */
+const SIZE_IN_NAME = /(\d+(?:\.\d+)?\s?(?:ML|L|KG|G))\b/i;
 
 const label = "font-mono text-[length:var(--text-eyebrow)] text-ink-tertiary";
 
@@ -46,20 +54,46 @@ const select =
  * em-dash tiles above an empty chart would be furniture rather than
  * information.
  *
+ * The SKU proposes itself from brand, category, the size in the name, variant
+ * and market (`ZEN-SC-2100-GM-VN`) until the reader types one, at which point
+ * the field is theirs — the customer's own list has no codes, so a generated
+ * one is the common case and a hand-typed one the exception.
+ *
  * Editing stays in `ProductSheet`. A drawer is right for changing one field on
- * a product you are already looking at; a page is right for entering eight.
+ * a product you are already looking at; a page is right for entering eleven.
  */
-export function ProductForm({ markets }: { markets: string[] }) {
+export function ProductForm({
+  labels,
+}: {
+  labels: Record<GrowingLabel, string[]>;
+}) {
   const { pending: navigating, push } = useUrlNavigation();
   const [form, setForm] = useState<ProductInput>(BLANK);
+  const [skuTouched, setSkuTouched] = useState(false);
   const [saving, setSaving] = useState(false);
 
   const set = <K extends keyof ProductInput>(key: K, value: ProductInput[K]) =>
     setForm((current) => ({ ...current, [key]: value }));
 
+  const suggestedSku = generateSku({
+    brand: form.brand ?? null,
+    category: form.category,
+    size: form.name.match(SIZE_IN_NAME)?.[1] ?? null,
+    variant: form.variant ?? null,
+    market: form.market ?? null,
+  });
+  const sku = skuTouched ? form.sku : suggestedSku;
+
   // The eyebrow reads exactly as the detail page's does, filling in as the
   // fields are typed, so the placeholders show what each one becomes.
-  const eyebrow = `${form.sku || "SKU"} · ${form.category} · per ${form.unit || "unit"}`;
+  const eyebrow = [
+    sku || "SKU",
+    form.category,
+    form.packSize ? `${form.packSize} per ${form.unit || "carton"}` : `per ${form.unit || "unit"}`,
+    form.market,
+  ]
+    .filter(Boolean)
+    .join(" · ");
 
   // Held through the redirect as well as the write: releasing it the moment
   // the action returns would spin the button down while the detail page is
@@ -68,7 +102,7 @@ export function ProductForm({ markets }: { markets: string[] }) {
 
   const submit = async () => {
     setSaving(true);
-    const result = await createProduct(form);
+    const result = await createProduct({ ...form, sku });
     if (!result.success) {
       setSaving(false);
       toast.error(result.error);
@@ -105,7 +139,11 @@ export function ProductForm({ markets }: { markets: string[] }) {
         {/* The gallery's slot, holding the reason it is empty. Not
             `ProductGallery` with no images: its empty state offers "Add
             images", and there is nothing here to add them to yet. */}
-        <section className="flex h-32 flex-col items-center justify-center gap-xs rounded-lg border border-dashed border-hairline-strong bg-surface p-lg text-center sm:aspect-4/3 sm:h-auto">
+        {/* `self-start`, or the grid stretches this to the card's height and
+            the aspect ratio then sets the *width* from it — with eleven fields
+            in the card that came out at 1470px and pushed the card off the
+            screen (2026-09-09). */}
+        <section className="flex h-32 flex-col items-center justify-center gap-xs self-start rounded-lg border border-dashed border-hairline-strong bg-surface p-lg text-center sm:aspect-4/3 sm:h-auto">
           <ImageOff className="size-8 text-ink-disabled" strokeWidth={1.5} aria-hidden />
           <p className="text-[length:var(--text-body-sm)] text-ink-secondary">
             No images yet
@@ -153,18 +191,25 @@ export function ProductForm({ markets }: { markets: string[] }) {
           {/* The positions the detail page's `dl` uses, as controls. */}
           <div className="mt-md grid gap-md sm:grid-cols-2">
             <div className="flex flex-col gap-xxs">
-              <label htmlFor="product-sku" className={label}>
-                SKU
-              </label>
-              <Input
-                id="product-sku"
-                value={form.sku}
-                // Upper-cased as typed, so two people cannot enter the same SKU
-                // two ways and create a duplicate the schema would reject.
-                onChange={(event) => set("sku", event.target.value.toUpperCase())}
+              <span className={label}>Brand</span>
+              <GrowingListPicker
+                label="Brand"
+                value={form.brand ?? null}
+                known={labels.brand}
+                onChange={(brand) => set("brand", brand)}
+              />
+            </div>
+
+            <div className="flex flex-col gap-xxs">
+              <span className={label}>Variant</span>
+              <GrowingListPicker
+                label="Variant"
+                value={form.variant ?? null}
+                known={labels.variant}
+                onChange={(variant) => set("variant", variant)}
               />
               <p className="text-[length:var(--text-caption)] text-ink-tertiary">
-                Capitals, digits and dashes
+                Fragrance or formulation — type to add one
               </p>
             </div>
 
@@ -189,26 +234,64 @@ export function ProductForm({ markets }: { markets: string[] }) {
             </div>
 
             <div className="flex flex-col gap-xxs">
+              <span className={label}>Market</span>
+              <GrowingListPicker
+                label="Market"
+                value={form.market ?? null}
+                known={labels.market}
+                onChange={(market) => set("market", market)}
+              />
+              <p className="text-[length:var(--text-caption)] text-ink-tertiary">
+                Country or customer it&rsquo;s made for — type to add one
+              </p>
+            </div>
+
+            <div className="flex flex-col gap-xxs">
+              <label htmlFor="product-pack" className={label}>
+                Pack size
+              </label>
+              <Input
+                id="product-pack"
+                inputMode="numeric"
+                placeholder="6"
+                value={form.packSize === null ? "" : String(form.packSize)}
+                onChange={(event) => set("packSize", event.target.value)}
+              />
+              <p className="text-[length:var(--text-caption)] text-ink-tertiary">
+                Pieces per {form.unit || "carton"}
+              </p>
+            </div>
+
+            <div className="flex flex-col gap-xxs">
               <label htmlFor="product-unit" className={label}>
                 Unit
               </label>
               <Input
                 id="product-unit"
-                placeholder="piece"
+                placeholder="carton"
                 value={form.unit}
                 onChange={(event) => set("unit", event.target.value)}
               />
             </div>
 
-            <div className="flex flex-col gap-xxs">
-              <span className={label}>Market</span>
-              <MarketPicker
-                value={form.market ?? null}
-                markets={markets}
-                onChange={(market) => set("market", market)}
+            <div className="flex flex-col gap-xxs sm:col-span-2">
+              <label htmlFor="product-sku" className={label}>
+                SKU
+              </label>
+              <Input
+                id="product-sku"
+                value={sku}
+                // Upper-cased as typed, so two people cannot enter the same SKU
+                // two ways and create a duplicate the schema would reject.
+                onChange={(event) => {
+                  setSkuTouched(true);
+                  set("sku", event.target.value.toUpperCase());
+                }}
               />
               <p className="text-[length:var(--text-caption)] text-ink-tertiary">
-                Country or customer it&rsquo;s made for — type to add one
+                {skuTouched
+                  ? "Capitals, digits and dashes"
+                  : "Suggested from brand, category, size, variant and market — type to override"}
               </p>
             </div>
           </div>

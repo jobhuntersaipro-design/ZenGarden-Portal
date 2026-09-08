@@ -50,8 +50,20 @@ export function ProductCard({
         >
           {product.name}
         </p>
+        {/* What the ops team calls it — brand, variant, market — above the
+            code, since nobody refers to a product by its generated SKU. */}
+        {product.brand || product.variant || product.market ? (
+          <p className="truncate text-[length:var(--text-caption)] text-ink-secondary">
+            {[product.brand, product.variant, product.market]
+              .filter(Boolean)
+              .join(" · ")}
+          </p>
+        ) : null}
         <p className="font-mono text-[length:var(--text-caption)] text-ink-tertiary">
-          {product.sku} · per {product.unit}
+          {product.sku} ·{" "}
+          {product.packSize
+            ? `${product.packSize} per ${product.unit}`
+            : `per ${product.unit}`}
         </p>
         <p className="mt-auto flex items-baseline gap-xs">
           <span className="font-display text-[length:var(--text-heading-sm)] font-[650] text-ink tabular-nums">

@@ -16,6 +16,10 @@ export type ProductRow = {
   name: string;
   category: string;
   unit: string;
+  brand: string | null;
+  variant: string | null;
+  packSize: number | null;
+  market: string | null;
   listPrice: number;
   active: boolean;
   imageCount: number;
@@ -69,6 +73,10 @@ export async function listProducts(
         name: true,
         category: true,
         unit: true,
+        brand: true,
+        variant: true,
+        packSize: true,
+        market: true,
         listPrice: true,
         active: true,
         needsReview: true,
@@ -166,6 +174,10 @@ export async function listProducts(
       name: product.name,
       category: product.category,
       unit: product.unit,
+      brand: product.brand,
+      variant: product.variant,
+      packSize: product.packSize,
+      market: product.market,
       listPrice: product.listPrice.toNumber(),
       active: product.active,
       imageCount: product.images.length,
@@ -176,34 +188,53 @@ export async function listProducts(
   };
 }
 
-/** Filtering, searching and sorting happen after the stats exist. */
+/** The three labels that grow by typing rather than living in a fixed list. */
+export type GrowingLabel = "brand" | "variant" | "market";
+
 /**
- * The markets already used on a product, which is the whole of the market
- * picker's list. There is no hardcoded catalogue: super admins build it by
- * typing a market once, and every later product can pick it. Nulls are
- * dropped by the `not` clause, and the schema stores no blanks, so nothing
- * empty can reach the dropdown.
+ * The values already used on a product for one label, which is the whole of
+ * that picker's list. There is no hardcoded catalogue: super admins build it
+ * by typing a brand, variant or market once, and every later product can pick
+ * it. Nulls are dropped by the `not` clause, and the schema stores no blanks,
+ * so nothing empty can reach the dropdown.
  */
-export async function listMarkets(): Promise<string[]> {
+export async function listLabels(field: GrowingLabel): Promise<string[]> {
   const rows = await prisma.product.findMany({
-    where: { market: { not: null } },
-    distinct: ["market"],
-    select: { market: true },
-    orderBy: { market: "asc" },
+    where: { [field]: { not: null } },
+    distinct: [field],
+    select: { [field]: true },
+    orderBy: { [field]: "asc" },
   });
-  return rows.map((row) => row.market!).filter(Boolean);
+  // A computed `select` key gives Prisma's result type every column at once;
+  // the row really holds the one field asked for.
+  return rows
+    .map((row) => (row as Partial<Record<GrowingLabel, string | null>>)[field])
+    .filter((value): value is string => Boolean(value));
 }
 
+/** Everything the pickers need, in one round trip of three queries. */
+export async function listAllLabels(): Promise<Record<GrowingLabel, string[]>> {
+  const [brand, variant, market] = await Promise.all([
+    listLabels("brand"),
+    listLabels("variant"),
+    listLabels("market"),
+  ]);
+  return { brand, variant, market };
+}
+
+/** Filtering, searching and sorting happen after the stats exist. */
 export function selectProducts(
   products: ProductRow[],
   {
     q,
     category,
+    brand,
     filter,
     sort,
   }: {
     q?: string;
     category?: string;
+    brand?: string;
     filter: ProductFilter;
     sort: { key: ProductSortKey; dir: "asc" | "desc" };
   },
@@ -211,10 +242,14 @@ export function selectProducts(
   const needle = q?.trim().toLowerCase();
 
   const filtered = products.filter((product) => {
+    if (brand && product.brand !== brand) return false;
+    // Brand, variant and market are searchable too: "lavender" or "vietnam"
+    // is how the ops team refers to a product, not by its generated code.
     if (
       needle &&
-      !product.name.toLowerCase().includes(needle) &&
-      !product.sku.toLowerCase().includes(needle)
+      ![product.name, product.sku, product.brand, product.variant, product.market]
+        .filter((v): v is string => Boolean(v))
+        .some((v) => v.toLowerCase().includes(needle))
     ) {
       return false;
     }

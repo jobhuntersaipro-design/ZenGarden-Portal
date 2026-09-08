@@ -4,7 +4,7 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
 import { archiveProduct, updateProduct } from "@/actions/products";
-import { MarketPicker } from "@/components/products/MarketPicker";
+import { GrowingListPicker } from "@/components/products/GrowingListPicker";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import {
@@ -18,6 +18,7 @@ import {
 import { Switch } from "@/components/ui/switch";
 import { Textarea } from "@/components/ui/textarea";
 import { PRODUCT_CATEGORIES } from "@/lib/product-categories";
+import type { GrowingLabel } from "@/lib/queries/products";
 import type { ProductInput } from "@/lib/validation/products";
 
 /**
@@ -31,11 +32,11 @@ import type { ProductInput } from "@/lib/validation/products";
  */
 export function ProductSheet({
   product,
-  markets,
+  labels,
   trigger,
 }: {
   product: ProductInput & { id: string; needsReview?: boolean };
-  markets: string[];
+  labels: Record<GrowingLabel, string[]>;
   trigger: React.ReactNode;
 }) {
   const router = useRouter();
@@ -152,16 +153,57 @@ export function ProductSheet({
             </div>
           </div>
 
-          <div className="flex flex-col gap-xxs">
-            <span className={label}>Market</span>
-            <MarketPicker
-              value={form.market ?? null}
-              markets={markets}
-              onChange={(market) => set("market", market)}
-            />
-            <p className="text-[length:var(--text-caption)] text-ink-tertiary">
-              Country or customer it&rsquo;s made for — type to add one
-            </p>
+          <div className="grid gap-md sm:grid-cols-2">
+            <div className="flex flex-col gap-xxs">
+              <span className={label}>Brand</span>
+              <GrowingListPicker
+                label="Brand"
+                value={form.brand ?? null}
+                known={labels.brand}
+                onChange={(brand) => set("brand", brand)}
+              />
+            </div>
+
+            <div className="flex flex-col gap-xxs">
+              <span className={label}>Variant</span>
+              <GrowingListPicker
+                label="Variant"
+                value={form.variant ?? null}
+                known={labels.variant}
+                onChange={(variant) => set("variant", variant)}
+              />
+              <p className="text-[length:var(--text-caption)] text-ink-tertiary">
+                Fragrance or formulation — type to add one
+              </p>
+            </div>
+
+            <div className="flex flex-col gap-xxs">
+              <span className={label}>Market</span>
+              <GrowingListPicker
+                label="Market"
+                value={form.market ?? null}
+                known={labels.market}
+                onChange={(market) => set("market", market)}
+              />
+              <p className="text-[length:var(--text-caption)] text-ink-tertiary">
+                Country or customer it&rsquo;s made for — type to add one
+              </p>
+            </div>
+
+            <div className="flex flex-col gap-xxs">
+              <label htmlFor="product-pack" className={label}>
+                Pack size
+              </label>
+              <Input
+                id="product-pack"
+                inputMode="numeric"
+                value={form.packSize === null ? "" : String(form.packSize)}
+                onChange={(event) => set("packSize", event.target.value)}
+              />
+              <p className="text-[length:var(--text-caption)] text-ink-tertiary">
+                Pieces per {form.unit || "carton"}
+              </p>
+            </div>
           </div>
 
           <div className="flex flex-col gap-xxs">

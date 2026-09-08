@@ -2,54 +2,82 @@
 
 ## Status
 
-`feature/product-create-page` merged. Next: `feature/catalog-model` — brand,
-variant and pack size on Product, the nine personal-care categories, the
-SKU scheme and the XLSX import — approved 2026-09-08, waiting on the
-customer's inventory sheet as XLSX. Production's landscaping demo data is to
-be deleted by the import script.
+`feature/catalog-model` merged. Remaining: run `scripts/import-catalog.ts
+<file> --dry-run` against the customer's XLSX when it arrives, confirm the
+column positions, then import (with `--replace-demo` on production).
 
 ## Goals
 
-- Creating a product happens on its own page, `/products/new`, shaped like the
-  product detail view, instead of inside the right-hand drawer. `+ New product`
-  becomes a real link, so cmd-click still opens it in a browser tab.
-- A product carries a market — the country or customer its formulation is
-  made for, which is how the ops team's own inventory sheet labels each block.
-  Optional, shown on the detail page beside SKU / Category / Unit, and
-  editable wherever a product is edited.
+- A product carries its brand (ZEN GARDEN, MR. KING, L.HANDS…), its variant
+  (Goat's Milk, Lavender, Lemon…) and its pack size (pieces per carton), so
+  the name no longer has to carry all three and the catalog can filter by
+  brand.
+- The category list becomes the nine the customer's goods actually fall into:
+  Shower cream & gel · Hand wash & soap · Hair care · Body care · Hand
+  sanitizer · Dishwash & cleanser · Laundry detergent · Fragrance ·
+  Uncategorised.
+- SKUs follow `{BRAND}-{TYPE}-{SIZE}-{VARIANT}-{MARKET}` (`ZEN-SC-2100-GM-VN`),
+  generated from those fields by `src/lib/sku.ts` and editable afterwards.
+- `scripts/import-catalog.ts` reads the XLSX — merged cells carry brand and
+  market — into one Product per variant × market with `needsReview: true`, so
+  every import lands in the existing *Needs review* chip until its price is
+  confirmed. On production it first deletes the landscaping demo data.
+- The seed describes the real business: a ZEN-shaped catalog replaces the
+  twelve landscaping products, keeping the array shape the PO generator reads.
 
 ## Notes
 
-- **Built as `country` ("where it comes from"), renamed to `market` before
-  commit.** The customer's sheet (ZEN GARDEN DC INVENTORY 2026) prefixes each
-  product block with VIETNAM, INDIA, ARAB… *and* MYDIN, HERO MARKET, AA
-  PHARMACY — destinations and customers, never origins; everything is made in
-  Malaysia. The second migration is a `RENAME COLUMN`, not Prisma's proposed
-  drop-and-add, so it keeps data wherever it runs.
-- The market list is not hardcoded. The combobox offers every market already
-  used on a product (`listMarkets()`), and typing a new one gives the
-  `+ Add "…"` row the existing `Combobox` already renders — so super admins
-  build the list by using it. A fresh create pre-fills `Malaysia`; the value is
-  merged into the option list, because `Combobox` shows its placeholder for any
-  value absent from `options`.
-- The column is nullable and nothing is backfilled: the twelve existing
-  products and anything auto-created from a purchase order show `—`.
-- `ProductSheet` becomes edit-only. Create moving to its own page removes its
-  `BLANK` constant and the three `product ? … : …` branches in its title,
-  description and button label; `product` is now required. Editing stays a
-  drawer on the detail page.
-- The create page carries the detail view's chrome — back link, breadcrumb,
-  `PageHeader`, the `lg:grid-cols-[5fr_7fr]` band with the gallery panel — but
-  none of its analytics. Six em-dash KPI tiles and an empty chart on a form
-  would be furniture, not information.
-- **Deviation from the canvas:** `CLAUDE.md` makes the Claude Design canvas the
-  source of truth for every screen and there is no `/products/new` artboard.
-  This layout is derived from the product detail artboard; the canvas is behind
-  the code until someone draws it.
-
-<!-- Constraints, decisions and anything the spec leaves implicit. -->
+- Decisions taken 2026-09-08 from the sheet review: one Product per variant ×
+  market (~150–250 rows), categories as above, SKUs generated, prices entered
+  later behind `needsReview`, production demo data deleted by the import.
+- Brand and variant use the same grow-by-typing picker as market, so
+  `MarketPicker` generalises into one `GrowingListPicker` rather than three
+  copies.
+- `listPrice` is required, so an unpriced import lands at `0.00`.
+  `productStats` already returns `vsListPercent: 0` for a zero list price; the
+  detail page must not then print "0.0% above list on average" for a product
+  that simply has no price yet.
+- Customers' POs name products by description, not by our generated SKU, so
+  exact-SKU matching will miss most lines until the extraction prompt learns
+  the brand/size/variant shape. Separate work, raised after the import.
 
 ## History
+- 2026-09-09: Catalog model built, verified in the browser and merged (`feature/catalog-model`) —
+  `brand`, `variant` and `packSize` on Product, the nine personal-care
+  categories replacing the landscaping list, `src/lib/sku.ts` generating
+  `{BRAND}-{TYPE}-{SIZE}-{VARIANT}-{MARKET}`, `src/lib/catalog-import.ts`
+  reading the customer's sheet, `scripts/import-catalog.ts` loading it, and
+  the seed rewritten to a ZEN-shaped catalog. **The SKU proposes itself** on
+  the create page from brand, category, the size in the name, variant and
+  market, until the reader types one: watched live going `SC-2100-MY` →
+  `ZEN-SC-2100-MY` → `ZEN-SC-2100-GM-MY` → `ZEN-SC-2100-GM-VN` as each picker
+  was filled, then landing on the detail page with all nine `dl` rows matching
+  what was entered. Brand, variant and market share one `GrowingListPicker`
+  (the day-old `MarketPicker`, generalised); search matches all three, so
+  `?q=vietnam` finds the product; the brand filter appears only once two brands
+  exist. **The sheet parser is tested on the screenshot's own shape**: a
+  worksheet with ZEN GARDEN merged over two lines in A, `VIETNAM ZEN 2.1L (6)`
+  merged over five variants in B, one variant per row in C — every merged cell
+  filled down from its anchor, the market prefix split off whether it is a
+  country or a customer (MYDIN, HERO MARKET), `(6)` and `(48PCS/CTN)` both read
+  as pack counts, pallet notes and `[19]` footnotes dropped. The column
+  positions are an assumption until the XLSX arrives; `--columns` overrides
+  them and `--dry-run` prints the table before anything is written. **One
+  layout defect the build could not catch, and it was already latent
+  yesterday**: `aspect-4/3` on a grid child that *stretches* to the row takes
+  its width from the stretched height, so once the details card grew to eleven
+  fields the empty gallery panel came out 1470px wide and pushed the card off
+  the screen (measured 130px of card at 1440px). `self-start` on the panel —
+  and on `ProductGallery`'s empty state, which has the same shape — fixed it:
+  446px / 625px, no overflow. **Two Prisma commands hung** during the build,
+  once for 5 minutes: the machine slept mid-command (the clock jumped 19:23 →
+  21:05) and `migrate dev --create-only` also prompts in a way a non-TTY
+  cannot answer, so the three-column migration was written by hand and
+  applied with `migrate deploy` under a `timeout`. An unpriced import lands at
+  `0.00` and the detail page now says "No list price set yet" rather than
+  "0.0% above list". Test data removed (the product and its price row), the
+  seed member reverted to MEMBER, no brand/variant/market values left in the
+  development database. 429 tests, typecheck, lint and build pass.
 - 2026-09-08: Product creation moved to its own page and products gained a
   market (built as "country of origin", renamed `market` the same day once the
   customer's inventory sheet showed the values are destinations and customers —

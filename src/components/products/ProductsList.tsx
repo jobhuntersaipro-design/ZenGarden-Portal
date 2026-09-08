@@ -28,7 +28,9 @@ export function ProductsList({
             {row.name}
           </span>
           <span className="font-mono text-[length:var(--text-caption)] text-ink-tertiary">
-            {row.sku} · per {row.unit}
+            {[row.sku, row.brand, row.variant, row.market]
+              .filter(Boolean)
+              .join(" · ")}
           </span>
         </span>
       ),

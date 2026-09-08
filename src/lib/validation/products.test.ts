@@ -4,9 +4,12 @@ import { productSchema, skuSchema } from "@/lib/validation/products";
 const valid = {
   name: "Granite stepping stone 40cm",
   sku: "STN-GRA-040",
-  category: "Stone" as const,
-  unit: "piece",
+  category: "Shower cream & gel" as const,
+  unit: "carton",
   listPrice: "42.50",
+  brand: "ZEN GARDEN",
+  variant: "Goat's Milk",
+  packSize: 6,
   market: "Malaysia",
   description: "Flamed finish.",
   active: true,
@@ -36,9 +39,12 @@ describe("productSchema", () => {
   });
 
   it("refuses a category outside the catalogue", () => {
-    expect(productSchema.safeParse({ ...valid, category: "Gadgets" }).success).toBe(
-      false,
-    );
+    // "Stone" was a category until 2026-09-08; the list is personal care now.
+    for (const bad of ["Gadgets", "Stone"]) {
+      expect(productSchema.safeParse({ ...valid, category: bad }).success).toBe(
+        false,
+      );
+    }
   });
 
   it("refuses a list price of zero or below", () => {
@@ -81,6 +87,35 @@ describe("productSchema", () => {
     expect(productSchema.parse({ ...valid, market: " Malaysia " }).market).toBe(
       "Malaysia",
     );
+  });
+
+  it("trims brand and variant to null the way market is, so no picker offers a blank", () => {
+    const parsed = productSchema.parse({ ...valid, brand: "  ", variant: " Lavender " });
+    expect(parsed.brand).toBeNull();
+    expect(parsed.variant).toBe("Lavender");
+  });
+
+  it("accepts a product with no brand, variant or pack size", () => {
+    const parsed = productSchema.parse({
+      ...valid,
+      brand: null,
+      variant: null,
+      packSize: null,
+    });
+    expect(parsed.packSize).toBeNull();
+  });
+
+  it("takes the pack size as typed, so a form field can feed it", () => {
+    expect(productSchema.parse({ ...valid, packSize: "12" }).packSize).toBe(12);
+    expect(productSchema.parse({ ...valid, packSize: "" }).packSize).toBeNull();
+  });
+
+  it("refuses a pack size that is not a whole number above zero", () => {
+    for (const bad of ["0", "-6", "1.5", "six"]) {
+      expect(productSchema.safeParse({ ...valid, packSize: bad }).success, bad).toBe(
+        false,
+      );
+    }
   });
 
   it("refuses a market longer than any real country name", () => {

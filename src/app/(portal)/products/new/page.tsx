@@ -5,7 +5,7 @@ import { Role } from "@/generated/prisma/enums";
 import { BackLink } from "@/components/portal/BackLink";
 import { ProductForm } from "@/components/products/ProductForm";
 import { getSessionUser } from "@/lib/auth-guards";
-import { listMarkets } from "@/lib/queries/products";
+import { listAllLabels } from "@/lib/queries/products";
 
 export const metadata: Metadata = {
   title: "New product · Loving Hands Portal",
@@ -19,7 +19,7 @@ export default async function NewProductPage() {
   // member sees the catalog rather than a form that can never save.
   if (user?.role !== Role.SUPER_ADMIN) redirect("/products");
 
-  const markets = await listMarkets();
+  const labels = await listAllLabels();
 
   return (
     <>
@@ -37,7 +37,7 @@ export default async function NewProductPage() {
         </span>
       </nav>
 
-      <ProductForm markets={markets} />
+      <ProductForm labels={labels} />
     </>
   );
 }
