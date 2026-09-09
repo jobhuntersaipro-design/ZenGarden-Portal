@@ -2,13 +2,14 @@
 
 ## Status
 
-**In progress: Phase 12 — product matching at review** (`feature/product-matching`,
-spec `docs/specs/12-product-matching.md`). A reviewer chooses the catalogue
-product for every line of a PO before it can be confirmed, each line arriving
-with a ranked suggestion, a confidence score computed from the document's own
-wording, and the market that separates two otherwise identical rows.
-Phase 13 — a super admin adding a category, unit, brand, variant, market or
-pack size from the UI — is specced after this merges.
+**Phase 12 built and verified, awaiting merge** (`feature/product-matching`) —
+see History. **Phase 13**, the super-admin vocabulary screen (adding a category,
+unit, brand, variant, market or pack size from the UI), is the next spec to
+write.
+
+Also specced and not started: the **client-facing storefront**, phases 14–16 on
+`feature/storefront-specs`. See that branch's `context/current-feature.md` and
+`docs/specs/1[456]-*.md`.
 
 Still outstanding from the catalog import: price the 309 products, enter the 5
 nested-sub-table blocks by hand, clear the 2 drafts in the review queue, and
@@ -72,6 +73,62 @@ is settled.
   the brand/size/variant shape. Separate work, raised after the import.
 
 ## History
+- 2026-09-09: Phase 12 — product matching at review — built and verified in the
+  browser (`feature/product-matching`, spec `docs/specs/12-product-matching.md`).
+  Every line of a PO now carries an explicit human decision — a catalogue
+  product, *create a new one*, or *not a product* — and Confirm is locked until
+  all of them are made, phrased like the totals gate beside it and mirrored by a
+  server check so calling the action directly cannot bypass it.
+  **The defect this fixes is that `confirmPurchaseOrder` re-ran `resolveProducts`
+  and overwrote `productId` from the printed code**, so a human correction had
+  nowhere to survive. Proven in the browser rather than argued: a line printing
+  `ZEN-SC-1000-GM-VN` with the **Iraq** product chosen by hand confirmed as the
+  Iraq product. Under the old code it would have been overwritten with Vietnam.
+  Scoring is one pure module, `src/lib/extraction/match-products.ts`, with no
+  Prisma import and no I/O, so it is unit-tested against the codes production
+  actually holds — 24 tests. Exact code 100, code ignoring separators 96, exact
+  name 92; otherwise token overlap weighted by **inverse document frequency**,
+  because four of six words in a typical line are shared by two hundred
+  products, clamped to 90 so a similarity score can never impersonate the exact
+  rule. **A size disagreement caps the score at 40 however much wording agrees**
+  — 2.1L and 500ML share every word they have. Tokenising is deliberately *not*
+  `sku.ts`'s: a period separates rather than deletes (or `ZENSC-R.JELLY2LT`
+  loses `jelly`) and a letter/digit boundary splits.
+  **Market is shown on every candidate and never scored.** Documents rarely
+  print it, so scoring it is noise — but the development catalogue holds **8
+  products named `ZEN 1L — Goat's Milk`** differing only by market, and the
+  picker told them apart in one list (`… · Arab · 12/carton`, `… · India · …`)
+  without opening another screen.
+  **This reverses a Phase 11 decision on purpose.** `resolveProducts` split into
+  `suggestProducts` (reads, writes nothing) and `createProductsForLines` (writes
+  inside `confirmPurchaseOrder`'s transaction), so **a discarded draft leaves no
+  products behind** — the cost Phase 11 recorded and named the fix for. Measured:
+  a line marked *Create new product from this line* carrying
+  `TOTALLY-UNKNOWN-CODE-XYZ`, then discarded, left the catalogue at 320 products
+  and created zero.
+  **Two things the plan got wrong that the code caught.** It specified
+  `text-accent-amber` for the match hint — **there is no such token**; it would
+  have compiled to no colour at all and inherited the surrounding ink. The hint
+  uses `brand-amber`, the amber `Field` already uses for a low-confidence
+  extraction. And it predicted `src/actions/confirm.test.ts` would fail once
+  `resolveProducts` was deleted; **it kept passing**, because both test files
+  mock the module by name and the mock supplied the missing export. `tsc` was
+  the only thing that caught the break, which is why tasks 3+4 and 6+7 were each
+  committed together rather than leaving a commit that did not build.
+  Verified at 390 / 768 / 1440px: **zero page overflow at all three**, with the
+  line-items table scrolling inside its own container at exactly 952px — the new
+  `--spacing-line-items`, widened from 840px in the same commit as the first
+  column going `w-44` → `w-72`, since under `table-fixed` the `<col>` widths are
+  authoritative and the token is what the scroller measures. `Combobox` gained
+  `pinned` rows so *Create new product* and *Not a product* stay reachable when
+  the query matches nothing, which is exactly when they are the answer —
+  confirmed by typing `zzzznothingmatches` and seeing only those two rows.
+  All test data removed: 1 purchase order, 4 line items, 1 stage event, and both
+  extractions restored to `draftJson NULL` / `SUCCEEDED`. Counts returned to 320
+  products, 400 purchase orders, 1606 line items; no R2 objects were created.
+  467 tests, typecheck, lint and build pass. **Known, not verified:** the
+  document preview still 404s on every seeded document, which is expected data
+  rather than a defect — the seed writes `r2Key` values it never uploads.
 - 2026-09-09: Two defects found by yesterday's production audit, fixed and
   merged (`fix/sku-shape-and-duplicate-check`). **A product could exist that
   its own edit form refused to save.** `resolveProducts` writes a line's
