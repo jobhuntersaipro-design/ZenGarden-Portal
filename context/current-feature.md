@@ -135,9 +135,28 @@ by hand, clear the 2 drafts in the review queue, and delete one of the duplicate
   Test data removed: 7 images and all their R2 objects, `productImage` count
   back to the seed's 19; the development member was promoted to super admin to
   reach the manager and **reverted to MEMBER** afterwards. 482 tests, typecheck,
-  lint and build pass. **Not verified:** upload on production — the sharp
-  failure of 2026-09-08 cannot reproduce locally, so acceptance criterion 5
-  stays open until this deploys.
+  lint and build pass.
+  **Deploying found a real defect, and the local check that was supposed to
+  catch it was worthless.** The spec said to verify the emitted `.nft.json`
+  before pushing; that was done — 76 sharp files — and production still 500ed
+  with the same `ERR_DLOPEN_FAILED: libvips-cpp.so.8.18.6`. A macOS build
+  traces sharp *anyway*, because Next only strips `@img/sharp-libvips*` when
+  `hasNextSupport` is true, so the local artefact looks identical whether or not
+  the include matched. **`outputFileTracingIncludes` keys are globs**, and
+  `[id]` is a character class matching one `i` or `d`, so
+  `/api/products/[id]/images/complete` never matched the real page;
+  `/api/avatars` has no brackets, which is why `/settings` kept working and hid
+  the pattern. The key is now `/api/products/**`.
+  **The probe that found it needs no super admin and touches no data**: sharp
+  dlopens at module load, before `requireSuperAdmin()` runs, so an authenticated
+  POST from any member distinguishes them — 500 with Next's HTML error page
+  means the module failed to load, 401 with our own JSON means it loaded. Both
+  routes now answer `401 {"error":"This action needs super admin access."}` on
+  `www.lovinghandsportal.com`. Worth reusing for any future sharp route.
+  One deploy in between failed on Prisma `P1002`, a transient Neon timeout
+  during `migrate deploy`, and succeeded on a plain redeploy — unrelated to the
+  code. **Still unverified:** a full end-to-end upload on production, which
+  needs a super admin, and the only one is Google-only.
 - 2026-09-09: Phase 12 — product matching at review — built and verified in the
   browser (`feature/product-matching`, spec `docs/specs/12-product-matching.md`).
   Every line of a PO now carries an explicit human decision — a catalogue
