@@ -2,10 +2,11 @@
 
 ## Status
 
-The real catalog is imported into **development** (308 products). Production
-still holds the landscaping demo data; importing there (with `--replace-demo`)
-is the remaining step, plus pricing the 308 and entering the 5 blocks the
-sheet nests a sub-table in.
+The real catalog is live on **production** (309 products) and in development.
+Remaining: price the 309 — all sit in the *Needs review* chip — and enter by
+hand the 5 blocks whose variant column nests a sub-table. Two drafts are
+waiting in production's review queue, and production holds two apparent
+duplicate purchase orders (see the 2026-09-09 history entry).
 
 ## Goals
 
@@ -43,6 +44,53 @@ sheet nests a sub-table in.
   the brand/size/variant shape. Separate work, raised after the import.
 
 ## History
+- 2026-09-09: The real catalog is on **production** — 309 products — and the
+  landscaping demo data is gone. **The audit is the part worth remembering:
+  production was not the demo database everyone assumed.** Before deleting
+  anything, a read-only pass found the ops team had been using it: 5 confirmed
+  purchase orders (Triways `PO-00068` RM 9,912, Star Value `SVPPPO26090009`
+  RM 12,777.60, a 2019 `US-001` test), 8 products auto-created from those
+  orders, 17 uploaded documents and **2 drafts still waiting in the review
+  queue**. The plan as approved the day before — `--replace-demo`, which
+  matched demo rows by SKU prefix — would have run against live business data.
+  Two changes made it safe. `replaceDemo` now identifies seeded rows by their
+  **id prefix** (`prisma/seed.ts` mints `prd…`/`po…`/`doc…`; everything the app
+  creates is a cuid), which a person cannot accidentally reproduce the way they
+  could type a SKU, and it **refuses outright** if any non-seeded purchase order
+  turns out to reference a seeded product. The dry run then reported exactly
+  12 products and 400 orders, leaving the 5 real ones, and did not refuse.
+  **The second finding changed what the catalog should be.** Those 8 real
+  products carry the codes the customers print — `ZEN/SC/2100/CARROT`,
+  `ZENHW-LAV500ML` — while the import generates `ZEN-SC-2100-CR`,
+  `ZEN-HW-0500-LV`. The same products under two codes, and only the customer's
+  code can ever match an incoming document, since that is what
+  `resolveProducts` compares. Importing blind would have left 8 pairs in which
+  the *empty* row looked official and the *real* row did the work. `--merge`
+  takes an explicit `{existing SKU: imported SKU}` map — 7 pairs, written by
+  hand and reviewed, never fuzzy-matched — and enriches the existing row with
+  brand, variant, pack size, market and category while keeping its code, its
+  name as printed on the document, its price and its order lines. The eighth,
+  `EVERFRESH B SHAMPOO LVD& CHAMOMILE 2.1L`, has no equivalent in the sheet
+  (the sheet's Everfresh lines are all shower cream) and was left alone.
+  Sequence: pushed 8 commits, Vercel deployed in 2m and `prisma migrate deploy`
+  applied `product_country`, `product_market` and `product_brand_variant_pack`;
+  columns confirmed present *before* any data was touched. Result verified on
+  production: 309 products, **0 generated twins**, 0 landscaping rows, the 5
+  real orders and 17 documents intact, 19 line items, and the merged rows
+  holding their real prices (RM 6.60, RM 2.90) rather than 0.00. The site
+  answers 200 and redirects unauthenticated traffic to `/signin`. Production
+  credentials were pulled to the scratchpad and deleted after each use.
+  **Three things found and not acted on.** Production holds apparent duplicate
+  orders — `PO-00068` twice for the same buyer and total, and
+  `SVPPPO26090009` twice under buyers `STAR VALUE SDN BHD` and `STAR VALUE
+  SDN BHD @ SVPP`; the duplicate check keys on buyer, so a buyer entered two
+  ways defeats it. **A product auto-created from a purchase order can carry a
+  SKU the edit form rejects**: `resolveProducts` writes `line.sku` straight to
+  the database while `productSchema` demands `^[A-Z0-9-]+$`, so
+  `ZEN/SC/2100/CARROT` cannot be saved from the drawer until its code is
+  changed. And `APP_URL` is unset in production, so `src/lib/env.ts` falls back
+  to `VERCEL_URL` — the app boots, but password-reset and invite emails link to
+  the per-deployment URL rather than `www.lovinghandsportal.com`.
 - 2026-09-09: The customer's real catalog is in the development database — 308
   products extracted from **the PDF**, not a workbook. `ZEN GARDEN DC INVENTORY
   2026` arrived as a one-page Google Sheets print: a ~300-row, ~800-column
