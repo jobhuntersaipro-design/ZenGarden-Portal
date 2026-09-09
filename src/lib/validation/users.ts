@@ -2,7 +2,14 @@ import { z } from "zod";
 import { Role } from "@/generated/prisma/enums";
 import { emailSchema, passwordSchema } from "@/lib/validation/auth";
 
+/**
+ * Portal roles only. CLIENT is deliberately absent: the admin drawer must not
+ * be able to mint a customer contact or promote one to staff, and a client is
+ * created from the buyer's page with a buyer attached (Phase 15).
+ */
 export const userRoleSchema = z.enum([Role.MEMBER, Role.SUPER_ADMIN]);
+
+export type StaffRole = z.infer<typeof userRoleSchema>;
 
 export const createUserSchema = z.object({
   name: z.string().min(1, "A name is required").max(120),

@@ -1,6 +1,8 @@
 import type { ReactNode } from "react";
 import { redirect } from "next/navigation";
+import { Role } from "@/generated/prisma/enums";
 import { getSessionUser } from "@/lib/auth-guards";
+import { env } from "@/lib/env";
 import { prisma } from "@/lib/prisma";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { Toaster } from "@/components/ui/sonner";
@@ -22,6 +24,11 @@ export default async function PortalLayout({
   const user = await getSessionUser();
   if (!user) redirect("/signin");
   if (user.mustChangePassword) redirect("/account/password");
+  // A client has no buyer-scoped view of the portal and every query here is
+  // unscoped by design, so they are sent to the shop rather than shown an
+  // empty or — worse — a complete one. The proxy does this too; this is the
+  // check that runs against a real session.
+  if (user.role === Role.CLIENT) redirect(env.SHOP_URL ?? "/signin");
 
   // Name and picture come from the row, not the JWT. The token only re-reads
   // the database every REFRESH_INTERVAL_MS, so a change made on /settings

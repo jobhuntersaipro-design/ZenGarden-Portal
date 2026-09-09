@@ -1,13 +1,14 @@
 import { prisma } from "@/lib/prisma";
 import { deriveUserStatus } from "@/lib/validation/users";
-import type { Role } from "@/generated/prisma/enums";
+import { Role } from "@/generated/prisma/enums";
+import type { StaffRole } from "@/lib/validation/users";
 
 export type AdminUserRow = {
   id: string;
   name: string;
   email: string;
   image: string | null;
-  role: Role;
+  role: StaffRole;
   status: "Disabled" | "Invited" | "Active";
   /** Google-only users have nothing to reset. */
   hasPassword: boolean;
@@ -29,6 +30,10 @@ export type UserStatusFilter = "all" | "active" | "invited" | "disabled";
 
 export async function listUsers(): Promise<AdminUserRow[]> {
   const users = await prisma.user.findMany({
+    // Portal accounts only. A CLIENT is a buyer's own contact, managed from
+    // that buyer's page — listing them here would offer the drawer a role it
+    // cannot represent, and invite someone to promote a customer to staff.
+    where: { role: { in: [Role.SUPER_ADMIN, Role.MEMBER] } },
     select: {
       id: true,
       name: true,
@@ -49,7 +54,7 @@ export async function listUsers(): Promise<AdminUserRow[]> {
     name: user.name,
     email: user.email,
     image: user.image,
-    role: user.role,
+    role: user.role as StaffRole,
     status: deriveUserStatus({
       disabledAt: user.disabledAt,
       passwordHash: user.passwordHash,

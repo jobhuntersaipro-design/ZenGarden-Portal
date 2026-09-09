@@ -19,17 +19,40 @@ const { auth } = NextAuth(authConfig);
 /** Reachable signed out. Everything else needs a session. */
 const PUBLIC_PATHS = ["/signin", "/forgot-password", "/reset-password"];
 
+/**
+ * The storefront host, and where the storefront really lives.
+ *
+ * Read from `process.env` rather than `src/lib/env.ts` on purpose: that module
+ * parses its whole schema at import and throws on a bad key, and this file runs
+ * on every request to both hosts — a Zod failure here would 500 the entire
+ * application rather than one route. Same rule as the doc comment above.
+ *
+ * Unset means "one host, everything is the portal", which is what makes
+ * `npm run dev` and every preview deployment work: they have one hostname.
+ */
+const SHOP_HOST = process.env.SHOP_HOST?.trim().toLowerCase() || null;
+const SHOP_URL = process.env.SHOP_URL?.trim() || null;
+const APP_URL = process.env.APP_URL?.trim() || null;
+const SHOP_PREFIX = "/shop";
+
 /** Reachable while `mustChangePassword` is still set. */
 const PASSWORD_CHANGE_PATH = "/account/password";
 
 const startsWithPath = (pathname: string, prefix: string) =>
   pathname === prefix || pathname.startsWith(`${prefix}/`);
 
+/** Served from the same path on both hosts, so never rewritten under /shop. */
+const isShared = (pathname: string) =>
+  startsWithPath(pathname, PASSWORD_CHANGE_PATH) || pathname.startsWith("/api/");
+
 export default auth((request) => {
   const { pathname, search } = request.nextUrl;
   const session = request.auth;
 
   if (pathname.startsWith("/api/auth")) return NextResponse.next();
+
+  const host = request.headers.get("host")?.split(":")[0].toLowerCase() ?? "";
+  const onShopHost = Boolean(SHOP_HOST) && host === SHOP_HOST;
 
   const isPublic = PUBLIC_PATHS.some((path) => startsWithPath(pathname, path));
 
@@ -48,6 +71,42 @@ export default auth((request) => {
     !isPublic
   ) {
     return NextResponse.redirect(new URL(PASSWORD_CHANGE_PATH, request.nextUrl));
+  }
+
+  // The storefront is reachable only through its own host. On the portal host
+  // its real paths are a 404 — the same treatment, and the same pinned status,
+  // that /admin gets below and for the same reason.
+  if (!onShopHost && startsWithPath(pathname, SHOP_PREFIX)) {
+    return NextResponse.rewrite(new URL("/not-found", request.nextUrl), {
+      status: 404,
+    });
+  }
+
+  // Each audience on its own host. A client has no buyer-scoped view of the
+  // portal and every portal query is unscoped by design; an ops user has no
+  // buyer at all, so a cart and an order list have nothing to scope to.
+  // Sending each away is one rule, and it lets every storefront page assume
+  // `requireClient()` succeeds rather than growing a "staff viewing" branch.
+  if (session.user.role === Role.CLIENT && !onShopHost && SHOP_URL) {
+    return NextResponse.redirect(new URL("/", SHOP_URL));
+  }
+  if (session.user.role !== Role.CLIENT && onShopHost && APP_URL) {
+    return NextResponse.redirect(new URL("/", APP_URL));
+  }
+
+  // The shop host serves the storefront from its real paths. Links inside the
+  // storefront are written unprefixed and revalidatePath uses the real path —
+  // see src/lib/shop-routes.ts, which is the only place either is written.
+  //
+  // Sign-in, password reset, the forced password change and the API are shared
+  // by both audiences and live at their own paths on either host. Rewriting
+  // them would send /signin to /shop/signin, which is a 404 — and a signed-in
+  // visitor reaches this line, so the unauthenticated early return above does
+  // not cover it.
+  if (onShopHost && !isPublic && !isShared(pathname)) {
+    return NextResponse.rewrite(
+      new URL(`${SHOP_PREFIX}${pathname === "/" ? "" : pathname}${search}`, request.nextUrl),
+    );
   }
 
   // 404, never 403: a member must not learn that /admin is a real route.

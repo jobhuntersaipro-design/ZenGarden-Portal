@@ -20,6 +20,7 @@ export const authConfig = {
         session.user.id = token.id ?? (token.sub as string);
         session.user.role = token.role as Role;
         session.user.mustChangePassword = token.mustChangePassword ?? false;
+        session.user.buyerId = token.buyerId ?? null;
       }
       return session;
     },

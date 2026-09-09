@@ -300,6 +300,13 @@ export async function approveAccessRequest(
   const { user, error } = await guard();
   if (!user) return { success: false, error: error! };
 
+  // An access request carries no buyer, and a CLIENT without one cannot exist
+  // — the database CHECK refuses it. Client contacts are invited from the
+  // buyer's page instead.
+  if (role === Role.CLIENT) {
+    return { success: false, error: "Approve a request as Member or Super admin." };
+  }
+
   try {
     const request = await prisma.accessRequest.findUnique({
       where: { id: requestId },
