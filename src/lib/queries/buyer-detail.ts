@@ -1,4 +1,4 @@
-import { ExtractionStatus } from "@/generated/prisma/enums";
+import { ExtractionStatus, WebOrderStatus } from "@/generated/prisma/enums";
 import { dateColumnRange, type Aggregation } from "@/lib/dates";
 import { prisma } from "@/lib/prisma";
 import { buyerStatus } from "@/lib/analytics/buyer-status";
@@ -71,7 +71,7 @@ export async function loadBuyer(
   });
   if (!buyer) return null;
 
-  const [history, allInRange, intakeRows] = await Promise.all([
+  const [history, allInRange, intakeRows, webOrders] = await Promise.all([
     prisma.purchaseOrder.findMany({
       where: { ...LATEST_ONLY, buyerId },
       select: {
@@ -106,6 +106,13 @@ export async function loadBuyer(
         },
       },
       _count: true,
+    }),
+    // This buyer's own orders waiting on the ops team. Counted on submittedAt
+    // rather than the page's range, like the dashboard queue: a shop order has
+    // no PO date, so a ranged count would read zero the moment the reader
+    // narrows the window.
+    prisma.webOrder.count({
+      where: { buyerId, status: WebOrderStatus.SUBMITTED },
     }),
   ]);
 
@@ -203,9 +210,7 @@ export async function loadBuyer(
       extracting:
         countFor(ExtractionStatus.RUNNING) + countFor(ExtractionStatus.PENDING),
       failed: countFor(ExtractionStatus.FAILED),
-    // The buyer page's intake bar has no shop segment yet; the count is on
-    // the dashboard, which is where the queue lives.
-    webOrders: 0,
+      webOrders,
     },
   };
 }

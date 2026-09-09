@@ -13,6 +13,13 @@ export type DocumentUrlResponse = { url: string; mimeType: string };
  * and a PO uploaded by a colleague is exactly what the next person has to
  * review (docs/specs/04-extraction-review.md §3). The URL still expires in ten
  * minutes, so it is not something to paste around.
+ *
+ * **`requireUser()` here is load-bearing and must never become
+ * `requireAccount()`.** Since Phase 15 it means *staff*, and that is the only
+ * thing standing between a buyer's contact and every other customer's scanned
+ * purchase orders — this route has no ownership check of its own, by design.
+ * If clients ever need their own documents, give them a separate route scoped
+ * to `requireClient().buyerId` rather than widening this one.
  */
 export async function GET(
   request: Request,
