@@ -1,4 +1,5 @@
 import { prisma } from "@/lib/prisma";
+import { normaliseSku } from "@/lib/validation/products";
 
 /** What a line needs to carry to be resolved. Money stays a string throughout. */
 export type ResolvableLine = {
@@ -8,7 +9,7 @@ export type ResolvableLine = {
   unitPrice: string;
 };
 
-const key = (value: string) => value.trim().toLowerCase();
+const key = (value: string) => normaliseSku(value);
 
 /**
  * A product code is the only identity a line has.
@@ -34,8 +35,10 @@ export async function resolveProducts(
 ): Promise<(string | null)[]> {
   if (lines.length === 0) return [];
 
+  // Normalised on the way in as well as on the way out: a product created here
+  // must be one the edit form can save, and the lookup must find it again.
   const codes = lines
-    .map((line) => line.sku?.trim())
+    .map((line) => (line.sku ? normaliseSku(line.sku) : ""))
     .filter((sku): sku is string => Boolean(sku));
   if (codes.length === 0) return lines.map(() => null);
 
@@ -52,9 +55,9 @@ export async function resolveProducts(
   // product rather than racing each other.
   const missing = new Map<string, ResolvableLine>();
   for (const line of lines) {
-    const code = line.sku?.trim();
-    if (!code || byCode.has(key(code))) continue;
-    if (!missing.has(key(code))) missing.set(key(code), line);
+    const code = line.sku ? normaliseSku(line.sku) : "";
+    if (!code || byCode.has(code)) continue;
+    if (!missing.has(code)) missing.set(code, line);
   }
 
   if (missing.size > 0) {
@@ -64,7 +67,7 @@ export async function resolveProducts(
       // failing the whole extraction.
       skipDuplicates: true,
       data: [...missing.values()].map((line) => ({
-        sku: line.sku!.trim(),
+        sku: normaliseSku(line.sku!),
         name: line.description.trim(),
         // Product.unit is required and a document does not always print one.
         unit: line.unit?.trim() || "unit",
@@ -89,7 +92,7 @@ export async function resolveProducts(
   }
 
   return lines.map((line) => {
-    const code = line.sku?.trim();
-    return code ? (byCode.get(key(code)) ?? null) : null;
+    const code = line.sku ? normaliseSku(line.sku) : "";
+    return code ? (byCode.get(code) ?? null) : null;
   });
 }

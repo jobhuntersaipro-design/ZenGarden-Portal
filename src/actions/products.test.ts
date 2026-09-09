@@ -99,10 +99,17 @@ describe("createProduct", () => {
     expect(priceCreate.mock.calls[0][0].data.setById).toBe("user-1");
   });
 
-  it("refuses an invalid SKU before touching the database", async () => {
-    const result = await createProduct({ ...input, sku: "stn gra 040" });
+  it("refuses an unusable SKU before touching the database", async () => {
+    // Spaces and slashes are allowed since 2026-09-09 — real orders print them
+    // — so an empty code is what has to be refused now.
+    const result = await createProduct({ ...input, sku: "  " });
     expect(result.success).toBe(false);
     expect(productCreate).not.toHaveBeenCalled();
+  });
+
+  it("stores a SKU normalised, so one code cannot enter the catalogue twice", async () => {
+    await createProduct({ ...input, sku: " zen/sc/2100/carrot " });
+    expect(productCreate.mock.calls[0][0].data.sku).toBe("ZEN/SC/2100/CARROT");
   });
 
   it("refuses a list price of zero", async () => {
