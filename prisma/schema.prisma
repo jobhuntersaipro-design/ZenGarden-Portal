@@ -42,6 +42,8 @@ model User {
   stageEvents        PoStageEvent[]
   passwordResets     PasswordResetToken[]
   productPrices      ProductPrice[]
+  webOrdersPlaced    WebOrder[]           @relation("webOrdersPlaced")
+  webOrdersReviewed  WebOrder[]           @relation("webOrdersReviewed")
   buyer              Buyer?               @relation(fields: [buyerId], references: [id])
 
   @@index([buyerId])
@@ -134,6 +136,7 @@ model Buyer {
    */
   contacts       User[]
   purchaseOrders PurchaseOrder[]
+  webOrders      WebOrder[]
 }
 
 model Document {
@@ -206,6 +209,7 @@ model PurchaseOrder {
   stageChangedAt DateTime       @default(now())
   stageEvents    PoStageEvent[]
   lineItems      LineItem[]
+  webOrder       WebOrder?
   createdAt      DateTime       @default(now())
   updatedAt      DateTime       @updatedAt
 
@@ -247,24 +251,25 @@ enum PoEventKind {
 }
 
 model Product {
-  id          String         @id @default(cuid())
-  sku         String         @unique
-  name        String
-  brand       String? // ZEN GARDEN, MR. KING, L.HANDS…; free-growing list
-  variant     String? // Goat's Milk, Lavender, Lemon…; free-growing list
-  packSize    Int? // pieces per carton (6, 12, 24)
-  category    String
-  unit        String
-  market      String? // country or customer the formulation is made for; free-growing list, see listMarkets()
-  listPrice   Decimal        @db.Decimal(14, 2)
-  description String?
-  active      Boolean        @default(true)
-  needsReview Boolean        @default(false) // created from a PO; details not filled in yet
-  images      ProductImage[]
-  prices      ProductPrice[]
-  lineItems   LineItem[]
-  createdAt   DateTime       @default(now())
-  updatedAt   DateTime       @updatedAt
+  id            String         @id @default(cuid())
+  sku           String         @unique
+  name          String
+  brand         String? // ZEN GARDEN, MR. KING, L.HANDS…; free-growing list
+  variant       String? // Goat's Milk, Lavender, Lemon…; free-growing list
+  packSize      Int? // pieces per carton (6, 12, 24)
+  category      String
+  unit          String
+  market        String? // country or customer the formulation is made for; free-growing list, see listMarkets()
+  listPrice     Decimal        @db.Decimal(14, 2)
+  description   String?
+  active        Boolean        @default(true)
+  needsReview   Boolean        @default(false) // created from a PO; details not filled in yet
+  images        ProductImage[]
+  prices        ProductPrice[]
+  lineItems     LineItem[]
+  webOrderLines WebOrderLine[]
+  createdAt     DateTime       @default(now())
+  updatedAt     DateTime       @updatedAt
 }
 
 model ProductPrice {
@@ -307,5 +312,66 @@ model LineItem {
   amount          Decimal       @db.Decimal(14, 2)
 
   @@unique([purchaseOrderId, position])
+  @@index([productId])
+}
+
+/// An order placed on the shop (Phase 16). DRAFT is the client's live cart; a
+/// partial unique index enforces one per user. It becomes a PurchaseOrder only
+/// at confirm, through the same writer and the same totals gate as a scan.
+model WebOrder {
+  id              String         @id @default(cuid())
+  /// Postgres serial. The only source of `reference`; gaps are fine.
+  seq             Int            @default(autoincrement())
+  reference       String         @unique
+  buyerId         String
+  buyer           Buyer          @relation(fields: [buyerId], references: [id])
+  placedById      String
+  placedBy        User           @relation("webOrdersPlaced", fields: [placedById], references: [id])
+  status          WebOrderStatus @default(DRAFT)
+  /// The client's own PO number, if they have one. Copied to PurchaseOrder.buyerReference.
+  buyerReference  String?
+  requestedDate   DateTime?      @db.Date
+  notes           String?
+  currency        String         @default("MYR")
+  /// Snapshotted at submit. Zero while DRAFT — a cart's total is computed.
+  subtotal        Decimal        @default(0) @db.Decimal(14, 2)
+  submittedAt     DateTime?
+  reviewedById    String?
+  reviewedBy      User?          @relation("webOrdersReviewed", fields: [reviewedById], references: [id])
+  reviewedAt      DateTime?
+  declinedReason  String?
+  purchaseOrderId String?        @unique
+  purchaseOrder   PurchaseOrder? @relation(fields: [purchaseOrderId], references: [id])
+  lines           WebOrderLine[]
+  createdAt       DateTime       @default(now())
+  updatedAt       DateTime       @updatedAt
+
+  @@index([status, submittedAt])
+  @@index([buyerId, submittedAt])
+}
+
+enum WebOrderStatus {
+  DRAFT
+  SUBMITTED
+  CONFIRMED
+  DECLINED
+}
+
+/// No `position`: a cart has no meaningful order, and a positional unique
+/// constraint would force every removal to shift the rows below it.
+model WebOrderLine {
+  id         String   @id @default(cuid())
+  webOrderId String
+  webOrder   WebOrder @relation(fields: [webOrderId], references: [id], onDelete: Cascade)
+  productId  String
+  product    Product  @relation(fields: [productId], references: [id])
+  cartons    Int
+  /// All four snapshotted at submit; zero while the order is a DRAFT.
+  packSize   Int?
+  unit       String   @default("carton")
+  unitPrice  Decimal  @default(0) @db.Decimal(14, 4)
+  amount     Decimal  @default(0) @db.Decimal(14, 2)
+
+  @@unique([webOrderId, productId])
   @@index([productId])
 }

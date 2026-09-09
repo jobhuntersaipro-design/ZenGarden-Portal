@@ -9,10 +9,13 @@ const deleteObject = vi.fn();
 const poDelete = vi.fn();
 const extractionUpdateMany = vi.fn();
 
+const webOrderUpdateMany = vi.fn();
+
 const tx = {
   purchaseOrder: { delete: poDelete },
   extraction: { updateMany: extractionUpdateMany, deleteMany: extractionDeleteMany },
   document: { delete: documentDelete },
+  webOrder: { updateMany: webOrderUpdateMany },
 };
 
 vi.mock("@/lib/prisma", () => ({
@@ -63,6 +66,7 @@ beforeEach(() => {
   vi.resetAllMocks();
   requireSuperAdmin.mockResolvedValue({ id: "u1", role: "SUPER_ADMIN" });
   requireUser.mockResolvedValue({ id: "u1", role: "MEMBER" });
+  webOrderUpdateMany.mockResolvedValue({ count: 0 });
   poFindUnique.mockResolvedValue({
     id: "po1",
     poNumber: "PO-2026-0063",
@@ -233,5 +237,36 @@ describe("checkDuplicate", () => {
     expect(await checkDuplicate("", "PO-1")).toEqual({ success: true, data: null });
     expect(await checkDuplicate("buyer-a", "")).toEqual({ success: true, data: null });
     expect(poFindFirst).not.toHaveBeenCalled();
+  });
+});
+
+describe("deletePurchaseOrder — orders placed on the shop", () => {
+  beforeEach(() => {
+    poFindUnique.mockResolvedValue({
+      id: "po1",
+      poNumber: "PO-2026-0063",
+      // A web order has no document. A null here used to reach the extraction
+      // update as `IS NULL`, which matches nothing.
+      documentId: null,
+    });
+  });
+
+  it("does not try to revive an extraction that never existed", async () => {
+    const result = await deletePurchaseOrder({
+      id: "po1",
+      typedPoNumber: "PO-2026-0063",
+    });
+    // Asserted first, so "not called" cannot pass because nothing ran at all.
+    expect(result.success).toBe(true);
+    expect(poDelete).toHaveBeenCalled();
+    expect(extractionUpdateMany).not.toHaveBeenCalled();
+  });
+
+  it("returns the web order to the queue rather than stranding it", async () => {
+    await deletePurchaseOrder({ id: "po1", typedPoNumber: "PO-2026-0063" });
+    const call = webOrderUpdateMany.mock.calls[0][0];
+    expect(call.where).toEqual({ purchaseOrderId: "po1" });
+    expect(call.data.status).toBe("SUBMITTED");
+    expect(call.data.purchaseOrderId).toBeNull();
   });
 });

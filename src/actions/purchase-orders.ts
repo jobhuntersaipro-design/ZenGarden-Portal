@@ -6,6 +6,7 @@ import {
   ExtractionStatus,
   PoEventKind,
   PoStage,
+  WebOrderStatus,
 } from "@/generated/prisma/enums";
 import {
   UnauthorizedError,
@@ -526,9 +527,25 @@ export async function deletePurchaseOrder(input: {
 
     await prisma.$transaction(async (tx) => {
       await tx.purchaseOrder.delete({ where: { id: po.id } });
-      await tx.extraction.updateMany({
-        where: { documentId: po.documentId, status: "CONFIRMED" },
-        data: { status: "SUCCEEDED" },
+      // Guarded since Phase 16: documentId is nullable, and a null here would
+      // become `IS NULL` and quietly match nothing.
+      if (po.documentId) {
+        await tx.extraction.updateMany({
+          where: { documentId: po.documentId, status: "CONFIRMED" },
+          data: { status: "SUCCEEDED" },
+        });
+      }
+      // The mirror of the extraction going back to SUCCEEDED: a deleted order
+      // returns to the queue rather than stranding its web order in CONFIRMED
+      // pointing at a row that no longer exists.
+      await tx.webOrder.updateMany({
+        where: { purchaseOrderId: po.id },
+        data: {
+          status: WebOrderStatus.SUBMITTED,
+          purchaseOrderId: null,
+          reviewedById: null,
+          reviewedAt: null,
+        },
       });
     });
 

@@ -56,6 +56,7 @@ export default async function PurchaseOrderPage({
     include: {
       buyer: true,
       document: { select: { id: true, originalName: true } },
+      webOrder: { select: { id: true, reference: true } },
       confirmedBy: { select: { name: true, image: true } },
       lineItems: {
         orderBy: { position: "asc" },
@@ -134,7 +135,9 @@ export default async function PurchaseOrderPage({
                 Rev {po.revision}
               </span>
             ) : null}
-            <DownloadOriginal documentId={po.document.id} />
+            {po.document ? (
+              <DownloadOriginal documentId={po.document.id} />
+            ) : null}
             <EditPurchaseOrderSheet
               poId={po.id}
               initial={{
@@ -232,12 +235,32 @@ export default async function PurchaseOrderPage({
       <div className="mt-lg grid min-w-0 gap-lg lg:grid-cols-[45fr_55fr]">
         <section className="min-w-0">
           <p className="mb-xs font-mono text-[length:var(--text-eyebrow)] text-ink-tertiary">
-            Original document
+            {po.document ? "Original document" : "Placed on the shop"}
           </p>
-          <DocumentPreview
-            documentId={po.document.id}
-            originalName={po.document.originalName}
-          />
+          {po.document ? (
+            <DocumentPreview
+              documentId={po.document.id}
+              originalName={po.document.originalName}
+            />
+          ) : (
+            /* An order placed on the shop has no scan behind it. The pane says
+               so rather than rendering a preview that can only fail — which is
+               the reason a Document was not synthesised for it. */
+            <div className="rounded-lg border border-hairline bg-surface p-lg">
+              <p className="text-[length:var(--text-body-sm)] text-ink">
+                This order was placed on the shop, so there is no document to
+                show.
+              </p>
+              {po.webOrder ? (
+                <Link
+                  href={`/web-orders/${po.webOrder.id}`}
+                  className="mt-xs inline-block text-[length:var(--text-body-sm)] text-brand-link hover:underline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-focus"
+                >
+                  {`See what the buyer sent · ${po.webOrder.reference}`}
+                </Link>
+              ) : null}
+            </div>
+          )}
         </section>
 
         <div className="flex min-w-0 flex-col gap-lg">

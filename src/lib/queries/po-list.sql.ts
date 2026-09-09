@@ -198,15 +198,20 @@ function orderRows(filters: PoListFilters): Prisma.Sql {
       uploader."image"                          AS "uploadedByImage",
       confirmer."name"                          AS "confirmedByName",
       confirmer."image"                         AS "confirmedByImage",
-      doc."mimeType"                            AS "fileType",
+      COALESCE(doc."mimeType", 'web')           AS "fileType",
       po."revision"                             AS "revision",
       -- Confirmed rows sort after the backlog on a status sort: the queue is
       -- what someone opens this page for.
       1                                         AS "sortStatus"
     FROM "PurchaseOrder" po
     JOIN "Buyer" buyer      ON buyer."id" = po."buyerId"
-    JOIN "Document" doc     ON doc."id" = po."documentId"
-    JOIN "User" uploader    ON uploader."id" = doc."uploadedById"
+    -- LEFT, not INNER, since Phase 16. An order placed on the shop has no
+    -- document, and an inner join here makes every one of them vanish from
+    -- this list, from its money summary, from the needs-review count and from
+    -- the buyer page — with no error and no type failure. po-list.sql.test.ts
+    -- exists for exactly this line.
+    LEFT JOIN "Document" doc   ON doc."id" = po."documentId"
+    LEFT JOIN "User" uploader  ON uploader."id" = doc."uploadedById"
     LEFT JOIN "User" confirmer ON confirmer."id" = po."confirmedById"
     WHERE ${Prisma.join(conditions, " AND ")}
   `;
