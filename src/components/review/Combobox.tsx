@@ -24,6 +24,7 @@ export function Combobox({
   onSelect,
   onCreate,
   ariaLabel,
+  pinned,
 }: {
   value: string | null;
   options: ComboboxOption[];
@@ -32,11 +33,21 @@ export function Combobox({
   onSelect: (option: ComboboxOption) => void;
   onCreate?: (name: string) => void;
   ariaLabel: string;
+  /**
+   * Rows always shown at the foot of the list, whatever the query. A decision
+   * like "create a new one" has to stay reachable precisely when the search
+   * matches nothing, which is when the filtered list would have dropped it.
+   */
+  pinned?: ComboboxOption[];
 }) {
   const [open, setOpen] = useState(false);
   const [query, setQuery] = useState("");
 
-  const selected = options.find((option) => option.id === value);
+  // The trigger must be able to render a pinned row's label; filtering below
+  // deliberately still reads `options` alone.
+  const selected = [...options, ...(pinned ?? [])].find(
+    (option) => option.id === value,
+  );
   const needle = query.trim().toLowerCase();
   const matches = needle
     ? options.filter((option) => option.label.toLowerCase().includes(needle))
@@ -114,7 +125,38 @@ export function Combobox({
               </button>
             </li>
           ) : null}
-          {matches.length === 0 && !needle ? (
+          {pinned?.length
+            ? pinned.map((option, index) => (
+                <li
+                  key={option.id}
+                  className={index === 0 ? "mt-xxs border-t border-hairline pt-xxs" : ""}
+                >
+                  <button
+                    type="button"
+                    onClick={() => {
+                      onSelect(option);
+                      setOpen(false);
+                      setQuery("");
+                    }}
+                    className="flex w-full items-center gap-xs rounded-sm px-xs py-xxs text-left text-[length:var(--text-body-sm)] text-ink hover:bg-surface focus-visible:outline-2 focus-visible:outline-focus"
+                  >
+                    <Check
+                      className={`size-4 shrink-0 ${option.id === value ? "text-ink" : "text-transparent"}`}
+                      aria-hidden
+                    />
+                    <span className="min-w-0 flex-1 truncate" title={option.label}>
+                      {option.label}
+                    </span>
+                    {option.hint ? (
+                      <span className="shrink-0 text-[length:var(--text-caption)] text-ink-tertiary">
+                        {option.hint}
+                      </span>
+                    ) : null}
+                  </button>
+                </li>
+              ))
+            : null}
+          {matches.length === 0 && !needle && !pinned?.length ? (
             <li className="px-xs py-xxs text-[length:var(--text-body-sm)] text-ink-tertiary">
               Nothing to choose from yet.
             </li>
