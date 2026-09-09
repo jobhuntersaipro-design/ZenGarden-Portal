@@ -27,8 +27,7 @@ import {
 } from "@/lib/validation/purchase-orders";
 
 export type ActionResult<T = undefined> =
-  | { success: true; data: T }
-  | { success: false; error: string };
+  { success: true; data: T } | { success: false; error: string };
 
 const guard = async () => {
   try {
@@ -37,7 +36,9 @@ const guard = async () => {
     return {
       user: null,
       error:
-        cause instanceof UnauthorizedError ? cause.message : "You are not signed in.",
+        cause instanceof UnauthorizedError
+          ? cause.message
+          : "You are not signed in.",
     };
   }
 };
@@ -163,7 +164,10 @@ async function nextInQueue(
   currentId: string,
 ): Promise<string | null> {
   const index = queue.indexOf(currentId);
-  const rest = index >= 0 ? queue.slice(index + 1) : queue.filter((id) => id !== currentId);
+  const rest =
+    index >= 0
+      ? queue.slice(index + 1)
+      : queue.filter((id) => id !== currentId);
   if (rest.length === 0) return null;
 
   const open = await prisma.extraction.findMany({
@@ -175,6 +179,150 @@ async function nextInQueue(
   });
   const openIds = new Set(open.map((row) => row.id));
   return rest.find((id) => openIds.has(id)) ?? null;
+}
+
+/**
+ * The only code that writes a PurchaseOrder, its line items and its opening
+ * stage event.
+ *
+ * Extracted in Phase 16 so an order placed on the shop goes through exactly
+ * the same writer, the same per-line product decisions and the same audit
+ * trail as one keyed from a scan. `confirmPurchaseOrder` keeps its public
+ * signature and passes the document; `confirmWebOrder` passes null.
+ *
+ * Private on purpose: it takes an open transaction and assumes its caller has
+ * already run the guard and the totals gate.
+ */
+export async function writePurchaseOrder(
+  tx: Prisma.TransactionClient,
+  input: {
+    data: PoDraft;
+    buyerId: string;
+    /** Null for an order placed on the shop: there is no scan behind it. */
+    documentId: string | null;
+    confirmedById: string;
+    revision: number;
+    revisionOfId: string | null;
+    totals: ReturnType<typeof checkTotals>;
+    totalsAcknowledged: boolean;
+    buyerReference?: string | null;
+  },
+): Promise<string> {
+  const { data } = input;
+
+  const po = await tx.purchaseOrder.create({
+    data: {
+      poNumber: data.poNumber,
+      revision: input.revision,
+      revisionOfId: input.revisionOfId,
+      buyerId: input.buyerId,
+      poDate: new Date(data.poDate),
+      currency: data.currency,
+      paymentTerms: data.paymentTerms,
+      subtotal: new Prisma.Decimal(data.subtotal),
+      tax: new Prisma.Decimal(data.tax),
+      total: new Prisma.Decimal(data.total),
+      notes: data.notes ?? null,
+      // Omitted rather than nulled: on a create the two are the same, and
+      // Prisma's optional-relation input does not accept an explicit null.
+      documentId: input.documentId ?? undefined,
+      buyerReference: input.buyerReference ?? null,
+      confirmedById: input.confirmedById,
+      stage: PoStage.ORDER_PLACED,
+    },
+    select: { id: true },
+  });
+
+  // A draft can sit in the queue for days; the product it points at may
+  // have been archived or deleted since it was chosen.
+  const linkedIds = [
+    ...new Set(
+      data.lineItems
+        .filter((line) => line.productDecision === "linked")
+        .map((line) => line.productId!),
+    ),
+  ];
+  const live = new Set(
+    (
+      await tx.product.findMany({
+        where: { id: { in: linkedIds }, active: true },
+        select: { id: true },
+      })
+    ).map((product) => product.id),
+  );
+  const stale = data.lineItems.findIndex(
+    (line) => line.productDecision === "linked" && !live.has(line.productId!),
+  );
+  if (stale >= 0) throw new Error(`STALE_PRODUCT:${stale + 1}`);
+
+  // Only the lines asking to be created reach the write, and positions
+  // are kept so ids map back to the right rows.
+  const newLines = data.lineItems.filter(
+    (line) => line.productDecision === "new",
+  );
+  const createdIds = await createProductsForLines(
+    tx,
+    newLines.map((line) => ({
+      description: line.description,
+      sku: line.sku,
+      unit: line.unit,
+      unitPrice: line.unitPrice,
+    })),
+  );
+  const created = new Map(
+    newLines.map((line, index) => [line, createdIds[index] ?? null]),
+  );
+
+  await tx.lineItem.createMany({
+    data: data.lineItems.map((line, index) => ({
+      purchaseOrderId: po.id,
+      position: index,
+      sku: line.sku?.trim() || null,
+      description: line.description,
+      productId:
+        line.productDecision === "linked"
+          ? line.productId!
+          : line.productDecision === "new"
+            ? (created.get(line) ?? null)
+            : null,
+      quantity: new Prisma.Decimal(line.quantity),
+      unit: line.unit,
+      unitPrice: new Prisma.Decimal(line.unitPrice),
+      amount: new Prisma.Decimal(line.amount),
+    })),
+  });
+
+  // changedById null renders as "System" — the confirm itself is not a
+  // person moving the order along.
+  await tx.poStageEvent.create({
+    data: {
+      purchaseOrderId: po.id,
+      kind: PoEventKind.STAGE,
+      toStage: PoStage.ORDER_PLACED,
+      changedById: null,
+    },
+  });
+
+  // The escape hatch is auditable: who accepted the mismatch, and by how
+  // much. EDIT events are ignored by every analytics function.
+  if (!input.totals.matches && input.totalsAcknowledged) {
+    await tx.poStageEvent.create({
+      data: {
+        purchaseOrderId: po.id,
+        kind: PoEventKind.EDIT,
+        fromStage: PoStage.ORDER_PLACED,
+        toStage: PoStage.ORDER_PLACED,
+        changedById: input.confirmedById,
+        note: `Confirmed with a totals mismatch: computed ${formatMYR(
+          input.totals.computed,
+        )}, document ${formatMYR(input.totals.document)}, difference ${formatMYR(
+          input.totals.difference,
+        )}`,
+      },
+    });
+  }
+
+  return po.id;
 }
 
 /**
@@ -193,7 +341,8 @@ export async function confirmPurchaseOrder(
   if (!parsedDraft.success) {
     return {
       success: false,
-      error: parsedDraft.error.issues[0]?.message ?? "That draft is incomplete.",
+      error:
+        parsedDraft.error.issues[0]?.message ?? "That draft is incomplete.",
     };
   }
   const parsedOptions = confirmOptionsSchema.safeParse(options);
@@ -258,121 +407,23 @@ export async function confirmPurchaseOrder(
         throw new Error("ALREADY_CONFIRMED");
       }
 
-      const po = await tx.purchaseOrder.create({
-        data: {
-          poNumber: data.poNumber,
-          revision,
-          revisionOfId,
-          buyerId,
-          poDate: new Date(data.poDate),
-          currency: data.currency,
-          paymentTerms: data.paymentTerms,
-          subtotal: new Prisma.Decimal(data.subtotal),
-          tax: new Prisma.Decimal(data.tax),
-          total: new Prisma.Decimal(data.total),
-          notes: data.notes ?? null,
-          documentId: extraction.documentId,
-          confirmedById: user.id,
-          stage: PoStage.ORDER_PLACED,
-        },
-        select: { id: true },
+      const poId = await writePurchaseOrder(tx, {
+        data,
+        buyerId,
+        documentId: extraction.documentId,
+        confirmedById: user.id,
+        revision,
+        revisionOfId,
+        totals,
+        totalsAcknowledged: totalsAcknowledged === true,
       });
-
-      // A draft can sit in the queue for days; the product it points at may
-      // have been archived or deleted since it was chosen.
-      const linkedIds = [
-        ...new Set(
-          data.lineItems
-            .filter((line) => line.productDecision === "linked")
-            .map((line) => line.productId!),
-        ),
-      ];
-      const live = new Set(
-        (
-          await tx.product.findMany({
-            where: { id: { in: linkedIds }, active: true },
-            select: { id: true },
-          })
-        ).map((product) => product.id),
-      );
-      const stale = data.lineItems.findIndex(
-        (line) => line.productDecision === "linked" && !live.has(line.productId!),
-      );
-      if (stale >= 0) throw new Error(`STALE_PRODUCT:${stale + 1}`);
-
-      // Only the lines asking to be created reach the write, and positions
-      // are kept so ids map back to the right rows.
-      const newLines = data.lineItems.filter(
-        (line) => line.productDecision === "new",
-      );
-      const createdIds = await createProductsForLines(
-        tx,
-        newLines.map((line) => ({
-          description: line.description,
-          sku: line.sku,
-          unit: line.unit,
-          unitPrice: line.unitPrice,
-        })),
-      );
-      const created = new Map(
-        newLines.map((line, index) => [line, createdIds[index] ?? null]),
-      );
-
-      await tx.lineItem.createMany({
-        data: data.lineItems.map((line, index) => ({
-          purchaseOrderId: po.id,
-          position: index,
-          sku: line.sku?.trim() || null,
-          description: line.description,
-          productId:
-            line.productDecision === "linked"
-              ? line.productId!
-              : line.productDecision === "new"
-                ? (created.get(line) ?? null)
-                : null,
-          quantity: new Prisma.Decimal(line.quantity),
-          unit: line.unit,
-          unitPrice: new Prisma.Decimal(line.unitPrice),
-          amount: new Prisma.Decimal(line.amount),
-        })),
-      });
-
-      // changedById null renders as "System" — the confirm itself is not a
-      // person moving the order along.
-      await tx.poStageEvent.create({
-        data: {
-          purchaseOrderId: po.id,
-          kind: PoEventKind.STAGE,
-          toStage: PoStage.ORDER_PLACED,
-          changedById: null,
-        },
-      });
-
-      // The escape hatch is auditable: who accepted the mismatch, and by how
-      // much. EDIT events are ignored by every analytics function.
-      if (!totals.matches && totalsAcknowledged) {
-        await tx.poStageEvent.create({
-          data: {
-            purchaseOrderId: po.id,
-            kind: PoEventKind.EDIT,
-            fromStage: PoStage.ORDER_PLACED,
-            toStage: PoStage.ORDER_PLACED,
-            changedById: user.id,
-            note: `Confirmed with a totals mismatch: computed ${formatMYR(
-              totals.computed,
-            )}, document ${formatMYR(totals.document)}, difference ${formatMYR(
-              totals.difference,
-            )}`,
-          },
-        });
-      }
 
       await tx.extraction.update({
         where: { id: extractionId },
         data: { status: ExtractionStatus.CONFIRMED },
       });
 
-      return po.id;
+      return poId;
     });
 
     revalidatePath("/purchase-orders");
@@ -386,7 +437,10 @@ export async function confirmPurchaseOrder(
       cause instanceof Prisma.PrismaClientKnownRequestError &&
       cause.code === "P2002"
     ) {
-      return { success: false, error: "Someone confirmed this PO a moment ago." };
+      return {
+        success: false,
+        error: "Someone confirmed this PO a moment ago.",
+      };
     }
     const message = cause instanceof Error ? cause.message : "";
     if (message === "ALREADY_CONFIRMED") {
@@ -481,7 +535,10 @@ export async function retryExtraction(
     extract: extractPurchaseOrder,
   });
 
-  return { success: true, data: { status: result.status, error: result.error } };
+  return {
+    success: true,
+    data: { status: result.status, error: result.error },
+  };
 }
 
 /**
@@ -522,8 +579,6 @@ export async function deletePurchaseOrder(input: {
     ) {
       return { success: false, error: "That is not the PO number." };
     }
-
-
 
     await prisma.$transaction(async (tx) => {
       await tx.purchaseOrder.delete({ where: { id: po.id } });
@@ -572,7 +627,9 @@ export async function deletePurchaseOrder(input: {
  * order, and removing it here would go around the super-admin gate on
  * deleting an order.
  */
-export async function deleteUpload(extractionId: string): Promise<ActionResult> {
+export async function deleteUpload(
+  extractionId: string,
+): Promise<ActionResult> {
   try {
     await requireUser();
 

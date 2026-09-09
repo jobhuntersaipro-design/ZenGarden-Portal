@@ -200,8 +200,12 @@ model PurchaseOrder {
   tax            Decimal        @db.Decimal(14, 2)
   total          Decimal        @db.Decimal(14, 2)
   notes          String?
-  documentId     String         @unique
-  document       Document       @relation(fields: [documentId], references: [id])
+  /// Nullable since Phase 16: an order placed on the shop has no scan behind
+  /// it. @unique still holds — Postgres permits many NULLs, so one PO per
+  /// document survives. Every join on it must be a LEFT JOIN, or web orders
+  /// vanish from the purchase-order list with no error.
+  documentId     String?        @unique
+  document       Document?      @relation(fields: [documentId], references: [id])
   confirmedById  String
   confirmedBy    User           @relation("confirmedBy", fields: [confirmedById], references: [id])
   confirmedAt    DateTime       @default(now())
