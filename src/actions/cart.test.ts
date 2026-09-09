@@ -20,7 +20,9 @@ vi.mock("@/lib/prisma", () => ({
   prisma: {
     $transaction: (fn: (client: typeof tx) => unknown) => fn(tx),
     product: { findUnique: productFindUnique },
+    user: { findMany: vi.fn().mockResolvedValue([]) },
     webOrder: {
+      findUnique: vi.fn().mockResolvedValue(null),
       findFirst: webOrderFindFirst,
       create: webOrderCreate,
       update: webOrderUpdate,
@@ -38,6 +40,11 @@ vi.mock("@/lib/auth-guards", () => ({
   requireClient,
 }));
 vi.mock("next/cache", () => ({ revalidatePath: vi.fn() }));
+vi.mock("@/lib/env", () => ({ env: { APP_URL: "https://www.example.com" } }));
+vi.mock("@/lib/email", () => ({ sendEmail: vi.fn().mockResolvedValue({ sent: true }) }));
+// `after` runs the ops notification once the response is out. Invoked inline
+// here so its failure modes are still exercised rather than silently skipped.
+vi.mock("next/server", () => ({ after: (fn: () => unknown) => fn() }));
 
 const { addToCart, setCartons, submitWebOrder } = await import("@/actions/cart");
 const { Prisma } = await import("@/generated/prisma/client");

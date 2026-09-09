@@ -1,5 +1,6 @@
 import { ExtractionStatus } from "@/generated/prisma/enums";
 import { dateColumnRange, type Aggregation } from "@/lib/dates";
+import { openWebOrderCount } from "@/lib/queries/web-orders";
 import { prisma } from "@/lib/prisma";
 import { buyerChurn, type BuyerChurn } from "@/lib/analytics/churn";
 import {
@@ -12,7 +13,12 @@ import {
 } from "@/lib/analytics/fulfillment";
 import { priceDrift, type PriceDrift } from "@/lib/analytics/price-drift";
 import { previousPeriod, type Range } from "@/lib/analytics/range";
-import { kpis, salesSeries, type Kpis, type SalesSeries } from "@/lib/analytics/sales";
+import {
+  kpis,
+  salesSeries,
+  type Kpis,
+  type SalesSeries,
+} from "@/lib/analytics/sales";
 import { shareBy, type ShareSlice } from "@/lib/analytics/share";
 import type { AnalyticsOrder } from "@/lib/analytics/types";
 
@@ -73,6 +79,13 @@ export type IntakeCounts = {
   needsReview: number;
   extracting: number;
   failed: number;
+  /**
+   * Submitted shop orders. Deliberately NOT scoped by the page's date range:
+   * a shop order has no PO date, so a ranged link to it lands on an empty
+   * table — the defect already recorded against the intake links in the
+   * 2026-09-06 UI-change brief.
+   */
+  webOrders: number;
 };
 
 export type DashboardData = {
@@ -87,7 +100,12 @@ export type DashboardData = {
   churn: BuyerChurn;
   drift: PriceDrift;
   inRange: {
-    largest: { id: string; poNumber: string; buyerName: string; total: number } | null;
+    largest: {
+      id: string;
+      poNumber: string;
+      buyerName: string;
+      total: number;
+    } | null;
     newBuyers: number;
     returningBuyers: number;
     topThreeShare: number;
@@ -100,53 +118,58 @@ export type DashboardData = {
   hasAnyOrders: boolean;
 };
 
-export async function loadDashboard(range: Range, agg: Aggregation): Promise<DashboardData> {
+export async function loadDashboard(
+  range: Range,
+  agg: Aggregation,
+): Promise<DashboardData> {
   const previous = previousPeriod(range);
 
-  const [current, prior, history, intakeRows, anyOrder] = await Promise.all([
-    prisma.purchaseOrder.findMany({
-      where: { ...LATEST_ONLY, poDate: dateColumnRange(range) },
-      select: {
-        ...ORDER_SELECT,
-        lineItems: {
-          select: {
-            productId: true,
-            quantity: true,
-            amount: true,
-            product: { select: { name: true } },
+  const [current, prior, history, intakeRows, anyOrder, openWebOrders] =
+    await Promise.all([
+      prisma.purchaseOrder.findMany({
+        where: { ...LATEST_ONLY, poDate: dateColumnRange(range) },
+        select: {
+          ...ORDER_SELECT,
+          lineItems: {
+            select: {
+              productId: true,
+              quantity: true,
+              amount: true,
+              product: { select: { name: true } },
+            },
+          },
+          stageEvents: { select: { toStage: true, changedAt: true } },
+        },
+      }),
+      prisma.purchaseOrder.findMany({
+        where: { ...LATEST_ONLY, poDate: dateColumnRange(previous) },
+        select: {
+          ...ORDER_SELECT,
+          lineItems: {
+            select: {
+              productId: true,
+              quantity: true,
+              amount: true,
+              product: { select: { name: true } },
+            },
           },
         },
-        stageEvents: { select: { toStage: true, changedAt: true } },
-      },
-    }),
-    prisma.purchaseOrder.findMany({
-      where: { ...LATEST_ONLY, poDate: dateColumnRange(previous) },
-      select: {
-        ...ORDER_SELECT,
-        lineItems: {
-          select: {
-            productId: true,
-            quantity: true,
-            amount: true,
-            product: { select: { name: true } },
-          },
-        },
-      },
-    }),
-    // Churn needs every order a buyer has ever placed to know their cadence,
-    // but not their line items.
-    prisma.purchaseOrder.findMany({
-      where: LATEST_ONLY,
-      select: ORDER_SELECT,
-      orderBy: { poDate: "asc" },
-    }),
-    prisma.extraction.groupBy({
-      by: ["status"],
-      where: { document: { uploadedAt: { gte: range.from, lte: range.to } } },
-      _count: true,
-    }),
-    prisma.purchaseOrder.findFirst({ select: { id: true } }),
-  ]);
+      }),
+      // Churn needs every order a buyer has ever placed to know their cadence,
+      // but not their line items.
+      prisma.purchaseOrder.findMany({
+        where: LATEST_ONLY,
+        select: ORDER_SELECT,
+        orderBy: { poDate: "asc" },
+      }),
+      prisma.extraction.groupBy({
+        by: ["status"],
+        where: { document: { uploadedAt: { gte: range.from, lte: range.to } } },
+        _count: true,
+      }),
+      prisma.purchaseOrder.findFirst({ select: { id: true } }),
+      openWebOrderCount(),
+    ]);
 
   const orders = current.map((row) => toAnalytics(row as Row));
   const priorOrders = prior.map((row) => toAnalytics(row as Row));
@@ -165,6 +188,7 @@ export async function loadDashboard(range: Range, agg: Aggregation): Promise<Das
     extracting:
       countFor(ExtractionStatus.RUNNING) + countFor(ExtractionStatus.PENDING),
     failed: countFor(ExtractionStatus.FAILED),
+    webOrders: openWebOrders,
   };
 
   const totalSales = orders.reduce((sum, order) => sum + order.total, 0);
@@ -192,7 +216,8 @@ export async function loadDashboard(range: Range, agg: Aggregation): Promise<Das
   for (const order of historyOrders) {
     const time = order.poDate.getTime();
     const seen = firstOrderAt.get(order.buyerId);
-    if (seen === undefined || time < seen) firstOrderAt.set(order.buyerId, time);
+    if (seen === undefined || time < seen)
+      firstOrderAt.set(order.buyerId, time);
   }
   const buyersInRange = new Set(orders.map((order) => order.buyerId));
   let newBuyers = 0;

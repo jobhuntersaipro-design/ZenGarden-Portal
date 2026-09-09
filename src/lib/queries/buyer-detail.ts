@@ -203,6 +203,9 @@ export async function loadBuyer(
       extracting:
         countFor(ExtractionStatus.RUNNING) + countFor(ExtractionStatus.PENDING),
       failed: countFor(ExtractionStatus.FAILED),
+    // The buyer page's intake bar has no shop segment yet; the count is on
+    // the dashboard, which is where the queue lives.
+    webOrders: 0,
     },
   };
 }

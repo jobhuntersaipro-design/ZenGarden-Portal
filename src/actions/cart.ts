@@ -1,10 +1,16 @@
 "use server";
 
+import { after } from "next/server";
 import { revalidatePath } from "next/cache";
 import { Prisma } from "@/generated/prisma/client";
 import { WebOrderStatus } from "@/generated/prisma/enums";
 import { UnauthorizedError, requireClient } from "@/lib/auth-guards";
 import { lineTotal } from "@/lib/cartons";
+import { Role } from "@/generated/prisma/enums";
+import { WebOrderPlaced, webOrderPlacedSubject } from "@/emails/WebOrderPlaced";
+import { sendEmail } from "@/lib/email";
+import { env } from "@/lib/env";
+import { formatMYR } from "@/lib/money";
 import { prisma } from "@/lib/prisma";
 import { shopPath } from "@/lib/shop-routes";
 import { webOrderReference } from "@/lib/web-order-number";
@@ -315,6 +321,14 @@ export async function submitWebOrder(
     revalidatePath(shopPath.orders());
     revalidatePath("/purchase-orders");
     revalidatePath("/");
+
+    // After the response, so the client is not kept waiting on Resend, and
+    // through sendEmail, which never throws — a failed notification must not
+    // undo an order that is already saved.
+    after(async () => {
+      await notifyOps(reference);
+    });
+
     return { success: true, data: { reference } };
   } catch (cause) {
     const message = cause instanceof Error ? cause.message : "";
@@ -329,5 +343,54 @@ export async function submitWebOrder(
     }
     console.error("[cart] submitWebOrder", cause);
     return { success: false, error: "We couldn't send your order." };
+  }
+}
+
+/**
+ * Tell the ops team an order is waiting.
+ *
+ * Wider than `queueAccessRequest`, which mails super admins only: an order is
+ * work for whoever is on the queue, not a decision for an administrator.
+ */
+async function notifyOps(reference: string): Promise<void> {
+  try {
+    const order = await prisma.webOrder.findUnique({
+      where: { reference },
+      select: {
+        reference: true,
+        subtotal: true,
+        buyer: { select: { name: true } },
+        placedBy: { select: { name: true } },
+        _count: { select: { lines: true } },
+        id: true,
+      },
+    });
+    if (!order) return;
+
+    const staff = await prisma.user.findMany({
+      where: {
+        role: { in: [Role.MEMBER, Role.SUPER_ADMIN] },
+        disabledAt: null,
+      },
+      select: { email: true },
+    });
+    if (staff.length === 0) return;
+
+    await sendEmail({
+      to: staff.map((person) => person.email),
+      subject: webOrderPlacedSubject(order.buyer.name),
+      react: WebOrderPlaced({
+        reference: order.reference,
+        buyerName: order.buyer.name,
+        placedByName: order.placedBy.name,
+        lineCount: order._count.lines,
+        total: formatMYR(order.subtotal.toNumber()),
+        reviewUrl: `${env.APP_URL}/web-orders/${order.id}`,
+      }),
+    });
+  } catch (cause) {
+    // Never surfaced: the order is already saved and the queue entry already
+    // shows it. A failed email is a missing nudge, not a lost order.
+    console.error("[cart] notifyOps", cause);
   }
 }

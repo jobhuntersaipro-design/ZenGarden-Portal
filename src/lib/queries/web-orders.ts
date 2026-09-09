@@ -240,3 +240,92 @@ export async function loadBuyerOrder(
     })),
   };
 }
+
+export type OpsWebOrder = {
+  id: string;
+  reference: string;
+  status: string;
+  buyerId: string;
+  buyerName: string;
+  buyerPaymentTerms: string | null;
+  placedByName: string;
+  placedByEmail: string;
+  submittedAt: Date | null;
+  buyerReference: string | null;
+  notes: string | null;
+  subtotal: string;
+  lines: {
+    productId: string;
+    sku: string;
+    name: string;
+    cartons: number;
+    packSize: number | null;
+    unit: string;
+    unitPrice: string;
+    amount: string;
+  }[];
+};
+
+/** The ops-side view: everything the reviewer needs to check the form against. */
+export async function loadWebOrderForReview(
+  id: string,
+): Promise<OpsWebOrder | null> {
+  const order = await prisma.webOrder.findUnique({
+    where: { id },
+    select: {
+      id: true,
+      reference: true,
+      status: true,
+      buyerId: true,
+      buyerReference: true,
+      notes: true,
+      subtotal: true,
+      submittedAt: true,
+      buyer: { select: { name: true, paymentTerms: true } },
+      placedBy: { select: { name: true, email: true } },
+      lines: {
+        select: {
+          productId: true,
+          cartons: true,
+          packSize: true,
+          unit: true,
+          unitPrice: true,
+          amount: true,
+          product: { select: { sku: true, name: true } },
+        },
+      },
+    },
+  });
+  if (!order) return null;
+
+  return {
+    id: order.id,
+    reference: order.reference,
+    status: order.status,
+    buyerId: order.buyerId,
+    buyerName: order.buyer.name,
+    buyerPaymentTerms: order.buyer.paymentTerms,
+    placedByName: order.placedBy.name,
+    placedByEmail: order.placedBy.email,
+    submittedAt: order.submittedAt,
+    buyerReference: order.buyerReference,
+    notes: order.notes,
+    subtotal: order.subtotal.toFixed(2),
+    lines: order.lines
+      .map((line) => ({
+        productId: line.productId,
+        sku: line.product.sku,
+        name: line.product.name,
+        cartons: line.cartons,
+        packSize: line.packSize,
+        unit: line.unit,
+        unitPrice: line.unitPrice.toFixed(2),
+        amount: line.amount.toFixed(2),
+      }))
+      .sort((a, b) => a.name.localeCompare(b.name)),
+  };
+}
+
+/** Submitted shop orders waiting on a person. Unscoped by date, like the queue. */
+export const openWebOrderCount = () =>
+  prisma.webOrder.count({ where: { status: WebOrderStatus.SUBMITTED } });

@@ -33,6 +33,13 @@ export function WorkQueue({ intake }: { intake: IntakeCounts }) {
       one: "upload failed to extract",
       many: "uploads failed to extract",
     },
+    {
+      key: "web",
+      count: intake.webOrders,
+      tone: INTAKE_STATUS.NEEDS_REVIEW,
+      one: "order from the shop to confirm",
+      many: "orders from the shop to confirm",
+    },
   ].filter((job) => job.count > 0);
 
   // Nothing to do is not a thing to report. An empty queue renders nothing at

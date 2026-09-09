@@ -58,3 +58,33 @@ describe("the branches a filter selects", () => {
     expect(text).toContain('FROM "Extraction" ext');
   });
 });
+
+describe("the shop branch", () => {
+  const build = (status: Parameters<typeof poListQuery>[0]["status"]) =>
+    sqlOf(poListQuery({ status }, { key: "poDate", dir: "desc" }, 0, 10) as never);
+
+  it("only ever selects SUBMITTED orders — a DRAFT is a client's live cart", () => {
+    const text = build("web");
+    expect(text).toContain("wo.\"status\" = 'SUBMITTED'");
+    expect(text).not.toContain("'DRAFT'");
+  });
+
+  it("is included by needs-review, so the chip's count and its rows agree", () => {
+    expect(build("needs-review")).toContain('FROM "WebOrder" wo');
+  });
+
+  it("is included by all", () => {
+    expect(build("all")).toContain('FROM "WebOrder" wo');
+  });
+
+  it("is the only branch when the shop chip is chosen", () => {
+    const text = build("web");
+    expect(text).toContain('FROM "WebOrder" wo');
+    expect(text).not.toContain('FROM "Extraction" ext');
+    expect(text).not.toContain('FROM "PurchaseOrder" po');
+  });
+
+  it("is excluded by confirmed, which is a sales record", () => {
+    expect(build("confirmed")).not.toContain('FROM "WebOrder" wo');
+  });
+});
