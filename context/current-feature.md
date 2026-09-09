@@ -2,40 +2,61 @@
 
 ## Status
 
-**Phase 12 built and verified, awaiting merge** (`feature/product-matching`) —
-see History. **Phase 13**, the super-admin vocabulary screen (adding a category,
-unit, brand, variant, market or pack size from the UI), is the next spec to
-write.
+**Specced, not started: the client-facing storefront** (`feature/storefront-specs`).
+The customer asked for the other direction of the core loop — their own buyers
+browsing the catalogue and placing orders on a Shopee-shaped site at
+`shop.lovinghandsportal.com`, which arrives in the ops queue as a purchase
+order to confirm. Three phases, written 2026-09-09 and each independently
+shippable:
 
-Also specced and not started: the **client-facing storefront**, phases 14–16 on
-`feature/storefront-specs`. See that branch's `context/current-feature.md` and
-`docs/specs/1[456]-*.md`.
+- **14** `docs/specs/14-product-images.md` — the image upload path Phase 08
+  specced and never built, plus a bulk import for the 309 products.
+- **15** `docs/specs/15-client-accounts.md` — `Role.CLIENT`, `User.buyerId`, the
+  two-host proxy, `requireClient()`, and the ops-issued invite. The load-bearing
+  idea is that **`requireUser()` changes meaning** from "signed in" to
+  "signed-in staff", so all ~60 existing unscoped ops queries become
+  client-proof with no edit and later code fails closed.
+- **16** `docs/specs/16-storefront.md` — catalogue, cart, order placement, the
+  ops web-order review screen, and client order tracking.
 
-Still outstanding from the catalog import: price the 309 products, enter the 5
-nested-sub-table blocks by hand, clear the 2 drafts in the review queue, and
-delete one of the duplicate `SVPPPO26090009` orders once the right buyer name
-is settled.
+Sequencing: Phase 12 (product matching) **has merged** — see History. Next is
+14 → 15 → 16, in that order, because 15 needs the catalogue to look right and
+16 needs client identity. Phase 13, the super-admin vocabulary screen, is
+independent of all three and may run at any point; its spec is still to be
+written.
 
-## Goals — Phase 12
+**Phase 16 is blocked until the catalogue is priced.** The shop shows only
+`active && !needsReview && listPrice > 0`, and production holds 309 products at
+`0.00` — so pricing them is a prerequisite, not a follow-up.
 
-- Every line of a purchase order carries an explicit human decision — a
-  catalogue product, *create a new one*, or *not a product* — and Confirm is
-  locked until all of them are made, the way the totals gate locks it.
-- `confirmPurchaseOrder` **honours that decision**. Today it re-runs
-  `resolveProducts` and overwrites `productId` from the printed code, so a
-  human correction has nowhere to survive.
-- A score per candidate, computed in our own code (`match-products.ts`, pure
-  and unit-tested) rather than by a second model call: exact code 100, code
-  ignoring separators 96, name 92, otherwise token overlap weighted by inverse
-  document frequency and clamped to 90. A size disagreement caps a similarity
-  score at 40, because 2.1L and 500ML share every word and are different
-  products.
-- **Market is shown on every candidate and never scored.** Documents rarely
-  print it, so scoring it is noise — but the catalogue holds one product per
-  variant × market, so it is often the only thing telling two candidates apart.
-- Product creation moves from extraction time into `confirmPurchaseOrder`'s
-  transaction, so a discarded draft stops leaving products behind — the fix
-  Phase 11 named when it accepted that cost.
+Also outstanding from the catalog import: enter the 5 nested-sub-table blocks
+by hand, clear the 2 drafts in the review queue, and delete one of the duplicate
+`SVPPPO26090009` orders once the right buyer name is settled.
+
+## Goals — storefront
+
+- A buyer's own staff sign in on their own host and see only their own company,
+  **without any of the existing ops queries learning what a tenant is**. The
+  portal has no multi-tenancy today: `User` is ops-only, `Buyer` has no login
+  link, and every query is unscoped by design.
+- A web order lands as a `WebOrder` and becomes a `PurchaseOrder` only when a
+  person confirms it — through the same writer, the same totals gate and the
+  same duplicate check as a scanned PO. The bar does not drop because the
+  intake changed.
+- `PurchaseOrder.documentId` becomes nullable rather than synthesising a
+  `Document` that names an R2 object nobody uploaded. **The inner joins in
+  `src/lib/queries/po-list.sql.ts:208-209` must become `LEFT JOIN` in the same
+  commit**, or every web-order PO silently vanishes from the list, its money
+  summary, the needs-review count and the buyer page — with no error and no type
+  failure.
+- The cart stores product ids and cartons and **never a price**, so the price on
+  screen is always today's; the snapshot happens inside `submitWebOrder`'s
+  transaction. A stale price is not unlikely, it is unrepresentable.
+- Cartons need no conversion: `unit` is already `"carton"` and `listPrice` is
+  already per carton, so the client's cartons *are* `LineItem.quantity`.
+- Nothing internal reaches the shop. `PurchaseOrder.notes`, `PoStageEvent.note`
+  and the ops names and avatars are all invisible there, enforced by an explicit
+  narrow `select` rather than by remembering.
 
 ## Goals — catalog (delivered)
 
