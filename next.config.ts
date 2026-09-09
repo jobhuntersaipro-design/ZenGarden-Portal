@@ -8,10 +8,17 @@ import type { NextConfig } from "next";
 const SHARP_ROUTES = [
   "/api/avatars",
   "/settings",
-  // Phase 14. Omitting this reproduces the 2026-09-08 outage exactly, and it
-  // cannot be caught locally: a macOS build traces the darwin packages, which
-  // are not the ones the trace drops.
-  "/api/products/[id]/images/complete",
+  // Phase 14. A glob, not the literal route path: these keys are matched as
+  // globs, so "[id]" would be read as a character class matching one "i" or
+  // "d" and never match the real page. Written literally it deployed green
+  // and then 500ed in production with the same ERR_DLOPEN_FAILED as 2026-09-08.
+  //
+  // This cannot be caught locally in either form. A macOS build traces sharp
+  // anyway, because the platform only strips @img/sharp-libvips* when
+  // `hasNextSupport` is true — so the emitted .nft.json looks correct on a
+  // laptop whether or not the include matched. The only proof is a request to
+  // the deployed route.
+  "/api/products/**",
 ];
 
 /**
