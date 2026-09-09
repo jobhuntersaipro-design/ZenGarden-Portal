@@ -29,6 +29,7 @@ const emptyDraft = (): PoDraft => ({
       unit: null,
       unitPrice: "0.00",
       amount: "0.00",
+      productDecision: "unset",
     },
   ],
   subtotal: "0.00",

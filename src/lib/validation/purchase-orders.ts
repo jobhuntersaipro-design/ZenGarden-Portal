@@ -27,11 +27,19 @@ const isoDate = z
   .string()
   .regex(/^\d{4}-\d{2}-\d{2}$/, "Use an ISO date, YYYY-MM-DD");
 
-export const DraftLineItemSchema = z.object({
+export const PRODUCT_DECISIONS = ["unset", "linked", "new", "none"] as const;
+export type ProductDecision = (typeof PRODUCT_DECISIONS)[number];
+
+/**
+ * Split from the exported schema so the object stays a `ZodObject` — a
+ * `.superRefine` returns a checked schema that no longer offers `.extend`
+ * or `.shape`.
+ */
+const DraftLineItemFields = z.object({
   /**
-   * The product code as printed on the document. It is the line's identity:
-   * an existing code links to that product, an unknown one creates it. Editing
-   * it re-resolves at confirm, which is why it is a field and not derived.
+   * The product code as printed on the document, stored on the line and shown
+   * on the PO detail screen. Since Phase 12 it no longer *decides* the link:
+   * `productDecision` does. Editing it re-ranks the suggestions, nothing more.
    */
   sku: z.string().nullable(),
   description: z.string().min(1, "Describe the line"),
@@ -42,7 +50,26 @@ export const DraftLineItemSchema = z.object({
   amount: decimalString("Amount"),
   /** True once the reviewer types an amount by hand; stops the recompute. */
   amountManual: z.boolean().optional(),
+  /**
+   * What the reviewer decided this line is. "unset" blocks Confirm — the
+   * whole point of the field is that a person looked. Defaulted rather than
+   * required so drafts written before this phase parse as undecided, which
+   * is exactly right: they were never reviewed under this rule.
+   */
+  productDecision: z.enum(PRODUCT_DECISIONS).default("unset"),
 });
+
+export const DraftLineItemSchema = DraftLineItemFields.superRefine(
+  (line, ctx) => {
+    if (line.productDecision === "linked" && !line.productId) {
+      ctx.addIssue({
+        code: "custom",
+        message: "Choose a product for every line",
+        path: ["productId"],
+      });
+    }
+  },
+);
 
 /**
  * The reviewer's working copy. Either an existing buyer is chosen or a new one

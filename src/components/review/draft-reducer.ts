@@ -1,4 +1,8 @@
-import type { DraftLineItem, PoDraft } from "@/lib/validation/purchase-orders";
+import type {
+  DraftLineItem,
+  PoDraft,
+  ProductDecision,
+} from "@/lib/validation/purchase-orders";
 import { lineAmount } from "@/lib/validation/purchase-orders";
 
 export type DraftAction =
@@ -6,7 +10,13 @@ export type DraftAction =
   | { type: "buyer"; buyerId: string | null; newBuyerName: string | null }
   | { type: "line"; index: number; field: keyof DraftLineItem; value: string | null }
   | { type: "addLine" }
-  | { type: "removeLine"; index: number };
+  | { type: "removeLine"; index: number }
+  | {
+      type: "decision";
+      index: number;
+      decision: ProductDecision;
+      productId: string | null;
+    };
 
 const EMPTY_LINE: DraftLineItem = {
   sku: null,
@@ -16,6 +26,7 @@ const EMPTY_LINE: DraftLineItem = {
   unit: null,
   unitPrice: "0.00",
   amount: "0.00",
+  productDecision: "unset",
 };
 
 export function draftReducer(state: PoDraft, action: DraftAction): PoDraft {
@@ -47,6 +58,21 @@ export function draftReducer(state: PoDraft, action: DraftAction): PoDraft {
         }
         return next;
       });
+      return { ...state, lineItems };
+    }
+
+    case "decision": {
+      const lineItems = state.lineItems.map((line, index) =>
+        index === action.index
+          ? {
+              ...line,
+              productDecision: action.decision,
+              // Only a linked line carries a product; "new" and "none" must
+              // not leave a stale id behind for confirm to pick up.
+              productId: action.decision === "linked" ? action.productId : null,
+            }
+          : line,
+      );
       return { ...state, lineItems };
     }
 
