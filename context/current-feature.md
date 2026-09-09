@@ -19,10 +19,12 @@ shippable:
 - **16** `docs/specs/16-storefront.md` — catalogue, cart, order placement, the
   ops web-order review screen, and client order tracking.
 
-Sequencing: Phases 12, 14 and **15 have landed** — see History. Next is **16**,
-the storefront itself, which is **blocked until the catalogue is priced**.
-Phase 13, the super-admin vocabulary screen, is independent and may run at any
-point; its spec is still to be written.
+Sequencing: Phases 12, 14, 15 and **16 have all landed** — see History. The
+storefront is built and the loop is proven end to end, but **the shop opens
+near-empty until the catalogue is priced**: it shows only
+`active && !needsReview && listPrice > 0`, and production holds 309 products at
+RM 0.00. That is the one remaining thing, and it is the customer's to supply.
+Phase 13, the super-admin vocabulary screen, is independent and still unspecced.
 
 **Phase 16 is blocked until the catalogue is priced.** The shop shows only
 `active && !needsReview && listPrice > 0`, and production holds 309 products at
@@ -93,6 +95,67 @@ by hand, clear the 2 drafts in the review queue, and delete one of the duplicate
   the brand/size/variant shape. Separate work, raised after the import.
 
 ## History
+- 2026-09-10: Phase 16 — the storefront — built and **driven end to end in the
+  browser as both audiences** (`feature/storefront`, spec
+  `docs/specs/16-storefront.md`). A client browses, orders by the carton and
+  sends it; ops sees it in the same queue an emailed PDF lands in, reviews it
+  and confirms; the client watches the stage move. Catalogue, product page,
+  cart, my orders, the ops review screen, the work-queue entry and the
+  notification email.
+  **The cart stores cartons and product ids and never a price**, and this was
+  proven rather than asserted: with a cart open, `SCR-BAM-180` was repriced
+  189.00 → 225.50 in ops; the stored lines read `unitPrice 0, amount 0`
+  throughout; the reloaded cart showed **no trace of 189.00**, the line
+  recomputed to RM 676.50 and the total to RM 1,926.50. `submitWebOrder` is the
+  only place a price is written, and the snapshot took **225.50** — the figure
+  the client actually saw — not the one current when they added it.
+  **The silent regression is gone and was measured gone.** Making
+  `PurchaseOrder.documentId` nullable turns the inner joins in
+  `po-list.sql.ts` into a trap: left alone, every shop order vanishes from the
+  purchase-order list, its money summary, the needs-review count and the buyer
+  page, with no error and **no type failure** — the generated Prisma client
+  types the relation as non-null whatever the schema says, so `tsc` found none
+  of the call sites and they were audited by grep. After the fix the confirmed
+  order appeared in the list, in `1 purchase order · RM 1,926.50`, labelled
+  **WEB**, with "From the shop" where the uploader would be, and on the buyer's
+  page. `po-list.sql.test.ts` asserts the generated SQL, because nothing else
+  would.
+  **Nothing internal reaches the shop, checked against the full HTML** rather
+  than visible text: an ops note planted as `INTERNAL-CANARY-DO-NOT-SHOW`,
+  `Aisha Rahman` (confirmedBy) and `Chris Lam` (stage `changedBy`) were all
+  absent from a confirmed order's page. Another buyer's order id, a product not
+  in the shop, and an invented id each returned a **genuine 404**. The
+  projections are explicit narrow selects asserted by equality, so a column
+  added later has to be a deliberate edit; stage dates are shown because they
+  are the client's own facts, but only `STAGE` events — an `EDIT` event carries
+  the totals-mismatch note — and `changedByName` is forced null.
+  **Two defects the browser found that the build, the types and 574 tests all
+  passed over.** The client's order list rendered **60-odd rows in one wall**;
+  it now pages at twenty. And editing a quantity on the ops review screen
+  changed the line amount while leaving subtotal and total as the buyer's
+  originals — **the totals gate could not see it**, because `checkTotals`
+  compares subtotal + tax against total and those three still agreed. That
+  check is right for a scanned PO, where the document prints all three; a shop
+  order has nothing printed to disagree with, so its subtotal is derived from
+  the lines. Left alone it would have written a purchase order whose total
+  contradicted its own line items. Measured after the fix: 3 cartons → 2 moves
+  the line 676.50 → 451.00 and the order total 1,926.50 → 1,701.00.
+  A third test passed **vacuously** and was caught: it called
+  `deletePurchaseOrder({ poId })` where the schema wants `id`, so the action
+  returned early and "not called" was true for the wrong reason.
+  `writePurchaseOrder` is now the one writer for both intakes, so a shop order
+  gets the same per-line product decisions and the same `ORDER_PLACED` event
+  attributed to System; verified on the confirmed row, which carries
+  `documentId: null` and the buyer's own `ACME-PO-771`. Open orders per buyer
+  are capped at five, because `rate-limit.ts` covers sign-in and password reset
+  only. `/api/documents/[id]/url` was deliberately **not** scoped by buyer —
+  its ops-wide access is a product decision and Phase 15 already closed the
+  client hole; the hazard is recorded in the route instead.
+  Test data removed: 1 purchase order, 2 line items, 1 web order, 1 client;
+  counts back to 400 / 1606 / 2 users, zero web orders, zero clients. 574
+  tests, typecheck, lint and build pass. **Not verified:** anything on
+  production — the shop subdomain does not exist yet, and the catalogue is
+  unpriced.
 - 2026-09-09: Phase 15 — client accounts — built and verified in the browser
   (`feature/client-accounts`, spec `docs/specs/15-client-accounts.md`). A
   buyer's own staff can now sign in on their own host, and the portal has its
