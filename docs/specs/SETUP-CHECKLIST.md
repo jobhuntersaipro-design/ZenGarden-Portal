@@ -137,8 +137,13 @@ and a lock there would leave an object behind on every picture change.
 2. Credentials → Create OAuth client ID → Web application. Authorised
    JavaScript origins: `http://localhost:3000`, your production URL.
    Authorised redirect URIs: `http://localhost:3000/api/auth/callback/google`
-   and `https://<prod-domain>/api/auth/callback/google` (add each Vercel
-   preview domain you use, or test previews with password sign-in).
+   and `https://www.lovinghandsportal.com/api/auth/callback/google` (add each
+   Vercel preview domain you use, or test previews with password sign-in).
+   **The `www.` host, exactly.** Auth.js builds `redirect_uri` from the host
+   the browser asked for, the apex 308-redirects to `www`, and Google matches
+   the string literally — an entry for the apex alone fails every production
+   sign-in with `Error 400: redirect_uri_mismatch`. This is the same omission
+   that broke R2 uploads from the www host (step 2.3).
 3. Client ID → `AUTH_GOOGLE_ID`, Client secret → `AUTH_GOOGLE_SECRET`.
 4. `AUTH_SECRET` = output of `openssl rand -base64 32`. Different value per environment.
 5. `SEED_SUPER_ADMIN_EMAIL` = the Google email you will sign in with. The seed
@@ -178,8 +183,41 @@ and a lock there would leave an object behind on every picture change.
    Preview. `APP_URL` = the deployed origin for each environment.
 5. Domains → add `lovinghandsportal.com`. It is an apex domain, so add the
    A record Vercel shows (or an ALIAS/ANAME if your DNS provider supports it) —
-   a CNAME is not legal at the zone apex. Add `www` as a CNAME redirect if you want it.
+   a CNAME is not legal at the zone apex. **`www` is the canonical host**, not
+   an optional extra: the apex 308-redirects to it and Auth.js builds
+   `redirect_uri` from whatever host the browser asked for, so `www` is the
+   name every other service has to know about (steps 2.3 and 3.2).
 6. Add the production domain to Google redirect URIs (step 3.2) and R2 CORS (step 2.3).
+
+### 6.1 The shop host — required from Phase 15
+
+`shop.lovinghandsportal.com` is a second domain on the **same** Vercel project,
+not a second project. It is a subdomain, so a plain CNAME is legal.
+
+Adding a host means touching **three** places, and every one of them has already
+caused an outage when it was missed:
+
+1. **Vercel → Domains** → add `shop.lovinghandsportal.com` (CNAME).
+2. **R2 CORS** (step 2.3) → add `https://shop.lovinghandsportal.com` to
+   `AllowedOrigins`, or product images and any client-side upload fail their
+   preflight — the exact failure the `www` host hit on 2026-09-07.
+3. **Google OAuth** (step 3.2) → **do nothing.** Clients sign in with a password
+   only and Google is hidden on the shop, so the shop host must *not* be added
+   as a redirect URI. Adding it would create a route into a client account that
+   bypasses `mustChangePassword`.
+
+Then set, for Production and Preview:
+
+```
+SHOP_HOST=shop.lovinghandsportal.com     # hostname only — no scheme, no port
+SHOP_URL=https://shop.lovinghandsportal.com
+```
+
+Both are **optional** in `src/lib/env.ts`. Leave them unset on a preview
+deployment: a preview has one hostname, and unset means "everything is the
+portal", which is what makes previews work at all. Locally, leave them unset or
+use `SHOP_HOST=shop.localhost` — Chrome and Safari resolve `*.localhost` to
+127.0.0.1 with no `/etc/hosts` edit.
 
 ## 7. Local first run (after Phase 01 is merged)
 

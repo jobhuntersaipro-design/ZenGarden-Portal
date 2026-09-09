@@ -21,15 +21,20 @@ acceptance criteria, the design reference wins for copy and component detail.
 | | |
 |---|---|
 | Name | Loving Hands Portal |
-| Users | Internal ops staff, one org, roles `MEMBER` and `SUPER_ADMIN` |
-| Job | Get customer POs out of attachments into a queryable database without retyping, then track fulfillment and see sales, buyer and product trends |
+| Users | Two audiences on two hosts. **Ops staff** on `www.` — one org, roles `MEMBER` and `SUPER_ADMIN`. **Buyer contacts** on `shop.` — role `CLIENT`, each linked to one `Buyer` (Phase 15) |
+| Job | Get customer POs out of attachments into a queryable database without retyping, then track fulfillment and see sales, buyer and product trends. From Phase 16, also let the buyer place the order directly |
 | Buyer | The customer who issued the PO. Called "buyer" everywhere |
-| Auth | Google sign-in with admin approval, or email + password set by an admin |
+| Auth | Ops: Google sign-in with admin approval, or email + password set by an admin. Clients: email + password only, invited by a super admin — never Google |
 | Currency | MYR only. Money renders `RM 12,400.00`, never abbreviated in KPIs |
 | Files | PDF, PNG, JPG, max 20 MB each |
 | Timezone | `Asia/Kuala_Lumpur` for every date shown and every bucket boundary |
 
 Core loop: **Upload → Extract → Review → Confirm → Fulfil → Browse.**
+
+From Phase 16 a second intake joins it, meeting the first at Review:
+**Browse → Cart → Place → Review → Confirm → Fulfil.** Both produce a
+`PurchaseOrder` through the same writer and the same totals gate; only the
+source differs.
 
 Fulfillment stages, ordered: *Order placed → In production → QC passed → In
 warehouse → Delivering → Delivered.* Any member advances one step; only super
@@ -37,7 +42,10 @@ admins move back.
 
 Screens (design reference §3): Sign in, Access pending, Dashboard, Upload,
 Review, Purchase orders, PO detail, Buyers, Buyer detail, Products, Product
-detail, Admin.
+detail, Admin. Added since: Settings (10), Web order review (16).
+
+Storefront screens, on the shop host and not on the canvas: Catalogue, Product,
+Cart, My orders, Order detail (16).
 
 ## 2. Decisions log
 
@@ -56,6 +64,14 @@ detail, Admin.
 | Dashboard order (2026-09-05) | A compact three-tile KPI row, then one trend (Fulfillment by default, Sales a click away), then the status bars. Market share, In this range, churn and drift sit behind a "More analytics" disclosure. A separate work-queue strip was drawn and cut the same day: it duplicated the status bar's counts |
 | Confirm gate (2026-09-05) | A PO whose computed total disagrees with the document cannot be confirmed until the numbers agree or the reviewer explicitly acknowledges the difference, which is written to the activity log |
 | Tests | Vitest for `src/lib/analytics/**`, `src/lib/po-stages.ts`, `src/lib/money.ts`, extraction schema. Playwright smoke test for sign-in and upload in Phase 04 |
+| Storefront hosting (2026-09-09) | One Next app, one Vercel project, one Neon branch. The storefront is a route group at real paths under `/shop`; `shop.lovinghandsportal.com` rewrites into it in `src/proxy.ts`. A route group cannot vary by host and a second `page.tsx` at `/` would not build |
+| Client identity (2026-09-09) | A client is a `User` with `role: CLIENT` and a `buyerId`, not a parallel table — so the invite reuses `createUser`, bcrypt, `mustChangePassword` and `sessionVersion`. `buyerId` alone would fail open, because `role` defaults to `MEMBER` |
+| Scoping (2026-09-09) | `requireUser()` stops meaning "signed in" and starts meaning "signed-in staff". Every one of the ~60 unscoped ops queries is guarded by it already, so they all become client-proof with no edit and later code fails closed |
+| Web order → PO (2026-09-09) | A web order lands as a `WebOrder` and joins the review queue. It becomes a `PurchaseOrder` only when a person confirms it, through the same writer, the same totals gate and the same duplicate check as a scanned one |
+| `documentId` (2026-09-09) | Becomes nullable rather than synthesising a `Document` naming an R2 object that does not exist. `@unique` still holds — Postgres permits many NULLs. The inner joins in `po-list.sql.ts` must become `LEFT JOIN` in the same commit |
+| Shop pricing (2026-09-09) | One `Product.listPrice` for everyone; a negotiated price is applied by ops at confirm. A product is visible in the shop only when `active && !needsReview && listPrice > 0` — no new column |
+| Shop quantity (2026-09-09) | Cartons. `unit` is already `"carton"` and `listPrice` is per carton, so cartons *are* `LineItem.quantity` and no conversion exists anywhere; `packSize` only renders a derived piece count |
+| Session cookies (2026-09-09) | Left host-only. Never set `cookies.sessionToken.options.domain` — a shared cookie makes a `CLIENT` session valid on the ops host |
 
 ## 3. Stack and versions
 
@@ -204,6 +220,8 @@ model User {
   sessionVersion     Int       @default(0)   // bumped to sign a user out everywhere; compared in the jwt callback
   disabledAt         DateTime?
   lastActiveAt       DateTime?
+  buyerId            String?                   // 15: set iff role is CLIENT, enforced by a CHECK constraint
+  buyer              Buyer?    @relation(fields: [buyerId], references: [id])
   createdAt          DateTime  @default(now())
   updatedAt          DateTime  @updatedAt
   accounts           Account[]
@@ -212,9 +230,14 @@ model User {
   stageEvents        PoStageEvent[]
   passwordResets     PasswordResetToken[]
   productPrices      ProductPrice[]
+  webOrdersPlaced    WebOrder[] @relation("webOrdersPlaced")
+  webOrdersReviewed  WebOrder[] @relation("webOrdersReviewed")
+  @@index([buyerId])
 }
 
-enum Role { SUPER_ADMIN MEMBER }
+// CLIENT added in 15. A CLIENT is a buyer's own contact on the shop host, not a
+// user of the portal: `requireUser()` refuses them, `requireClient()` is theirs.
+enum Role { SUPER_ADMIN MEMBER CLIENT }
 
 // Auth.js adapter tables. Session table is omitted: JWT strategy.
 model Account {
@@ -341,8 +364,12 @@ model PurchaseOrder {
   tax            Decimal   @db.Decimal(14, 2)
   total          Decimal   @db.Decimal(14, 2)
   notes          String?
-  documentId     String    @unique
-  document       Document  @relation(fields: [documentId], references: [id])
+  // Nullable since 16: an order placed on the shop has no scan behind it.
+  // @unique still holds — Postgres permits many NULLs. Every join on it must be
+  // a LEFT JOIN, or web orders vanish from the list without an error.
+  documentId     String?   @unique
+  document       Document? @relation(fields: [documentId], references: [id])
+  webOrder       WebOrder?
   confirmedById  String
   confirmedBy    User      @relation("confirmedBy", fields: [confirmedById], references: [id])
   confirmedAt    DateTime  @default(now())
@@ -431,13 +458,68 @@ model LineItem {
   @@unique([purchaseOrderId, position])
   @@index([productId])
 }
+
+// 16. An order placed on the shop. DRAFT is the client's live cart; a partial
+// unique index enforces one per user. It becomes a PurchaseOrder only at
+// confirm, through the same writer as a scanned PO.
+model WebOrder {
+  id              String         @id @default(cuid())
+  seq             Int            @default(autoincrement())   // the only source of `reference`
+  reference       String         @unique                     // W-2609-00007
+  buyerId         String
+  buyer           Buyer          @relation(fields: [buyerId], references: [id])
+  placedById      String
+  placedBy        User           @relation("webOrdersPlaced", fields: [placedById], references: [id])
+  status          WebOrderStatus @default(DRAFT)
+  buyerReference  String?                                    // → PurchaseOrder.buyerReference
+  requestedDate   DateTime?      @db.Date
+  notes           String?
+  currency        String         @default("MYR")
+  subtotal        Decimal        @default(0) @db.Decimal(14, 2)  // snapshotted at submit
+  submittedAt     DateTime?
+  reviewedById    String?
+  reviewedBy      User?          @relation("webOrdersReviewed", fields: [reviewedById], references: [id])
+  reviewedAt      DateTime?
+  declinedReason  String?
+  purchaseOrderId String?        @unique
+  purchaseOrder   PurchaseOrder? @relation(fields: [purchaseOrderId], references: [id])
+  lines           WebOrderLine[]
+  createdAt       DateTime       @default(now())
+  updatedAt       DateTime       @updatedAt
+  @@index([status, submittedAt])
+  @@index([buyerId, submittedAt])
+}
+
+enum WebOrderStatus { DRAFT SUBMITTED CONFIRMED DECLINED }
+
+// No `position`: a cart has no meaningful order, and a positional unique
+// constraint would force every removal to shift the rows below it.
+model WebOrderLine {
+  id         String   @id @default(cuid())
+  webOrderId String
+  webOrder   WebOrder @relation(fields: [webOrderId], references: [id], onDelete: Cascade)
+  productId  String
+  product    Product  @relation(fields: [productId], references: [id])
+  cartons    Int
+  packSize   Int?                                            // all four snapshotted at submit
+  unit       String   @default("carton")
+  unitPrice  Decimal  @default(0) @db.Decimal(14, 4)
+  amount     Decimal  @default(0) @db.Decimal(14, 2)
+  @@unique([webOrderId, productId])
+  @@index([productId])
+}
 ```
 
 Invariants:
 
 - A `PurchaseOrder` row exists only after a person clicked Confirm. Drafts live
-  in `Extraction.draftJson`. There is no `NEEDS_REVIEW` status on
-  `PurchaseOrder`; the intake status shown in lists comes from `Extraction.status`.
+  in `Extraction.draftJson`, or — from 16 — in a `WebOrder` with status `DRAFT`
+  or `SUBMITTED`. There is no `NEEDS_REVIEW` status on `PurchaseOrder`; the
+  intake status shown in lists comes from `Extraction.status` and
+  `WebOrder.status`.
+- A `WebOrderLine` stores no price while the order is a `DRAFT`. The cart reads
+  today's `listPrice` on every render, so the price a client sees can never be
+  stale; `submitWebOrder` snapshots it inside the transaction.
 - A "PO in the list" is the union of confirmed `PurchaseOrder`s and
   `Extraction`s in `RUNNING | SUCCEEDED | FAILED` (the backlog). Phase 05
   defines the merged list query.
@@ -463,6 +545,12 @@ AUTH_GOOGLE_ID=
 AUTH_GOOGLE_SECRET=
 AUTO_APPROVE_DOMAIN=                     # optional, e.g. lovinghandsportal.com
 SEED_SUPER_ADMIN_EMAIL=                  # your Google email; seed creates this user as SUPER_ADMIN
+SHOP_HOST=                               # 15, optional. Hostname only, no scheme or port.
+                                         #   Unset = one host, everything is the portal — which is
+                                         #   right for dev and for every preview deployment.
+                                         #   Locally: shop.localhost
+SHOP_URL=                                # 15, optional. Public origin of the shop; used in client
+                                         #   invite emails and in the two cross-host redirects
 
 # Neon
 DATABASE_URL=                            # pooled connection string (-pooler host)
@@ -486,7 +574,9 @@ EXTRACTION_MODEL=claude-sonnet-5
 ## 7. Routes and files
 
 ```
-src/proxy.ts                                   auth guard, /admin 404 for non-super-admins
+src/proxy.ts                                   auth guard, /admin 404 for non-super-admins,
+                                               and from 15 the host split: the shop host rewrites
+                                               /x → /shop/x, the portal host 404s /shop*
 src/app/layout.tsx                             fonts (Plus Jakarta Sans, Inter, Sometype Mono via next/font), Toaster
 src/app/(auth)/signin/page.tsx
 src/app/(auth)/signin/pending/page.tsx
@@ -512,12 +602,23 @@ src/app/api/upload/[documentId]/route.ts       DELETE, owner-only, before extrac
 src/app/api/documents/[id]/url/route.ts        short-lived presigned GET for preview/download
 src/app/api/products/[id]/images/presign/route.ts
 src/app/api/products/[id]/images/complete/route.ts
+src/app/(portal)/web-orders/[id]/page.tsx      16, the ops review screen for a shop order
+src/app/(storefront)/shop/page.tsx             16, catalogue          — reached as "/" on the shop host
+src/app/(storefront)/shop/products/[id]/page.tsx                      — "/products/{id}"
+src/app/(storefront)/shop/cart/page.tsx                               — "/cart"
+src/app/(storefront)/shop/orders/page.tsx                             — "/orders"
+src/app/(storefront)/shop/orders/[id]/page.tsx                        — "/orders/{id}"
 src/actions/auth.ts                            requestPasswordReset, resetPassword, changePassword
 src/actions/purchase-orders.ts                 saveDraft, confirmPurchaseOrder, discardExtraction, retryExtraction, updatePurchaseOrder, advanceStage, revertStage
 src/actions/buyers.ts                          updateBuyer
 src/actions/products.ts                        createProduct, updateProduct, archiveProduct, reorderImages, deleteImage
 src/actions/users.ts                           createUser, updateUser, setPassword, disableUser, deleteUser
 src/actions/access-requests.ts                 approveAccessRequest, declineAccessRequest
+src/actions/clients.ts                         15, inviteBuyerContact, resendClientInvite, disableClientContact
+src/actions/cart.ts                            16, addToCart, setCartons, removeFromCart, clearCart
+src/actions/web-orders.ts                      16, submitWebOrder (client), confirmWebOrder / declineWebOrder (ops)
+src/lib/shop-routes.ts                         15, the only place a /shop path is written — see 15 §3.3
+src/lib/cartons.ts · web-order-number.ts       16, pure, unit tested
 src/lib/env.ts · prisma.ts · auth.ts · auth-guards.ts · r2.ts · email.ts · money.ts · dates.ts · po-stages.ts · rate-limit.ts · utils.ts
 src/lib/validation/{auth,purchase-orders,buyers,products,users}.ts
 src/lib/extraction/{extract-po.ts,schema.ts,prompt.ts}
@@ -546,9 +647,22 @@ prisma.config.ts · vitest.config.ts · components.json · vercel.json
 | 07 | `07-buyers.md` | `feature/buyers` | Buyers roster, buyer detail, reorder signals, product order trend |
 | 08 | `08-products.md` | `feature/products` | Catalog grid/list, product detail, price history, images to R2 |
 | 09 | `09-admin.md` | `feature/admin` | User management, access-request approval, admin drawer |
+| 10 | `10-settings-and-avatars.md` | `feature/settings-and-avatars` | `/settings`, person avatars in R2, DiceBear styles, `PersonChip` |
+| 11 | `11-po-revamp.md` | `feature/po-revamp` | Super-admin delete, document zoom, visible remark, product codes build the catalogue |
+| 12 | `12-product-matching.md` | `feature/product-matching` | A human product decision per line, scored suggestions, confirm honours it |
+| 13 | *(not yet written)* | `feature/vocabulary` | Super admin adds a category, unit, brand, variant, market or pack size from the UI |
+| 14 | `14-product-images.md` | `feature/product-images` | The image upload path 08 specced and never built, plus a bulk import |
+| 15 | `15-client-accounts.md` | `feature/client-accounts` | `Role.CLIENT`, `User.buyerId`, the shop host, `requireClient()`, the invite |
+| 16 | `16-storefront.md` | `feature/storefront` | Catalogue, cart, order placement, the ops web-order review, client order tracking |
 
 Phases run in order. 06, 07 and 08 only depend on 05 and may run in parallel
 on separate branches if rebased carefully.
+
+14, 15 and 16 are the storefront, split so each is independently shippable: 14
+makes the catalogue presentable, 15 ships identity and routing behind a
+placeholder, 16 opens the shop. **16 cannot ship until the catalogue is
+priced** — it shows only products with a `listPrice`, and production currently
+holds 309 at `0.00`. 13 is independent of all three and may run at any point.
 
 ## 9. Definition of done (every phase)
 

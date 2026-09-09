@@ -45,6 +45,24 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
   Augment the `next-auth` types in `src/types/next-auth.d.ts`.
 - Update `User.lastActiveAt` at most once per 10 minutes from the `jwt` callback.
 
+### The session cookie stays host-only (added 2026-09-09, Phase 15)
+
+Auth.js sets the session cookie with **no `Domain` attribute**, so it is scoped
+to the exact host that issued it. Once Phase 15 puts clients on
+`shop.lovinghandsportal.com` and ops on `www.`, that default is what keeps a
+client's session from existing on the ops host at all.
+
+**Never set `cookies.sessionToken.options.domain`.** The temptation is real —
+someone will want sign-in to "work across both" — and the consequence is that a
+`CLIENT` cookie becomes valid on `www`, leaving only the `(portal)` layout
+redirect and the `requireUser()` role check between a customer and every other
+customer's purchase orders. Two sign-ins is the correct behaviour, not a bug to
+fix.
+
+`trustHost: true` is already set, so Auth.js derives callback URLs from the
+`Host` header and needs nothing further. Clients never use Google, so the Google
+redirect URI stays registered for `www` alone.
+
 ## 2. Route protection — `src/proxy.ts`
 
 Runs on the Node runtime (Next 16 `proxy`, not `middleware`). Uses
