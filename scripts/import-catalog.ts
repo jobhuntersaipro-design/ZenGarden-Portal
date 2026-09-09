@@ -5,6 +5,11 @@
  *
  *   --sheet <name>        worksheet to read (default: the first)
  *   --columns A,B,C       the brand, block and variant columns (default A,B,C)
+ *   --labels <file.json>  read {brand, block, variant} rows from JSON instead
+ *                         of a workbook — used for the 2026-09-09 import, whose
+ *                         source was a one-page PDF print of the sheet rather
+ *                         than the workbook (its columns were rebuilt from the
+ *                         PDF's own cell borders). Same parser either way.
  *   --dry-run             print the products the sheet yields and write nothing
  *   --replace-demo        delete the landscaping demo data first (products,
  *                         their line items' purchase orders, documents and
@@ -19,9 +24,14 @@
  * corrected sheet fixes names without duplicating rows. A price somebody has
  * already set is never overwritten.
  */
+import { readFileSync } from "node:fs";
 import { readFile, utils } from "xlsx";
 import { Prisma } from "@/generated/prisma/client";
-import { readLabelColumns, toProducts } from "@/lib/catalog-import";
+import {
+  readLabelColumns,
+  toProducts,
+  type SheetLabels,
+} from "@/lib/catalog-import";
 import { prisma } from "@/lib/prisma";
 
 function host(url: string | undefined): string {
@@ -63,28 +73,54 @@ async function replaceDemo() {
   });
 }
 
-async function main() {
-  const file = process.argv[2];
-  if (!file || file.startsWith("--")) {
-    console.error("Give me the .xlsx to import: scripts/import-catalog.ts <file.xlsx>");
-    process.exitCode = 1;
-    return;
-  }
-  const dryRun = process.argv.includes("--dry-run");
+function labelsFromWorkbook(file: string): SheetLabels[] | null {
   const letters = (flag("columns") ?? "A,B,C").split(",");
-  const [brand, block, variant] = letters.map((l) => utils.decode_col(l.trim().toUpperCase()));
-
+  const [brand, block, variant] = letters.map((l) =>
+    utils.decode_col(l.trim().toUpperCase()),
+  );
   const workbook = readFile(file);
   const sheetName = flag("sheet") ?? workbook.SheetNames[0];
   const sheet = workbook.Sheets[sheetName];
   if (!sheet) {
     console.error(`No sheet named "${sheetName}". Sheets: ${workbook.SheetNames.join(", ")}`);
+    return null;
+  }
+  console.log(`Sheet "${sheetName}"`);
+  return readLabelColumns(sheet, { brand, block, variant });
+}
+
+async function main() {
+  const labelsFile = flag("labels");
+  const file = process.argv[2];
+  if (!labelsFile && (!file || file.startsWith("--"))) {
+    console.error("Give me the .xlsx to import: scripts/import-catalog.ts <file.xlsx>");
+    process.exitCode = 1;
+    return;
+  }
+  const dryRun = process.argv.includes("--dry-run");
+
+  const labels = labelsFile
+    ? (JSON.parse(readFileSync(labelsFile, "utf8")) as SheetLabels[])
+    : labelsFromWorkbook(file);
+  if (!labels) {
     process.exitCode = 1;
     return;
   }
 
-  const products = toProducts(readLabelColumns(sheet, { brand, block, variant }));
-  console.log(`Sheet "${sheetName}": ${products.length} products`);
+  const { products, duplicates, skipped } = toProducts(labels);
+  console.log(`${labels.length} label rows -> ${products.length} products`);
+  if (skipped.length > 0) {
+    const rows = skipped.reduce((sum, s) => sum + s.rows, 0);
+    console.log(
+      `\n${skipped.length} blocks (${rows} rows) nest a sub-table in the variant column ` +
+        `and need entering by hand:`,
+    );
+    console.table(skipped);
+  }
+  if (duplicates.length > 0) {
+    console.log(`\n${duplicates.length} rows could not be given a unique SKU and were NOT imported:`);
+    console.table(duplicates);
+  }
   console.table(
     products.map((p) => ({
       sku: p.sku,

@@ -2,9 +2,10 @@
 
 ## Status
 
-`feature/catalog-model` merged. Remaining: run `scripts/import-catalog.ts
-<file> --dry-run` against the customer's XLSX when it arrives, confirm the
-column positions, then import (with `--replace-demo` on production).
+The real catalog is imported into **development** (308 products). Production
+still holds the landscaping demo data; importing there (with `--replace-demo`)
+is the remaining step, plus pricing the 308 and entering the 5 blocks the
+sheet nests a sub-table in.
 
 ## Goals
 
@@ -42,6 +43,54 @@ column positions, then import (with `--replace-demo` on production).
   the brand/size/variant shape. Separate work, raised after the import.
 
 ## History
+- 2026-09-09: The customer's real catalog is in the development database — 308
+  products extracted from **the PDF**, not a workbook. `ZEN GARDEN DC INVENTORY
+  2026` arrived as a one-page Google Sheets print: a ~300-row, ~800-column
+  sheet squeezed onto one A4 page at **sub-1pt text**, which is why a plain
+  text extraction interleaves the columns into nonsense. **The cell borders are
+  what made it readable.** Sheets draws every border as a vector line and omits
+  the internal borders of a merged cell, so the horizontal borders inside one
+  column's x-range mark exactly where that column's merged cells begin and end,
+  and a merged cell's text sits at the vertical centre of its range — enough to
+  rebuild brand, line and variant with each merged value spread across the rows
+  it covers. 360 row bands, 336 label rows, 89 lines, 18 brands, 9 export
+  markets. Verified against the screenshot the user sent: `ZEN GARDEN |
+  VIETNAM ZEN 2.1L (6) | GOAT'S MILK…` came back exactly, and
+  `ZEN-SC-2100-GM-VN` is the SKU it produced. `scripts/pdf-to-labels.py` is
+  that extractor, and re-running it reproduces
+  `docs/imports/zen-garden-dc-inventory-2026.labels.json` byte-for-byte;
+  `import-catalog.ts --labels` parses it with the *same* code an .xlsx goes
+  through, so the PDF path adds no second parser.
+  **The dry run earned its place — it found six defects before anything was
+  written.** Three in the parser: `LOTUS 'S 2.1L` produced a line called `'S`;
+  `(52CTNS/P)` left an empty `()` in names; and duplicates were dropped in
+  **silence**, which was hiding the next two. Then, once reported: 9 real
+  products were being lost because the agreed SKU shape has no pack segment and
+  the sheet sells the same line in two carton sizes (MR.KING 1.5L by 12 and by
+  6, the roll-on by 72 and by 12, olive oil big-carton and inner). A clash now
+  takes `-X{pack}` **only when the pack is what differs** — a test caught the
+  first attempt giving two twelves `-X12` each, asserting a distinction the
+  packs do not make — and falls back to a counter for `1L DWASH PUMP` vs `CAP`,
+  which are both twelves. Sixth: the sheet's own two misspellings,
+  `PHILLIPPINES` and `PHILLIPINES`, were becoming two markets in a picker whose
+  whole point is that a list cannot fragment; `AA PHARMACY` and `L'EVINIA` also
+  title-cased to `Aa Pharmacy` and `L'evinia`. Accounting is now exact:
+  336 rows − 28 = 308 products, nothing lost.
+  **28 rows in 5 blocks were deliberately not imported**, because the sheet
+  nests a second table inside the variant column and a brand/line/variant model
+  cannot represent it: ZEN GARDEN HAIR GEL (12 rows, colours × sizes × packs),
+  ZEN HAND SANITIZER (8, sizes), THERAPY LEVEL HAND SANITIZER (3, sizes),
+  FRIENDS 300ML ALOE (2, the line name split across two columns) and KIMIA
+  SUCHI 240ML (3 — bottles, inserts and caps, which are packaging rather than
+  goods). The importer prints them so a person can enter them.
+  Every product landed with `listPrice` 0.00 and `needsReview: true`, so the
+  *Needs review* chip is the pricing worklist — verified in the browser reading
+  308, beside a brand filter with 18 entries and cards reading
+  `L.Hands · Lemon / LHANDS-DW-1000-LE-2 · 12 per carton`. Column A is stored
+  as the brand verbatim, including the values that are really customers
+  (Econsave, Hero Market, AA Pharmacy) — the sheet's own grouping, editable in
+  the portal, and nothing invented. **Development only**; production is
+  untouched.
 - 2026-09-09: Catalog model built, verified in the browser and merged (`feature/catalog-model`) —
   `brand`, `variant` and `packSize` on Product, the nine personal-care
   categories replacing the landscaping list, `src/lib/sku.ts` generating
