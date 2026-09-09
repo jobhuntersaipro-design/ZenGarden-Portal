@@ -28,6 +28,7 @@ import {
 } from "@/components/ui/sheet";
 import { Switch } from "@/components/ui/switch";
 import { Role } from "@/generated/prisma/enums";
+import type { StaffRole } from "@/lib/validation/users";
 import type { AdminUserRow } from "@/lib/queries/users";
 
 const label = "font-mono text-[length:var(--text-eyebrow)] text-ink-tertiary";
@@ -125,7 +126,7 @@ export function UserDrawer({
             <select
               id="user-role"
               value={form.role}
-              onChange={(event) => set("role", event.target.value as Role)}
+              onChange={(event) => set("role", event.target.value as StaffRole)}
               className="h-control-md rounded-sm border border-hairline-strong bg-transparent px-xs text-[length:var(--text-body-sm)] text-ink focus-visible:border-focus focus-visible:outline-2 focus-visible:outline-focus"
             >
               <option value={Role.MEMBER}>Member</option>

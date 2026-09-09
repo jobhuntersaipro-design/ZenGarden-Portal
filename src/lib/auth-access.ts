@@ -36,6 +36,11 @@ export async function resolveGoogleSignIn(
     // on `?error=AccessDenied`; returning the path lands the user on the
     // `?error=disabled` copy the spec actually asks for.
     if (existing.disabledAt) return "/signin?error=disabled";
+    // allowDangerousEmailAccountLinking is on, deliberately, so an
+    // admin-created password user can press Continue with Google. Without this
+    // branch a client whose invited address happens to be a Google account
+    // could link it and skip `mustChangePassword` entirely.
+    if (existing.role === Role.CLIENT) return "/signin?error=use_password";
 
     // `image` is deliberately not written here — only on create below. An
     // uploaded avatar must survive its owner signing in with Google again.

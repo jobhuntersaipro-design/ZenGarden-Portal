@@ -107,6 +107,9 @@ export async function createUser(
         react: TemporaryPassword({
           name: created.name,
           password: data.password,
+          // The ops host. A client is invited through inviteBuyerContact,
+          // which passes SHOP_URL — a portal link would land them on a
+          // screen that immediately redirects them away.
           signInUrl: `${env.APP_URL}/signin`,
         }),
       });
@@ -299,6 +302,13 @@ export async function approveAccessRequest(
 ): Promise<ActionResult> {
   const { user, error } = await guard();
   if (!user) return { success: false, error: error! };
+
+  // An access request carries no buyer, and a CLIENT without one cannot exist
+  // — the database CHECK refuses it. Client contacts are invited from the
+  // buyer's page instead.
+  if (role === Role.CLIENT) {
+    return { success: false, error: "Approve a request as Member or Super admin." };
+  }
 
   try {
     const request = await prisma.accessRequest.findUnique({

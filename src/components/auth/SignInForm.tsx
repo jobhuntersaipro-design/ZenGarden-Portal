@@ -15,7 +15,18 @@ import { Button } from "@/components/ui/button";
 const WRONG = "Wrong email or password.";
 const RATE_LIMITED = "Too many attempts. Try again in 15 minutes.";
 
-export function SignInForm({ next }: { next: string }) {
+export function SignInForm({
+  next,
+  showGoogle = true,
+}: {
+  next: string;
+  /**
+   * False on the shop host. A client signs in with a password only, and
+   * `resolveGoogleSignIn` refuses Google for them — offering a button that
+   * always fails is worse than not offering it.
+   */
+  showGoogle?: boolean;
+}) {
   const router = useRouter();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -96,6 +107,8 @@ export function SignInForm({ next }: { next: string }) {
         </Button>
       </form>
 
+      {showGoogle ? (
+        <>
       <div className="flex items-center gap-sm" aria-hidden>
         <span className="h-px flex-1 bg-hairline" />
         <span className="text-[length:var(--text-caption)] text-ink-tertiary">
@@ -127,6 +140,8 @@ export function SignInForm({ next }: { next: string }) {
           Use Continue with Google to request access. An admin approves it.
         </p>
       </div>
+        </>
+      ) : null}
     </div>
   );
 }

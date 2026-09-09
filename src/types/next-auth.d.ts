@@ -12,6 +12,8 @@ declare module "next-auth" {
       id: string;
       role: Role;
       mustChangePassword: boolean;
+      /** Set iff role is CLIENT. Rides in the JWT so the proxy can route on it. */
+      buyerId?: string | null;
     } & DefaultSession["user"];
   }
 
@@ -19,6 +21,7 @@ declare module "next-auth" {
     role?: Role;
     mustChangePassword?: boolean;
     sessionVersion?: number;
+    buyerId?: string | null;
   }
 }
 
@@ -30,6 +33,12 @@ declare module "@auth/core/jwt" {
     id?: string;
     role?: Role;
     mustChangePassword?: boolean;
+    /**
+     * Which buyer a client acts for. Carried so `src/proxy.ts` can route
+     * without importing Prisma; staleness is fine there because routing is
+     * defence in depth. The permission is `requireClient()`, which re-reads.
+     */
+    buyerId?: string | null;
     /** Compared against `User.sessionVersion`; a bump signs the user out everywhere. */
     sessionVersion?: number;
     /** Epoch ms of the last database re-read, for the 5-minute refresh. */

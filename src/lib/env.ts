@@ -10,6 +10,14 @@ const emptyAsUndefined = <T extends z.ZodTypeAny>(inner: T) =>
 const schema = z.object({
   // App
   APP_URL: z.url(),
+  /**
+   * The storefront host and origin (Phase 15). Both optional, and unset means
+   * "one host, everything is the portal" — which is right for `npm run dev`
+   * and for every preview deployment, which have a single hostname.
+   * SHOP_HOST is a hostname only: no scheme, no port.
+   */
+  SHOP_HOST: emptyAsUndefined(z.string()),
+  SHOP_URL: emptyAsUndefined(z.url()),
   AUTH_SECRET: z.string().min(1),
   AUTH_GOOGLE_ID: z.string().min(1),
   AUTH_GOOGLE_SECRET: z.string().min(1),

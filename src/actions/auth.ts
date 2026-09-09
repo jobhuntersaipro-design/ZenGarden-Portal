@@ -4,7 +4,7 @@ import { randomBytes } from "node:crypto";
 import { after } from "next/server";
 import { compare, hash } from "bcryptjs";
 import { PasswordReset, passwordResetSubject } from "@/emails/PasswordReset";
-import { UnauthorizedError, requireUser } from "@/lib/auth-guards";
+import { UnauthorizedError, requireAccount } from "@/lib/auth-guards";
 import { signIn } from "@/lib/auth";
 import { sendEmail } from "@/lib/email";
 import { env } from "@/lib/env";
@@ -163,7 +163,10 @@ export async function changePassword(input: {
   }
 
   try {
-    const session = await requireUser();
+    // requireAccount, not requireUser: a client arrives with
+    // mustChangePassword set and has to be able to clear it. This is the only
+    // caller in the app that is genuinely scoped to the caller themselves.
+    const session = await requireAccount();
     const user = await prisma.user.findUnique({
       where: { id: session.id },
       select: { email: true, passwordHash: true, mustChangePassword: true },

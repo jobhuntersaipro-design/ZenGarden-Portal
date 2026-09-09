@@ -19,10 +19,10 @@ shippable:
 - **16** `docs/specs/16-storefront.md` — catalogue, cart, order placement, the
   ops web-order review screen, and client order tracking.
 
-Sequencing: Phase 12 (product matching) and **Phase 14 (product images) have
-both landed** — see History. Next is **15**, then 16. Phase 13, the super-admin
-vocabulary screen, is independent of all three and may run at any point; its
-spec is still to be written.
+Sequencing: Phases 12, 14 and **15 have landed** — see History. Next is **16**,
+the storefront itself, which is **blocked until the catalogue is priced**.
+Phase 13, the super-admin vocabulary screen, is independent and may run at any
+point; its spec is still to be written.
 
 **Phase 16 is blocked until the catalogue is priced.** The shop shows only
 `active && !needsReview && listPrice > 0`, and production holds 309 products at
@@ -93,6 +93,61 @@ by hand, clear the 2 drafts in the review queue, and delete one of the duplicate
   the brand/size/variant shape. Separate work, raised after the import.
 
 ## History
+- 2026-09-09: Phase 15 — client accounts — built and verified in the browser
+  (`feature/client-accounts`, spec `docs/specs/15-client-accounts.md`). A
+  buyer's own staff can now sign in on their own host, and the portal has its
+  first notion of an account that is not ops staff.
+  **The load-bearing change is that `requireUser()` changed meaning** — from
+  "signed in" to "signed-in staff". Every Server Action and route handler
+  already called it, and every one was written when ops staff were the only
+  kind of user, so redefining it once makes all of them client-proof and makes
+  code written later fail closed. `changePassword` is the single caller moved
+  to `requireAccount`, because a client arrives with `mustChangePassword` set
+  and has to be able to clear it.
+  **The invariant is in the database, not only in code.** Marking clients by
+  `buyerId` alone would fail *open*: `role` defaults to MEMBER, so a client row
+  that lost its buyer would silently become an ops member with unscoped access
+  to every buyer's orders. A CHECK constraint enforces
+  `role <> 'CLIENT' OR buyerId IS NOT NULL`, and it was verified to refuse the
+  case rather than assumed to. **Two migrations, not one**: Postgres refuses to
+  reference a newly added enum value in the transaction that added it, and the
+  CHECK spells `'CLIENT'` — combined they pass `migrate dev` against a database
+  that already has the value and fail `migrate deploy` in production.
+  **A defect the browser found and the build could not.** A cross-host redirect
+  issued from the proxy came back as `location: /` — its origin stripped,
+  because both hosts are one deployment — and the browser bounced against the
+  same host until it gave up with `ERR_TOO_MANY_REDIRECTS`. The proxy was
+  logged building `Location: http://localhost:3000/` while the wire carried
+  `/`, so something below it relativises. **A redirect from a layout survives
+  intact**, so both cross-host redirects moved there, where they also run
+  against a real session rather than a token up to five minutes stale.
+  Measured after the fix: an ops member signing in on the shop host is sent to
+  the portal; a client signing in on the portal host is sent to the shop;
+  `/shop`, `/shop/cart` and `/shop/orders` are each a **genuine 404** on the
+  portal host with the status pinned; the full client journey runs sign-in →
+  forced `/account/password` → storefront scoped to their own buyer
+  ("Acme Industrial Sdn Bhd"); and the session carries `role: CLIENT` with the
+  `buyerId`. **The cookie is host-only and that is the property to never trade
+  away** — a client's session on the shop host does not exist on the portal
+  host at all, so they arrive signed out rather than merely redirected. One
+  consequence worth knowing: an ops person bounced off the shop host has to
+  sign in again on the portal, which is inherent to that isolation.
+  Google is refused for a client with "Use your email and password to sign in."
+  — `allowDangerousEmailAccountLinking` is on deliberately, and without that
+  branch a client whose invited address happens to be a Google account could
+  link it and skip `mustChangePassword` entirely. Clients are also excluded
+  from the admin users list, because the drawer's role schema cannot represent
+  CLIENT — the free half of this design — and a customer must not be
+  promotable to staff from there.
+  `/shop` serves a placeholder until Phase 16, so the shop host says something
+  truthful the moment this deploys rather than 404ing like a broken invite.
+  Test data removed: the invited client deleted, the development member
+  reverted to MEMBER; zero CLIENT rows remain. `SHOP_HOST`/`SHOP_URL` added to
+  `.env.example`, both optional — unset means one host, which is what makes dev
+  and preview deployments work. 510 tests, typecheck, lint and build pass.
+  **Not verified:** anything on production — the shop subdomain does not exist
+  yet. Adding it is `SETUP-CHECKLIST.md` §6.1, and the Google OAuth step must
+  deliberately **not** list it.
 - 2026-09-09: Phase 14 — product images — built and verified in the browser
   (`feature/product-images`, spec `docs/specs/14-product-images.md`). The write
   path Phase 08 specced and never built: **`ProductImage` rows were created

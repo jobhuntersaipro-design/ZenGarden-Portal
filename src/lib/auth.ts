@@ -99,6 +99,7 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
           role: user!.role,
           mustChangePassword: user!.mustChangePassword,
           sessionVersion: user!.sessionVersion,
+          buyerId: user!.buyerId,
         };
       },
     }),
@@ -155,6 +156,7 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
           disabledAt: true,
           mustChangePassword: true,
           sessionVersion: true,
+          buyerId: true,
         },
       });
 
@@ -172,6 +174,7 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
       token.role = fresh.role;
       token.mustChangePassword = fresh.mustChangePassword;
       token.sessionVersion = fresh.sessionVersion;
+      token.buyerId = fresh.buyerId;
       token.refreshedAt = Date.now();
 
       await touchLastActive(userId);
