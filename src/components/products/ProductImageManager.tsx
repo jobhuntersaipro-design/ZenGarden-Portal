@@ -50,17 +50,36 @@ export function ProductImageManager({
   const ordered = [...images].sort((a, b) => a.position - b.position);
   const full = ordered.length >= MAX_IMAGES_PER_PRODUCT;
 
-  const move = async (id: string, delta: number) => {
-    const ids = ordered.map((image) => image.id);
-    const from = ids.indexOf(id);
-    const to = from + delta;
-    if (from < 0 || to < 0 || to >= ids.length) return;
-    [ids[from], ids[to]] = [ids[to], ids[from]];
+  const commit = async (id: string, ids: string[]) => {
     setWorking(id);
     const result = await reorderImages(productId, ids);
     setWorking(null);
     if (!result.success) toast.error(result.error);
     else await refresh();
+  };
+
+  /** One step. Adjacent, so a swap and a move are the same thing. */
+  const nudge = async (id: string, delta: number) => {
+    const ids = ordered.map((image) => image.id);
+    const from = ids.indexOf(id);
+    const to = from + delta;
+    if (from < 0 || to < 0 || to >= ids.length) return;
+    [ids[from], ids[to]] = [ids[to], ids[from]];
+    await commit(id, ids);
+  };
+
+  /**
+   * Splice to the front, never swap with whatever is there. A swap demotes the
+   * current cover to this image's old position — reordering a picture the
+   * reader never touched, which is exactly what it looked like in the browser.
+   */
+  const makeCover = async (id: string) => {
+    const ids = ordered.map((image) => image.id);
+    const from = ids.indexOf(id);
+    if (from <= 0) return;
+    ids.splice(from, 1);
+    ids.unshift(id);
+    await commit(id, ids);
   };
 
   const remove = async (id: string) => {
@@ -78,7 +97,7 @@ export function ProductImageManager({
       </h2>
 
       {ordered.length > 0 ? (
-        <ul className="mt-xs grid grid-cols-3 gap-xs sm:grid-cols-4">
+        <ul className="mt-xs grid grid-cols-2 gap-xs sm:grid-cols-4">
           {ordered.map((image, index) => (
             <li key={image.id} className="relative">
               <div className="relative aspect-square overflow-hidden rounded-sm bg-surface-soft">
@@ -107,21 +126,21 @@ export function ProductImageManager({
                 <IconButton
                   label={`Move image ${index + 1} earlier`}
                   disabled={index === 0 || Boolean(working)}
-                  onClick={() => void move(image.id, -1)}
+                  onClick={() => void nudge(image.id, -1)}
                 >
                   <ArrowLeft className="size-3.5" aria-hidden />
                 </IconButton>
                 <IconButton
                   label={`Make image ${index + 1} the cover`}
                   disabled={index === 0 || Boolean(working)}
-                  onClick={() => void move(image.id, -index)}
+                  onClick={() => void makeCover(image.id)}
                 >
                   <Star className="size-3.5" aria-hidden />
                 </IconButton>
                 <IconButton
                   label={`Move image ${index + 1} later`}
                   disabled={index === ordered.length - 1 || Boolean(working)}
-                  onClick={() => void move(image.id, 1)}
+                  onClick={() => void nudge(image.id, 1)}
                 >
                   <ArrowRight className="size-3.5" aria-hidden />
                 </IconButton>
@@ -203,7 +222,7 @@ function IconButton({
       title={label}
       disabled={disabled}
       onClick={onClick}
-      className="grid size-7 place-items-center rounded-sm text-ink-secondary hover:bg-surface focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-focus disabled:text-ink-disabled"
+      className="grid size-11 shrink-0 place-items-center rounded-sm text-ink-secondary hover:bg-surface focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-focus disabled:text-ink-disabled sm:size-7"
     >
       {children}
     </button>
