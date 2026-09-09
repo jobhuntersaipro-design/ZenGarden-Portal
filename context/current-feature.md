@@ -2,12 +2,41 @@
 
 ## Status
 
-Two production defects fixed and merged. Outstanding: price the 309 products,
-enter the 5 nested-sub-table blocks by hand, clear the 2 drafts in the review
-queue, and delete one of the duplicate `SVPPPO26090009` orders once the right
-buyer name is settled.
+**In progress: Phase 12 — product matching at review** (`feature/product-matching`,
+spec `docs/specs/12-product-matching.md`). A reviewer chooses the catalogue
+product for every line of a PO before it can be confirmed, each line arriving
+with a ranked suggestion, a confidence score computed from the document's own
+wording, and the market that separates two otherwise identical rows.
+Phase 13 — a super admin adding a category, unit, brand, variant, market or
+pack size from the UI — is specced after this merges.
 
-## Goals
+Still outstanding from the catalog import: price the 309 products, enter the 5
+nested-sub-table blocks by hand, clear the 2 drafts in the review queue, and
+delete one of the duplicate `SVPPPO26090009` orders once the right buyer name
+is settled.
+
+## Goals — Phase 12
+
+- Every line of a purchase order carries an explicit human decision — a
+  catalogue product, *create a new one*, or *not a product* — and Confirm is
+  locked until all of them are made, the way the totals gate locks it.
+- `confirmPurchaseOrder` **honours that decision**. Today it re-runs
+  `resolveProducts` and overwrites `productId` from the printed code, so a
+  human correction has nowhere to survive.
+- A score per candidate, computed in our own code (`match-products.ts`, pure
+  and unit-tested) rather than by a second model call: exact code 100, code
+  ignoring separators 96, name 92, otherwise token overlap weighted by inverse
+  document frequency and clamped to 90. A size disagreement caps a similarity
+  score at 40, because 2.1L and 500ML share every word and are different
+  products.
+- **Market is shown on every candidate and never scored.** Documents rarely
+  print it, so scoring it is noise — but the catalogue holds one product per
+  variant × market, so it is often the only thing telling two candidates apart.
+- Product creation moves from extraction time into `confirmPurchaseOrder`'s
+  transaction, so a discarded draft stops leaving products behind — the fix
+  Phase 11 named when it accepted that cost.
+
+## Goals — catalog (delivered)
 
 - A product carries its brand (ZEN GARDEN, MR. KING, L.HANDS…), its variant
   (Goat's Milk, Lavender, Lemon…) and its pack size (pieces per carton), so
