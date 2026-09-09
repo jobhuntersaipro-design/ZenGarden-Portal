@@ -80,6 +80,12 @@ describe("parseBlock", () => {
     expect(parseBlock("HERO MARKET H/WASH 500ML (24)").market).toBe("Hero Market");
   });
 
+  it("normalises the sheet's spellings, so the picker holds one market", () => {
+    // The sheet writes both; two entries would fragment the market list.
+    expect(parseBlock("PHILLIPPINES ZEN 1L (12)").market).toBe("Philippines");
+    expect(parseBlock("PHILLIPINES H/WASH 500ML (24)").market).toBe("Philippines");
+  });
+
   it("leaves the market null for the home market", () => {
     expect(parseBlock("ZEN 1L (12) 52CTNS/PALLET")).toEqual({
       market: null,
@@ -89,9 +95,34 @@ describe("parseBlock", () => {
     });
   });
 
-  it("drops the pallet note from the line", () => {
+  it("drops the pallet note from the line, bare or parenthesised", () => {
     expect(parseBlock("H/WASH 500ML (24) - 54 ctns/pallet").line).toBe("H/WASH 500ML");
     expect(parseBlock("ZEN 1L (12) 52CTNS/PALLET").line).toBe("ZEN 1L");
+    expect(parseBlock("MYDIN ZEN 1L (12)(52CTNS/P)").line).toBe("ZEN 1L");
+    expect(parseBlock("ZEN 800ML BABY WASH (12) (55 CTN/PLT)").line).toBe(
+      "ZEN 800ML BABY WASH",
+    );
+  });
+
+  it("drops the possessive the sheet writes after a customer name", () => {
+    // "LOTUS 'S 2.1L (6)" is Lotus's, not a line called "'S".
+    expect(parseBlock("LOTUS 'S 2.1L (6) 60CTNS/PALLET")).toEqual({
+      market: "Lotus",
+      line: "2.1L",
+      size: "2.1L",
+      packSize: 6,
+    });
+  });
+});
+
+describe("titleCase, via toProducts", () => {
+  it("keeps two-letter initialisms and capitalises after an apostrophe", () => {
+    const { products } = toProducts([
+      { brand: "AA PHARMACY", block: "H/WASH 500ML (24)", variant: "GOAT'S MILK" },
+      { brand: "L'EVINIA", block: "400ML", variant: "STYLE" },
+    ]);
+    expect(products.map((p) => p.brand)).toEqual(["AA Pharmacy", "L'Evinia"]);
+    expect(products[0].variant).toBe("Goat's Milk");
   });
 });
 
@@ -110,7 +141,9 @@ describe("categorise", () => {
 });
 
 describe("toProducts", () => {
-  const products = toProducts(readLabelColumns(screenshotSheet(), columns));
+  const { products, duplicates, skipped } = toProducts(
+    readLabelColumns(screenshotSheet(), columns),
+  );
 
   it("makes one product per variant, and one for a line with no variants", () => {
     // The line keeps the sheet's capitals; the variant is title-cased and
@@ -141,7 +174,49 @@ describe("toProducts", () => {
     expect(products[7].sku).toBe("MRK-DW-1500-LE");
   });
 
-  it("skips the header row", () => {
+  it("skips the header row and sets nothing aside", () => {
     expect(products).toHaveLength(10);
+    expect(duplicates).toEqual([]);
+    expect(skipped).toEqual([]);
+  });
+
+  it("keeps a line sold in two carton sizes, disambiguated by pack", () => {
+    // MR.KING 1.5L by 12 and by 6 are different things to order; before the
+    // pack segment the second silently vanished.
+    const { products, duplicates } = toProducts([
+      { brand: "MR. KING", block: "MR.KING 1.5L (12)", variant: "LEMON" },
+      { brand: "MR. KING", block: "MR.KING 1.5L (6)", variant: "LEMON" },
+    ]);
+    expect(products.map((p) => p.sku)).toEqual([
+      "MRK-DW-1500-LE",
+      "MRK-DW-1500-LE-X6",
+    ]);
+    expect(duplicates).toEqual([]);
+  });
+
+  it("falls back to a counter when size and pack both match", () => {
+    // 1L DWASH PUMP and 1L DWASH CAP are both twelves.
+    const { products } = toProducts([
+      { brand: "L.HANDS", block: "1L DWASH PUMP (12)", variant: "LEMON" },
+      { brand: "L.HANDS", block: "1L DWASH CAP (12)", variant: "LEMON" },
+    ]);
+    expect(products.map((p) => p.sku)).toEqual([
+      "LHANDS-DW-1000-LE",
+      "LHANDS-DW-1000-LE-2",
+    ]);
+  });
+
+  it("sets aside a block whose variant column nests a sub-table", () => {
+    const { products, skipped } = toProducts([
+      { brand: "ZEN GARDEN", block: "ZEN 1L (12)", variant: "LAVENDER" },
+      { brand: "ZEN GARDEN", block: "HAIR GEL", variant: "150ML (48) ANTI-DANDRUFF" },
+      { brand: "ZEN GARDEN", block: "HAIR GEL", variant: "250ML (12) WET LOOK" },
+      { brand: "KIMIA SUCHI", block: "240ML", variant: "BOTTLES (PCS)" },
+    ]);
+    expect(products).toHaveLength(1);
+    expect(skipped.map((s) => [s.block, s.rows])).toEqual([
+      ["HAIR GEL", 2],
+      ["240ML", 1],
+    ]);
   });
 });
