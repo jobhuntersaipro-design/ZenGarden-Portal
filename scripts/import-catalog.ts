@@ -11,9 +11,20 @@
  *                         than the workbook (its columns were rebuilt from the
  *                         PDF's own cell borders). Same parser either way.
  *   --dry-run             print the products the sheet yields and write nothing
- *   --replace-demo        delete the landscaping demo data first (products,
- *                         their line items' purchase orders, documents and
- *                         extractions) — the 2026-09-08 decision for production
+ *   --merge <file.json>   {"EXISTING-SKU": "IMPORTED-SKU"} — enrich the existing
+ *                         product from the sheet instead of creating the
+ *                         imported one beside it. Production's catalogue already
+ *                         held products auto-created from real purchase orders,
+ *                         carrying the codes the customer prints on their own
+ *                         documents; those codes are what `resolveProducts`
+ *                         matches, so they are the ones that must survive.
+ *   --replace-demo        delete the seeded demo data first — products, their
+ *                         purchase orders and those orders' documents. Seeded
+ *                         rows are identified by their id prefix, never by SKU:
+ *                         the seed mints `prd…`/`po…`/`doc…` while everything
+ *                         the app creates is a cuid, so nothing a person
+ *                         entered can be caught by it. Refuses outright if a
+ *                         real order turns out to reference a seeded product.
  *
  * Every imported product lands with `needsReview: true` and a list price of
  * 0.00, because the sheet carries no prices: the catalog's *Needs review* chip
@@ -44,33 +55,53 @@ function flag(name: string): string | null {
   return index === -1 ? null : (process.argv[index + 1] ?? null);
 }
 
-const DEMO_SKU_PREFIXES = ["SCR-", "STN-", "PLT-", "FUR-", "DEC-", "DEK-", "STR-", "WAT-"];
+/**
+ * `prisma/seed.ts` mints ids as `rng.id("prd")` and friends; everything the
+ * running app creates gets a Prisma cuid. So the prefix says, exactly, whether
+ * a row is demo data — unlike a SKU, which a person could have typed.
+ */
+const SEEDED = /^(prd|po|byr|doc|ext|img|prc|usr|lin|evt)/;
 
-async function replaceDemo() {
-  const demo = await prisma.product.findMany({
-    where: { OR: DEMO_SKU_PREFIXES.map((prefix) => ({ sku: { startsWith: prefix } })) },
-    select: { id: true, sku: true },
-  });
+async function replaceDemo(dryRun: boolean) {
+  const products = await prisma.product.findMany({ select: { id: true, sku: true, name: true } });
+  const demo = products.filter((p) => SEEDED.test(p.id));
   if (demo.length === 0) {
-    console.log("No landscaping demo products found — nothing to replace.");
-    return;
+    console.log("No seeded demo products — nothing to replace.");
+    return true;
   }
+  const demoIds = new Set(demo.map((p) => p.id));
+
   const orders = await prisma.purchaseOrder.findMany({
-    where: { lineItems: { some: { productId: { in: demo.map((p) => p.id) } } } },
-    select: { id: true, documentId: true },
+    where: { lineItems: { some: { productId: { in: [...demoIds] } } } },
+    select: { id: true, poNumber: true, documentId: true },
   });
+
+  // The check that matters: a purchase order somebody confirmed must never be
+  // deleted because a seeded product happens to appear on it.
+  const realOrders = orders.filter((o) => !SEEDED.test(o.id));
+  if (realOrders.length > 0) {
+    console.error(
+      `REFUSING: ${realOrders.length} real purchase orders reference a seeded product ` +
+        `(${realOrders.map((o) => o.poNumber).join(", ")}). Sort those out by hand first.`,
+    );
+    return false;
+  }
+
   console.log(
-    `Deleting ${demo.length} demo products and the ${orders.length} purchase orders that reference them…`,
+    `Demo data to remove: ${demo.length} products, ${orders.length} purchase orders and their documents.`,
   );
+  if (dryRun) return true;
+
   await prisma.$transaction(async (tx) => {
-    // Line items and stage events cascade from the order; the document and
-    // its extraction are demo rows too and go with it.
+    // Line items and stage events cascade from the order; the document and its
+    // extraction are seeded rows too and go with it.
     await tx.purchaseOrder.deleteMany({ where: { id: { in: orders.map((o) => o.id) } } });
     await tx.document.deleteMany({
       where: { id: { in: orders.map((o) => o.documentId).filter(Boolean) as string[] } },
     });
-    await tx.product.deleteMany({ where: { id: { in: demo.map((p) => p.id) } } });
+    await tx.product.deleteMany({ where: { id: { in: [...demoIds] } } });
   });
+  return true;
 }
 
 function labelsFromWorkbook(file: string): SheetLabels[] | null {
@@ -131,13 +162,34 @@ async function main() {
       pack: p.packSize ?? "",
     })),
   );
-  if (dryRun) return;
+
+  // { existing SKU -> the imported SKU it is the same product as }
+  const mergeFile = flag("merge");
+  const merge: Record<string, string> = mergeFile
+    ? JSON.parse(readFileSync(mergeFile, "utf8"))
+    : {};
+  const mergeTargets = new Map(Object.entries(merge).map(([from, to]) => [to, from]));
 
   console.log(`Database: ${host(process.env.DATABASE_URL)}`);
-  if (process.argv.includes("--replace-demo")) await replaceDemo();
+  if (Object.keys(merge).length > 0) {
+    console.log(`\nMerging ${Object.keys(merge).length} imported products into codes already in use:`);
+    console.table(Object.entries(merge).map(([keep, from]) => ({ keep, "instead of": from })));
+  }
+
+  if (process.argv.includes("--replace-demo")) {
+    if (!(await replaceDemo(dryRun))) {
+      process.exitCode = 1;
+      return;
+    }
+  }
+  if (dryRun) {
+    console.log("\nDry run — nothing written.");
+    return;
+  }
 
   let created = 0;
   let updated = 0;
+  let merged = 0;
   for (const p of products) {
     const data = {
       name: p.name,
@@ -148,6 +200,35 @@ async function main() {
       category: p.category,
       unit: p.unit,
     };
+
+    // A product already in the catalogue under the customer's own code: keep
+    // the code and the name a reviewer sees on the document, and take from the
+    // sheet only what the sheet actually knows.
+    const mergeInto = mergeTargets.get(p.sku);
+    if (mergeInto) {
+      const target = await prisma.product.findUnique({
+        where: { sku: mergeInto },
+        select: { id: true },
+      });
+      if (!target) {
+        console.error(`  merge target ${mergeInto} is not in this database — skipping ${p.sku}`);
+        continue;
+      }
+      await prisma.product.update({
+        where: { id: target.id },
+        data: {
+          brand: p.brand,
+          variant: p.variant,
+          packSize: p.packSize,
+          market: p.market,
+          category: p.category,
+          unit: p.unit,
+        },
+      });
+      merged++;
+      continue;
+    }
+
     const existing = await prisma.product.findUnique({ where: { sku: p.sku }, select: { id: true } });
     if (existing) {
       await prisma.product.update({ where: { id: existing.id }, data });
@@ -159,7 +240,9 @@ async function main() {
       created++;
     }
   }
-  console.log(`Created ${created}, updated ${updated}. Price them from the Needs review chip.`);
+  console.log(
+    `Created ${created}, updated ${updated}, merged ${merged}. Price them from the Needs review chip.`,
+  );
 }
 
 main().finally(() => prisma.$disconnect());
