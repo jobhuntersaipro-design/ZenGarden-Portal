@@ -19,11 +19,10 @@ shippable:
 - **16** `docs/specs/16-storefront.md` — catalogue, cart, order placement, the
   ops web-order review screen, and client order tracking.
 
-Sequencing: Phase 12 (product matching) **has merged** — see History. Next is
-14 → 15 → 16, in that order, because 15 needs the catalogue to look right and
-16 needs client identity. Phase 13, the super-admin vocabulary screen, is
-independent of all three and may run at any point; its spec is still to be
-written.
+Sequencing: Phase 12 (product matching) and **Phase 14 (product images) have
+both landed** — see History. Next is **15**, then 16. Phase 13, the super-admin
+vocabulary screen, is independent of all three and may run at any point; its
+spec is still to be written.
 
 **Phase 16 is blocked until the catalogue is priced.** The shop shows only
 `active && !needsReview && listPrice > 0`, and production holds 309 products at
@@ -94,6 +93,51 @@ by hand, clear the 2 drafts in the review queue, and delete one of the duplicate
   the brand/size/variant shape. Separate work, raised after the import.
 
 ## History
+- 2026-09-09: Phase 14 — product images — built and verified in the browser
+  (`feature/product-images`, spec `docs/specs/14-product-images.md`). The write
+  path Phase 08 specced and never built: **`ProductImage` rows were created
+  nowhere in application code**, only by the seed, so every real product was a
+  text card. `reorderImages` and `deleteImage` already existed; only upload was
+  missing.
+  **Presign takes the whole batch in one call**, which is not a stylistic echo
+  of Phase 03: `ProductImage` has `@@unique([productId, position])` and the hook
+  runs three files at once, so presigning per file races on `position` and
+  throws P2002. Three images uploaded together landed at positions 0, 1, 2.
+  **`sharp().rotate()` was verified rather than asserted.** A test file stored
+  800×1400 carrying EXIF orientation 6 produced a **1400×800** derivative —
+  without `.rotate()` it stays 800×1400 and renders sideways, because sharp
+  drops EXIF on write. `withoutEnlargement` proven the same way: 2400×1600 →
+  1600×1067, but 600×600 stayed **600×600** rather than being upscaled into
+  blur. `next.config.ts` `SHARP_ROUTES` gained the complete route and the
+  emitted `.nft.json` was checked before pushing — 76 sharp files, 14 `@img`
+  files — because that failure is production-only and cannot reproduce on macOS.
+  **Two defects the browser found that the build could not.** *Make cover*
+  **swapped** with position 0 instead of splicing to the front, so making image
+  3 the cover silently demoted image 1 to position 3 — reordering a picture the
+  reader never touched; adjacent arrows stay a swap, where a swap and a move are
+  the same thing. And the four icon buttons per tile compressed to **21px** at
+  390px against the 44px minimum the 2026-09-06 mobile pass set; tiles drop to
+  two columns below `sm` and the buttons take `size-11`, measured back at
+  exactly 44px.
+  Rejections verified in a mixed batch: a PDF and a 17.2 MB file were refused by
+  name ("That image is 17.2 MB — the limit is 5.0 MB") **while the good file in
+  the same batch still uploaded**. Deleting removed the row and **both** R2
+  objects, leaving no orphan. Zero page overflow at 390 / 768 / 1440px, with the
+  gallery column at 457px against the details card's 639px — the 5fr:7fr split
+  holding, no aspect-ratio blowout.
+  `scripts/import-product-images.ts` reads a folder named by SKU, and the
+  ordinal rule was checked against the real catalogue: `LHANDS-DW-1000-LE-2.jpg`
+  matched the product whose SKU *is* that, not image 2 of `…-LE`. Unmatched
+  files are reported, never fuzzy-matched. A real run wrote 4 images across 3
+  products. **Reordering is arrow buttons plus Make cover, not drag** —
+  `@dnd-kit` is in the master spec's dependency table and not in
+  `package.json`, and buttons need no keyboard alternative.
+  Test data removed: 7 images and all their R2 objects, `productImage` count
+  back to the seed's 19; the development member was promoted to super admin to
+  reach the manager and **reverted to MEMBER** afterwards. 482 tests, typecheck,
+  lint and build pass. **Not verified:** upload on production — the sharp
+  failure of 2026-09-08 cannot reproduce locally, so acceptance criterion 5
+  stays open until this deploys.
 - 2026-09-09: Phase 12 — product matching at review — built and verified in the
   browser (`feature/product-matching`, spec `docs/specs/12-product-matching.md`).
   Every line of a PO now carries an explicit human decision — a catalogue
