@@ -105,3 +105,29 @@ describe("loadBuyerOrder", () => {
     expect(args.select.stageEvents.where).toEqual({ kind: "STAGE" });
   });
 });
+
+
+describe("listBuyerOrders paging", () => {
+  const po = (n: number) => ({
+    id: `po${n}`,
+    poNumber: `PO-${n}`,
+    poDate: new Date(2026, 0, n),
+    stage: "DELIVERED",
+    stageChangedAt: new Date(2026, 0, n),
+    total: { toFixed: () => "1.00" },
+    _count: { lineItems: 1 },
+  });
+
+  it("returns one page and the true total, newest first", async () => {
+    poFindMany.mockResolvedValue([po(1), po(5), po(3)]);
+    const { orders, total } = await listBuyerOrders("b1", 1, 2);
+    expect(total).toBe(3);
+    expect(orders.map((o) => o.reference)).toEqual(["PO-5", "PO-3"]);
+  });
+
+  it("walks to the next page", async () => {
+    poFindMany.mockResolvedValue([po(1), po(5), po(3)]);
+    const { orders } = await listBuyerOrders("b1", 2, 2);
+    expect(orders.map((o) => o.reference)).toEqual(["PO-1"]);
+  });
+});

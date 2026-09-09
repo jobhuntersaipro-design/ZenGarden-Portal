@@ -54,3 +54,6 @@ next-env.d.ts
 
 # Prisma generated client — recreated by `prisma generate` on every build
 /src/generated
+
+# one-off probe scripts written during verification
+*.mts

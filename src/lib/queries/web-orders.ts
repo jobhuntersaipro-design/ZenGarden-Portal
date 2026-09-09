@@ -38,7 +38,11 @@ export type ClientOrder = {
  * None of that is selected here. An `include` would pull all of it, and a
  * schema change months from now would turn that into a leak nobody edited.
  */
-export async function listBuyerOrders(buyerId: string): Promise<ClientOrder[]> {
+export async function listBuyerOrders(
+  buyerId: string,
+  page = 1,
+  perPage = 20,
+): Promise<{ orders: ClientOrder[]; total: number }> {
   const [confirmed, web] = await Promise.all([
     prisma.purchaseOrder.findMany({
       where: {
@@ -57,7 +61,6 @@ export async function listBuyerOrders(buyerId: string): Promise<ClientOrder[]> {
         _count: { select: { lineItems: true } },
       },
       orderBy: { poDate: "desc" },
-      take: 100,
     }),
     prisma.webOrder.findMany({
       where: {
@@ -74,7 +77,6 @@ export async function listBuyerOrders(buyerId: string): Promise<ClientOrder[]> {
         _count: { select: { lines: true } },
       },
       orderBy: { submittedAt: "desc" },
-      take: 100,
     }),
   ]);
 
@@ -105,9 +107,16 @@ export async function listBuyerOrders(buyerId: string): Promise<ClientOrder[]> {
     })),
   ];
 
-  return rows.sort(
+  // Merged in memory because the two sources have different date columns and
+  // there is no shared cursor. A buyer's own history is small — hundreds, not
+  // millions — so this is cheaper than a UNION and far easier to read. Paged
+  // afterwards, because the walkthrough on 2026-09-10 rendered 60-odd rows in
+  // one wall.
+  const sorted = rows.sort(
     (a, b) => (b.date?.getTime() ?? 0) - (a.date?.getTime() ?? 0),
   );
+  const start = Math.max(0, (page - 1) * perPage);
+  return { orders: sorted.slice(start, start + perPage), total: sorted.length };
 }
 
 /**

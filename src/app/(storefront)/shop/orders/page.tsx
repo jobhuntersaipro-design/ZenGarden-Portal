@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { ShopHeader } from "@/components/shop/ShopHeader";
+import { TablePagination } from "@/components/portal/TablePagination";
 import { requireClient } from "@/lib/auth-guards";
 import { formatDate } from "@/lib/dates";
 import { formatMYR } from "@/lib/money";
@@ -11,12 +12,22 @@ import { shopHref } from "@/lib/shop-routes";
 
 export const dynamic = "force-dynamic";
 
-export default async function OrdersPage() {
+const PER_PAGE = 20;
+
+export default async function OrdersPage({
+  searchParams,
+}: {
+  searchParams: Promise<Record<string, string | string[] | undefined>>;
+}) {
   const { id: userId, buyerId } = await requireClient();
-  const [buyer, count, orders] = await Promise.all([
+  const query = await searchParams;
+  const raw = query.page;
+  const page = Math.max(1, Number(Array.isArray(raw) ? raw[0] : raw) || 1);
+
+  const [buyer, count, { orders, total }] = await Promise.all([
     prisma.buyer.findUnique({ where: { id: buyerId }, select: { name: true } }),
     cartCount(userId),
-    listBuyerOrders(buyerId),
+    listBuyerOrders(buyerId, page, PER_PAGE),
   ]);
 
   return (
@@ -69,6 +80,12 @@ export default async function OrdersPage() {
           ))}
         </ul>
       )}
+
+      {total > PER_PAGE ? (
+        <div className="mt-lg">
+          <TablePagination page={page} size={PER_PAGE} total={total} />
+        </div>
+      ) : null}
     </main>
   );
 }
