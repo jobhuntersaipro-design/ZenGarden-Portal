@@ -13,6 +13,9 @@ import { confirmWebOrder, declineWebOrder } from "@/actions/web-orders";
 import { todayISO } from "@/lib/dates";
 import { formatMYR } from "@/lib/money";
 import { checkTotals, type PoDraft } from "@/lib/validation/purchase-orders";
+// The browser entry: this is a client component, and the `client` entry
+// drags PrismaClient into the bundle.
+import { Prisma } from "@/generated/prisma/browser";
 import type { OpsWebOrder } from "@/lib/queries/web-orders";
 
 /**
@@ -60,7 +63,27 @@ export function WebOrderReviewForm({ order }: { order: OpsWebOrder }) {
     total: order.subtotal,
   } satisfies PoDraft);
 
-  const totals = useMemo(() => checkTotals(draft), [draft]);
+  /**
+   * A shop order has no printed document, so its subtotal is not something to
+   * check against — it is derived from the lines, every time one changes.
+   *
+   * This is the one place this form must differ from `/review/[id]`. There,
+   * `checkTotals` compares the document's own printed subtotal + tax against
+   * its printed total, and a disagreement is the reviewer's to resolve. Here
+   * there is nothing printed to disagree with: leaving subtotal and total as
+   * the buyer's original figures while a reviewer edits a quantity would write
+   * a purchase order whose total contradicts its own lines, and the gate would
+   * not catch it, because subtotal + tax would still equal total.
+   */
+  const submitted: PoDraft = useMemo(() => {
+    const subtotal = draft.lineItems
+      .reduce((sum, line) => sum.plus(new Prisma.Decimal(line.amount || "0")), new Prisma.Decimal(0))
+      .toFixed(2);
+    const total = new Prisma.Decimal(subtotal).plus(new Prisma.Decimal(draft.tax || "0")).toFixed(2);
+    return { ...draft, subtotal, total };
+  }, [draft]);
+
+  const totals = useMemo(() => checkTotals(submitted), [submitted]);
   const blockedByTotals = !totals.matches && !acknowledged;
 
   return (
@@ -141,6 +164,15 @@ export function WebOrderReviewForm({ order }: { order: OpsWebOrder }) {
         ))}
       </ul>
 
+      <div className="mt-md flex items-baseline justify-between gap-sm border-t border-hairline pt-md">
+        <span className="text-[length:var(--text-body-sm)] text-ink-secondary">
+          Order total
+        </span>
+        <span className="text-[length:var(--text-heading-sm)] font-semibold tabular-nums text-ink">
+          {formatMYR(Number(submitted.total))}
+        </span>
+      </div>
+
       <div className="mt-md">
         <TotalsBanner
           totals={totals}
@@ -156,7 +188,7 @@ export function WebOrderReviewForm({ order }: { order: OpsWebOrder }) {
           onClick={() =>
             startTransition(async () => {
               setDeclining(false);
-              const result = await confirmWebOrder(order.id, draft, {
+              const result = await confirmWebOrder(order.id, submitted, {
                 totalsAcknowledged: acknowledged,
               });
               if (result.success) {
