@@ -50,7 +50,9 @@ vi.mock("@/lib/r2", () => ({
   isPendingKey: (key: string) => key.startsWith("pending:"),
 }));
 vi.mock("@/lib/extraction/resolve-products", () => ({
-  resolveProducts: (lines: unknown[]) => Promise.resolve(lines.map(() => null)),
+  suggestProducts: (lines: unknown[]) => Promise.resolve(lines.map(() => null)),
+  createProductsForLines: (_tx: unknown, lines: unknown[]) =>
+    Promise.resolve(lines.map((_, i) => `new-${i}`)),
 }));
 
 const { checkDuplicate, deletePurchaseOrder, deleteUpload } = await import(
