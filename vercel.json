@@ -1,5 +1,10 @@
 {
   "functions": {
-    "src/app/api/upload/complete/route.ts": { "maxDuration": 120 }
+    "src/app/api/upload/complete/route.ts": {
+      "maxDuration": 120
+    },
+    "src/app/api/products/[id]/images/complete/route.ts": {
+      "maxDuration": 30
+    }
   }
 }

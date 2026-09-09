@@ -10,7 +10,8 @@ vi.mock("@/lib/env", () => ({
   },
 }));
 
-const { documentKey, isPendingKey, PENDING_KEY_PREFIX } = await import("@/lib/r2");
+const { documentKey, isPendingKey, PENDING_KEY_PREFIX, productImageKey, productThumbKey } =
+  await import("@/lib/r2");
 
 beforeEach(() => {
   vi.useFakeTimers();
@@ -43,5 +44,28 @@ describe("isPendingKey", () => {
   it("recognises the placeholder a row carries before its real key", () => {
     expect(isPendingKey(`${PENDING_KEY_PREFIX}abc`)).toBe(true);
     expect(isPendingKey("po/2026/09/doc123.pdf")).toBe(false);
+  });
+});
+
+describe("product image keys", () => {
+  it("folders the original under the product and names it by the image id", () => {
+    expect(productImageKey("prd1", "img1", "jpg")).toBe("products/prd1/img1.jpg");
+  });
+
+  it("normalises the extension, so a leading dot or capitals cannot fork the key", () => {
+    expect(productImageKey("prd1", "img1", ".JPG")).toBe("products/prd1/img1.jpg");
+  });
+
+  it("derives the thumb key from the same pair, so the two cannot drift", () => {
+    expect(productThumbKey("prd1", "img1")).toBe("products/prd1/img1.1600.webp");
+  });
+
+  it("matches the shapes documented on the ProductImage model", () => {
+    // prisma/schema.prisma comments these exact two shapes; a change here that
+    // is not made there leaves the schema lying about its own columns.
+    expect(productImageKey("p", "i", "webp")).toMatch(
+      /^products\/[^/]+\/[^/]+\.[a-z]+$/,
+    );
+    expect(productThumbKey("p", "i")).toMatch(/^products\/[^/]+\/[^/]+\.1600\.webp$/);
   });
 });

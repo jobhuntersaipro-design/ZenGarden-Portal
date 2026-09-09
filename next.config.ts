@@ -5,7 +5,14 @@ import type { NextConfig } from "next";
  * `/settings` page whose client components call `setGeneratedAvatar` and
  * `removeAvatar`.
  */
-const SHARP_ROUTES = ["/api/avatars", "/settings"];
+const SHARP_ROUTES = [
+  "/api/avatars",
+  "/settings",
+  // Phase 14. Omitting this reproduces the 2026-09-08 outage exactly, and it
+  // cannot be caught locally: a macOS build traces the darwin packages, which
+  // are not the ones the trace drops.
+  "/api/products/[id]/images/complete",
+];
 
 /**
  * `sharp` is a native module: a `.node` binary that dlopens libvips, which

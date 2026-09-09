@@ -97,3 +97,24 @@ export function documentKey(documentId: string, ext: string): string {
   const clean = ext.replace(/^\./, "").toLowerCase();
   return `po/${format(now, "yyyy")}/${format(now, "MM")}/${documentId}.${clean}`;
 }
+
+/**
+ * `products/{productId}/{imageId}.jpg` — the original, exactly as uploaded.
+ *
+ * The original is kept rather than discarded once the derivative exists:
+ * re-deriving a larger rendition later must not mean asking the customer for
+ * the photographs again.
+ */
+export function productImageKey(
+  productId: string,
+  imageId: string,
+  ext: string,
+): string {
+  const clean = ext.replace(/^\./, "").toLowerCase();
+  return `products/${productId}/${imageId}.${clean}`;
+}
+
+/** `products/{productId}/{imageId}.1600.webp` — the one every screen reads. */
+export function productThumbKey(productId: string, imageId: string): string {
+  return `products/${productId}/${imageId}.1600.webp`;
+}

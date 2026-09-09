@@ -12,6 +12,7 @@ import {
   type TrendMode,
 } from "@/components/products/PriceTrendChart";
 import { ProductGallery } from "@/components/products/ProductGallery";
+import { ProductImageManager } from "@/components/products/ProductImageManager";
 import { ProductSheet } from "@/components/products/ProductSheet";
 import { Button } from "@/components/ui/button";
 import { WhatTheyBuy } from "@/components/buyers/WhatTheyBuy";
@@ -167,11 +168,22 @@ export default async function ProductPage({
       />
 
       <div className="grid gap-lg lg:grid-cols-[5fr_7fr]">
-        <ProductGallery
-          images={data.images}
-          productName={data.product.name}
-          canEdit={isSuperAdmin}
-        />
+        {/* self-start on the column, not only the gallery: an aspect-ratio
+            child of a stretched grid row takes its width from the row height,
+            and the details card beside it is eleven fields tall (2026-09-09). */}
+        <div className="self-start">
+          <ProductGallery
+            images={data.images}
+            productName={data.product.name}
+            canEdit={isSuperAdmin}
+          />
+          {isSuperAdmin ? (
+            <ProductImageManager
+              productId={data.product.id}
+              images={data.images}
+            />
+          ) : null}
+        </div>
 
         <section className="rounded-lg border border-hairline bg-canvas p-lg">
           <div className="flex flex-wrap items-start justify-between gap-md">
