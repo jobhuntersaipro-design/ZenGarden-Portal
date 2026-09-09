@@ -113,7 +113,11 @@ export function ReviewForm({
       ? duplicate
       : null;
 
-  const blockedByDuplicate = Boolean(duplicateNow) && !isRevision;
+  // A match on the same buyer is as near proof of a duplicate as this gets, so
+  // it holds Confirm. The same number under a different name is a warning: two
+  // customers may genuinely use one numbering scheme.
+  const blockedByDuplicate =
+    Boolean(duplicateNow?.sameBuyer) && !isRevision;
   const blockedByTotals = !totals.matches && !acknowledgedNow;
   const canConfirm =
     !confirming &&
@@ -194,7 +198,16 @@ export function ReviewForm({
       {duplicateNow ? (
         <div className="mb-lg rounded-lg border border-hairline bg-surface-soft p-md">
           <p className="text-[length:var(--text-body-sm)] text-ink">
-            {draft.poNumber} already exists for this buyer.{" "}
+            {duplicateNow.sameBuyer ? (
+              <>{draft.poNumber} already exists for this buyer.</>
+            ) : (
+              <>
+                {draft.poNumber} already exists for{" "}
+                <span className="font-medium">{duplicateNow.buyerName}</span>. If
+                that is the same company, choose that buyer instead of adding a
+                new one.
+              </>
+            )}{" "}
             <Link
               href={`/purchase-orders/${duplicateNow.poId}`}
               className="text-brand-link underline-offset-2 hover:underline"
@@ -202,13 +215,17 @@ export function ReviewForm({
               See revision {duplicateNow.revision}
             </Link>
           </p>
-          <label className="mt-xs flex items-center gap-xs text-[length:var(--text-body-sm)] text-ink">
-            <Checkbox
-              checked={isRevision}
-              onCheckedChange={(value) => setIsRevision(value === true)}
-            />
-            This is a revised PO
-          </label>
+          {/* Only offered for the same buyer: a revision of another buyer's
+              order would point `revisionOfId` across two customers. */}
+          {duplicateNow.sameBuyer ? (
+            <label className="mt-xs flex items-center gap-xs text-[length:var(--text-body-sm)] text-ink">
+              <Checkbox
+                checked={isRevision}
+                onCheckedChange={(value) => setIsRevision(value === true)}
+              />
+              This is a revised PO
+            </label>
+          ) : null}
         </div>
       ) : null}
 

@@ -87,9 +87,24 @@ export type DuplicateMatch = {
   poNumber: string;
   revision: number;
   confirmedAt: string;
+  /** False when the number was found under a different buyer. */
+  sameBuyer: boolean;
+  buyerName: string;
 };
 
-/** The latest confirmed PO for this buyer and number, if there is one. */
+/**
+ * The latest confirmed PO carrying this number.
+ *
+ * Keyed on the buyer alone this missed the case that actually happened: the
+ * same document was confirmed twice sixteen minutes apart, the second time
+ * against a buyer typed `STAR VALUE SDN BHD` rather than the
+ * `STAR VALUE SDN BHD @ SVPP` created the first time, so no duplicate was
+ * found and both orders went live (2026-09-09). A PO number is the customer's
+ * own reference, so the same number under another name is nearly always one
+ * company entered two ways — worth saying, even though it cannot be *proved*
+ * a duplicate the way a match on the same buyer can, which is why only the
+ * same-buyer case blocks Confirm.
+ */
 export async function checkDuplicate(
   buyerId: string,
   poNumber: string,
@@ -99,11 +114,23 @@ export async function checkDuplicate(
   if (!buyerId || !poNumber) return { success: true, data: null };
 
   try {
-    const existing = await prisma.purchaseOrder.findFirst({
-      where: { buyerId, poNumber },
-      orderBy: { revision: "desc" },
-      select: { id: true, poNumber: true, revision: true, confirmedAt: true },
-    });
+    const found = async (where: Prisma.PurchaseOrderWhereInput) =>
+      prisma.purchaseOrder.findFirst({
+        where,
+        orderBy: { revision: "desc" },
+        select: {
+          id: true,
+          poNumber: true,
+          revision: true,
+          confirmedAt: true,
+          buyerId: true,
+          buyer: { select: { name: true } },
+        },
+      });
+
+    const existing =
+      (await found({ buyerId, poNumber })) ?? (await found({ poNumber }));
+
     return {
       success: true,
       data: existing
@@ -112,6 +139,8 @@ export async function checkDuplicate(
             poNumber: existing.poNumber,
             revision: existing.revision,
             confirmedAt: existing.confirmedAt.toISOString(),
+            sameBuyer: existing.buyerId === buyerId,
+            buyerName: existing.buyer.name,
           }
         : null,
     };

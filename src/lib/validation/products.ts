@@ -3,15 +3,33 @@ import { PRODUCT_CATEGORIES } from "@/lib/product-categories";
 import { Prisma } from "@/generated/prisma/browser";
 
 /**
- * SKUs are typed, read aloud and matched against documents, so the shape is
- * pinned: upper-case letters, digits and dashes. Anything else and two people
- * enter the "same" SKU two ways.
+ * A SKU is the product code as printed on a customer's purchase order — it is
+ * matched against documents, so it has to be able to hold what documents
+ * actually print. Capitals, digits and dashes was too narrow a guess: real
+ * orders carry `ZEN/SC/2100/CARROT`, `ZENSC-R.JELLY2LT` and `KE218441 68216`,
+ * and because `resolveProducts` writes a line's code straight to the database
+ * a product could exist that this very schema refused to save (2026-09-09).
+ *
+ * The discipline that mattered is kept: one case, and whitespace normalised,
+ * so the same code cannot enter the catalogue two ways. A code carrying
+ * something outside this set still needs editing by hand — rarer than the
+ * slashes and spaces that were actually breaking.
  */
+const SKU_SHAPE = /^[A-Z0-9]([A-Z0-9 ._/+-]*[A-Z0-9])?$/;
+
+/** Upper-cased and space-collapsed — applied wherever a SKU is stored or looked up. */
+export const normaliseSku = (value: string) =>
+  value.trim().replace(/\s+/g, " ").toUpperCase();
+
 export const skuSchema = z
   .string()
-  .min(1, "A SKU is required")
-  .max(32, "Use at most 32 characters")
-  .regex(/^[A-Z0-9-]+$/, "Use capitals, digits and dashes only");
+  .transform(normaliseSku)
+  .refine((value) => value.length > 0, "A SKU is required")
+  .refine((value) => value.length <= 32, "Use at most 32 characters")
+  .refine(
+    (value) => SKU_SHAPE.test(value),
+    "Use capitals, digits and - . _ / +",
+  );
 
 const decimalString = z
   .string()

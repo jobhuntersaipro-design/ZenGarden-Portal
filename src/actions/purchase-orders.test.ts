@@ -1,6 +1,7 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 const poFindUnique = vi.fn();
+const poFindFirst = vi.fn();
 const extractionFindUnique = vi.fn();
 const extractionDeleteMany = vi.fn();
 const documentDelete = vi.fn();
@@ -16,7 +17,7 @@ const tx = {
 
 vi.mock("@/lib/prisma", () => ({
   prisma: {
-    purchaseOrder: { findUnique: poFindUnique, delete: poDelete },
+    purchaseOrder: { findUnique: poFindUnique, findFirst: poFindFirst, delete: poDelete },
     extraction: {
       updateMany: extractionUpdateMany,
       findUnique: extractionFindUnique,
@@ -32,9 +33,10 @@ vi.mock("@/lib/prisma", () => ({
 
 class UnauthorizedError extends Error {}
 const requireSuperAdmin = vi.fn();
+const requireUser = vi.fn();
 vi.mock("@/lib/auth-guards", () => ({
   UnauthorizedError,
-  requireUser: vi.fn(),
+  requireUser: () => requireUser(),
   requireSuperAdmin: () => requireSuperAdmin(),
 }));
 // The action pulls in r2 and the extraction client transitively, both of which
@@ -51,13 +53,14 @@ vi.mock("@/lib/extraction/resolve-products", () => ({
   resolveProducts: (lines: unknown[]) => Promise.resolve(lines.map(() => null)),
 }));
 
-const { deletePurchaseOrder, deleteUpload } = await import(
+const { checkDuplicate, deletePurchaseOrder, deleteUpload } = await import(
   "@/actions/purchase-orders"
 );
 
 beforeEach(() => {
   vi.resetAllMocks();
   requireSuperAdmin.mockResolvedValue({ id: "u1", role: "SUPER_ADMIN" });
+  requireUser.mockResolvedValue({ id: "u1", role: "MEMBER" });
   poFindUnique.mockResolvedValue({
     id: "po1",
     poNumber: "PO-2026-0063",
@@ -171,5 +174,62 @@ describe("deleteUpload", () => {
     const result = await deleteUpload("ex1");
     expect(result.success).toBe(true);
     expect(documentDelete).toHaveBeenCalled();
+  });
+});
+
+describe("checkDuplicate", () => {
+  const row = (over: Record<string, unknown> = {}) => ({
+    id: "po-existing",
+    poNumber: "SVPPPO26090009",
+    revision: 1,
+    confirmedAt: new Date("2026-09-08T06:15:00Z"),
+    buyerId: "buyer-a",
+    buyer: { name: "STAR VALUE SDN BHD @ SVPP" },
+    ...over,
+  });
+
+  it("reports a match on the same buyer, which is as near proof as this gets", async () => {
+    poFindFirst.mockResolvedValueOnce(row());
+    const result = await checkDuplicate("buyer-a", "SVPPPO26090009");
+    expect(result).toMatchObject({
+      success: true,
+      data: { poId: "po-existing", sameBuyer: true, revision: 1 },
+    });
+    // The buyer-scoped query answered, so the wider one is never needed.
+    expect(poFindFirst).toHaveBeenCalledOnce();
+  });
+
+  it("finds the number under a different buyer, and says whose", async () => {
+    // The failure that reached production: the same document confirmed twice,
+    // the second time against a buyer name typed slightly differently, so the
+    // buyer-scoped check found nothing and both orders went live.
+    poFindFirst.mockResolvedValueOnce(null).mockResolvedValueOnce(row());
+    const result = await checkDuplicate("buyer-b", "SVPPPO26090009");
+    expect(result).toEqual({
+      success: true,
+      data: {
+        poId: "po-existing",
+        poNumber: "SVPPPO26090009",
+        revision: 1,
+        confirmedAt: "2026-09-08T06:15:00.000Z",
+        sameBuyer: false,
+        buyerName: "STAR VALUE SDN BHD @ SVPP",
+      },
+    });
+    expect(poFindFirst).toHaveBeenCalledTimes(2);
+  });
+
+  it("reports nothing when the number is genuinely new", async () => {
+    poFindFirst.mockResolvedValue(null);
+    expect(await checkDuplicate("buyer-a", "PO-9999")).toEqual({
+      success: true,
+      data: null,
+    });
+  });
+
+  it("does not query at all without both a buyer and a number", async () => {
+    expect(await checkDuplicate("", "PO-1")).toEqual({ success: true, data: null });
+    expect(await checkDuplicate("buyer-a", "")).toEqual({ success: true, data: null });
+    expect(poFindFirst).not.toHaveBeenCalled();
   });
 });

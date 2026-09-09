@@ -2,11 +2,10 @@
 
 ## Status
 
-The real catalog is live on **production** (309 products) and in development.
-Remaining: price the 309 — all sit in the *Needs review* chip — and enter by
-hand the 5 blocks whose variant column nests a sub-table. Two drafts are
-waiting in production's review queue, and production holds two apparent
-duplicate purchase orders (see the 2026-09-09 history entry).
+Two production defects fixed and merged. Outstanding: price the 309 products,
+enter the 5 nested-sub-table blocks by hand, clear the 2 drafts in the review
+queue, and delete one of the duplicate `SVPPPO26090009` orders once the right
+buyer name is settled.
 
 ## Goals
 
@@ -44,6 +43,38 @@ duplicate purchase orders (see the 2026-09-09 history entry).
   the brand/size/variant shape. Separate work, raised after the import.
 
 ## History
+- 2026-09-09: Two defects found by yesterday's production audit, fixed and
+  merged (`fix/sku-shape-and-duplicate-check`). **A product could exist that
+  its own edit form refused to save.** `resolveProducts` writes a line's
+  printed code straight to the database while `skuSchema` demanded
+  `^[A-Z0-9-]+$`, so the products created from real orders —
+  `ZEN/SC/2100/CARROT`, `ZENSC-R.JELLY2LT`, `KE218441 68216` (a space) — were
+  all unsaveable from the drawer. The schema was a guess about the domain that
+  the documents disproved; it now accepts `A-Z 0-9` plus `- . _ / +` and
+  spaces, keeps the discipline that mattered by upper-casing and collapsing
+  whitespace, and `normaliseSku` is applied in `resolveProducts` too — on
+  lookup as well as on create, or the two would diverge. A code carrying
+  anything outside that set still needs editing by hand; that is rarer than the
+  slashes and spaces that were actually breaking.
+  **The duplicate check missed the duplicate it was there to catch.**
+  `checkDuplicate` keyed on `buyerId + poNumber`, so when the same document was
+  confirmed twice sixteen minutes apart — the second time against a buyer typed
+  `STAR VALUE SDN BHD` rather than the `STAR VALUE SDN BHD @ SVPP` created the
+  first time — nothing matched and both orders went live. It now falls back to
+  the number under any buyer and reports whose. Only the same-buyer case still
+  blocks Confirm, because two customers can genuinely share a numbering scheme;
+  a different buyer gets a warning naming them and no "this is a revised PO"
+  checkbox, since a revision across two buyers would point `revisionOfId` at
+  another customer's order. `checkDuplicate` had no test at all, which is how
+  this survived — it has four now.
+  **A correction to yesterday's report:** `PO-00068` is *not* a duplicate. It is
+  revision 1 superseded by revision 2, which is the revision mechanism working;
+  the list only ever showed the newer one. Only `SVPPPO26090009` is genuinely
+  doubled — same total, same single line (2,112 × Everfresh B Shampoo), the
+  same PDF uploaded twice as two `Document` rows, no stage moves on either.
+  Deleting one is still pending: which buyer name is correct is the customer's
+  own convention, not something to infer. 442 tests, typecheck, lint and build
+  pass.
 - 2026-09-09: The real catalog is on **production** — 309 products — and the
   landscaping demo data is gone. **The audit is the part worth remembering:
   production was not the demo database everyone assumed.** Before deleting

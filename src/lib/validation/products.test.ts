@@ -21,10 +21,23 @@ describe("skuSchema", () => {
     expect(skuSchema.safeParse("ABC123").success).toBe(true);
   });
 
-  it("refuses lower case, spaces and punctuation", () => {
-    // Two people entering the "same" SKU two ways is the failure this stops.
-    for (const bad of ["stn-gra-040", "STN GRA 040", "STN_GRA_040", "STN/040"]) {
-      expect(skuSchema.safeParse(bad).success).toBe(false);
+  it("accepts the codes real purchase orders actually print", () => {
+    // All three exist in production, created from customer documents. Before
+    // 2026-09-09 the schema refused them, so those products could not be saved
+    // from the edit drawer at all.
+    for (const real of ["ZEN/SC/2100/CARROT", "ZENSC-R.JELLY2LT", "KE218441 68216"]) {
+      expect(skuSchema.safeParse(real).success, real).toBe(true);
+    }
+  });
+
+  it("normalises case and whitespace, so one code cannot enter twice", () => {
+    expect(skuSchema.parse("  stn-gra-040 ")).toBe("STN-GRA-040");
+    expect(skuSchema.parse("KE218441   68216")).toBe("KE218441 68216");
+  });
+
+  it("still refuses an empty code, or one that is only separators", () => {
+    for (const bad of ["", "   ", "-", "/", "-ABC", "ABC-", " . "]) {
+      expect(skuSchema.safeParse(bad).success, JSON.stringify(bad)).toBe(false);
     }
   });
 
