@@ -105,10 +105,17 @@ match against every shower cream in the catalogue, because four of its six
 tokens are shared by two hundred rows.
 
 `buildIdf` therefore weights each token by `log(N / rows containing it)`, so
-`CHAMOMILE` counts for far more than `ZEN` or `SHOWER`. Tokens come from the
-product's `name`, `brand` and `variant` joined, normalised the way `sku.ts`
-already normalises (`normalise()` — lowercase, strip apostrophes, split on
-non-alphanumerics).
+`CHAMOMILE` counts for far more than `ZEN` or `SHOWER`. Tokens come from the product's `name`, `brand` and `variant` joined.
+
+Tokenising is **close to `sku.ts`'s `normalise()` but deliberately not it**, in
+two ways that matter for codes:
+
+- A period is a **separator**, not a deletion. `sku.ts` strips `.` so that
+  `Goat's` becomes `goats`; applied to `ZENSC-R.JELLY2LT` that yields
+  `rjelly2lt` and the distinctive token `jelly` is lost. Only apostrophes are
+  stripped here; `.` splits like every other non-alphanumeric.
+- A letter/digit boundary splits. `JELLY2LT` becomes `jelly` `2` `lt`, so the
+  codes customers print without separators still surface their words.
 
 The IDF map is built **once per document**, not once per line.
 
@@ -251,8 +258,9 @@ inventing a second one:
 | `SUGGEST_MIN`–84 | amber, the same amber as `LOW_CONFIDENCE` |
 | No suggestion | grey "No match" |
 
-A confirmed line shows a check, not a chip: once a person has decided, the
-machine's opinion is history.
+A decided line **drops the chip entirely**. The chosen product sitting in the
+picker is the statement; once a person has decided, the machine's opinion is
+history and a score beside it only invites second-guessing.
 
 ### The printed code stays
 
@@ -287,14 +295,21 @@ actually holds rather than invented ones:
 | Case | Expectation |
 |---|---|
 | `ZEN-SC-2100-GM-VN` against itself | 100 |
-| `ZEN/SC/2100/CARROT` vs `ZEN-SC-2100-CR` | 96 — separators differ, nothing else |
-| `ZENSC-R.JELLY2LT` | ranks its royal-jelly row first |
+| `ZEN/SC/2100/CARROT` vs stored `ZEN.SC.2100.CARROT` | 96 — separators differ, nothing else does |
+| `ZEN/SC/2100/CARROT` vs stored `ZEN-SC-2100-CR` | **similarity branch, never 96** — `CARROT` and `CR` are different strings; it ranks first on the token `carrot`, not on code identity |
 | `KE218441 68216` (a space) | survives `normaliseSku`, scores 100 against itself |
-| `EVERFRESH B SHAMPOO LVD& CHAMOMILE 2.1L` | ranks above the same name at 500ML |
+| `EVERFRESH B SHAMPOO LVD& CHAMOMILE 2.1L` | scores above the same name at 500ML |
 | Same name, 2.1L vs 500ML | the 500ML row caps at 40 |
 | `ZEN GARDEN SHOWER CREAM` against 200 shower creams | no candidate reaches `STRONG_MATCH` |
 | A line with no description and no code | returns `[]` |
-| Two products differing only by market | both offered, both scoring equally |
+| Two products differing only by market | both offered, scoring equally |
+
+Ranking cases are asserted against `scoreLine` (one line, one product) rather
+than `matchLine`, which also applies `SUGGEST_MIN` and the top-5 slice. A
+smushed code like `ZENSC-R.JELLY2LT` may legitimately score below the
+threshold and be offered as nothing at all; what must hold is that it scores
+its royal-jelly row **above** every other shower cream, and that is a `scoreLine`
+assertion, not a `matchLine` one.
 
 Plus: `buildIdf` weights a rare token above a ubiquitous one; the confirm gate
 rejects an `unset` line; a `linked` line pointing at an archived product fails
