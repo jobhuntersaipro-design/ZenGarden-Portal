@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import { headers } from "next/headers";
 import { redirect } from "next/navigation";
 import { getSessionUser } from "@/lib/auth-guards";
 import { AuthCard } from "@/components/auth/AuthCard";
@@ -21,6 +22,7 @@ const ERRORS: Record<string, string> = {
   disabled: "This account is disabled. Ask your admin.",
   unverified: "Google could not verify that email address.",
   CredentialsSignin: "Wrong email or password.",
+  use_password: "Use your email and password to sign in.",
 };
 
 export default async function SignInPage({
@@ -44,10 +46,21 @@ export default async function SignInPage({
   const error = first("error");
   const message = error ? (ERRORS[error] ?? "We could not sign you in.") : null;
 
+  // One card, two audiences. The route is shared because sign-in, reset and
+  // the forced password change are the same flows on both hosts; only the
+  // wording and the Google block differ.
+  const host = (await headers()).get("host")?.split(":")[0].toLowerCase();
+  const isShop = Boolean(process.env.SHOP_HOST) &&
+    host === process.env.SHOP_HOST?.trim().toLowerCase();
+
   return (
     <AuthCard
-      title="Sign in to Loving Hands"
-      subtitle="Purchase-order intake for the ops team."
+      title={isShop ? "Sign in to order" : "Sign in to Loving Hands"}
+      subtitle={
+        isShop
+          ? "Browse the catalogue and place your order."
+          : "Purchase-order intake for the ops team."
+      }
     >
       {message ? (
         <div className="mt-lg">
@@ -59,7 +72,7 @@ export default async function SignInPage({
           <Notice tone="success">Password updated. Sign in.</Notice>
         </div>
       ) : null}
-      <SignInForm next={next} />
+      <SignInForm next={next} showGoogle={!isShop} />
     </AuthCard>
   );
 }

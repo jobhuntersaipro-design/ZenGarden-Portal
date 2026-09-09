@@ -131,3 +131,40 @@ describe("resolveGoogleSignIn", () => {
     });
   });
 });
+
+describe("resolveGoogleSignIn — client accounts (Phase 15)", () => {
+  it("refuses Google for a client, who signs in with a password", async () => {
+    // allowDangerousEmailAccountLinking is on, deliberately, so an
+    // admin-created password user can press Continue with Google. Without this
+    // branch a client whose invited address happens to be a Google account
+    // could link it and skip mustChangePassword entirely.
+    findUniqueUser.mockResolvedValue({
+      id: "c1",
+      role: "CLIENT",
+      disabledAt: null,
+    });
+    await expect(
+      resolveGoogleSignIn(google("siti@buyer.com")),
+    ).resolves.toBe("/signin?error=use_password");
+    expect(createUser).not.toHaveBeenCalled();
+  });
+
+  it("still lets a disabled client's account fail as disabled, not as a client", async () => {
+    findUniqueUser.mockResolvedValue({
+      id: "c1",
+      role: "CLIENT",
+      disabledAt: new Date(),
+    });
+    await expect(
+      resolveGoogleSignIn(google("siti@buyer.com")),
+    ).resolves.toBe("/signin?error=disabled");
+  });
+
+  it("never creates a CLIENT from the auto-approve domain", async () => {
+    findUniqueUser.mockResolvedValue(null);
+    await resolveGoogleSignIn(google("someone@lovinghandsportal.com"));
+    if (createUser.mock.calls.length > 0) {
+      expect(createUser.mock.calls[0][0].data.role).not.toBe("CLIENT");
+    }
+  });
+});

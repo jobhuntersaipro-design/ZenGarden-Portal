@@ -31,9 +31,9 @@ const PUBLIC_PATHS = ["/signin", "/forgot-password", "/reset-password"];
  * `npm run dev` and every preview deployment work: they have one hostname.
  */
 const SHOP_HOST = process.env.SHOP_HOST?.trim().toLowerCase() || null;
-const SHOP_URL = process.env.SHOP_URL?.trim() || null;
-const APP_URL = process.env.APP_URL?.trim() || null;
 const SHOP_PREFIX = "/shop";
+
+
 
 /** Reachable while `mustChangePassword` is still set. */
 const PASSWORD_CHANGE_PATH = "/account/password";
@@ -82,17 +82,16 @@ export default auth((request) => {
     });
   }
 
-  // Each audience on its own host. A client has no buyer-scoped view of the
-  // portal and every portal query is unscoped by design; an ops user has no
-  // buyer at all, so a cart and an order list have nothing to scope to.
-  // Sending each away is one rule, and it lets every storefront page assume
-  // `requireClient()` succeeds rather than growing a "staff viewing" branch.
-  if (session.user.role === Role.CLIENT && !onShopHost && SHOP_URL) {
-    return NextResponse.redirect(new URL("/", SHOP_URL));
-  }
-  if (session.user.role !== Role.CLIENT && onShopHost && APP_URL) {
-    return NextResponse.redirect(new URL("/", APP_URL));
-  }
+  // Sending each audience to its own host is deliberately NOT done here.
+  // A cross-host redirect issued from the proxy comes back with its origin
+  // stripped — `Location: /` — because both hosts are one deployment, and the
+  // browser then bounces against the same host until it gives up
+  // (ERR_TOO_MANY_REDIRECTS, measured 2026-09-09). A redirect from a layout
+  // survives intact, so both live there instead:
+  // `(portal)/layout.tsx` sends a client to the shop, and
+  // `(storefront)/shop/layout.tsx` sends staff to the portal. They also run
+  // against a real session rather than this token, which is up to five
+  // minutes stale.
 
   // The shop host serves the storefront from its real paths. Links inside the
   // storefront are written unprefixed and revalidatePath uses the real path —

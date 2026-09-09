@@ -107,6 +107,9 @@ export async function createUser(
         react: TemporaryPassword({
           name: created.name,
           password: data.password,
+          // The ops host. A client is invited through inviteBuyerContact,
+          // which passes SHOP_URL — a portal link would land them on a
+          // screen that immediately redirects them away.
           signInUrl: `${env.APP_URL}/signin`,
         }),
       });

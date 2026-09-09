@@ -8,6 +8,7 @@ import { PageHeader } from "@/components/portal/PageHeader";
 import { StatusBar } from "@/components/dashboard/StatusBar";
 import { KpiMoney, KpiNumber, KpiTile } from "@/components/dashboard/KpiTile";
 import { SalesLineChart } from "@/components/dashboard/SalesLineChart";
+import { BuyerContactsCard } from "@/components/buyers/BuyerContactsCard";
 import { BuyerDetailsCard } from "@/components/buyers/BuyerDetailsCard";
 import { BuyerRangeChips } from "@/components/buyers/BuyerRangeChips";
 import { ProductTrend } from "@/components/buyers/ProductTrend";
@@ -25,6 +26,7 @@ import type { MixMeasure } from "@/lib/analytics/product-mix";
 import { getSessionUser } from "@/lib/auth-guards";
 import { formatDate, type Aggregation } from "@/lib/dates";
 import { loadBuyer } from "@/lib/queries/buyer-detail";
+import { listBuyerContacts } from "@/lib/queries/clients";
 import {
   firstParam,
   parsePagination,
@@ -74,9 +76,10 @@ export default async function BuyerPage({
   const productSlots = firstParam(query, "products")?.split(",") ?? [];
   const selectedProducts = productSlots.filter(Boolean);
 
-  const [data, user] = await Promise.all([
+  const [data, user, contacts] = await Promise.all([
     loadBuyer(id, range, previous, agg, measure, selectedProducts),
     getSessionUser(),
+    listBuyerContacts(id),
   ]);
   if (!data) notFound();
 
@@ -238,6 +241,14 @@ export default async function BuyerPage({
         <BuyerDetailsCard
           buyer={data.buyer}
           canRename={user?.role === Role.SUPER_ADMIN}
+        />
+      </div>
+
+      <div className="mt-lg">
+        <BuyerContactsCard
+          buyerId={id}
+          contacts={contacts}
+          canManage={user?.role === Role.SUPER_ADMIN}
         />
       </div>
 
