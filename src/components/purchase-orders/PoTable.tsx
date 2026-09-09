@@ -19,7 +19,7 @@ import type { SortDirection } from "@/lib/queries/pagination";
 /** What the server hands over: money and dates already crossed as strings. */
 export type PoRow = {
   id: string;
-  kind: "PO" | "DRAFT";
+  kind: "PO" | "DRAFT" | "WEB";
   poNumber: string;
   buyerName: string;
   buyerId: string | null;
@@ -40,6 +40,9 @@ const FILE_LABEL: Record<string, string> = {
   "application/pdf": "PDF",
   "image/png": "PNG",
   "image/jpeg": "JPG",
+  // An order placed on the shop has no file behind it, and saying so is
+  // better than the "FILE" fallback, which reads like a missing document.
+  web: "WEB",
 };
 
 
@@ -142,6 +145,12 @@ export function PoTable({
       cell: (row) =>
         row.uploadedByName ? (
           <PersonChip name={row.uploadedByName} image={row.uploadedByImage} />
+        ) : row.kind === "WEB" ? (
+          // Nobody uploaded it — the buyer placed it themselves. Saying so
+          // reads better than the blank an empty column would leave, and the
+          // "Uploaded by" filter is built from users who have documents, so
+          // these rows are correctly outside it.
+          <span className="text-ink-tertiary">From the shop</span>
         ) : (
           <span className="text-ink-disabled">Not confirmed</span>
         ),
@@ -184,7 +193,11 @@ export function PoTable({
         onSortChange={onSortChange}
         emptyText="No purchase orders match."
         rowHref={(row) =>
-          row.kind === "PO" ? `/purchase-orders/${row.id}` : `/review/${row.id}`
+          row.kind === "PO"
+            ? `/purchase-orders/${row.id}`
+            : row.kind === "WEB"
+              ? `/web-orders/${row.id}`
+              : `/review/${row.id}`
         }
       />
       <TablePagination page={page} size={size} total={total} />

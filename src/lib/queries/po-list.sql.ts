@@ -40,7 +40,7 @@ const NULLS_FIRST_ON_ASC: readonly PoListSortKey[] = ["confirmedBy"];
 
 export type PoListRow = {
   id: string;
-  kind: "PO" | "DRAFT";
+  kind: "PO" | "DRAFT" | "WEB";
   poNumber: string;
   buyerName: string;
   buyerId: string | null;
@@ -61,7 +61,7 @@ export type PoListFilters = {
   q?: string;
   buyerId?: string;
   uploadedById?: string;
-  status?: "all" | "confirmed" | "needs-review" | "extracting" | "failed";
+  status?: "all" | "confirmed" | "needs-review" | "extracting" | "failed" | "web";
   stage?: string;
   from?: Date;
   to?: Date;
@@ -131,15 +131,80 @@ const includesDrafts = (status: PoListFilters["status"]) =>
 const includesOrders = (status: PoListFilters["status"]) =>
   status === undefined || status === "all" || status === "confirmed";
 
+/**
+ * A submitted shop order is work waiting on a person, exactly like a draft, so
+ * it belongs to the same statuses — and to "needs-review", which is what keeps
+ * the chip's count and the rows it filters to in agreement.
+ */
+const includesWebOrders = (status: PoListFilters["status"]) =>
+  status === undefined ||
+  status === "all" ||
+  status === "needs-review" ||
+  status === "web";
+
 function baseSelect(filters: PoListFilters): Prisma.Sql {
   const parts: Prisma.Sql[] = [];
   if (includesOrders(filters.status)) parts.push(orderRows(filters));
   if (includesDrafts(filters.status)) parts.push(draftRows(filters));
-  // A status that matches neither source still has to return the row shape.
+  if (includesWebOrders(filters.status)) parts.push(webOrderRows(filters));
+  // A status that matches no source still has to return the row shape.
   if (parts.length === 0) return Prisma.sql`${orderRows(filters)} AND FALSE`;
-  return parts.length === 1
-    ? parts[0]
-    : Prisma.sql`${parts[0]} UNION ALL ${parts[1]}`;
+  return parts.reduce((left, right) => Prisma.sql`${left} UNION ALL ${right}`);
+}
+
+/**
+ * Orders placed on the shop and waiting for someone to confirm them.
+ *
+ * The status is hardcoded rather than taken from `filters`: a DRAFT is a
+ * client's live cart, and the one thing that must never happen is a
+ * half-assembled cart appearing in the ops queue.
+ */
+function webOrderRows(filters: PoListFilters): Prisma.Sql {
+  const conditions: Prisma.Sql[] = [
+    Prisma.sql`wo."status" = 'SUBMITTED'`,
+  ];
+
+  // Unlike a draft, a shop order has a real buyer, so this filter works.
+  if (filters.buyerId) conditions.push(Prisma.sql`wo."buyerId" = ${filters.buyerId}`);
+  // No PO date, no stage, and no uploader — a filter on any of them excludes
+  // these rows rather than matching everything, exactly as it does for drafts.
+  if (filters.from || filters.to) conditions.push(Prisma.sql`FALSE`);
+  if (filters.stage) conditions.push(Prisma.sql`FALSE`);
+  if (filters.uploadedById) conditions.push(Prisma.sql`FALSE`);
+  if (filters.q) {
+    const like = `%${filters.q}%`;
+    conditions.push(
+      Prisma.sql`(wo."reference" ILIKE ${like} OR buyer."name" ILIKE ${like} OR EXISTS (
+        SELECT 1 FROM "WebOrderLine" wl
+        JOIN "Product" prd ON prd."id" = wl."productId"
+        WHERE wl."webOrderId" = wo."id" AND prd."name" ILIKE ${like}
+      ))`,
+    );
+  }
+
+  return Prisma.sql`
+    SELECT
+      wo."id"                                   AS "id",
+      'WEB'                                     AS "kind",
+      wo."reference"                            AS "poNumber",
+      buyer."name"                              AS "buyerName",
+      wo."buyerId"                              AS "buyerId",
+      NULL::date                                AS "poDate",
+      (SELECT COUNT(*)::int FROM "WebOrderLine" wl WHERE wl."webOrderId" = wo."id") AS "itemCount",
+      wo."subtotal"                             AS "total",
+      'NEEDS_REVIEW'                            AS "status",
+      NULL                                      AS "stage",
+      NULL                                      AS "uploadedByName",
+      NULL                                      AS "uploadedByImage",
+      NULL                                      AS "confirmedByName",
+      NULL                                      AS "confirmedByImage",
+      'web'                                     AS "fileType",
+      1                                         AS "revision",
+      0                                         AS "sortStatus"
+    FROM "WebOrder" wo
+    JOIN "Buyer" buyer ON buyer."id" = wo."buyerId"
+    WHERE ${Prisma.join(conditions, " AND ")}
+  `;
 }
 
 function orderRows(filters: PoListFilters): Prisma.Sql {
@@ -198,15 +263,20 @@ function orderRows(filters: PoListFilters): Prisma.Sql {
       uploader."image"                          AS "uploadedByImage",
       confirmer."name"                          AS "confirmedByName",
       confirmer."image"                         AS "confirmedByImage",
-      doc."mimeType"                            AS "fileType",
+      COALESCE(doc."mimeType", 'web')           AS "fileType",
       po."revision"                             AS "revision",
       -- Confirmed rows sort after the backlog on a status sort: the queue is
       -- what someone opens this page for.
       1                                         AS "sortStatus"
     FROM "PurchaseOrder" po
     JOIN "Buyer" buyer      ON buyer."id" = po."buyerId"
-    JOIN "Document" doc     ON doc."id" = po."documentId"
-    JOIN "User" uploader    ON uploader."id" = doc."uploadedById"
+    -- LEFT, not INNER, since Phase 16. An order placed on the shop has no
+    -- document, and an inner join here makes every one of them vanish from
+    -- this list, from its money summary, from the needs-review count and from
+    -- the buyer page — with no error and no type failure. po-list.sql.test.ts
+    -- exists for exactly this line.
+    LEFT JOIN "Document" doc   ON doc."id" = po."documentId"
+    LEFT JOIN "User" uploader  ON uploader."id" = doc."uploadedById"
     LEFT JOIN "User" confirmer ON confirmer."id" = po."confirmedById"
     WHERE ${Prisma.join(conditions, " AND ")}
   `;

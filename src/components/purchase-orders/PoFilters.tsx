@@ -12,7 +12,12 @@ import { usePendingChoice } from "@/hooks/usePendingChoice";
 import { useUrlNavigation } from "@/hooks/useUrlNavigation";
 
 export type StatusChip =
-  "all" | "confirmed" | "needs-review" | "extracting" | "failed";
+  | "all"
+  | "confirmed"
+  | "needs-review"
+  | "extracting"
+  | "failed"
+  | "web";
 
 /**
  * Chips and badges read the same tokens, so a colour means the same thing in
@@ -32,6 +37,11 @@ const CHIPS: { value: StatusChip; label: string; dot: string }[] = [
     dot: INTAKE_STATUS.EXTRACTING.dot,
   },
   { value: "failed", label: "Failed", dot: INTAKE_STATUS.FAILED.dot },
+  {
+    value: "web",
+    label: "From the shop",
+    dot: INTAKE_STATUS.NEEDS_REVIEW.dot,
+  },
 ];
 
 const SEARCH_DEBOUNCE_MS = 200;

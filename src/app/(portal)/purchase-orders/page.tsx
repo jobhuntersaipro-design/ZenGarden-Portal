@@ -25,12 +25,16 @@ export const metadata: Metadata = {
 };
 export const dynamic = "force-dynamic";
 
+// Must stay in step with StatusChip and with CHIPS in PoFilters. A chip whose
+// value is missing here changes the URL and is then silently ignored by the
+// page — the defect Phase 11 hit on /products.
 const STATUSES: StatusChip[] = [
   "all",
   "confirmed",
   "needs-review",
   "extracting",
   "failed",
+  "web",
 ];
 
 const asDate = (value: string | undefined) => {

@@ -281,6 +281,15 @@ export default async function BuyerPage({
               count: data.intake.failed,
               color: cssVar(INTAKE_VARS.failed),
             },
+            {
+              id: "web",
+              label: "From the shop",
+              count: data.intake.webOrders,
+              // Same amber as Needs review: both are work waiting on a person,
+              // and the status palette binds the meaning to the colour
+              // (00-master.md §4).
+              color: cssVar(INTAKE_VARS.needsReview),
+            },
           ]}
         />
       </section>
