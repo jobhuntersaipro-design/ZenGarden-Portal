@@ -18,6 +18,7 @@ const base: PoDraft = {
       unit: "piece",
       unitPrice: "100.00",
       amount: "200.00",
+      productDecision: "unset",
     },
   ],
   subtotal: "200.00",
@@ -90,5 +91,51 @@ describe("draftReducer", () => {
     const removed = draftReducer(added, { type: "removeLine", index: 0 });
     expect(removed.lineItems).toHaveLength(1);
     expect(removed.lineItems[0].description).toBe("");
+  });
+});
+
+describe("draftReducer — decision", () => {
+  it("records the reviewer's choice and its product", () => {
+    const state = draftReducer(base, {
+      type: "decision",
+      index: 0,
+      decision: "linked",
+      productId: "prd1",
+    });
+    expect(state.lineItems[0].productDecision).toBe("linked");
+    expect(state.lineItems[0].productId).toBe("prd1");
+  });
+
+  it("clears the product when the line is not a product", () => {
+    const linked = draftReducer(base, {
+      type: "decision",
+      index: 0,
+      decision: "linked",
+      productId: "prd1",
+    });
+    const state = draftReducer(linked, {
+      type: "decision",
+      index: 0,
+      decision: "none",
+      productId: null,
+    });
+    expect(state.lineItems[0].productId).toBeNull();
+  });
+
+  it("keeps a decision when the printed code is edited — the code is what the document says, not what the reviewer decided", () => {
+    const linked = draftReducer(base, {
+      type: "decision",
+      index: 0,
+      decision: "linked",
+      productId: "prd1",
+    });
+    const state = draftReducer(linked, {
+      type: "line",
+      index: 0,
+      field: "sku",
+      value: "ZEN-SC-2100-GM-VN",
+    });
+    expect(state.lineItems[0].productDecision).toBe("linked");
+    expect(state.lineItems[0].productId).toBe("prd1");
   });
 });

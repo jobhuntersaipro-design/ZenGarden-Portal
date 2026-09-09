@@ -8,11 +8,18 @@ const extractionFindUnique = vi.fn();
 const extractionFindMany = vi.fn();
 const poFindUnique = vi.fn();
 const buyerUpsert = vi.fn();
+const productFindMany = vi.fn();
+
+/** Ids the confirm-time liveness check should treat as archived or deleted. */
+const archivedProductIds = new Set<string>();
+/** Lines handed to createProductsForLines, so "only the new ones" is testable. */
+const createdForLines: { sku: string | null }[] = [];
 
 const tx = {
   buyer: { upsert: buyerUpsert },
   purchaseOrder: { create: poCreate, findUnique: poFindUnique },
   lineItem: { createMany: lineItemCreateMany },
+  product: { findMany: productFindMany },
   poStageEvent: { create: stageEventCreate },
   extraction: { findUnique: extractionFindUnique, update: extractionUpdate },
 };
@@ -40,14 +47,35 @@ vi.mock("@/lib/auth-guards", () => ({
 vi.mock("@/lib/env", () => ({
   env: { ANTHROPIC_API_KEY: "k", EXTRACTION_MODEL: "m" },
 }));
-// Confirm re-resolves product codes so an edited one relinks; these assertions
-// are about the totals gate, so the resolver is stubbed to "nothing linked".
+// Since Phase 12 confirm no longer re-resolves codes; it creates products only
+// for the lines the reviewer marked "new". The stub records what it was given.
 vi.mock("@/lib/extraction/resolve-products", () => ({
-  resolveProducts: (lines: unknown[]) => Promise.resolve(lines.map(() => null)),
+  suggestProducts: (lines: unknown[]) => Promise.resolve(lines.map(() => null)),
+  createProductsForLines: (_tx: unknown, lines: { sku: string | null }[]) => {
+    createdForLines.push(...lines);
+    return Promise.resolve(lines.map((_, index) => `new-${index}`));
+  },
 }));
 vi.mock("next/cache", () => ({ revalidatePath: vi.fn() }));
 
 const { confirmPurchaseOrder } = await import("@/actions/purchase-orders");
+
+const line = (over: Record<string, unknown> = {}) => ({
+  sku: null,
+  description: "Stone lantern 60cm",
+  quantity: "20",
+  unit: "piece",
+  unitPrice: "600.00",
+  amount: "12000.00",
+  // Decided by default: every test that is not about the gate needs a draft
+  // that passes it.
+  productDecision: "linked",
+  productId: "prd-existing",
+  ...over,
+});
+
+/** What the transaction actually wrote, which is the only thing that matters. */
+const writtenLines = () => lineItemCreateMany.mock.calls[0][0].data;
 
 const draft = (over: Record<string, unknown> = {}) => ({
   poNumber: "PO-2026-0917",
@@ -55,16 +83,7 @@ const draft = (over: Record<string, unknown> = {}) => ({
   poDate: "2026-09-17",
   currency: "MYR",
   paymentTerms: null,
-  lineItems: [
-    {
-      sku: null,
-      description: "Stone lantern 60cm",
-      quantity: "20",
-      unit: "piece",
-      unitPrice: "600.00",
-      amount: "12000.00",
-    },
-  ],
+  lineItems: [line()],
   subtotal: "12000.00",
   tax: "400.00",
   total: "12400.00",
@@ -80,6 +99,17 @@ beforeEach(() => {
   extractionFindUnique.mockResolvedValue({ documentId: "doc-1", status: "SUCCEEDED" });
   extractionFindMany.mockResolvedValue([]);
   buyerUpsert.mockResolvedValue({ id: "buyer-new" });
+  archivedProductIds.clear();
+  createdForLines.length = 0;
+  // Every linked product is live unless a test archives it.
+  productFindMany.mockImplementation(
+    ({ where }: { where: { id: { in: string[] } } }) =>
+      Promise.resolve(
+        where.id.in
+          .filter((id) => !archivedProductIds.has(id))
+          .map((id) => ({ id })),
+      ),
+  );
 });
 
 describe("confirmPurchaseOrder — the totals gate", () => {
@@ -187,8 +217,8 @@ describe("confirmPurchaseOrder — buyers and validation", () => {
       "ext-1",
       draft({
         lineItems: [
-          { sku: null, description: "A", quantity: "1", unit: null, unitPrice: "1.00", amount: "1.00" },
-          { sku: null, description: "B", quantity: "1", unit: null, unitPrice: "1.00", amount: "1.00" },
+          line({ description: "A", quantity: "1", unitPrice: "1.00", amount: "1.00" }),
+          line({ description: "B", quantity: "1", unitPrice: "1.00", amount: "1.00" }),
         ],
         subtotal: "2.00",
         tax: "0.00",
@@ -220,5 +250,75 @@ describe("confirmPurchaseOrder — the review queue", () => {
     extractionFindMany.mockResolvedValue([]);
     const result = await confirmPurchaseOrder("ext-1", draft(), {}, ["ext-1"]);
     expect(result.success && result.data.nextExtractionId).toBeNull();
+  });
+});
+
+describe("confirmPurchaseOrder — the product gate", () => {
+  it("refuses a draft with an undecided line", async () => {
+    const result = await confirmPurchaseOrder(
+      "ext-1",
+      draft({ lineItems: [line({ productDecision: "unset" })] }),
+    );
+    expect(result.success).toBe(false);
+    expect(result.success === false && result.error).toMatch(
+      /every line needs a product/i,
+    );
+    expect(poCreate).not.toHaveBeenCalled();
+  });
+
+  it("writes the chosen product, not the one the printed code resolves to", async () => {
+    // The whole point: a reviewer corrected the match by hand, and confirm
+    // used to overwrite it by re-deriving productId from the code.
+    await confirmPurchaseOrder(
+      "ext-1",
+      draft({
+        lineItems: [
+          line({
+            sku: "ZEN-SC-2100-GM-VN",
+            productDecision: "linked",
+            productId: "chosen",
+          }),
+        ],
+      }),
+    );
+    expect(writtenLines()[0].productId).toBe("chosen");
+  });
+
+  it("writes no product for a line that is not a product", async () => {
+    await confirmPurchaseOrder(
+      "ext-1",
+      draft({
+        lineItems: [line({ description: "Delivery", productDecision: "none" })],
+      }),
+    );
+    expect(writtenLines()[0].productId).toBeNull();
+  });
+
+  it("creates a product only for the lines marked new", async () => {
+    await confirmPurchaseOrder(
+      "ext-1",
+      draft({
+        lineItems: [
+          line({ productDecision: "linked", productId: "chosen", amount: "6000.00" }),
+          line({ sku: "BRAND-NEW-1", productDecision: "new", amount: "6000.00" }),
+        ],
+        subtotal: "12000.00",
+      }),
+    );
+    expect(createdForLines).toHaveLength(1);
+    expect(createdForLines[0].sku).toBe("BRAND-NEW-1");
+    expect(writtenLines()[1].productId).toBe("new-0");
+  });
+
+  it("refuses a linked line whose product has since been archived, naming the line", async () => {
+    archivedProductIds.add("gone");
+    const result = await confirmPurchaseOrder(
+      "ext-1",
+      draft({
+        lineItems: [line({ productDecision: "linked", productId: "gone" })],
+      }),
+    );
+    expect(result.success).toBe(false);
+    expect(result.success === false && result.error).toMatch(/line 1/i);
   });
 });

@@ -29,6 +29,7 @@ const emptyDraft = (): PoDraft => ({
       unit: null,
       unitPrice: "0.00",
       amount: "0.00",
+      productDecision: "unset",
     },
   ],
   subtotal: "0.00",
@@ -98,9 +99,23 @@ export default async function ReviewPage({
 
   const [buyers, products] = await Promise.all([
     prisma.buyer.findMany({ select: { id: true, name: true }, orderBy: { name: "asc" } }),
+    // The whole active catalogue, shaped as CatalogueEntry field for field.
+    // Ranked candidates are deliberately not computed here and never stored in
+    // draftJson: they are a view of the catalogue, and a draft can sit in the
+    // queue for days while the catalogue moves. The client ranks them fresh,
+    // which is also what lets an edited code re-rank live.
     prisma.product.findMany({
       where: { active: true },
-      select: { id: true, name: true, sku: true, unit: true },
+      select: {
+        id: true,
+        sku: true,
+        name: true,
+        brand: true,
+        variant: true,
+        market: true,
+        packSize: true,
+        unit: true,
+      },
       orderBy: { name: "asc" },
     }),
   ]);
@@ -137,12 +152,7 @@ export default async function ReviewPage({
             initialDraft={toDraft(extraction.draftJson)}
             confidence={confidenceMap(extraction.rawJson)}
             buyers={buyers.map((buyer) => ({ id: buyer.id, label: buyer.name }))}
-            products={products.map((product) => ({
-              id: product.id,
-              label: product.name,
-              hint: product.sku,
-              unit: product.unit,
-            }))}
+            catalogue={products}
             queue={queue}
           />
         </div>

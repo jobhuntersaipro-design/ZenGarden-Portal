@@ -3,7 +3,7 @@ import { ExtractionStatus } from "@/generated/prisma/enums";
 import { prisma } from "@/lib/prisma";
 import type { PoExtraction } from "@/lib/extraction/schema";
 import type { ExtractionResult } from "@/lib/extraction/extract-po";
-import { resolveProducts } from "@/lib/extraction/resolve-products";
+import { suggestProducts } from "@/lib/extraction/resolve-products";
 
 export type RunExtractionArgs = {
   extractionId: string;
@@ -123,7 +123,10 @@ async function toDraft(extraction: PoExtraction, extractionId: string) {
   // would ever be used.
   const buyerId = matched?.id ?? hinted ?? null;
 
-  const products = await resolveProducts(
+  // Only what the printed code conclusively points at. Ranked suggestions are
+  // the review screen's job, computed live against the catalogue, so they
+  // cannot go stale inside a draft that sits in the queue for days.
+  const products = await suggestProducts(
     extraction.lineItems.map((line) => ({
       description: line.description,
       sku: line.sku,
@@ -143,6 +146,9 @@ async function toDraft(extraction: PoExtraction, extractionId: string) {
       sku: line.sku,
       description: line.description,
       productId: products[index],
+      // A suggestion, never a decision: an exact code opens the picker on the
+      // right row, and a person still has to say so.
+      productDecision: "unset" as const,
       quantity: new Prisma.Decimal(line.quantity).toFixed(3),
       unit: line.unit,
       unitPrice: new Prisma.Decimal(line.unitPrice).toFixed(4),

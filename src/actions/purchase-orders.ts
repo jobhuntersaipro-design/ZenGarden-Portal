@@ -15,7 +15,7 @@ import {
 import { extractPurchaseOrder } from "@/lib/extraction/extract-po";
 import { formatMYR } from "@/lib/money";
 import { prisma } from "@/lib/prisma";
-import { resolveProducts } from "@/lib/extraction/resolve-products";
+import { createProductsForLines } from "@/lib/extraction/resolve-products";
 import { deleteObject, getObjectBytes, isPendingKey } from "@/lib/r2";
 import {
   PoDraftSchema,
@@ -210,19 +210,18 @@ export async function confirmPurchaseOrder(
     return { success: false, error: "The totals don't match the document." };
   }
 
-  // Resolved again here, not only at extraction: a reviewer can edit a code, and
-  // the link has to follow what they typed. Idempotent — an existing code links,
-  // an unknown one creates — so running it a second time costs nothing. It also
-  // means a draft that is discarded never creates anything, because nothing
-  // reaches this point.
-  const resolved = await resolveProducts(
-    data.lineItems.map((line) => ({
-      description: line.description,
-      sku: line.sku,
-      unit: line.unit,
-      unitPrice: line.unitPrice,
-    })),
+  // Since Phase 12 the reviewer's decision is authoritative. Re-deriving
+  // productId from the printed code here is what used to overwrite a
+  // correction someone had made by hand.
+  const undecided = data.lineItems.findIndex(
+    (line) => line.productDecision === "unset",
   );
+  if (undecided >= 0) {
+    return {
+      success: false,
+      error: `Every line needs a product — line ${undecided + 1} is undecided.`,
+    };
+  }
 
   try {
     const poId = await prisma.$transaction(async (tx) => {
@@ -278,13 +277,58 @@ export async function confirmPurchaseOrder(
         select: { id: true },
       });
 
+      // A draft can sit in the queue for days; the product it points at may
+      // have been archived or deleted since it was chosen.
+      const linkedIds = [
+        ...new Set(
+          data.lineItems
+            .filter((line) => line.productDecision === "linked")
+            .map((line) => line.productId!),
+        ),
+      ];
+      const live = new Set(
+        (
+          await tx.product.findMany({
+            where: { id: { in: linkedIds }, active: true },
+            select: { id: true },
+          })
+        ).map((product) => product.id),
+      );
+      const stale = data.lineItems.findIndex(
+        (line) => line.productDecision === "linked" && !live.has(line.productId!),
+      );
+      if (stale >= 0) throw new Error(`STALE_PRODUCT:${stale + 1}`);
+
+      // Only the lines asking to be created reach the write, and positions
+      // are kept so ids map back to the right rows.
+      const newLines = data.lineItems.filter(
+        (line) => line.productDecision === "new",
+      );
+      const createdIds = await createProductsForLines(
+        tx,
+        newLines.map((line) => ({
+          description: line.description,
+          sku: line.sku,
+          unit: line.unit,
+          unitPrice: line.unitPrice,
+        })),
+      );
+      const created = new Map(
+        newLines.map((line, index) => [line, createdIds[index] ?? null]),
+      );
+
       await tx.lineItem.createMany({
         data: data.lineItems.map((line, index) => ({
           purchaseOrderId: po.id,
           position: index,
           sku: line.sku?.trim() || null,
           description: line.description,
-          productId: resolved[index] ?? line.productId ?? null,
+          productId:
+            line.productDecision === "linked"
+              ? line.productId!
+              : line.productDecision === "new"
+                ? (created.get(line) ?? null)
+                : null,
           quantity: new Prisma.Decimal(line.quantity),
           unit: line.unit,
           unitPrice: new Prisma.Decimal(line.unitPrice),
@@ -349,6 +393,12 @@ export async function confirmPurchaseOrder(
     }
     if (message === "MISSING_EXTRACTION" || message === "MISSING_REVISED") {
       return { success: false, error: "That file is gone." };
+    }
+    if (message.startsWith("STALE_PRODUCT:")) {
+      return {
+        success: false,
+        error: `The product chosen for line ${message.split(":")[1]} is no longer in the catalogue. Choose another.`,
+      };
     }
     console.error("[po] confirmPurchaseOrder", cause);
     return { success: false, error: "We couldn't save that purchase order." };
