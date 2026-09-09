@@ -171,7 +171,7 @@
      240 + 176 + 80 + 80 + 112 + 112 + 40. At 720px the Description and Product
      headers collided and Amount was clipped off the card (measured
      2026-09-07). */
-  --spacing-line-items: 840px;
+  --spacing-line-items: 952px;
 
   /* Share palette — the donuts' six categorical hues, in rank order.
      Deliberately NOT named `--color-chart-*` or reusing `--color-primary`:

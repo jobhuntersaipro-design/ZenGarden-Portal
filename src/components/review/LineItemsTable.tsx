@@ -2,14 +2,13 @@
 
 import { Trash2 } from "lucide-react";
 import type { Dispatch } from "react";
-import type { ComboboxOption } from "@/components/review/Combobox";
 import type { DraftAction } from "@/components/review/draft-reducer";
+import { ProductMatchPicker } from "@/components/review/ProductMatchPicker";
 import { Input } from "@/components/ui/input";
 import { useEdgeFades } from "@/hooks/useEdgeFades";
+import type { CatalogueEntry, Idf } from "@/lib/extraction/match-products";
 import { formatMYR } from "@/lib/money";
 import type { DraftLineItem } from "@/lib/validation/purchase-orders";
-
-export type ProductOption = ComboboxOption & { unit: string | null };
 
 /**
  * The one table in the app that does not sort: these rows are in the order they
@@ -18,14 +17,16 @@ export type ProductOption = ComboboxOption & { unit: string | null };
  */
 export function LineItemsTable({
   lineItems,
-  products,
+  catalogue,
+  idf,
   dispatch,
 }: {
   lineItems: DraftLineItem[];
-  products: ProductOption[];
+  catalogue: CatalogueEntry[];
+  idf: Idf;
   dispatch: Dispatch<DraftAction>;
 }) {
-  // Seven columns need 840px and the review screen's form column is narrower
+  // Seven columns need 952px and the review screen's form column is narrower
   // than that on every viewport, so this table always scrolls. A container that
   // clips with no visible edge does not look scrollable — it looks like a table
   // missing a column, which is exactly how it was reported.
@@ -41,8 +42,8 @@ export function LineItemsTable({
                   what makes these authoritative: under the default automatic
                   layout a <col> width is only a hint, so a long description
                   won the space and squeezed the code down to a few characters.
-                  They sum to --spacing-line-items (840px). */}
-              <col className="w-44" />
+                  They sum to --spacing-line-items (952px). */}
+              <col className="w-72" />
               <col className="w-60" />
               <col className="w-20" />
               <col className="w-20" />
@@ -53,7 +54,7 @@ export function LineItemsTable({
             <thead>
               <tr className="border-b border-hairline text-left">
                 {[
-                  "Product Code",
+                  "Product",
                   "Description",
                   "Qty",
                   "Unit",
@@ -93,16 +94,18 @@ export function LineItemsTable({
                         })
                       }
                     />
-                    {/* What this code currently points at, so a reviewer can
-                        see a wrong link without opening a picker. */}
-                    <span className="mt-xxs block truncate text-[length:var(--text-caption)] text-ink-tertiary">
-                      {line.productId
-                        ? (products.find((p) => p.id === line.productId)?.label ??
-                          "Linked")
-                        : line.sku?.trim()
-                          ? "New product"
-                          : "No product"}
-                    </span>
+                    {/* The decision itself, below the code the document
+                        printed. The code still writes LineItem.sku; since
+                        Phase 12 it no longer decides the link. */}
+                    <div className="mt-xxs">
+                      <ProductMatchPicker
+                        line={line}
+                        index={index}
+                        catalogue={catalogue}
+                        idf={idf}
+                        dispatch={dispatch}
+                      />
+                    </div>
                   </td>
                   <td className="py-sm pr-sm">
                     <Input

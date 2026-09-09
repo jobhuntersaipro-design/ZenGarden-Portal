@@ -19,9 +19,13 @@ import { Field, FieldShell } from "@/components/review/Field";
 import {
   LineItemsTable,
   LineItemSum,
-  type ProductOption,
 } from "@/components/review/LineItemsTable";
 import { TotalsBanner } from "@/components/review/TotalsBanner";
+import {
+  buildIdf,
+  matchLine,
+  type CatalogueEntry,
+} from "@/lib/extraction/match-products";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
 import {
@@ -44,7 +48,7 @@ export function ReviewForm({
   initialDraft,
   confidence,
   buyers,
-  products,
+  catalogue,
   queue,
 }: {
   extractionId: string;
@@ -53,7 +57,7 @@ export function ReviewForm({
   initialDraft: PoDraft;
   confidence: Record<string, number>;
   buyers: ComboboxOption[];
-  products: ProductOption[];
+  catalogue: CatalogueEntry[];
   queue: string[];
 }) {
   const router = useRouter();
@@ -74,6 +78,9 @@ export function ReviewForm({
   const [formError, setFormError] = useState<string | null>(null);
   const first = useRef(true);
 
+  // Once per document. Every line's ranking reads these weights, so building
+  // them per line would be the same work times twenty.
+  const idf = useMemo(() => buildIdf(catalogue), [catalogue]);
   const totals = useMemo(() => checkTotals(draft), [draft]);
   const parsed = useMemo(() => PoDraftSchema.safeParse(draft), [draft]);
 
@@ -119,12 +126,37 @@ export function ReviewForm({
   const blockedByDuplicate =
     Boolean(duplicateNow?.sameBuyer) && !isRevision;
   const blockedByTotals = !totals.matches && !acknowledgedNow;
+  // Mirrored by confirmPurchaseOrder, so calling the action directly cannot
+  // bypass it — the same shape as the totals gate beside it.
+  const undecided = draft.lineItems.filter(
+    (line) => line.productDecision === "unset",
+  ).length;
+  const blockedByProducts = undecided > 0;
   const canConfirm =
     !confirming &&
     parsed.success &&
     !blockedByTotals &&
     !blockedByDuplicate &&
+    !blockedByProducts &&
     status !== ExtractionStatus.RUNNING;
+
+  const exactMatches = useMemo(
+    () =>
+      draft.lineItems
+        .map((line, index) => {
+          if (line.productDecision !== "unset") return null;
+          const [top] = matchLine(
+            { description: line.description, sku: line.sku },
+            catalogue,
+            idf,
+          );
+          return top?.score === 100 ? { index, productId: top.productId } : null;
+        })
+        .filter(
+          (match): match is { index: number; productId: string } => match !== null,
+        ),
+    [draft.lineItems, catalogue, idf],
+  );
 
   const onConfirm = useCallback(async () => {
     setConfirming(true);
@@ -314,9 +346,32 @@ export function ReviewForm({
               </span>
             ) : null}
           </div>
+          {exactMatches.length > 0 ? (
+            <div className="mb-xs">
+              <Button
+                variant="secondary"
+                onClick={() => {
+                  // The gate stays literal — every line needs a decision —
+                  // while a twenty-line order whose codes all match is one
+                  // click rather than twenty.
+                  for (const match of exactMatches) {
+                    dispatch({
+                      type: "decision",
+                      index: match.index,
+                      decision: "linked",
+                      productId: match.productId,
+                    });
+                  }
+                }}
+              >
+                {`Accept ${exactMatches.length} exact ${exactMatches.length === 1 ? "match" : "matches"}`}
+              </Button>
+            </div>
+          ) : null}
           <LineItemsTable
             lineItems={draft.lineItems}
-            products={products}
+            catalogue={catalogue}
+            idf={idf}
             dispatch={dispatch}
           />
         </section>
@@ -415,6 +470,11 @@ export function ReviewForm({
               {blockedByDuplicate ? (
                 <p className="mt-xxs text-[length:var(--text-caption)] text-ink-tertiary">
                   Locked — tick “This is a revised PO”
+                </p>
+              ) : null}
+              {blockedByProducts ? (
+                <p className="mt-xxs text-[length:var(--text-caption)] text-ink-tertiary">
+                  {`Locked — ${undecided} ${undecided === 1 ? "line needs" : "lines need"} a product`}
                 </p>
               ) : null}
             </div>
