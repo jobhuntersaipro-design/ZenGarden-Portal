@@ -10,7 +10,7 @@ for it yet — the canvas is the agreed design and nothing else is settled.
 Page 1 — Storefront
 | File | Screen |
 | --- | --- |
-| `Shop.dc.html` | **The working prototype** — every screen below, wired together |
+| `Shop.dc.html` | **The working prototype** — every screen below, plus order history, the purchase order and customer settings |
 | `Main.dc.html` | Home / landing |
 | `Catalogue.dc.html` | Browse, with filters in a top bar |
 | `Product.dc.html` | Product detail |
@@ -30,7 +30,10 @@ Page 2 — Purchase order & product codes
 opening in a browser without the canvas.
 
 `Shop.dc.html` is the only artboard with logic: one `DCLogic` class holding
-view, search, filters, sort and the cart, switching views with `sc-if`.
+view, search, filters, sort, the cart, the signed-in flag, order history and
+the document list, switching views with `sc-if`. Every money figure is computed
+from the line items by `orderTotals`, so the order table, the purchase order
+and the settings preview cannot disagree with each other.
 Artboards share nothing at runtime, which is why a clickable flow has to live
 in a single file rather than link between the static ones.
 

@@ -63,7 +63,19 @@
       </div>
 
       <div style="display: flex; align-items: center; gap: 20px; white-space: nowrap;">
-        <button onClick="{{ goCheckout }}" style="font-size: 14px; letter-spacing: -0.15px; color: #7b68ee; font-weight: 500;">Sign in</button>
+        <sc-if value="{{ signedOut }}" hint-placeholder-val="{{ true }}">
+          <button onClick="{{ signIn }}" style="font-size: 14px; letter-spacing: -0.15px; color: #7b68ee; font-weight: 500;">Sign in</button>
+        </sc-if>
+        <sc-if value="{{ signedIn }}" hint-placeholder-val="{{ false }}">
+          <span style="display: flex; align-items: center; gap: 18px;">
+            <button onClick="{{ goOrders }}" style="font-size: 14px; letter-spacing: -0.15px; color: #292d34; font-weight: 500;">My orders</button>
+            <button onClick="{{ goAccount }}" style="font-size: 14px; letter-spacing: -0.15px; color: #292d34; font-weight: 500;">Settings</button>
+            <span style="display: flex; align-items: center; gap: 8px;">
+              <span style="width: 32px; height: 32px; border-radius: 35px; background: #e9ebf0; display: flex; align-items: center; justify-content: center; font-size: 12px; font-weight: 600; color: #646464;">AR</span>
+              <button onClick="{{ signOut }}" style="font-size: 12px; color: #6f6f6f;">Sign out</button>
+            </span>
+          </span>
+        </sc-if>
         <button onClick="{{ goCart }}" class="ink">
           <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><circle cx="9" cy="20" r="1.4"></circle><circle cx="18" cy="20" r="1.4"></circle><path d="M2.5 3h2.6l2.1 11.2a1.6 1.6 0 0 0 1.6 1.3h8.9a1.6 1.6 0 0 0 1.6-1.3L21 6.5H6"></path></svg>
           <span>Cart</span>
@@ -391,7 +403,7 @@
                   <div style="display: flex; align-items: baseline; justify-content: space-between; margin-bottom: 6px;"><span class="lbl">Password</span><span style="font-size: 12px; color: #7b68ee;">Forgot password?</span></div>
                   <input type="password" placeholder="••••••••" class="field" style="width: 100%; box-sizing: border-box; outline: none;" />
                 </div>
-                <div class="ink-lg" style="margin-top: 4px;">Sign in and review my order</div>
+                <button onClick="{{ signIn }}" class="ink-lg" style="margin-top: 4px;">Sign in and review my order</button>
                 <p class="lbl" style="margin: 0;">Customer accounts use email and password. The Google button on the staff sign-in page does not apply here.</p>
               </div>
             </div>
@@ -435,6 +447,342 @@
     </div>
   </sc-if>
 
+  <!-- =========================== ORDERS =========================== -->
+  <sc-if value="{{ isOrders }}" hint-placeholder-val="{{ false }}">
+    <div>
+      <div class="page" style="padding-top: 32px;">
+        <h1 class="disp" style="margin: 0; font-size: 34px; line-height: 1.2; letter-spacing: -1.36px; font-weight: 650;">Your orders</h1>
+        <p style="margin: 8px 0 0; font-size: 14px; color: #6f6f6f;">{{ ordersSummary }}</p>
+        <div style="display: flex; gap: 12px; margin-top: 20px; flex-wrap: wrap;">
+          <sc-for list="{{ orderFilters }}" as="f" hint-placeholder-count="3">
+            <button onClick="{{ f.pick }}" class="{{ f.cls }}">{{ f.label }}</button>
+          </sc-for>
+        </div>
+      </div>
+
+      <div class="page" style="padding-top: 20px; padding-bottom: 60px;">
+        <div style="border: 1px solid #e8e8e8; border-radius: 14px; overflow: hidden;">
+          <div style="display: grid; grid-template-columns: 170px minmax(0, 1fr) 110px 90px 120px 150px 32px; gap: 16px; padding: 14px 20px; background: #f8f9fa; border-bottom: 1px solid #e8e8e8;">
+            <span class="lbl">Order</span><span class="lbl">Your PO number</span><span class="lbl">Placed</span>
+            <span class="lbl" style="text-align: right;">Cartons</span><span class="lbl" style="text-align: right;">Total</span>
+            <span class="lbl">Stage</span><span></span>
+          </div>
+
+          <sc-for list="{{ orders }}" as="o" hint-placeholder-count="5">
+            <div style="border-bottom: 1px solid #e8e8e8;">
+              <button onClick="{{ o.toggle }}" style="display: grid; width: 100%; grid-template-columns: 170px minmax(0, 1fr) 110px 90px 120px 150px 32px; gap: 16px; align-items: center; padding: 18px 20px; background: {{ o.rowBg }};">
+                <span class="mono" style="font-size: 14px; font-weight: 500;">{{ o.ref }}</span>
+                <span style="font-size: 14px; letter-spacing: -0.15px; color: {{ o.buyerRefColor }};">{{ o.buyerRef }}</span>
+                <span class="lbl">{{ o.date }}</span>
+                <span class="num" style="text-align: right; font-size: 14px;">{{ o.cartons }}</span>
+                <span class="num" style="text-align: right; font-size: 16px; font-weight: 600; letter-spacing: -0.32px;">{{ o.totalLabel }}</span>
+                <span style="display: flex; align-items: center; gap: 8px;">
+                  <span style="width: 8px; height: 8px; border-radius: 20px; background: {{ o.stageColor }}; flex-shrink: 0;"></span>
+                  <span style="font-size: 12px; color: #292d34;">{{ o.stageLabel }}</span>
+                </span>
+                <span style="display: flex; justify-content: flex-end;">
+                  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#6f6f6f" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="transform: {{ o.chevron }};"><path d="M6 9l6 6 6-6"></path></svg>
+                </span>
+              </button>
+
+              <sc-if value="{{ o.open }}" hint-placeholder-val="{{ true }}">
+                <div style="padding: 0 20px 20px; background: #f8f9fa;">
+                  <div style="border: 1px solid #e8e8e8; border-radius: 12px; background: #ffffff; overflow: hidden;">
+                    <div style="display: grid; grid-template-columns: minmax(0, 1fr) 190px 90px 110px 120px; gap: 16px; padding: 12px 16px; border-bottom: 1px solid #e8e8e8;">
+                      <span class="lbl">Product</span><span class="lbl">Code</span>
+                      <span class="lbl" style="text-align: right;">Cartons</span>
+                      <span class="lbl" style="text-align: right;">Per carton</span>
+                      <span class="lbl" style="text-align: right;">Amount</span>
+                    </div>
+                    <sc-for list="{{ o.lines }}" as="l" hint-placeholder-count="3">
+                      <div style="display: grid; grid-template-columns: minmax(0, 1fr) 190px 90px 110px 120px; gap: 16px; align-items: center; padding: 12px 16px; border-bottom: 1px solid #f8f9fa;">
+                        <button onClick="{{ l.open }}" style="min-width: 0;">
+                          <span style="font-size: 14px; font-weight: 500; letter-spacing: -0.15px;">{{ l.name }}</span>
+                          <span class="lbl" style="display: block;">{{ l.sub }}</span>
+                        </button>
+                        <span class="mono lbl">{{ l.code }}</span>
+                        <span class="num" style="text-align: right; font-size: 14px;">{{ l.cartons }}</span>
+                        <span class="num" style="text-align: right; font-size: 14px;">{{ l.unitLabel }}</span>
+                        <span class="num" style="text-align: right; font-size: 14px; font-weight: 600;">{{ l.amountLabel }}</span>
+                      </div>
+                    </sc-for>
+                    <div style="display: flex; align-items: center; justify-content: space-between; padding: 14px 16px; background: #f8f9fa;">
+                      <span class="lbl">{{ o.piecesLabel }}</span>
+                      <div style="display: flex; align-items: center; gap: 20px;">
+                        <button onClick="{{ o.viewPo }}" style="height: 36px; padding: 0 16px; border: 1px solid #292d34; border-radius: 20px; display: flex; align-items: center; gap: 8px; font-size: 14px; font-weight: 600; background: #ffffff;">
+                          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M6 3h8l4 4v14H6z"></path><path d="M14 3v4h4"></path></svg>
+                          View purchase order
+                        </button>
+                        <button onClick="{{ o.reorder }}" style="height: 36px; padding: 0 16px; border-radius: 20px; background: #292d34; color: #ffffff; font-size: 14px; font-weight: 600; display: flex; align-items: center;">Order these again</button>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </sc-if>
+            </div>
+          </sc-for>
+        </div>
+      </div>
+    </div>
+  </sc-if>
+
+  <!-- ====================== PURCHASE ORDER ======================= -->
+  <sc-if value="{{ isPo }}" hint-placeholder-val="{{ false }}">
+    <div style="background: #e9ebf0; min-height: 100%;">
+      <div class="page" style="padding-top: 20px; padding-bottom: 20px; display: flex; align-items: center; justify-content: space-between;">
+        <button onClick="{{ goOrders }}" style="font-size: 14px; color: #7b68ee; font-weight: 500;">&larr; Back to your orders</button>
+        <div style="display: flex; align-items: center; gap: 12px;">
+          <span class="lbl">{{ po.fileName }}</span>
+          <div class="ink">
+            <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 4v11"></path><path d="M7.5 10.5L12 15l4.5-4.5"></path><path d="M4.5 19h15"></path></svg>
+            Download PDF
+          </div>
+        </div>
+      </div>
+
+      <div style="display: flex; justify-content: center; padding-bottom: 60px;">
+        <div style="width: 794px; min-height: 1123px; background: #ffffff; padding: 48px; box-sizing: border-box; display: flex; flex-direction: column; box-shadow: 0 12px 40px rgba(18,43,165,0.16);">
+          <div style="display: flex; align-items: flex-start; justify-content: space-between; padding-bottom: 20px; border-bottom: 2px solid #292d34;">
+            <div>
+              <div class="disp" style="font-size: 26px; line-height: 1.25; letter-spacing: -0.91px; font-weight: 700;">
+                <span style="background-image: linear-gradient(263deg,#fa12e3 -35%,#7612fa 41%,#12d0fa 135%); -webkit-background-clip: text; background-clip: text; color: transparent;">Loving</span><span style="color: #292d34;">&nbsp;Hands</span>
+              </div>
+              <div class="lbl" style="margin-top: 4px;">Prepared for the buyer named below</div>
+            </div>
+            <div style="text-align: right;">
+              <div class="disp" style="font-size: 26px; line-height: 1.25; letter-spacing: -0.91px; font-weight: 650;">PURCHASE ORDER</div>
+              <div class="mono" style="font-size: 16px; margin-top: 4px;">{{ po.number }}</div>
+            </div>
+          </div>
+
+          <div style="display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 16px; padding: 16px 0; border-bottom: 1px solid #e8e8e8;">
+            <div><div class="lbl">Order date</div><div style="font-size: 16px; font-weight: 500;">{{ po.date }}</div></div>
+            <div><div class="lbl">Delivery requested</div><div style="font-size: 16px; font-weight: 500;">{{ po.requested }}</div></div>
+            <div><div class="lbl">Payment terms</div><div style="font-size: 16px; font-weight: 500;">{{ po.terms }}</div></div>
+            <div><div class="lbl">Currency</div><div style="font-size: 16px; font-weight: 500;">MYR</div></div>
+          </div>
+
+          <div style="display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 32px; padding: 20px 0; border-bottom: 1px solid #e8e8e8;">
+            <div>
+              <div class="lbl" style="text-transform: uppercase; letter-spacing: 0.4px;">Buyer</div>
+              <div style="font-size: 16px; font-weight: 600; margin-top: 6px;">Acme Industrial Sdn Bhd</div>
+              <div style="font-size: 16px; line-height: 1.5; color: #646464; margin-top: 4px;">12 Jalan Perindustrian 4<br>47100 Puchong, Selangor<br>Malaysia</div>
+              <div style="font-size: 16px; color: #646464; margin-top: 8px;">Aisha Rahman &middot; orders@acme-industrial.com.my</div>
+            </div>
+            <div>
+              <div class="lbl" style="text-transform: uppercase; letter-spacing: 0.4px;">Supplier</div>
+              <div style="font-size: 16px; font-weight: 600; margin-top: 6px;">Loving Hands</div>
+              <div style="font-size: 16px; line-height: 1.5; color: #646464; margin-top: 4px;">[YOUR COMPANY REGISTRATION NO.]<br>[YOUR BUSINESS ADDRESS]</div>
+              <div style="font-size: 16px; color: #646464; margin-top: 8px;">[YOUR EMAIL] &middot; [YOUR PHONE]</div>
+            </div>
+          </div>
+
+          <div style="padding-top: 16px;">
+            <div style="display: grid; grid-template-columns: 34px 132px minmax(0, 1fr) 64px 96px 104px; gap: 8px; padding-bottom: 8px; border-bottom: 1px solid #292d34;">
+              <div class="lbl">#</div><div class="lbl">Product code</div><div class="lbl">Description</div>
+              <div class="lbl num" style="text-align: right;">Cartons</div>
+              <div class="lbl num" style="text-align: right;">Unit price</div>
+              <div class="lbl num" style="text-align: right;">Amount</div>
+            </div>
+            <sc-for list="{{ po.lines }}" as="l" hint-placeholder-count="3">
+              <div style="display: grid; grid-template-columns: 34px 132px minmax(0, 1fr) 64px 96px 104px; gap: 8px; padding: 10px 0; border-bottom: 1px solid #e8e8e8; align-items: start;">
+                <div class="num lbl" style="text-align: right;">{{ l.n }}</div>
+                <div>
+                  <div class="mono" style="font-size: 14px; line-height: 1.4;">{{ l.code }}</div>
+                  <div class="lbl" style="margin-top: 2px;">{{ l.ourRef }}</div>
+                </div>
+                <div>
+                  <div style="font-size: 14px; line-height: 1.43; font-weight: 500;">{{ l.name }}</div>
+                  <div class="lbl" style="margin-top: 2px;">{{ l.packLine }}</div>
+                </div>
+                <div class="num" style="text-align: right; font-size: 14px;">{{ l.cartons }}</div>
+                <div class="num" style="text-align: right; font-size: 14px;">{{ l.unit }}</div>
+                <div class="num" style="text-align: right; font-size: 14px; font-weight: 600;">{{ l.amount }}</div>
+              </div>
+            </sc-for>
+          </div>
+
+          <div style="display: flex; justify-content: flex-end; padding-top: 16px;">
+            <div style="width: 300px;">
+              <div style="display: flex; justify-content: space-between; padding: 6px 0;"><span style="font-size: 16px; color: #646464;">Subtotal</span><span class="num" style="font-size: 16px; font-weight: 500;">{{ po.subtotal }}</span></div>
+              <div style="display: flex; justify-content: space-between; padding: 6px 0;"><span style="font-size: 16px; color: #646464;">[TAX, IF ANY]</span><span class="num" style="font-size: 16px; color: #6f6f6f;">0.00</span></div>
+              <div style="display: flex; justify-content: space-between; align-items: baseline; padding-top: 12px; margin-top: 6px; border-top: 2px solid #292d34;">
+                <span class="disp" style="font-size: 18px; letter-spacing: -0.54px; font-weight: 650;">Total (MYR)</span>
+                <span class="disp num" style="font-size: 26px; letter-spacing: -0.91px; font-weight: 650;">{{ po.total }}</span>
+              </div>
+            </div>
+          </div>
+
+          <div style="padding-top: 20px;">
+            <div class="lbl" style="text-transform: uppercase; letter-spacing: 0.4px;">Notes from the buyer</div>
+            <div style="font-size: 16px; color: #646464; margin-top: 6px;">{{ po.notes }}</div>
+          </div>
+
+          <div style="flex-grow: 1; min-height: 40px;"></div>
+
+          <div style="display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 32px; padding-top: 24px;">
+            <div><div style="height: 1px; background: #292d34;"></div><div class="lbl" style="margin-top: 6px;">Authorised by (buyer)</div></div>
+            <div><div style="height: 1px; background: #292d34;"></div><div class="lbl" style="margin-top: 6px;">Date</div></div>
+          </div>
+          <div style="margin-top: 20px; padding-top: 12px; border-top: 1px solid #e8e8e8; display: flex; justify-content: space-between;">
+            <span class="lbl">{{ po.generated }}</span>
+            <span class="lbl mono">{{ po.ref }}</span>
+          </div>
+        </div>
+      </div>
+    </div>
+  </sc-if>
+
+  <!-- ========================== ACCOUNT =========================== -->
+  <sc-if value="{{ isAccount }}" hint-placeholder-val="{{ false }}">
+    <div>
+      <div class="page" style="padding-top: 32px;">
+        <h1 class="disp" style="margin: 0; font-size: 34px; line-height: 1.2; letter-spacing: -1.36px; font-weight: 650;">Settings</h1>
+        <p style="margin: 8px 0 0; font-size: 14px; color: #6f6f6f;">Acme Industrial Sdn Bhd &middot; Aisha Rahman</p>
+        <div style="display: flex; gap: 28px; margin-top: 20px; border-bottom: 1px solid #e8e8e8;">
+          <sc-for list="{{ tabs }}" as="t" hint-placeholder-count="3">
+            <button onClick="{{ t.pick }}" class="{{ t.cls }}">{{ t.label }}</button>
+          </sc-for>
+        </div>
+      </div>
+
+      <sc-if value="{{ isProfileTab }}" hint-placeholder-val="{{ true }}">
+        <div class="page" style="padding-top: 24px; padding-bottom: 60px;">
+          <div style="max-width: 640px; display: flex; flex-direction: column; gap: 20px;">
+            <div style="border: 1px solid #e8e8e8; border-radius: 14px; padding: 28px;">
+              <h2 class="disp" style="margin: 0 0 20px; font-size: 18px; letter-spacing: -0.54px; font-weight: 650;">Your details</h2>
+              <div style="display: flex; align-items: center; gap: 20px; margin-bottom: 20px;">
+                <div style="width: 64px; height: 64px; border-radius: 35px; background: #e9ebf0; display: flex; align-items: center; justify-content: center; font-size: 18px; font-weight: 600; color: #646464;">AR</div>
+                <div class="outline" style="height: 44px; width: fit-content;">Change picture</div>
+              </div>
+              <div style="display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 16px;">
+                <div><span class="lbl" style="display: block; margin-bottom: 6px;">Display name</span><input type="text" value="Aisha Rahman" class="field" style="width: 100%; box-sizing: border-box; outline: none;" /></div>
+                <div><span class="lbl" style="display: block; margin-bottom: 6px;">Email address</span><div class="field" style="background: #f8f9fa; color: #6f6f6f;">orders@acme-industrial.com.my</div></div>
+              </div>
+              <p class="lbl" style="margin: 10px 0 0;">Your email is how we identify your account. Ask us to change it.</p>
+            </div>
+
+            <div style="border: 1px solid #e8e8e8; border-radius: 14px; padding: 28px;">
+              <h2 class="disp" style="margin: 0 0 4px; font-size: 18px; letter-spacing: -0.54px; font-weight: 650;">Password</h2>
+              <div style="display: flex; align-items: center; justify-content: space-between; gap: 20px;">
+                <p class="lbl" style="margin: 0;">Last changed 9 September 2026</p>
+                <div class="outline" style="height: 44px; width: fit-content;">Change password</div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </sc-if>
+
+      <sc-if value="{{ isCompanyTab }}" hint-placeholder-val="{{ false }}">
+        <div class="page" style="padding-top: 24px; padding-bottom: 60px;">
+          <div style="max-width: 640px; border: 1px solid #e8e8e8; border-radius: 14px; padding: 28px;">
+            <div style="display: flex; align-items: flex-start; justify-content: space-between; gap: 20px;">
+              <h2 class="disp" style="margin: 0; font-size: 18px; letter-spacing: -0.54px; font-weight: 650;">Your company</h2>
+              <div class="outline" style="height: 44px; width: fit-content;">Ask us to change this</div>
+            </div>
+            <p class="lbl" style="margin: 10px 0 20px;">These are the details we invoice and deliver against, so they are changed by our team rather than edited here.</p>
+            <sc-for list="{{ companyRows }}" as="r" hint-placeholder-count="5">
+              <div style="display: flex; align-items: flex-start; justify-content: space-between; gap: 20px; padding: 14px 0; border-top: 1px solid #e8e8e8;">
+                <span class="lbl">{{ r.k }}</span><span style="font-size: 16px; text-align: right; max-width: 380px;">{{ r.v }}</span>
+              </div>
+            </sc-for>
+          </div>
+        </div>
+      </sc-if>
+
+      <sc-if value="{{ isDocsTab }}" hint-placeholder-val="{{ false }}">
+        <div class="page" style="padding-top: 24px; padding-bottom: 60px;">
+          <div style="display: grid; grid-template-columns: 420px minmax(0, 1fr); gap: 32px; align-items: start;">
+
+            <div>
+              <button onClick="{{ upload }}" style="width: 100%; border: 2px dashed #d9d9d9; border-radius: 14px; padding: 28px 20px; display: flex; flex-direction: column; align-items: center; gap: 10px; background: #f8f9fa;">
+                <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="#7612fa" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M12 16V5"></path><path d="M7.5 9.5L12 5l4.5 4.5"></path><path d="M4 16v3h16v-3"></path></svg>
+                <span style="font-size: 16px; font-weight: 600; letter-spacing: -0.32px;">Upload a document</span>
+                <span class="lbl" style="text-align: center;">Drop a PDF or a photo here, or click to choose.<br>PDF, PNG or JPG up to 20 MB.</span>
+              </button>
+
+              <p class="lbl" style="margin: 16px 0 8px;">{{ docsSummary }}</p>
+              <div style="border: 1px solid #e8e8e8; border-radius: 14px; overflow: hidden;">
+                <sc-for list="{{ docs }}" as="d" hint-placeholder-count="4">
+                  <div style="display: flex; align-items: center; gap: 12px; padding: 14px 16px; border-bottom: 1px solid #e8e8e8; background: {{ d.bg }};">
+                    <button onClick="{{ d.pick }}" style="display: flex; align-items: center; gap: 12px; flex-grow: 1; min-width: 0;">
+                      <span style="width: 36px; height: 36px; border-radius: 9px; background: {{ d.iconBg }}; display: flex; align-items: center; justify-content: center; flex-shrink: 0;">
+                        <span class="mono" style="font-size: 12px; font-weight: 500; color: #ffffff;">{{ d.ext }}</span>
+                      </span>
+                      <span style="min-width: 0;">
+                        <span style="display: block; font-size: 14px; font-weight: 500; letter-spacing: -0.15px;">{{ d.name }}</span>
+                        <span class="lbl" style="display: block;">{{ d.meta }}</span>
+                      </span>
+                    </button>
+                    <button onClick="{{ d.remove }}" class="step" style="width: 36px; height: 36px; flex-shrink: 0;">
+                      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#6f6f6f" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M4 7h16"></path><path d="M9 7V5h6v2"></path><path d="M6 7l1 13h10l1-13"></path></svg>
+                    </button>
+                  </div>
+                </sc-for>
+              </div>
+            </div>
+
+            <div style="border: 1px solid #e8e8e8; border-radius: 14px; background: #e9ebf0; overflow: hidden;">
+              <div style="display: flex; align-items: center; justify-content: space-between; gap: 16px; padding: 14px 20px; background: #ffffff; border-bottom: 1px solid #e8e8e8;">
+                <div style="min-width: 0;">
+                  <div style="font-size: 14px; font-weight: 600; letter-spacing: -0.15px;">{{ preview.name }}</div>
+                  <div class="lbl">{{ preview.meta }}</div>
+                </div>
+                <div style="display: flex; align-items: center; gap: 10px;">
+                  <sc-if value="{{ preview.isPo }}" hint-placeholder-val="{{ true }}">
+                    <button onClick="{{ openPoFromDocs }}" style="height: 36px; padding: 0 16px; border: 1px solid #292d34; border-radius: 20px; font-size: 14px; font-weight: 600; display: flex; align-items: center; background: #ffffff;">Open full size</button>
+                  </sc-if>
+                  <div class="ink" style="height: 36px; padding: 0 16px;">
+                    <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 4v11"></path><path d="M7.5 10.5L12 15l4.5-4.5"></path><path d="M4.5 19h15"></path></svg>
+                    Download
+                  </div>
+                </div>
+              </div>
+
+              <div style="padding: 24px; display: flex; justify-content: center;">
+                <sc-if value="{{ preview.isImage }}" hint-placeholder-val="{{ false }}">
+                  <div style="width: 420px; height: 300px; border-radius: 12px; background: #d9d9d9; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 10px;">
+                    <svg width="44" height="44" viewBox="0 0 24 24" fill="none" stroke="#6f6f6f" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="5" width="18" height="14" rx="2.5"></rect><circle cx="8.5" cy="10" r="1.6"></circle><path d="M4 17l5-5 4 4 3-2 4 3"></path></svg>
+                    <span class="lbl">Photograph</span>
+                  </div>
+                </sc-if>
+
+                <sc-if value="{{ preview.isPaper }}" hint-placeholder-val="{{ true }}">
+                  <div style="width: 420px; min-height: 594px; background: #ffffff; padding: 30px; box-sizing: border-box; box-shadow: 0 8px 28px rgba(18,43,165,0.14);">
+                    <div style="display: flex; align-items: flex-start; justify-content: space-between; padding-bottom: 12px; border-bottom: 1.5px solid #292d34;">
+                      <div class="disp" style="font-size: 15px; letter-spacing: -0.5px; font-weight: 700;">
+                        <span style="background-image: linear-gradient(263deg,#fa12e3 -35%,#7612fa 41%,#12d0fa 135%); -webkit-background-clip: text; background-clip: text; color: transparent;">Loving</span><span style="color: #292d34;">&nbsp;Hands</span>
+                      </div>
+                      <div style="text-align: right;">
+                        <div class="disp" style="font-size: 14px; letter-spacing: -0.4px; font-weight: 650;">{{ preview.title }}</div>
+                        <div class="mono" style="font-size: 11px; margin-top: 2px; color: #646464;">{{ preview.subtitle }}</div>
+                      </div>
+                    </div>
+                    <sc-for list="{{ preview.rows }}" as="r" hint-placeholder-count="6">
+                      <div style="display: flex; align-items: baseline; justify-content: space-between; gap: 12px; padding: 7px 0; border-bottom: 1px solid #f0f0f0;">
+                        <span style="font-size: 11px; color: #292d34; min-width: 0;">{{ r.l }}</span>
+                        <span class="num" style="font-size: 11px; color: #646464; white-space: nowrap;">{{ r.r }}</span>
+                      </div>
+                    </sc-for>
+                    <div style="display: flex; align-items: baseline; justify-content: space-between; padding-top: 12px; margin-top: 6px; border-top: 1.5px solid #292d34;">
+                      <span class="disp" style="font-size: 12px; font-weight: 650;">Total</span>
+                      <span class="disp num" style="font-size: 15px; font-weight: 650;">{{ preview.total }}</span>
+                    </div>
+                    <div style="margin-top: 40px; display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 20px;">
+                      <div><div style="height: 1px; background: #292d34;"></div><div style="font-size: 9px; color: #6f6f6f; margin-top: 4px;">Authorised by</div></div>
+                      <div><div style="height: 1px; background: #292d34;"></div><div style="font-size: 9px; color: #6f6f6f; margin-top: 4px;">Date</div></div>
+                    </div>
+                  </div>
+                </sc-if>
+              </div>
+            </div>
+
+          </div>
+        </div>
+      </sc-if>
+    </div>
+  </sc-if>
+
   </div>
 </div>
 </x-dc>
@@ -460,6 +808,60 @@ const CATEGORIES = [
   "Hand sanitizer", "Dishwash & cleanser", "Laundry detergent", "Fragrance",
 ];
 
+const STAGES = [
+  { key: "ORDER_PLACED",  label: "Order placed",  color: "#4a3aa7" },
+  { key: "IN_PRODUCTION", label: "In production", color: "#2a78d6" },
+  { key: "QC_PASSED",     label: "QC passed",     color: "#1baf7a" },
+  { key: "IN_WAREHOUSE",  label: "In warehouse",  color: "#eda100" },
+  { key: "DELIVERING",    label: "Delivering",    color: "#e87ba4" },
+  { key: "DELIVERED",     label: "Delivered",     color: "#04642a" },
+];
+const STAGE_BY_KEY = {};
+STAGES.forEach(function (x) { STAGE_BY_KEY[x.key] = x; });
+
+// The buyer's own code for a product, where our team has decided one.
+const BUYER_CODES = {
+  p1:  "ZEN/SC/2100/GM",
+  p2:  "ZEN/SC/2100/LAV",
+  p3:  "ZENSC-LAV1LT",
+  p6:  "ZENHW-LAV500ML",
+  p8:  "MK-SC-1500-LEM",
+  p10: "LHANDS-DW-1000-LE",
+};
+
+const ORDERS = [
+  { ref: "W-2609-00007", buyerRef: "ACME-PO-771", date: "10 Sep 2026", requested: "24 Sep 2026", stage: "ORDER_PLACED",
+    notes: "Please deliver to the loading bay before 4pm. Call on arrival.",
+    lines: [{ id: "p1", c: 3 }, { id: "p3", c: 4 }, { id: "p10", c: 2 }] },
+  { ref: "W-2608-00006", buyerRef: "ACME-PO-742", date: "22 Aug 2026", requested: "5 Sep 2026", stage: "DELIVERING",
+    notes: "Split across two drops if needed.",
+    lines: [{ id: "p2", c: 4 }, { id: "p6", c: 6 }, { id: "p8", c: 3 }, { id: "p11", c: 2 }] },
+  { ref: "W-2608-00004", buyerRef: "ACME-PO-701", date: "5 Aug 2026", requested: "19 Aug 2026", stage: "DELIVERED",
+    notes: "",
+    lines: [{ id: "p3", c: 4 }] },
+  { ref: "W-2607-00003", buyerRef: null, date: "18 Jul 2026", requested: "1 Aug 2026", stage: "DELIVERED",
+    notes: "Quarterly top-up.",
+    lines: [{ id: "p1", c: 5 }, { id: "p4", c: 6 }, { id: "p7", c: 4 }, { id: "p9", c: 5 }, { id: "p12", c: 3 }] },
+  { ref: "W-2606-00001", buyerRef: "ACME-PO-655", date: "29 Jun 2026", requested: "13 Jul 2026", stage: "DELIVERED",
+    notes: "",
+    lines: [{ id: "p5", c: 3 }, { id: "p10", c: 5 }] },
+];
+
+const START_DOCS = [
+  { id: "d1", name: "W-2609-00007 purchase order.pdf", ext: "PDF", kind: "po",    order: 0, size: "84 KB",  when: "10 Sep 2026", who: "Generated by Loving Hands" },
+  { id: "d2", name: "ACME-PO-742 signed.pdf",          ext: "PDF", kind: "paper", order: 1, size: "212 KB", when: "22 Aug 2026", who: "Uploaded by you" },
+  { id: "d3", name: "Delivery photo 22 Aug.jpg",       ext: "JPG", kind: "image", order: 1, size: "1.8 MB", when: "23 Aug 2026", who: "Uploaded by you" },
+  { id: "d4", name: "Company registration SSM.pdf",    ext: "PDF", kind: "paper", order: 2, size: "340 KB", when: "12 Jun 2026", who: "Uploaded by you" },
+];
+
+const COMPANY_ROWS = [
+  { k: "Registered name", v: "Acme Industrial Sdn Bhd" },
+  { k: "Delivery address", v: "12 Jalan Perindustrian 4, 47100 Puchong, Selangor" },
+  { k: "Contact", v: "Aisha Rahman" },
+  { k: "Phone", v: "03-8080 1234" },
+  { k: "Payment terms", v: "30 days" },
+];
+
 const BY_ID = {};
 PRODUCTS.forEach(function (p) { BY_ID[p.id] = p; });
 
@@ -473,7 +875,12 @@ function initials(label) {
 class Component extends DCLogic {
   constructor(props) {
     super(props);
-    this.state = { view: "home", q: "", category: null, brand: null, sort: "name", productId: null, qty: 1, cart: {} };
+    this.state = {
+      view: "home", q: "", category: null, brand: null, sort: "name",
+      productId: null, qty: 1, cart: {},
+      signedIn: false, openOrder: null, poOrder: null, orderFilter: "all",
+      tab: "profile", docs: START_DOCS.slice(), docId: "d1", uploads: 0,
+    };
   }
 
   go(view) { this.setState({ view: view }); }
@@ -488,6 +895,17 @@ class Component extends DCLogic {
     const cart = Object.assign({}, this.state.cart);
     if (n <= 0) { delete cart[id]; } else { cart[id] = Math.min(999, n); }
     this.setState({ cart: cart });
+  }
+
+  orderTotals(o) {
+    let total = 0, cartons = 0, pieces = 0;
+    o.lines.forEach(function (l) {
+      const p = BY_ID[l.id];
+      total += p.price * l.c;
+      cartons += l.c;
+      pieces += l.c * p.pack;
+    });
+    return { total: total, cartons: cartons, pieces: pieces };
   }
 
   matches(p) {
@@ -607,6 +1025,146 @@ class Component extends DCLogic {
     if (s.brand)    activeFilters.push({ label: s.brand,    clear: function () { self.setState({ brand: null }); } });
     if ((s.q || "").trim()) activeFilters.push({ label: "“" + s.q.trim() + "”", clear: function () { self.setState({ q: "" }); } });
 
+    // ---- past orders ----
+    const orderRows = ORDERS.map(function (o, i) {
+      const t = self.orderTotals(o);
+      const st = STAGE_BY_KEY[o.stage];
+      const open = s.openOrder === i;
+      return {
+        i: i, ref: o.ref, date: o.date, stage: o.stage,
+        buyerRef: o.buyerRef || "—",
+        buyerRefColor: o.buyerRef ? "#292d34" : "#b4b4b4",
+        cartons: t.cartons,
+        piecesLabel: t.cartons + " cartons · " + t.pieces + " bottles in this order",
+        totalLabel: rm(t.total),
+        stageLabel: st.label, stageColor: st.color,
+        open: open,
+        rowBg: open ? "#f8f9fa" : "#ffffff",
+        chevron: open ? "rotate(180deg)" : "rotate(0deg)",
+        toggle: function () { self.setState({ openOrder: open ? null : i }); },
+        viewPo: function () { self.setState({ view: "po", poOrder: i }); },
+        reorder: function () {
+          const cart = Object.assign({}, self.state.cart);
+          o.lines.forEach(function (l) { cart[l.id] = Math.min(999, (cart[l.id] || 0) + l.c); });
+          self.setState({ cart: cart, view: "cart" });
+        },
+        lines: o.lines.map(function (l) {
+          const pr = BY_ID[l.id];
+          return {
+            name: pr.name,
+            sub: [pr.brand, pr.variant].filter(Boolean).join(" · ") + " · " + pr.pack + " per carton",
+            code: BUYER_CODES[l.id] || pr.sku,
+            cartons: l.c,
+            unitLabel: rm(pr.price),
+            amountLabel: rm(pr.price * l.c),
+            open: function () { self.setState({ view: "product", productId: l.id, qty: 1 }); },
+          };
+        }),
+      };
+    });
+
+    const visibleOrders = orderRows.filter(function (o) {
+      if (s.orderFilter === "open") return o.stage !== "DELIVERED";
+      if (s.orderFilter === "delivered") return o.stage === "DELIVERED";
+      return true;
+    });
+
+    const orderFilters = [
+      { key: "all", label: "All orders" },
+      { key: "open", label: "In progress" },
+      { key: "delivered", label: "Delivered" },
+    ].map(function (f) {
+      return {
+        label: f.label,
+        cls: s.orderFilter === f.key ? "chip-on" : "chip",
+        pick: function () { self.setState({ orderFilter: f.key }); },
+      };
+    });
+
+    // ---- the purchase order document ----
+    const poIdx = s.poOrder === null ? 0 : s.poOrder;
+    const poOrder = ORDERS[poIdx];
+    const poT = self.orderTotals(poOrder);
+    const po = {
+      fileName: poOrder.ref + " purchase order.pdf",
+      number: poOrder.buyerRef || poOrder.ref,
+      ref: poOrder.ref,
+      date: poOrder.date,
+      requested: poOrder.requested,
+      terms: "30 days",
+      notes: poOrder.notes || "—",
+      subtotal: rm(poT.total),
+      total: rm(poT.total),
+      generated: "Generated by Loving Hands on " + poOrder.date + ", 14:32 (GMT+8)",
+      lines: poOrder.lines.map(function (l, n) {
+        const pr = BY_ID[l.id];
+        const own = BUYER_CODES[l.id];
+        return {
+          n: n + 1,
+          code: own || pr.sku,
+          ourRef: own ? "Our ref " + pr.sku : "",
+          name: pr.name,
+          packLine: pr.pack + " × " + pr.size + " per carton · " + (l.c * pr.pack) + " bottles",
+          cartons: l.c,
+          unit: pr.price.toFixed(2),
+          amount: (pr.price * l.c).toFixed(2),
+        };
+      }),
+    };
+
+    // ---- settings tabs ----
+    const tabs = [
+      { key: "profile", label: "Profile" },
+      { key: "company", label: "Company" },
+      { key: "documents", label: "Documents" },
+    ].map(function (t) {
+      return {
+        label: t.label,
+        cls: s.tab === t.key ? "navlink-on" : "navlink",
+        pick: function () { self.setState({ tab: t.key }); },
+      };
+    });
+
+    // ---- documents ----
+    const docs = s.docs.map(function (d) {
+      const on = s.docId === d.id;
+      return {
+        name: d.name, ext: d.ext,
+        meta: d.size + " · " + d.when + " · " + d.who,
+        bg: on ? "#f8f9fa" : "#ffffff",
+        iconBg: d.kind === "image" ? "#4fb9fa" : (d.kind === "po" ? "#7612fa" : "#646464"),
+        pick: function () { self.setState({ docId: d.id }); },
+        remove: function () {
+          const left = self.state.docs.filter(function (x) { return x.id !== d.id; });
+          self.setState({ docs: left, docId: left.length ? left[0].id : null });
+        },
+      };
+    });
+
+    let chosen = null;
+    s.docs.forEach(function (d) { if (d.id === s.docId) chosen = d; });
+    let preview;
+    if (!chosen) {
+      preview = { name: "No document selected", meta: "Pick one from the list", isImage: false, isPaper: false, isPo: false, title: "", subtitle: "", rows: [], total: "" };
+    } else {
+      const src = ORDERS[chosen.order] || ORDERS[0];
+      const srcT = self.orderTotals(src);
+      preview = {
+        name: chosen.name,
+        meta: chosen.size + " · " + chosen.when + " · " + chosen.who,
+        isImage: chosen.kind === "image",
+        isPaper: chosen.kind !== "image",
+        isPo: chosen.kind === "po",
+        title: chosen.kind === "po" ? "PURCHASE ORDER" : "DOCUMENT",
+        subtitle: src.buyerRef || src.ref,
+        total: rm(srcT.total),
+        rows: src.lines.map(function (l) {
+          const pr = BY_ID[l.id];
+          return { l: l.c + " × " + pr.name, r: rm(pr.price * l.c) };
+        }),
+      };
+    }
+
     return {
       // view flags
       isHome: s.view === "home", isCatalogue: s.view === "catalogue", isProduct: s.view === "product",
@@ -651,6 +1209,36 @@ class Component extends DCLogic {
       cartEmpty: ids.length === 0,
       totalLabel: rm(total),
       cartSummaryLabel: ids.length + (ids.length === 1 ? " product · " : " products · ") + cartons + (cartons === 1 ? " carton" : " cartons"),
+
+      // account
+      signedIn: s.signedIn, signedOut: !s.signedIn,
+      signIn: function () { self.setState({ signedIn: true, view: "orders" }); },
+      signOut: function () { self.setState({ signedIn: false, view: "home" }); },
+      goOrders: function () { self.go("orders"); },
+      goAccount: function () { self.go("account"); },
+      isOrders: s.view === "orders", isPo: s.view === "po", isAccount: s.view === "account",
+
+      // past orders
+      orders: visibleOrders,
+      orderFilters: orderFilters,
+      ordersSummary: visibleOrders.length + (visibleOrders.length === 1 ? " order" : " orders") + " · open one to see the products it carried",
+
+      // purchase order
+      po: po,
+
+      // settings
+      tabs: tabs,
+      isProfileTab: s.tab === "profile", isCompanyTab: s.tab === "company", isDocsTab: s.tab === "documents",
+      companyRows: COMPANY_ROWS,
+      docs: docs,
+      docsSummary: s.docs.length + (s.docs.length === 1 ? " document" : " documents"),
+      preview: preview,
+      openPoFromDocs: function () { self.setState({ view: "po", poOrder: chosen ? chosen.order : 0 }); },
+      upload: function () {
+        const n = self.state.uploads + 1;
+        const doc = { id: "u" + n, name: "Scanned document " + n + ".pdf", ext: "PDF", kind: "paper", order: 0, size: "126 KB", when: "10 Sep 2026", who: "Uploaded by you" };
+        self.setState({ docs: [doc].concat(self.state.docs), docId: doc.id, uploads: n });
+      },
     };
   }
 }
