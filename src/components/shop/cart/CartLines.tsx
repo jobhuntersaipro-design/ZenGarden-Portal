@@ -66,7 +66,7 @@ function CartRow({
       }`}
     >
       <div
-        className={`size-[88px] shrink-0 overflow-hidden rounded-md bg-surface-soft ${
+        className={`size-cart-thumb shrink-0 overflow-hidden rounded-md bg-surface-soft ${
           line.unavailable ? "opacity-50" : ""
         }`}
       >
@@ -85,23 +85,27 @@ function CartRow({
         <p className="mt-xxs text-[length:var(--text-caption)] text-ink-tertiary">{meta}</p>
         {line.unavailable ? (
           <span className="mt-xxs inline-flex h-6 w-fit max-w-full items-center gap-xxs rounded-pill border border-accent-red px-sm text-[length:var(--text-caption)] font-medium text-accent-red">
-            <AlertCircle className="size-[13px] shrink-0" aria-hidden />
+            <AlertCircle className="size-3.5 shrink-0" aria-hidden />
             <span className="truncate">No longer available</span>
           </span>
         ) : (
           <p className="mt-xxs text-[length:var(--text-caption)] tabular-nums text-ink-tertiary">
             {`${formatMYR(line.unitPrice)} per ${line.unit}`}
+            {line.pieces !== null
+              ? ` · ${line.pieces} piece${line.pieces === 1 ? "" : "s"}`
+              : ""}
           </p>
         )}
       </div>
 
       <div className="col-start-2 flex items-center justify-between gap-sm md:contents">
-        <div className={line.unavailable ? "pointer-events-none opacity-45" : ""}>
+        <div className={line.unavailable ? "opacity-45" : ""}>
           <CartonStepper
             value={line.cartons}
             packSize={line.packSize}
             unit={line.unit}
             label={line.name}
+            disabled={line.unavailable}
             onChange={(cartons) => onSetCartons(line.productId, cartons)}
           />
         </div>
@@ -122,7 +126,7 @@ function CartRow({
               : "text-ink-tertiary hover:text-ink"
           }`}
         >
-          <Trash2 className="size-[18px]" aria-hidden />
+          <Trash2 className="size-4" aria-hidden />
         </button>
       </div>
     </div>

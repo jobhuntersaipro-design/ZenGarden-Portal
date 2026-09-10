@@ -1,90 +1,45 @@
 "use client";
 
 import { useState, useTransition } from "react";
-import Link from "next/link";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { CartLines, cartCaptions } from "@/components/shop/cart/CartLines";
-import { OrderSummary } from "@/components/shop/cart/OrderSummary";
+import { CartScreen } from "@/components/shop/cart/CartScreen";
+import { cartCaptions } from "@/components/shop/cart/CartLines";
 import { removeFromCart, setCartons, submitWebOrder } from "@/actions/cart";
 import { useAwaitableRefresh } from "@/hooks/useAwaitableRefresh";
-import { shopHref } from "@/lib/shop-routes";
 import type { Cart } from "@/lib/queries/cart";
 
 /**
  * A signed-in client's cart: `cart` is the `WebOrder` `loadCart` already
  * read server-side, and every mutation goes through the Server Actions
  * (`setCartons`, `removeFromCart`, `submitWebOrder`) unchanged from Phase 16
- * — only the surrounding screen is new (§5.5's "same screen from the same
- * components").
+ * — `CartScreen` is the shared "one screen" (§5.5); this component supplies
+ * only the client's data source, its mutators and its own CTA.
  */
 export function ClientCart({ cart }: { cart: Cart }) {
   const refresh = useAwaitableRefresh();
   const [, startTransition] = useTransition();
-
-  if (cart.lines.length === 0) {
-    return (
-      <div className="pt-lg">
-        <h1 className="font-display text-[length:var(--text-display-md)] font-[650] text-ink">
-          Your cart
-        </h1>
-        <div className="mt-lg rounded-lg border border-hairline p-xxl text-center">
-          <p className="text-[length:var(--text-body-md)] text-ink-secondary">
-            Your cart is empty.
-          </p>
-          <Link
-            href={shopHref.catalogue()}
-            className="mx-auto mt-md flex h-control-lg w-fit items-center rounded-pill bg-ink px-lg text-[length:var(--text-button-md)] font-semibold text-canvas hover:bg-ink-deep focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-focus"
-          >
-            Browse the catalogue
-          </Link>
-        </div>
-      </div>
-    );
-  }
-
-  const captions = cartCaptions(cart.lines);
+  const hasUnavailable = cartCaptions(cart.lines).unavailableLabel !== null;
 
   return (
-    <div className="pt-lg">
-      <h1 className="font-display text-[length:var(--text-display-md)] font-[650] text-ink">
-        Your cart
-      </h1>
-      <p className="mt-xs text-[length:var(--text-body-sm)] text-ink-tertiary">
-        {captions.totalLabel}. Prices are today&rsquo;s and are confirmed by our team
-        before delivery.
-      </p>
-      {captions.unavailableLabel ? (
-        <p className="mt-xxs text-[length:var(--text-caption)] text-ink-tertiary">
-          {captions.unavailableLabel}
-        </p>
-      ) : null}
-
-      <div className="mt-lg grid gap-xl lg:grid-cols-[minmax(0,1fr)_340px] lg:items-start">
-        <CartLines
-          lines={cart.lines}
-          onSetCartons={async (productId, cartons) => {
-            const result = await setCartons({ productId, cartons });
-            if (result.success) await refresh();
-            return result;
-          }}
-          onRemove={(productId) => {
-            startTransition(async () => {
-              const result = await removeFromCart(productId);
-              if (!result.success) toast.error(result.error);
-              else await refresh();
-            });
-          }}
-        />
-        <OrderSummary
-          productCount={captions.availableCount}
-          cartonCount={captions.availableCartons}
-          subtotal={cart.subtotal}
-          cta={<SendOrderCta hasUnavailable={captions.unavailableLabel !== null} refresh={refresh} />}
-        />
-      </div>
-    </div>
+    <CartScreen
+      lines={cart.lines}
+      subtotal={cart.subtotal}
+      onSetCartons={async (productId, cartons) => {
+        const result = await setCartons({ productId, cartons });
+        if (result.success) await refresh();
+        return result;
+      }}
+      onRemove={(productId) => {
+        startTransition(async () => {
+          const result = await removeFromCart(productId);
+          if (!result.success) toast.error(result.error);
+          else await refresh();
+        });
+      }}
+      cta={<SendOrderCta hasUnavailable={hasUnavailable} refresh={refresh} />}
+    />
   );
 }
 

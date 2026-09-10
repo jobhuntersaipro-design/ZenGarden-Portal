@@ -16,7 +16,7 @@ export default function ShopCartLoading() {
                 key={index}
                 className="flex items-center gap-md border-b border-hairline p-md last:border-b-0 md:p-lg"
               >
-                <Shimmer className="size-[88px] shrink-0 rounded-md" />
+                <Shimmer className="size-cart-thumb shrink-0 rounded-md" />
                 <div className="min-w-0 flex-1">
                   <Shimmer className="h-4 w-3/4" />
                   <Shimmer className="mt-xs h-3 w-1/2" />

@@ -21,6 +21,7 @@ export function CartonStepper({
   onChange,
   label,
   size = "md",
+  disabled = false,
 }: {
   value: number;
   packSize: number | null;
@@ -33,6 +34,11 @@ export function CartonStepper({
    * default) keeps every existing caller — the cart table's own row —
    * unchanged, including the "N pieces" line under it. */
   size?: "md" | "lg";
+  /** A cart row whose product has left the shop (§5.5): both buttons and the
+   * input go truly `disabled`, so a keyboard `Enter` on a focused button
+   * cannot commit a change — a wrapping `pointer-events-none` only blocks a
+   * pointer, never keyboard activation. */
+  disabled?: boolean;
 }) {
   const [pending, startTransition] = useTransition();
   const [optimistic, setOptimistic] = useOptimistic(value);
@@ -55,7 +61,7 @@ export function CartonStepper({
         <button
           type="button"
           aria-label={`One fewer ${unit} — ${label}`}
-          disabled={pending || optimistic <= min}
+          disabled={disabled || pending || optimistic <= min}
           onClick={() => commit(optimistic - 1)}
           className="flex size-control-lg shrink-0 items-center justify-center text-ink hover:bg-surface-soft focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-focus disabled:pointer-events-none disabled:opacity-40"
         >
@@ -64,18 +70,19 @@ export function CartonStepper({
         <input
           aria-label={`${unit}s — ${label}`}
           inputMode="numeric"
+          disabled={disabled}
           value={typed ?? String(optimistic)}
           onChange={(event) => setTyped(event.target.value.replace(/[^0-9]/g, ""))}
           onBlur={() => {
             if (typed !== null && typed !== "") commit(Number(typed));
             setTyped(null);
           }}
-          className="h-full w-14 border-0 bg-transparent text-center text-[length:var(--text-body-lg)] font-semibold tabular-nums text-ink focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-focus"
+          className="h-full w-14 border-0 bg-transparent text-center text-[length:var(--text-body-lg)] font-semibold tabular-nums text-ink focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-focus disabled:pointer-events-none"
         />
         <button
           type="button"
           aria-label={`One more ${unit} — ${label}`}
-          disabled={pending}
+          disabled={disabled || pending}
           onClick={() => commit(optimistic + 1)}
           className="flex size-control-lg shrink-0 items-center justify-center text-ink hover:bg-surface-soft focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-focus disabled:pointer-events-none disabled:opacity-40"
         >
@@ -91,7 +98,7 @@ export function CartonStepper({
         <Button
           variant="secondary"
           aria-label={`One fewer ${unit} — ${label}`}
-          disabled={pending || optimistic <= min}
+          disabled={disabled || pending || optimistic <= min}
           onClick={() => commit(optimistic - 1)}
           className="size-11 p-0 sm:size-control-sm"
         >
@@ -100,18 +107,19 @@ export function CartonStepper({
         <input
           aria-label={`${unit}s — ${label}`}
           inputMode="numeric"
+          disabled={disabled}
           value={typed ?? String(optimistic)}
           onChange={(event) => setTyped(event.target.value.replace(/[^0-9]/g, ""))}
           onBlur={() => {
             if (typed !== null && typed !== "") commit(Number(typed));
             setTyped(null);
           }}
-          className="h-11 w-16 rounded-sm border border-hairline-strong bg-transparent text-center text-[length:var(--text-body-sm)] tabular-nums text-ink focus-visible:border-focus focus-visible:outline-2 focus-visible:outline-focus sm:h-control-sm"
+          className="h-11 w-16 rounded-sm border border-hairline-strong bg-transparent text-center text-[length:var(--text-body-sm)] tabular-nums text-ink focus-visible:border-focus focus-visible:outline-2 focus-visible:outline-focus disabled:pointer-events-none disabled:opacity-50 sm:h-control-sm"
         />
         <Button
           variant="secondary"
           aria-label={`One more ${unit} — ${label}`}
-          disabled={pending}
+          disabled={disabled || pending}
           onClick={() => commit(optimistic + 1)}
           className="size-11 p-0 sm:size-control-sm"
         >

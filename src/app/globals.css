@@ -172,6 +172,10 @@
      headers collided and Amount was clipped off the card (measured
      2026-09-07). */
   --spacing-line-items: 952px;
+  /* The cart row's product thumbnail (Phase 17 §5.5) — 88px via ProductThumb,
+     shared by CartLines, GuestCart's loading rows and the cart loading.tsx
+     skeleton, so the three cannot drift. */
+  --spacing-cart-thumb: 88px;
 
   /* Share palette — the donuts' six categorical hues, in rank order.
      Deliberately NOT named `--color-chart-*` or reusing `--color-primary`:
