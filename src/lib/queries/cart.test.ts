@@ -81,6 +81,53 @@ describe("priceProductLines", () => {
   });
 });
 
+describe("priceProductLines — thumbnail presigning", () => {
+  it("presigns the thumbnail, preferring thumbKey over r2Key", async () => {
+    presignGet.mockResolvedValue("https://r2.example/thumb.webp");
+    const { lines } = await priceProductLines([
+      {
+        productId: "p1",
+        cartons: 1,
+        product: product({
+          images: [{ thumbKey: "products/p1/thumb.webp", r2Key: "products/p1/original.jpg" }],
+        }),
+      },
+    ]);
+    expect(presignGet).toHaveBeenCalledWith("products/p1/thumb.webp");
+    expect(lines[0].imageUrl).toBe("https://r2.example/thumb.webp");
+  });
+
+  it("falls back to r2Key when the product has no thumbnail", async () => {
+    presignGet.mockResolvedValue("https://r2.example/original.jpg");
+    const { lines } = await priceProductLines([
+      {
+        productId: "p1",
+        cartons: 1,
+        product: product({ images: [{ thumbKey: null, r2Key: "products/p1/original.jpg" }] }),
+      },
+    ]);
+    expect(presignGet).toHaveBeenCalledWith("products/p1/original.jpg");
+    expect(lines[0].imageUrl).toBe("https://r2.example/original.jpg");
+  });
+
+  it("leaves imageUrl null, without failing the line, when presigning throws", async () => {
+    presignGet.mockRejectedValue(new Error("R2 unreachable"));
+    const { lines } = await priceProductLines([
+      { productId: "p1", cartons: 1, product: product({ images: [{ thumbKey: "t", r2Key: "r" }] }) },
+    ]);
+    expect(lines[0].imageUrl).toBeNull();
+    expect(lines[0].amount).toBe("189.00");
+  });
+
+  it("leaves imageUrl null when the product has no images at all", async () => {
+    const { lines } = await priceProductLines([
+      { productId: "p1", cartons: 1, product: product() },
+    ]);
+    expect(lines[0].imageUrl).toBeNull();
+    expect(presignGet).not.toHaveBeenCalled();
+  });
+});
+
 describe("cartSummary", () => {
   it("returns count, cartonCount, subtotal and the id/carton pairs", async () => {
     webOrderFindFirst.mockResolvedValue({
