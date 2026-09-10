@@ -4,6 +4,7 @@ import { redirect } from "next/navigation";
 import { NavProgressProvider } from "@/components/portal/NavProgress";
 import { SkipLink } from "@/components/portal/SkipLink";
 import { Toaster } from "@/components/ui/sonner";
+import { CartSummaryProvider, GuestCartProvider } from "@/components/shop/GuestCartProvider";
 import { ShopViewerProvider } from "@/components/shop/ShopViewer";
 import { env } from "@/lib/env";
 import { cartSummary } from "@/lib/queries/cart";
@@ -47,29 +48,31 @@ export default async function StorefrontLayout({
     listShopCategories(),
     viewer.kind === "client" ? cartSummary(viewer.id) : Promise.resolve(null),
   ]);
-  // Not rendered yet: ShopHeader and ShopFooter (Task 7) take `categories`,
-  // and ShopHeader and ShopUtilityBar (Task 7) take `summary`. Loaded here
-  // now so those tasks add JSX, not a second fetch.
+  // Not rendered yet: ShopHeader and ShopFooter (Task 7) take `categories`.
+  // Loaded here now so that task adds JSX, not a second fetch.
   void categories;
-  void summary;
 
   return (
     <ShopViewerProvider viewer={viewer}>
-      {/* GuestCartProvider (Task 5) and GuestCartMerge (Task 6) wrap here once
-          they exist, so a guest's localStorage cart survives sign-in. */}
-      <NavProgressProvider>
-        <SkipLink />
-        {/* ShopUtilityBar and ShopHeader (Task 7) mount above `main`; every
-            page still renders its own ShopHeader for now. */}
-        <main
-          id="main"
-          className="mx-auto w-full max-w-page px-md pb-xxl sm:px-lg md:pb-0"
-        >
-          {children}
-        </main>
-        {/* ShopFooter and MobileCartBar (Task 7) mount below `main`. */}
-      </NavProgressProvider>
-      <Toaster />
+      <GuestCartProvider>
+        <CartSummaryProvider summary={summary}>
+          {/* GuestCartMerge (Task 6) wraps here once it exists, so a guest's
+              localStorage cart survives sign-in. */}
+          <NavProgressProvider>
+            <SkipLink />
+            {/* ShopUtilityBar and ShopHeader (Task 7) mount above `main`; every
+                page still renders its own ShopHeader for now. */}
+            <main
+              id="main"
+              className="mx-auto w-full max-w-page px-md pb-xxl sm:px-lg md:pb-0"
+            >
+              {children}
+            </main>
+            {/* ShopFooter and MobileCartBar (Task 7) mount below `main`. */}
+          </NavProgressProvider>
+          <Toaster />
+        </CartSummaryProvider>
+      </GuestCartProvider>
     </ShopViewerProvider>
   );
 }
