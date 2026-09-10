@@ -14,8 +14,10 @@ import { formatMYR } from "@/lib/money";
 import { prisma } from "@/lib/prisma";
 import { shopPath } from "@/lib/shop-routes";
 import { webOrderReference } from "@/lib/web-order-number";
+import type { GuestCartLine } from "@/lib/guest-cart";
 import {
   addToCartSchema,
+  guestCartLinesSchema,
   setCartonsSchema,
   submitOrderSchema,
   type SubmitOrderInput,
@@ -41,6 +43,20 @@ const revalidateShop = () => {
   revalidatePath(shopPath.home());
 };
 
+/** Reused by both the single-product and the batch (merge) orderability checks. */
+const ORDERABLE_PRODUCT_SELECT = {
+  id: true,
+  active: true,
+  needsReview: true,
+  listPrice: true,
+} as const;
+
+const isOrderable = (product: {
+  active: boolean;
+  needsReview: boolean;
+  listPrice: Prisma.Decimal;
+}) => product.active && !product.needsReview && product.listPrice.greaterThan(0);
+
 /**
  * A product is orderable only while it is in the shop. Checked on every write
  * as well as on render, because a product can be archived or priced out while
@@ -49,16 +65,9 @@ const revalidateShop = () => {
 async function orderableProduct(productId: string) {
   const product = await prisma.product.findUnique({
     where: { id: productId },
-    select: { id: true, active: true, needsReview: true, listPrice: true },
+    select: ORDERABLE_PRODUCT_SELECT,
   });
-  if (
-    !product ||
-    !product.active ||
-    product.needsReview ||
-    product.listPrice.lessThanOrEqualTo(0)
-  ) {
-    return null;
-  }
+  if (!product || !isOrderable(product)) return null;
   return product;
 }
 
@@ -103,6 +112,21 @@ async function openCart(placedById: string, buyerId: string) {
   }
 }
 
+/**
+ * Adds a line to an already-open cart, or increments it if the product is
+ * already on the order. `@@unique([webOrderId, productId])` is what makes
+ * adding the same product twice one line rather than a duplicate row — shared
+ * by `addToCart` and `mergeGuestCart` so a merge behaves exactly like a click
+ * would have, line by line.
+ */
+async function upsertLine(cartId: string, productId: string, cartons: number) {
+  await prisma.webOrderLine.upsert({
+    where: { webOrderId_productId: { webOrderId: cartId, productId } },
+    create: { webOrderId: cartId, productId, cartons },
+    update: { cartons: { increment: cartons } },
+  });
+}
+
 export async function addToCart(input: {
   productId: string;
   cartons: number;
@@ -123,29 +147,70 @@ export async function addToCart(input: {
       return { success: false, error: "That product is not available to order." };
     }
     const cart = await openCart(user.id, user.buyerId);
-
-    // @@unique([webOrderId, productId]) makes adding the same product twice one
-    // line rather than a duplicate row.
-    await prisma.webOrderLine.upsert({
-      where: {
-        webOrderId_productId: {
-          webOrderId: cart.id,
-          productId: parsed.data.productId,
-        },
-      },
-      create: {
-        webOrderId: cart.id,
-        productId: parsed.data.productId,
-        cartons: parsed.data.cartons,
-      },
-      update: { cartons: { increment: parsed.data.cartons } },
-    });
+    await upsertLine(cart.id, parsed.data.productId, parsed.data.cartons);
 
     revalidateShop();
     return { success: true, data: undefined };
   } catch (cause) {
     console.error("[cart] addToCart", cause);
     return { success: false, error: "We couldn't add that to your order." };
+  }
+}
+
+/**
+ * Moves a guest's `localStorage` cart into the account they just signed in
+ * as, the moment `GuestCartMerge` finds one waiting. Every line is added
+ * through `upsertLine` — the same upsert `addToCart` uses — so a product
+ * already in the account's cart increments rather than duplicating. Lines
+ * whose product has left the shop are skipped and counted, never silently
+ * dropped.
+ *
+ * A genuinely empty cart returns without touching the database at all: no
+ * `findMany`, no `openCart` — there is nothing to merge.
+ */
+export async function mergeGuestCart(
+  lines: GuestCartLine[],
+): Promise<ActionResult<{ merged: number; skipped: number }>> {
+  const { user, error } = await guard();
+  if (!user) return { success: false, error: error! };
+
+  const parsed = guestCartLinesSchema.safeParse(lines);
+  if (!parsed.success) {
+    return { success: false, error: "We couldn't merge your cart." };
+  }
+  if (parsed.data.length === 0) {
+    return { success: true, data: { merged: 0, skipped: 0 } };
+  }
+
+  try {
+    // One query for every line, not one per line.
+    const productIds = [...new Set(parsed.data.map((line) => line.productId))];
+    const products = await prisma.product.findMany({
+      where: { id: { in: productIds } },
+      select: ORDERABLE_PRODUCT_SELECT,
+    });
+    const orderableIds = new Set(
+      products.filter(isOrderable).map((product) => product.id),
+    );
+
+    const cart = await openCart(user.id, user.buyerId);
+
+    let merged = 0;
+    let skipped = 0;
+    for (const line of parsed.data) {
+      if (!orderableIds.has(line.productId)) {
+        skipped += 1;
+        continue;
+      }
+      await upsertLine(cart.id, line.productId, line.cartons);
+      merged += 1;
+    }
+
+    revalidateShop();
+    return { success: true, data: { merged, skipped } };
+  } catch (cause) {
+    console.error("[cart] mergeGuestCart", cause);
+    return { success: false, error: "We couldn't merge your cart." };
   }
 }
 

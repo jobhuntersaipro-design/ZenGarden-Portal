@@ -1,6 +1,7 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 const productFindUnique = vi.fn();
+const productFindMany = vi.fn();
 const webOrderFindFirst = vi.fn();
 const webOrderCreate = vi.fn();
 const webOrderUpdate = vi.fn();
@@ -19,7 +20,7 @@ const tx = {
 vi.mock("@/lib/prisma", () => ({
   prisma: {
     $transaction: (fn: (client: typeof tx) => unknown) => fn(tx),
-    product: { findUnique: productFindUnique },
+    product: { findUnique: productFindUnique, findMany: productFindMany },
     user: { findMany: vi.fn().mockResolvedValue([]) },
     webOrder: {
       findUnique: vi.fn().mockResolvedValue(null),
@@ -46,7 +47,7 @@ vi.mock("@/lib/email", () => ({ sendEmail: vi.fn().mockResolvedValue({ sent: tru
 // here so its failure modes are still exercised rather than silently skipped.
 vi.mock("next/server", () => ({ after: (fn: () => unknown) => fn() }));
 
-const { addToCart, setCartons, submitWebOrder } = await import("@/actions/cart");
+const { addToCart, setCartons, submitWebOrder, mergeGuestCart } = await import("@/actions/cart");
 const { Prisma } = await import("@/generated/prisma/client");
 
 const dec = (v: string) => new Prisma.Decimal(v);
@@ -62,6 +63,7 @@ beforeEach(() => {
   vi.resetAllMocks();
   requireClient.mockResolvedValue({ id: "c1", buyerId: "b1", role: "CLIENT" });
   productFindUnique.mockResolvedValue(sellable);
+  productFindMany.mockResolvedValue([sellable]);
   webOrderFindFirst.mockResolvedValue({ id: "cart1", reference: "W-2609-00001", lines: [] });
   webOrderCount.mockResolvedValue(0);
   lineUpsert.mockResolvedValue({});
@@ -184,5 +186,40 @@ describe("submitWebOrder", () => {
     requireClient.mockRejectedValue(new UnauthorizedError("not a shop account"));
     const result = await submitWebOrder();
     expect(result).toEqual({ success: false, error: "not a shop account" });
+  });
+});
+
+describe("mergeGuestCart", () => {
+  it("refuses a guest", async () => {
+    const { UnauthorizedError } = await import("@/lib/auth-guards");
+    requireClient.mockRejectedValue(new UnauthorizedError("not a shop account"));
+    const result = await mergeGuestCart([{ productId: "p1", cartons: 2 }]);
+    expect(result).toEqual({ success: false, error: "not a shop account" });
+  });
+
+  it("increments an existing line through the same upsert addToCart uses", async () => {
+    const result = await mergeGuestCart([{ productId: "p1", cartons: 3 }]);
+    const call = lineUpsert.mock.calls[0][0];
+    expect(call.where.webOrderId_productId).toEqual({
+      webOrderId: "cart1",
+      productId: "p1",
+    });
+    expect(call.update).toEqual({ cartons: { increment: 3 } });
+    expect(result).toEqual({ success: true, data: { merged: 1, skipped: 0 } });
+  });
+
+  it("skips an unavailable product and reports skipped: 1", async () => {
+    productFindMany.mockResolvedValue([{ ...sellable, active: false }]);
+    const result = await mergeGuestCart([{ productId: "p1", cartons: 3 }]);
+    expect(result).toEqual({ success: true, data: { merged: 0, skipped: 1 } });
+    expect(lineUpsert).not.toHaveBeenCalled();
+  });
+
+  it("returns merged and skipped counts without opening a cart for an empty array", async () => {
+    const result = await mergeGuestCart([]);
+    expect(result).toEqual({ success: true, data: { merged: 0, skipped: 0 } });
+    expect(webOrderFindFirst).not.toHaveBeenCalled();
+    expect(webOrderCreate).not.toHaveBeenCalled();
+    expect(productFindMany).not.toHaveBeenCalled();
   });
 });

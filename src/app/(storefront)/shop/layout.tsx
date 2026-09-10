@@ -5,6 +5,7 @@ import { NavProgressProvider } from "@/components/portal/NavProgress";
 import { SkipLink } from "@/components/portal/SkipLink";
 import { Toaster } from "@/components/ui/sonner";
 import { CartSummaryProvider, GuestCartProvider } from "@/components/shop/GuestCartProvider";
+import { GuestCartMerge } from "@/components/shop/GuestCartMerge";
 import { ShopViewerProvider } from "@/components/shop/ShopViewer";
 import { env } from "@/lib/env";
 import { cartSummary } from "@/lib/queries/cart";
@@ -56,8 +57,6 @@ export default async function StorefrontLayout({
     <ShopViewerProvider viewer={viewer}>
       <GuestCartProvider>
         <CartSummaryProvider summary={summary}>
-          {/* GuestCartMerge (Task 6) wraps here once it exists, so a guest's
-              localStorage cart survives sign-in. */}
           <NavProgressProvider>
             <SkipLink />
             {/* ShopUtilityBar and ShopHeader (Task 7) mount above `main`; every
@@ -70,6 +69,9 @@ export default async function StorefrontLayout({
             </main>
             {/* ShopFooter and MobileCartBar (Task 7) mount below `main`. */}
           </NavProgressProvider>
+          {/* Renders nothing; moves a guest's localStorage cart into their
+              account the moment they sign in. */}
+          <GuestCartMerge />
           <Toaster />
         </CartSummaryProvider>
       </GuestCartProvider>
