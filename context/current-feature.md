@@ -2,14 +2,17 @@
 
 ## Status
 
-**In progress: Phase 17 — shop shell and guest browsing** (`feature/shop-shell`).
+**Phase 17 — shop shell and guest browsing — landed** (`feature/shop-shell`).
 Plan: `docs/specs/design/shop/17-shop-shell.md`; the six-phase storefront plan
 (17–22) and its decisions are indexed in `docs/specs/design/shop/00-overview.md`,
-written 2026-09-10 from the storefront canvas. Phases 12, 14, 15 and 16 have
-landed — see History. The shop still shows only
-`active && !needsReview && listPrice > 0`, and production holds 309 products
-at RM 0.00; pricing the catalogue is the customer's and remains the blocker
-for anything to sell.
+written 2026-09-10 from the storefront canvas. Phases 12, 14, 15, 16 and now 17
+have landed — see History. Next up: Phase 18,
+`docs/specs/design/shop/18-checkout-and-sending.md`. The shop still shows only
+`active && !needsReview && listPrice > 0`, and production still holds 309
+products at RM 0.00 — pricing the catalogue is the customer's and remains the
+blocker for anything to sell there. Development's own catalogue was a
+different story and got repaired this phase — see History — so it now has 308
+sellable products for Phases 18–22 to build against.
 
 Also outstanding from the catalog import: enter the 5 nested-sub-table blocks
 by hand, clear the 2 drafts in the review queue, and delete one of the duplicate
@@ -76,6 +79,141 @@ by hand, clear the 2 drafts in the review queue, and delete one of the duplicate
   the brand/size/variant shape. Separate work, raised after the import.
 
 ## History
+- 2026-09-10: Phase 17 — shop shell and guest browsing — built, verified end to
+  end and merged (`feature/shop-shell`, spec `docs/specs/design/shop/17-shop-shell.md`).
+  **The shop is public now.** A guest reaches `/`, `/products`, a product page
+  and `/cart` on the shop host with no session and all four render — read from
+  the wire, not the browser: `curl` against `shop.localhost` returned 200 on
+  all four, `/orders` came back 307 to `/signin?next=%2Forders`, and the same
+  guest hitting `/shop` on the *portal* host got 307 to
+  `/signin?next=%2Fshop` — not a literal 404. That last reading is not a
+  regression: Task 3 recorded the identical finding when this phase started —
+  an unauthenticated request never reaches the pinned-404 branch in
+  `src/proxy.ts`, because it returns from the earlier `!session?.user` guard
+  first. The 404 is real, but it is the *signed-in staff* case; acceptance
+  criterion 1's "genuine 404" holds for a member's session, not a guest's, and
+  that half of the proxy is unchanged since Task 3.
+  **Known, not fixed — the same status gap, on a product page, measured
+  directly.** A hidden or nonexistent product also answers 200 rather than
+  404: `GET /products/<an inactive product id>` and
+  `GET /products/does-not-exist` both returned HTTP 200, both bodies
+  containing "Page not found"/"404", and **zero** occurrences of the hidden
+  product's own name (`ZEN ROLL ON — Sportz`) in either — nothing leaks, only
+  the status is wrong. This is app-wide and structural to the streaming
+  layout — a nonexistent id behaves identically to a hidden one — not
+  introduced by this phase. Acceptance criterion 1's "genuine 404" therefore
+  holds on content everywhere and on status only for the signed-in-staff
+  `/shop` case above; a product page never returns a real 404 status,
+  hidden or not.
+  **The cart stores product ids and cartons and never a price — measured, not
+  assumed.** Three real catalogue products were added as a guest (one from a
+  product card, one from a product page's buy box stepped to 2 cartons, one
+  from a second card): the header badge read "3 products in your cart", `/cart`
+  showed 3 products · 4 cartons, and the three line amounts — RM 210.00,
+  RM 420.00, RM 496.80 — summed to the summary and the total exactly,
+  RM 1,126.80. `localStorage["lh-shop-cart"]` read verbatim was
+  `{"v":1,"lines":[{"productId":"…","cartons":1},{"productId":"…","cartons":2},{"productId":"…","cartons":1}]}`
+  — ids and cartons, nothing else, no unit price and no line amount anywhere
+  in it. (The stale-price replacement itself — a live RM 210.00 → RM 349.90
+  edit in ops reflected on reload with no trace of the old figure — is Task
+  11's own measurement, not re-run in this task; nothing in the commits
+  since then touches cart pricing.)
+  **The merge was proven with a row count, twice.** Signed in as the test
+  client with that guest cart still in `localStorage`: the account's `DRAFT`
+  `WebOrder` landed at exactly **3** `WebOrderLine` rows (the account had none
+  before — its Task 11 leftover was cleared first so the count means what it
+  says), and `localStorage["lh-shop-cart"]` was gone (`null`) immediately
+  after. A second pass proved the overlap case the first couldn't: signed out,
+  added 2 more cartons of a product already in the merged cart as a guest, and
+  signed back in — the row count **stayed 3** and that one line's cartons went
+  1 → 3 (summed, not duplicated).
+  **Facet counts agree with the database, not just with themselves.**
+  `/products?category=Shower+cream+%26+gel&brand=Zen+Garden` showed "98
+  products · showing 1–24" with a single "Zen Garden" filter chip and the URL
+  carrying both params; `prisma.product.groupBy` on the same two filters
+  independently returned **98** for that exact pair. An unavailable line
+  (`needsReview` flipped true on a cart line, then restored) showed the "No
+  longer available" chip, a fully `disabled` stepper — all three controls,
+  checked in the accessibility tree, not just dimmed by CSS — a "—" amount,
+  the total recomputed excluding it (RM 1,126.80-equivalent state → RM
+  916.80 with the line's RM 210.00-per-carton×3 excluded), and *Send order*
+  disabled.
+  **Both cross-host redirects still hold.** A `MEMBER` signing in at the shop
+  host's own `/signin` ended up authenticated on the portal host; a `CLIENT`
+  signing in at the portal host's `/signin` ended up redirected to the shop
+  host — both read from a real session, not inferred. Ops itself was read,
+  not written: signed in as `aisha@lovinghandsportal.com` on the portal host,
+  `/`, `/purchase-orders`, `/buyers`, `/products` and one PO detail page
+  (`PO-2025-0001`) all answered 200 with real figures — 31 purchase orders ·
+  RM 606,143.82 for the dashboard's 30-day window, 406 purchase orders (the
+  list's own merged-with-drafts count) · RM 8,161,352.29, 11 buyers, 311
+  products (308 real + the 3 fixture rows still live at that point), and the
+  PO detail's RM 40,944.62 Delivered total — untouched by this branch, whose
+  only shared files are two query modules, the proxy and `env.ts`. The PO
+  detail page logged three pre-existing R2/CORS console errors on the seeded
+  document's presigned URL ("We couldn't read that PDF" shown on screen) —
+  the long-documented seeded-document issue, unrelated to this branch.
+  **The catalogue repair from earlier tasks is now the recorded, deliberate
+  state, not test data.** Development held zero `Product` rows when this
+  phase started — a prior cleanup had taken the whole catalogue with it — so
+  an earlier task re-ran `scripts/import-catalog.ts --labels` and a one-off
+  controller script gave the 308 real products sample prices by an exact,
+  deterministic formula — per-piece = litres in the name × 17.5, or if the
+  name gives millilitres instead, millilitres ÷ 1000 × 19, or 6.90 if
+  neither is present; price = `max(RM 9.90, round(packSize × per-piece × 10)
+  ÷ 10)` — and cleared `needsReview` on all 308. That is left in place on
+  purpose: Phases 18–22
+  need a sellable catalogue, and the final `Product` count is **308**, all
+  priced, `needsReview: false` on every one. The three `SDD-TEST-*` fixture
+  products Task 7 added to unblock its own browser check when the table was
+  still empty are gone.
+  **Zero horizontal overflow across the full sweep**: `/`, `/products`, the
+  category+brand filter, a product page and `/cart` with three lines, each at
+  390/768/1440 — 15 combinations, `scrollWidth === innerWidth` on every one.
+  The 390px smallest-control probe was run on three of the five swept
+  routes — `/cart`, `/products` and the product page — returning 21–24
+  elements under 44px each time; `/` and the category+brand-filtered
+  `/products` were not re-run, on the assumption (not a measurement) that
+  the pattern held. Every element in those three lists is the same kind: the
+  search input/button and the category nav chips (32px/36px, spec-dictated
+  and already reviewed-and-accepted in Task 7), plus plain text links
+  (product names, footer rows). Every icon-only touch target — the cart
+  trash button, the carton stepper's two buttons — was absent from all three
+  lists, i.e. ≥44px on the routes actually measured.
+  **One environment wrinkle, not a product defect, recorded because it cost
+  real time.** Partway through, Chrome (via the Playwright MCP browser) began
+  refusing every connection to `shop.localhost` and, after a server restart,
+  even to `localhost` — while `curl` on the same machine reached both
+  instantly and Chrome's own `net-internals` DNS lookup resolved
+  `shop.localhost` correctly to `127.0.0.1`/`::1`. Clearing the host cache and
+  flushing the socket pool did not fix it. The guest sweep, the cart journey
+  and the merge proof were completed against the *same running server* reached
+  as `foo.localhost` instead, after confirming by `curl` that `foo.localhost`
+  and `shop.localhost` behave identically once `SHOP_HOST`/`SHOP_URL` are
+  overridden to match (a shell-exported env var, read by `src/proxy.ts`'s own
+  `process.env.SHOP_HOST` — no file changed, nothing committed). The canonical
+  `shop.localhost` wire statuses in this entry were read by `curl`, unaffected
+  by the browser issue. One sub-case was not re-verified here for the same
+  reason: a signed-in staff member's `/shop` on the portal host returning a
+  pinned 404 (rather than the guest's 307) — that code path is unchanged since
+  Task 3 and was exercised in earlier tasks' own browser checks.
+  Test data removed: the test client `sdd-client@example.com` deleted along
+  with its `DRAFT` `WebOrder` and 3 `WebOrderLine` rows and 5 `LoginAttempt`
+  rows; the 3 `SDD-TEST-*` products deleted (0 remaining rows referenced
+  them); `Product` count **311 → 308**; `User` count **3 → 2**; `WebOrder`/
+  `WebOrderLine` counts **1/3 → 0/0**. Independently re-verified rather than
+  trusted: the one product Task 11 repriced sits back at RM 210.00 with
+  `needsReview: false`, the one product Task 10 made inactive is `active:
+  true` again, and every product in the catalogue reads `needsReview: false`
+  (0 of 308). `aisha@lovinghandsportal.com`'s password was reset twice during
+  this task's own verification (once to run the member-redirect check, since
+  its prior value was unknown) and restored to the documented seed default,
+  `Password123!`, at the end. 620/620 tests pass, `tsc`, `lint` and `build`
+  all clean. **Not verified:** anything on production; no ops *write* path
+  (upload → extract → confirm) — this branch's only shared files are read
+  paths, and an upload spends a real Anthropic call; no ops write journey
+  (advance/revert stage, edit, confirm) was exercised beyond the read-only
+  pages named above, by controller instruction.
 - 2026-09-10: Phase 16 — the storefront — built and **driven end to end in the
   browser as both audiences** (`feature/storefront`, spec
   `docs/specs/16-storefront.md`). A client browses, orders by the carton and
