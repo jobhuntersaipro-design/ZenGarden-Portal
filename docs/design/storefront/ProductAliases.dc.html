@@ -1,0 +1,146 @@
+<!doctype html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@600;700&family=Inter:wght@400;500;600&family=Sometype+Mono:wght@500&display=swap">
+  <style>
+    body { margin: 0; background: #ffffff; color: #292d34; font-family: Inter, ui-sans-serif, system-ui, sans-serif; -webkit-font-smoothing: antialiased; }
+    a { color: #7b68ee; text-decoration: none; }
+    .disp { font-family: "Plus Jakarta Sans", Inter, sans-serif; }
+    .mono { font-family: "Sometype Mono", ui-monospace, monospace; }
+    .th { font-size: 12px; color: #6f6f6f; }
+    .tr { display: grid; grid-template-columns: 168px 168px minmax(0, 1fr) 260px 96px 44px; gap: 16px; align-items: center; padding: 16px 20px; border-top: 1px solid #e8e8e8; }
+    .cell { min-width: 0; }
+    .chip-green { display: inline-flex; align-items: center; gap: 5px; height: 22px; padding: 0 9px; border-radius: 20px; border: 1px solid #078d3b; color: #078d3b; font-size: 12px; font-weight: 500; white-space: nowrap; }
+    .chip-amber { display: inline-flex; align-items: center; gap: 5px; height: 22px; padding: 0 9px; border-radius: 20px; border: 1px solid #fd9a46; color: #b45c09; font-size: 12px; font-weight: 500; white-space: nowrap; }
+    .chip-grey { display: inline-flex; align-items: center; gap: 5px; height: 22px; padding: 0 9px; border-radius: 20px; border: 1px solid #d9d9d9; color: #646464; font-size: 12px; font-weight: 500; white-space: nowrap; }
+  </style>
+</helmet>
+
+<div style="width: 1440px; background: #ffffff;">
+
+  <!-- admin top bar: the admin room has no sidebar either -->
+  <header style="height: 60px; display: flex; align-items: center; gap: 20px; border-bottom: 1px solid #e8e8e8; padding: 0 24px;">
+    <div class="disp" style="font-size: 26px; line-height: 1.25; letter-spacing: -0.91px; font-weight: 700;">
+      <span style="background-image: linear-gradient(263deg,#fa12e3 -35%,#7612fa 41%,#12d0fa 135%); -webkit-background-clip: text; background-clip: text; color: transparent;">Loving</span><span style="color: #292d34;">&nbsp;Hands</span>
+    </div>
+    <span class="mono" style="font-size: 14px; color: #6f6f6f;">Admin</span>
+    <span style="margin-left: auto; font-size: 14px; color: #7b68ee;">&lsaquo; Back to portal</span>
+    <div style="width: 32px; height: 32px; border-radius: 35px; background: #e9ebf0; display: flex; align-items: center; justify-content: center; font-size: 12px; font-weight: 600; color: #646464;">CL</div>
+  </header>
+
+  <div style="max-width: 1160px; margin: 0 auto; padding: 40px 20px 0;">
+    <h1 class="disp" style="margin: 0; font-size: 34px; line-height: 1.2; letter-spacing: -1.36px; font-weight: 650;">Product codes</h1>
+    <p style="margin: 8px 0 0; font-size: 16px; line-height: 1.375; letter-spacing: -0.32px; color: #646464; max-width: 720px; text-wrap: pretty;">Every code and description a customer has printed on a confirmed purchase order, and the product a person matched it to. Extraction reads this before it guesses, so a code only has to be decided once.</p>
+
+    <div style="display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 20px; margin-top: 24px;">
+      <div style="border: 1px solid #e8e8e8; border-radius: 14px; padding: 20px;">
+        <div style="font-size: 12px; color: #6f6f6f;">Codes learned</div>
+        <div class="disp" style="font-size: 34px; line-height: 1.2; letter-spacing: -1.36px; font-weight: 650; font-variant-numeric: tabular-nums; margin-top: 4px;">412</div>
+        <div style="font-size: 12px; color: #6f6f6f;">from 1,606 confirmed line items</div>
+      </div>
+      <div style="border: 1px solid #e8e8e8; border-radius: 14px; padding: 20px;">
+        <div style="font-size: 12px; color: #6f6f6f;">Matched automatically last month</div>
+        <div class="disp" style="font-size: 34px; line-height: 1.2; letter-spacing: -1.36px; font-weight: 650; font-variant-numeric: tabular-nums; margin-top: 4px;">87%</div>
+        <div style="font-size: 12px; color: #6f6f6f;">of lines, up from 34%</div>
+      </div>
+      <div style="border: 1px solid #fd9a46; border-radius: 14px; padding: 20px; background: #fffaf4;">
+        <div style="font-size: 12px; color: #6f6f6f;">Waiting for a decision</div>
+        <div class="disp" style="font-size: 34px; line-height: 1.2; letter-spacing: -1.36px; font-weight: 650; font-variant-numeric: tabular-nums; margin-top: 4px;">6</div>
+        <div style="font-size: 12px; color: #b45c09;">codes seen more than once, never matched</div>
+      </div>
+    </div>
+  </div>
+
+  <div style="max-width: 1160px; margin: 0 auto; padding: 24px 20px 0;">
+    <div style="display: flex; align-items: center; gap: 12px; flex-wrap: wrap;">
+      <div style="flex-grow: 1; min-width: 280px; display: flex; align-items: center; height: 44px; border: 1px solid #d9d9d9; border-radius: 9px; padding: 0 14px; gap: 10px;">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#6f6f6f" stroke-width="1.7" stroke-linecap="round"><circle cx="11" cy="11" r="7"></circle><path d="M20 20l-3.5-3.5"></path></svg>
+        <span style="font-size: 14px; color: #6f6f6f;">Search a code, a description or a product</span>
+      </div>
+      <div style="height: 44px; padding: 0 16px; border: 1px solid #d9d9d9; border-radius: 9px; display: flex; align-items: center; gap: 8px; font-size: 14px;"><span style="color: #6f6f6f;">Buyer</span><span style="font-weight: 600;">All buyers</span><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 9l6 6 6-6"></path></svg></div>
+      <div style="display: flex; height: 44px; border: 1px solid #d9d9d9; border-radius: 9px; overflow: hidden;">
+        <div style="padding: 0 16px; display: flex; align-items: center; font-size: 14px; font-weight: 600; background: #e9ebf0;">All</div>
+        <div style="padding: 0 16px; display: flex; align-items: center; font-size: 14px; color: #646464; border-left: 1px solid #d9d9d9;">Confirmed</div>
+        <div style="padding: 0 16px; display: flex; align-items: center; font-size: 14px; color: #646464; border-left: 1px solid #d9d9d9;">Learned</div>
+        <div style="padding: 0 16px; display: flex; align-items: center; font-size: 14px; color: #646464; border-left: 1px solid #d9d9d9;">Needs a decision</div>
+      </div>
+    </div>
+  </div>
+
+  <div style="max-width: 1160px; margin: 0 auto; padding: 20px 20px 0;">
+    <div style="border: 1px solid #e8e8e8; border-radius: 14px; overflow: hidden;">
+      <div class="tr" style="border-top: 0; background: #f8f9fa; padding-top: 14px; padding-bottom: 14px;">
+        <span class="th">Buyer</span><span class="th">Printed code</span><span class="th">Printed description</span><span class="th">Maps to</span><span class="th">Status</span><span></span>
+      </div>
+
+      <div class="tr">
+        <div class="cell" style="font-size: 14px; letter-spacing: -0.15px;">Star Value Sdn Bhd</div>
+        <div class="cell mono" style="font-size: 14px;">ZEN/SC/2100/CARROT</div>
+        <div class="cell" style="font-size: 14px; color: #646464;">ZEN GARDEN SHOWER CREAM 2.1L CARROT</div>
+        <div class="cell" style="font-size: 14px; font-weight: 500;">ZEN 2.1L &mdash; Carrot<div class="mono" style="font-size: 12px; color: #6f6f6f; font-weight: 400;">ZEN-SC-2100-CR-MY</div></div>
+        <div><span class="chip-green"><svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round"><path d="M5 12l5 5L20 7"></path></svg>Confirmed</span></div>
+        <div style="width: 44px; height: 44px; display: flex; align-items: center; justify-content: center;"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#6f6f6f" stroke-width="1.8" stroke-linecap="round"><circle cx="12" cy="5" r="1.4"></circle><circle cx="12" cy="12" r="1.4"></circle><circle cx="12" cy="19" r="1.4"></circle></svg></div>
+      </div>
+
+      <div class="tr">
+        <div class="cell" style="font-size: 14px; letter-spacing: -0.15px;">Triways Marketing</div>
+        <div class="cell mono" style="font-size: 14px;">ZENHW-LAV500ML</div>
+        <div class="cell" style="font-size: 14px; color: #646464;">ZEN HAND WASH LAVENDER 500ML</div>
+        <div class="cell" style="font-size: 14px; font-weight: 500;">ZEN Hand Wash 500ML &mdash; Lavender<div class="mono" style="font-size: 12px; color: #6f6f6f; font-weight: 400;">ZEN-HW-0500-LV-MY</div></div>
+        <div><span class="chip-grey">Learned &middot; 4&times;</span></div>
+        <div style="width: 44px; height: 44px; display: flex; align-items: center; justify-content: center;"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#6f6f6f" stroke-width="1.8" stroke-linecap="round"><circle cx="12" cy="5" r="1.4"></circle><circle cx="12" cy="12" r="1.4"></circle><circle cx="12" cy="19" r="1.4"></circle></svg></div>
+      </div>
+
+      <!-- an unmatched row, mid-decision -->
+      <div class="tr" style="background: #fffaf4; align-items: start;">
+        <div class="cell" style="font-size: 14px; letter-spacing: -0.15px; padding-top: 10px;">Star Value Sdn Bhd</div>
+        <div class="cell mono" style="font-size: 14px; padding-top: 10px;">ZENSC-R.JELLY2LT</div>
+        <div class="cell" style="font-size: 14px; color: #646464; padding-top: 10px;">EVERFRESH B SHAMPOO LVD&amp; CHAMOMILE 2.1L</div>
+        <div class="cell">
+          <div style="height: 44px; border: 1px solid #292d34; border-radius: 9px; display: flex; align-items: center; padding: 0 12px; gap: 8px; background: #ffffff;">
+            <span style="font-size: 14px; color: #6f6f6f; flex-grow: 1;">Choose a product&hellip;</span>
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#292d34" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 9l6 6 6-6"></path></svg>
+          </div>
+          <div style="margin-top: 6px; border: 1px solid #e8e8e8; border-radius: 12px; background: #ffffff; box-shadow: 0 12px 32px rgba(18,43,165,0.12); overflow: hidden;">
+            <div style="padding: 10px 12px; background: #f8f9fa; display: flex; align-items: center; justify-content: space-between;"><span style="font-size: 14px; font-weight: 500;">Everfresh B Shampoo 2.1L</span><span style="font-size: 12px; color: #078d3b; font-weight: 600;">92</span></div>
+            <div style="padding: 10px 12px; display: flex; align-items: center; justify-content: space-between; border-top: 1px solid #e8e8e8;"><span style="font-size: 14px;">ZEN 2.1L &mdash; Royal Jelly</span><span style="font-size: 12px; color: #b45c09; font-weight: 600;">61</span></div>
+            <div style="padding: 10px 12px; border-top: 1px solid #e8e8e8; color: #7b68ee; font-size: 14px; font-weight: 500;">Not a product</div>
+          </div>
+        </div>
+        <div style="padding-top: 10px;"><span class="chip-amber"><svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><path d="M12 7v6"></path><path d="M12 17h.01"></path></svg>Seen 2&times;</span></div>
+        <div style="width: 44px; height: 44px; display: flex; align-items: center; justify-content: center; padding-top: 0;"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#6f6f6f" stroke-width="1.8" stroke-linecap="round"><circle cx="12" cy="5" r="1.4"></circle><circle cx="12" cy="12" r="1.4"></circle><circle cx="12" cy="19" r="1.4"></circle></svg></div>
+      </div>
+
+      <div class="tr">
+        <div class="cell" style="font-size: 14px; color: #6f6f6f; letter-spacing: -0.15px;">Any buyer</div>
+        <div class="cell mono" style="font-size: 14px;">KE218441 68216</div>
+        <div class="cell" style="font-size: 14px; color: #646464;">KIMIA SUCHI 240ML BOTTLE</div>
+        <div class="cell" style="font-size: 14px; color: #6f6f6f; font-style: italic;">Not a product &mdash; packaging</div>
+        <div><span class="chip-green"><svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round"><path d="M5 12l5 5L20 7"></path></svg>Confirmed</span></div>
+        <div style="width: 44px; height: 44px; display: flex; align-items: center; justify-content: center;"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#6f6f6f" stroke-width="1.8" stroke-linecap="round"><circle cx="12" cy="5" r="1.4"></circle><circle cx="12" cy="12" r="1.4"></circle><circle cx="12" cy="19" r="1.4"></circle></svg></div>
+      </div>
+
+      <div class="tr">
+        <div class="cell" style="font-size: 14px; letter-spacing: -0.15px;">Acme Industrial</div>
+        <div class="cell mono" style="font-size: 14px; color: #b4b4b4;">&mdash; no code printed</div>
+        <div class="cell" style="font-size: 14px; color: #646464;">HAND SANITIZER 500ML PUMP</div>
+        <div class="cell" style="font-size: 14px; font-weight: 500;">ZEN Hand Sanitizer 500ML<div class="mono" style="font-size: 12px; color: #6f6f6f; font-weight: 400;">ZEN-HS-0500-MY</div></div>
+        <div><span class="chip-grey">Learned &middot; 1&times;</span></div>
+        <div style="width: 44px; height: 44px; display: flex; align-items: center; justify-content: center;"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#6f6f6f" stroke-width="1.8" stroke-linecap="round"><circle cx="12" cy="5" r="1.4"></circle><circle cx="12" cy="12" r="1.4"></circle><circle cx="12" cy="19" r="1.4"></circle></svg></div>
+      </div>
+    </div>
+
+    <p style="margin: 16px 0 0; font-size: 12px; line-height: 1.5; color: #6f6f6f; max-width: 760px;">A code belongs to the buyer who printed it. When no alias for that buyer matches, aliases seen on any buyer are tried next &mdash; shown as <em>Any buyer</em> &mdash; so two customers can use the same code for different goods without crossing each other&rsquo;s orders.</p>
+  </div>
+
+  <div style="height: 60px;"></div>
+</div>
+</x-dc>
+</body>
+</html>

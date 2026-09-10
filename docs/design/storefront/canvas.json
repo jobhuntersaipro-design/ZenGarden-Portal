@@ -1,0 +1,28 @@
+{
+  "pages": [
+    { "id": "page-1", "name": "Storefront" },
+    { "id": "page-2", "name": "Purchase order & product codes" }
+  ],
+  "artboards": [
+    { "file": "Main.dc.html", "title": "Home", "page": "page-1", "x": 0, "y": 0, "w": 1440, "h": 2320 },
+    { "file": "Catalogue.dc.html", "title": "Catalogue — filters in a top bar, no sidebar", "page": "page-1", "x": 1560, "y": 0, "w": 1440, "h": 1560 },
+    { "file": "Product.dc.html", "title": "Product detail", "page": "page-1", "x": 3120, "y": 0, "w": 1440, "h": 1900 },
+    { "file": "Cart.dc.html", "title": "Cart — as a guest", "page": "page-1", "x": 0, "y": 2460, "w": 1440, "h": 1080 },
+    { "file": "Checkout.dc.html", "title": "Checkout — the sign-in gate", "page": "page-1", "x": 1560, "y": 2460, "w": 1440, "h": 1100 },
+    { "file": "Mobile.dc.html", "title": "Home on a phone (390)", "page": "page-1", "x": 3120, "y": 2460, "w": 390, "h": 844 },
+    { "file": "ReviewSend.dc.html", "title": "Review & send — signed in", "page": "page-1", "x": 0, "y": 3700, "w": 1440, "h": 1140 },
+    { "file": "OrderPlaced.dc.html", "title": "Order sent — download the PO", "page": "page-1", "x": 1560, "y": 3700, "w": 1440, "h": 900 },
+    { "file": "PurchaseOrderDoc.dc.html", "title": "The generated purchase order (A4)", "page": "page-2", "print": "fixed", "x": 0, "y": 0, "w": 794, "h": 1123 },
+    { "file": "ProductAliases.dc.html", "title": "Admin — product codes", "page": "page-2", "x": 920, "y": 0, "w": 1440, "h": 1240 }
+  ],
+  "annotations": [
+    { "id": "no-sidebar", "page": "page-1", "x": 1560, "y": -190, "w": 460, "text": "No sidebar anywhere.\nFilters are a top bar of dropdown chips with an active-filter row underneath — the pattern Lazada and Amazon mobile use, and it survives a phone width without a drawer." },
+    { "id": "guest-cart", "page": "page-1", "x": 0, "y": 2280, "w": 460, "text": "Guest cart.\nBrowsing, searching and the cart need no account. The cart holds product ids and carton counts only — never a price — so what you see is always today's price. Signing in merges it into your account's order." },
+    { "id": "gate", "page": "page-1", "x": 1560, "y": 2280, "w": 460, "text": "The one gate.\nSign-in happens here and nowhere earlier. New companies get 'Request an account', which lands in the access-request queue ops already have. Customer accounts are email + password — Google sign-in is staff-only." },
+    { "id": "prices", "page": "page-1", "x": 3120, "y": -190, "w": 460, "text": "Prices shown are SAMPLE values.\nProduction holds 309 products at RM 0.00, and the shop only lists products that are active, past review and priced above zero. The catalogue has to be priced before any of this has anything to sell." },
+    { "id": "review-send", "page": "page-1", "x": 0, "y": 3520, "w": 460, "text": "Where the PO document gets its facts.\nWebOrder already has buyerReference, requestedDate and notes and nothing ever filled them in. This screen does, and they are what print at the top of the purchase order." },
+    { "id": "po-doc", "page": "page-2", "x": 0, "y": -230, "w": 640, "text": "The generated purchase order.\nA4, produced server-side as a PDF at the moment the order is sent, stored in R2 and attached to the resulting PurchaseOrder — which fills the documentId: null gap Phase 16 opened, so a shop order finally carries a real document like a scanned one does.\n\nBracketed text is yours to supply: company registration number, address, contact, and whether any tax line applies." },
+    { "id": "codes-column", "page": "page-2", "x": 920, "y": -230, "w": 640, "text": "The two features meet in the Product code column.\nThe document prints the BUYER'S own code with our SKU beneath it — so their accounts department reads the code they already use, and the same alias is what makes their next emailed PO match automatically." }
+  ],
+  "launch": { "view": "canvas", "page": "page-1" }
+}

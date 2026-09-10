@@ -1,0 +1,42 @@
+# Storefront design canvas
+
+Canvas: https://claude.ai/code/artifact/52adbe2d-50aa-441c-b00b-2dc76be12c18
+
+Source of truth for the visuals of the storefront revamp. No phase spec exists
+for it yet — the canvas is the agreed design and nothing else is settled.
+
+## Artboards
+
+Page 1 — Storefront
+| File | Screen |
+| --- | --- |
+| `Main.dc.html` | Home / landing |
+| `Catalogue.dc.html` | Browse, with filters in a top bar |
+| `Product.dc.html` | Product detail |
+| `Cart.dc.html` | Cart, as a guest |
+| `Checkout.dc.html` | The sign-in gate |
+| `ReviewSend.dc.html` | Review & send, signed in |
+| `OrderPlaced.dc.html` | Order sent, with the PDF download |
+| `Mobile.dc.html` | Home at 390px |
+
+Page 2 — Purchase order & product codes
+| File | Screen |
+| --- | --- |
+| `PurchaseOrderDoc.dc.html` | The generated purchase order (A4, 794×1123) |
+| `ProductAliases.dc.html` | Admin → Product codes |
+
+`purchase-order-preview.html` is the PO artboard as a standalone page, for
+opening in a browser without the canvas.
+
+## Rebuilding
+
+Working files are the `.dc.html` sources plus `canvas.json`. Edit those, re-seed
+a fresh copy and republish to the same URL — never edit
+`loving-hands-storefront.html`, which is generated.
+
+## Sample data
+
+Prices are **sample values**. Production holds 309 products at RM 0.00 and the
+shop lists only `active && !needsReview && listPrice > 0`. Bracketed text
+(`[YOUR PHONE NUMBER]`, `[YOUR COMPANY REGISTRATION NO.]`, `[TAX, IF ANY]`) is
+for the customer to supply.

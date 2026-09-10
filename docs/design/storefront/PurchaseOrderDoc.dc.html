@@ -1,0 +1,153 @@
+<!doctype html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@600;700&family=Inter:wght@400;500;600&family=Sometype+Mono:wght@500&display=swap">
+  <style>
+    body { margin: 0; background: #ffffff; color: #292d34; font-family: Inter, ui-sans-serif, system-ui, sans-serif; }
+    a { color: #7b68ee; text-decoration: none; }
+    .disp { font-family: "Plus Jakarta Sans", Inter, sans-serif; }
+    .mono { font-family: "Sometype Mono", ui-monospace, monospace; }
+    .lbl { font-size: 12px; line-height: 1.5; color: #6f6f6f; }
+    .val { font-size: 16px; line-height: 1.375; letter-spacing: -0.32px; }
+    .lrow { display: grid; grid-template-columns: 34px 132px minmax(0, 1fr) 64px 96px 104px; gap: 8px; padding: 10px 0; border-bottom: 1px solid #e8e8e8; align-items: start; }
+    .num { font-variant-numeric: tabular-nums; text-align: right; }
+  </style>
+</helmet>
+
+<div style="width: 794px; height: 1123px; background: #ffffff; padding: 48px; box-sizing: border-box; display: flex; flex-direction: column;">
+
+  <!-- masthead -->
+  <div style="display: flex; align-items: flex-start; justify-content: space-between; padding-bottom: 20px; border-bottom: 2px solid #292d34;">
+    <div>
+      <div class="disp" style="font-size: 26px; line-height: 1.25; letter-spacing: -0.91px; font-weight: 700;">
+        <span style="background-image: linear-gradient(263deg,#fa12e3 -35%,#7612fa 41%,#12d0fa 135%); -webkit-background-clip: text; background-clip: text; color: transparent;">Loving</span><span style="color: #292d34;">&nbsp;Hands</span>
+      </div>
+      <div class="lbl" style="margin-top: 4px;">Prepared for the buyer named below</div>
+    </div>
+    <div style="text-align: right;">
+      <div class="disp" style="font-size: 26px; line-height: 1.25; letter-spacing: -0.91px; font-weight: 650;">PURCHASE ORDER</div>
+      <div class="mono" style="font-size: 16px; margin-top: 4px;">ACME-PO-771</div>
+    </div>
+  </div>
+
+  <!-- meta strip -->
+  <div style="display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 16px; padding: 16px 0; border-bottom: 1px solid #e8e8e8;">
+    <div><div class="lbl">Order date</div><div class="val" style="font-weight: 500;">10 Sep 2026</div></div>
+    <div><div class="lbl">Delivery requested</div><div class="val" style="font-weight: 500;">24 Sep 2026</div></div>
+    <div><div class="lbl">Payment terms</div><div class="val" style="font-weight: 500;">30 days</div></div>
+    <div><div class="lbl">Currency</div><div class="val" style="font-weight: 500;">MYR</div></div>
+  </div>
+
+  <!-- parties -->
+  <div style="display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 32px; padding: 20px 0; border-bottom: 1px solid #e8e8e8;">
+    <div>
+      <div class="lbl" style="text-transform: uppercase; letter-spacing: 0.4px;">Buyer</div>
+      <div class="val" style="font-weight: 600; margin-top: 6px;">Acme Industrial Sdn Bhd</div>
+      <div class="val" style="color: #646464; margin-top: 4px;">12 Jalan Perindustrian 4<br>47100 Puchong, Selangor<br>Malaysia</div>
+      <div class="val" style="color: #646464; margin-top: 8px;">Aisha Rahman &middot; orders@acme-industrial.com.my</div>
+    </div>
+    <div>
+      <div class="lbl" style="text-transform: uppercase; letter-spacing: 0.4px;">Supplier</div>
+      <div class="val" style="font-weight: 600; margin-top: 6px;">Loving Hands</div>
+      <div class="val" style="color: #646464; margin-top: 4px;">[YOUR COMPANY REGISTRATION NO.]<br>[YOUR BUSINESS ADDRESS]</div>
+      <div class="val" style="color: #646464; margin-top: 8px;">[YOUR EMAIL] &middot; [YOUR PHONE]</div>
+    </div>
+  </div>
+
+  <!-- lines -->
+  <div style="padding-top: 16px;">
+    <div class="lrow" style="border-bottom: 1px solid #292d34; padding-bottom: 8px;">
+      <div class="lbl">#</div>
+      <div class="lbl">Product code</div>
+      <div class="lbl">Description</div>
+      <div class="lbl num">Cartons</div>
+      <div class="lbl num">Unit price</div>
+      <div class="lbl num">Amount</div>
+    </div>
+
+    <div class="lrow">
+      <div class="num" style="font-size: 14px; color: #6f6f6f;">1</div>
+      <div>
+        <div class="mono" style="font-size: 14px; line-height: 1.4;">ZEN/SC/2100/GM</div>
+        <div style="font-size: 12px; color: #6f6f6f; margin-top: 2px;">Our ref ZEN-SC-2100-GM-VN</div>
+      </div>
+      <div>
+        <div style="font-size: 14px; line-height: 1.43; font-weight: 500;">ZEN 2.1L &mdash; Goat&#39;s Milk</div>
+        <div style="font-size: 12px; color: #6f6f6f; margin-top: 2px;">6 &times; 2.1L per carton &middot; 18 bottles</div>
+      </div>
+      <div class="num" style="font-size: 14px;">3</div>
+      <div class="num" style="font-size: 14px;">225.50</div>
+      <div class="num" style="font-size: 14px; font-weight: 600;">676.50</div>
+    </div>
+
+    <div class="lrow">
+      <div class="num" style="font-size: 14px; color: #6f6f6f;">2</div>
+      <div>
+        <div class="mono" style="font-size: 14px; line-height: 1.4;">ZENSC-LAV1LT</div>
+        <div style="font-size: 12px; color: #6f6f6f; margin-top: 2px;">Our ref ZEN-SC-1000-LV-MY</div>
+      </div>
+      <div>
+        <div style="font-size: 14px; line-height: 1.43; font-weight: 500;">ZEN 1L &mdash; Lavender</div>
+        <div style="font-size: 12px; color: #6f6f6f; margin-top: 2px;">12 &times; 1L per carton &middot; 48 bottles</div>
+      </div>
+      <div class="num" style="font-size: 14px;">4</div>
+      <div class="num" style="font-size: 14px;">189.00</div>
+      <div class="num" style="font-size: 14px; font-weight: 600;">756.00</div>
+    </div>
+
+    <div class="lrow" style="border-bottom: 1px solid #292d34;">
+      <div class="num" style="font-size: 14px; color: #6f6f6f;">3</div>
+      <div>
+        <div class="mono" style="font-size: 14px; line-height: 1.4;">LHANDS-DW-1000-LE</div>
+        <div style="font-size: 12px; color: #6f6f6f; margin-top: 2px;">Our ref LHANDS-DW-1000-LE</div>
+      </div>
+      <div>
+        <div style="font-size: 14px; line-height: 1.43; font-weight: 500;">L.HANDS Dishwash 1L &mdash; Lemon</div>
+        <div style="font-size: 12px; color: #6f6f6f; margin-top: 2px;">12 &times; 1L per carton &middot; 24 bottles</div>
+      </div>
+      <div class="num" style="font-size: 14px;">2</div>
+      <div class="num" style="font-size: 14px;">79.20</div>
+      <div class="num" style="font-size: 14px; font-weight: 600;">158.40</div>
+    </div>
+  </div>
+
+  <!-- totals -->
+  <div style="display: flex; justify-content: flex-end; padding-top: 16px;">
+    <div style="width: 300px;">
+      <div style="display: flex; justify-content: space-between; padding: 6px 0;"><span class="val" style="color: #646464;">Subtotal</span><span class="val num" style="font-weight: 500;">1,590.90</span></div>
+      <div style="display: flex; justify-content: space-between; padding: 6px 0;"><span class="val" style="color: #646464;">[TAX, IF ANY]</span><span class="val num" style="color: #6f6f6f;">0.00</span></div>
+      <div style="display: flex; justify-content: space-between; align-items: baseline; padding: 12px 0 0; margin-top: 6px; border-top: 2px solid #292d34;">
+        <span class="disp" style="font-size: 18px; letter-spacing: -0.54px; font-weight: 650;">Total (MYR)</span>
+        <span class="disp num" style="font-size: 26px; letter-spacing: -0.91px; font-weight: 650;">1,590.90</span>
+      </div>
+    </div>
+  </div>
+
+  <!-- notes -->
+  <div style="padding-top: 20px;">
+    <div class="lbl" style="text-transform: uppercase; letter-spacing: 0.4px;">Notes from the buyer</div>
+    <div class="val" style="color: #646464; margin-top: 6px;">Please deliver to the loading bay before 4pm. Call on arrival.</div>
+  </div>
+
+  <div style="flex-grow: 1;"></div>
+
+  <!-- signature + footer -->
+  <div style="display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 32px; padding-top: 24px;">
+    <div><div style="height: 1px; background: #292d34;"></div><div class="lbl" style="margin-top: 6px;">Authorised by (buyer)</div></div>
+    <div><div style="height: 1px; background: #292d34;"></div><div class="lbl" style="margin-top: 6px;">Date</div></div>
+  </div>
+  <div style="margin-top: 20px; padding-top: 12px; border-top: 1px solid #e8e8e8; display: flex; justify-content: space-between;">
+    <span class="lbl">Generated by Loving Hands on 10 Sep 2026, 14:32 (GMT+8)</span>
+    <span class="lbl mono">W-2609-00007</span>
+  </div>
+
+</div>
+</x-dc>
+</body>
+</html>

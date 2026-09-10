@@ -1,0 +1,134 @@
+<!doctype html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@600;700&family=Inter:wght@400;500;600&family=Sometype+Mono:wght@500&display=swap">
+  <style>
+    body { margin: 0; background: #ffffff; color: #292d34; font-family: Inter, ui-sans-serif, system-ui, sans-serif; -webkit-font-smoothing: antialiased; }
+    a { color: #7b68ee; text-decoration: none; } a:hover { color: #7612fa; }
+    .disp { font-family: "Plus Jakarta Sans", Inter, sans-serif; }
+    .mono { font-family: "Sometype Mono", ui-monospace, monospace; }
+    .row { display: grid; grid-template-columns: 88px minmax(0, 1fr) 140px 120px 40px; gap: 16px; align-items: center; padding: 20px; border-bottom: 1px solid #e8e8e8; }
+    .rowhead { display: grid; grid-template-columns: 88px minmax(0, 1fr) 140px 120px 40px; gap: 16px; padding: 14px 20px; background: #f8f9fa; border-bottom: 1px solid #e8e8e8; font-size: 12px; color: #6f6f6f; }
+    .cell { min-width: 0; }
+    .pmeta { font-size: 12px; line-height: 1.5; color: #6f6f6f; margin-top: 2px; }
+    .stepper { display: flex; align-items: center; border: 1px solid #d9d9d9; border-radius: 20px; height: 44px; width: 148px; }
+    .stepbtn { width: 44px; height: 44px; display: flex; align-items: center; justify-content: center; }
+    .sumrow { display: flex; align-items: baseline; justify-content: space-between; padding: 10px 0; }
+  </style>
+</helmet>
+
+<div style="width: 1440px; background: #ffffff;">
+
+  <div style="background: #292d34; color: #ffffff;">
+    <div style="max-width: 1160px; margin: 0 auto; padding: 9px 20px; display: flex; align-items: center; justify-content: space-between; font-size: 12px; line-height: 1.5;">
+      <span style="color: rgba(255,255,255,0.78);">Wholesale personal care &middot; Malaysia</span>
+      <div style="display: flex; gap: 24px; color: rgba(255,255,255,0.78);"><span>All prices in MYR</span><span>Sold by the carton</span><span>Sign in only when you order</span></div>
+    </div>
+  </div>
+
+  <header style="border-bottom: 1px solid #e8e8e8; background: #ffffff;">
+    <div style="max-width: 1160px; margin: 0 auto; padding: 18px 20px; display: flex; align-items: center; gap: 32px;">
+      <div class="disp" style="font-size: 26px; line-height: 1.25; letter-spacing: -0.91px; font-weight: 700; white-space: nowrap;">
+        <span style="background-image: linear-gradient(263deg,#fa12e3 -35%,#7612fa 41%,#12d0fa 135%); -webkit-background-clip: text; background-clip: text; color: transparent;">Loving</span><span style="color: #292d34;">&nbsp;Hands</span>
+      </div>
+      <div style="flex-grow: 1; display: flex; align-items: center; height: 44px; border: 1px solid #d9d9d9; border-radius: 20px; padding: 0 6px 0 16px; gap: 10px;">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#6f6f6f" stroke-width="1.7" stroke-linecap="round"><circle cx="11" cy="11" r="7"></circle><path d="M20 20l-3.5-3.5"></path></svg>
+        <span style="flex-grow: 1; font-size: 14px; color: #6f6f6f;">Search the catalogue</span>
+        <div style="height: 32px; padding: 0 18px; border-radius: 20px; background: #292d34; color: #ffffff; font-size: 14px; font-weight: 600; display: flex; align-items: center;">Search</div>
+      </div>
+      <div style="display: flex; align-items: center; gap: 20px; white-space: nowrap;">
+        <span style="font-size: 14px; color: #7b68ee; font-weight: 500;">Sign in</span>
+        <div style="display: flex; align-items: center; gap: 8px; height: 44px; padding: 0 20px; border-radius: 20px; background: #292d34; color: #ffffff;">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><circle cx="9" cy="20" r="1.4"></circle><circle cx="18" cy="20" r="1.4"></circle><path d="M2.5 3h2.6l2.1 11.2a1.6 1.6 0 0 0 1.6 1.3h8.9a1.6 1.6 0 0 0 1.6-1.3L21 6.5H6"></path></svg>
+          <span style="font-size: 14px; font-weight: 600;">Cart</span>
+          <span style="min-width: 20px; height: 20px; padding: 0 6px; border-radius: 20px; background: #ffffff; color: #292d34; font-size: 12px; font-weight: 600; display: flex; align-items: center; justify-content: center;">3</span>
+        </div>
+      </div>
+    </div>
+  </header>
+
+  <div style="max-width: 1160px; margin: 0 auto; padding: 32px 20px 0;">
+    <h1 class="disp" style="margin: 0; font-size: 34px; line-height: 1.2; letter-spacing: -1.36px; font-weight: 650;">Your cart</h1>
+    <p style="margin: 8px 0 0; font-size: 14px; color: #6f6f6f;">3 products &middot; 9 cartons. Prices are today&rsquo;s and are confirmed by our team before delivery.</p>
+    <p style="margin: 6px 0 0; font-size: 12px; color: #6f6f6f;">One product is no longer on sale. It is shown so you can remove it, and it is left out of the total below.</p>
+  </div>
+
+  <div style="max-width: 1160px; margin: 0 auto; padding: 24px 20px 0;">
+    <div style="display: grid; grid-template-columns: minmax(0, 1fr) 340px; gap: 32px; align-items: start;">
+
+      <div style="border: 1px solid #e8e8e8; border-radius: 14px; overflow: hidden;">
+        <div class="rowhead">
+          <span></span><span>Product</span><span>Cartons</span><span style="text-align: right;">Amount</span><span></span>
+        </div>
+
+        <div class="row">
+          <div style="width: 88px; height: 88px; border-radius: 12px; background: #e9ebf0; display: flex; align-items: center; justify-content: center;"><svg width="28" height="52" viewBox="0 0 60 112" fill="none" stroke="#b4b4b4" stroke-width="3" stroke-linejoin="round"><path d="M22 4h16v10l8 8v86H14V22l8-8z"></path></svg></div>
+          <div class="cell">
+            <div style="font-size: 14px; line-height: 1.43; font-weight: 600; letter-spacing: -0.15px;">ZEN 2.1L &mdash; Goat&#39;s Milk</div>
+            <div class="pmeta">ZEN GARDEN &middot; Goat&#39;s Milk &middot; 6 per carton</div>
+            <div class="pmeta" style="font-variant-numeric: tabular-nums;">RM 225.50 per carton &middot; 18 bottles</div>
+          </div>
+          <div class="stepper"><div class="stepbtn"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#292d34" stroke-width="2" stroke-linecap="round"><path d="M5 12h14"></path></svg></div><div style="flex-grow: 1; text-align: center; font-size: 16px; font-weight: 600; font-variant-numeric: tabular-nums;">3</div><div class="stepbtn"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#292d34" stroke-width="2" stroke-linecap="round"><path d="M12 5v14M5 12h14"></path></svg></div></div>
+          <div style="text-align: right; font-size: 16px; font-weight: 600; font-variant-numeric: tabular-nums; letter-spacing: -0.32px;">RM 676.50</div>
+          <div style="width: 44px; height: 44px; display: flex; align-items: center; justify-content: center;"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#6f6f6f" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M4 7h16"></path><path d="M9 7V5h6v2"></path><path d="M6 7l1 13h10l1-13"></path></svg></div>
+        </div>
+
+        <div class="row">
+          <div style="width: 88px; height: 88px; border-radius: 12px; background: #e9ebf0; display: flex; align-items: center; justify-content: center;"><svg width="28" height="52" viewBox="0 0 60 112" fill="none" stroke="#b4b4b4" stroke-width="3" stroke-linejoin="round"><path d="M24 4h12v12l10 9v79H14V25l10-9z"></path></svg></div>
+          <div class="cell">
+            <div style="font-size: 14px; line-height: 1.43; font-weight: 600; letter-spacing: -0.15px;">ZEN 1L &mdash; Lavender</div>
+            <div class="pmeta">ZEN GARDEN &middot; Lavender &middot; 12 per carton</div>
+            <div class="pmeta" style="font-variant-numeric: tabular-nums;">RM 189.00 per carton &middot; 48 bottles</div>
+          </div>
+          <div class="stepper"><div class="stepbtn"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#292d34" stroke-width="2" stroke-linecap="round"><path d="M5 12h14"></path></svg></div><div style="flex-grow: 1; text-align: center; font-size: 16px; font-weight: 600; font-variant-numeric: tabular-nums;">4</div><div class="stepbtn"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#292d34" stroke-width="2" stroke-linecap="round"><path d="M12 5v14M5 12h14"></path></svg></div></div>
+          <div style="text-align: right; font-size: 16px; font-weight: 600; font-variant-numeric: tabular-nums; letter-spacing: -0.32px;">RM 756.00</div>
+          <div style="width: 44px; height: 44px; display: flex; align-items: center; justify-content: center;"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#6f6f6f" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M4 7h16"></path><path d="M9 7V5h6v2"></path><path d="M6 7l1 13h10l1-13"></path></svg></div>
+        </div>
+
+        <div class="row" style="border-bottom: 0; background: #f8f9fa;">
+          <div style="width: 88px; height: 88px; border-radius: 12px; background: #e9ebf0; display: flex; align-items: center; justify-content: center; opacity: 0.5;"><svg width="28" height="52" viewBox="0 0 60 112" fill="none" stroke="#b4b4b4" stroke-width="3" stroke-linejoin="round"><path d="M20 4h20v8l6 12v84H14V24l6-12z"></path></svg></div>
+          <div class="cell">
+            <div style="font-size: 14px; line-height: 1.43; font-weight: 600; letter-spacing: -0.15px; color: #6f6f6f;">MR. KING 1.5L &mdash; Lemon</div>
+            <div class="pmeta">MR. KING &middot; Lemon &middot; 12 per carton</div>
+            <div style="display: flex; align-items: center; gap: 6px; margin-top: 6px; height: 24px; width: fit-content; max-width: 100%; padding: 0 10px; border-radius: 20px; border: 1px solid #f0382d;">
+              <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="#f0382d" stroke-width="2" stroke-linecap="round" style="flex-shrink: 0;"><path d="M12 7v6"></path><path d="M12 17h.01"></path><circle cx="12" cy="12" r="9"></circle></svg>
+              <span style="font-size: 12px; color: #f0382d; font-weight: 500; white-space: nowrap;">No longer available</span>
+            </div>
+          </div>
+          <div class="stepper" style="opacity: 0.45;"><div class="stepbtn"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#b4b4b4" stroke-width="2" stroke-linecap="round"><path d="M5 12h14"></path></svg></div><div style="flex-grow: 1; text-align: center; font-size: 16px; font-weight: 600; color: #b4b4b4;">2</div><div class="stepbtn"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#b4b4b4" stroke-width="2" stroke-linecap="round"><path d="M12 5v14M5 12h14"></path></svg></div></div>
+          <div style="text-align: right; font-size: 16px; color: #b4b4b4;">&mdash;</div>
+          <div style="width: 44px; height: 44px; display: flex; align-items: center; justify-content: center;"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#f0382d" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M4 7h16"></path><path d="M9 7V5h6v2"></path><path d="M6 7l1 13h10l1-13"></path></svg></div>
+        </div>
+      </div>
+
+      <div style="border: 1px solid #e8e8e8; border-radius: 14px; padding: 24px; background: #ffffff; box-shadow: 0 8px 24px rgba(18,43,165,0.06);">
+        <h2 class="disp" style="margin: 0 0 8px; font-size: 18px; line-height: 1.33; letter-spacing: -0.54px; font-weight: 650;">Order summary</h2>
+        <div class="sumrow"><span style="font-size: 14px; color: #646464;">2 products &middot; 7 cartons</span><span style="font-size: 16px; font-weight: 600; font-variant-numeric: tabular-nums;">RM 1,432.50</span></div>
+        <div class="sumrow" style="border-top: 1px solid #e8e8e8;"><span style="font-size: 14px; color: #646464;">Delivery</span><span style="font-size: 12px; color: #6f6f6f; max-width: 170px; text-align: right;">Quoted by our team when they confirm your order</span></div>
+        <div class="sumrow" style="border-top: 1px solid #e8e8e8; padding-top: 14px;"><span class="disp" style="font-size: 18px; letter-spacing: -0.54px; font-weight: 650;">Total</span><span class="disp" style="font-size: 26px; letter-spacing: -0.91px; font-weight: 650; font-variant-numeric: tabular-nums;">RM 1,432.50</span></div>
+
+        <div style="height: 52px; border-radius: 20px; background: #292d34; color: #ffffff; font-size: 14px; font-weight: 600; display: flex; align-items: center; justify-content: center; gap: 8px; margin-top: 18px;">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="4" y="10" width="16" height="10" rx="3"></rect><path d="M8 10V7a4 4 0 0 1 8 0v3"></path></svg>
+          Sign in to send this order
+        </div>
+        <p style="margin: 12px 0 0; font-size: 12px; line-height: 1.5; color: #6f6f6f;">You&rsquo;re browsing as a guest. Your cart is kept on this device and moves to your account when you sign in.</p>
+
+        <div style="margin-top: 20px; padding-top: 16px; border-top: 1px solid #e8e8e8; display: flex; align-items: center; justify-content: center;">
+          <span style="font-size: 14px; color: #7b68ee; font-weight: 500;">&larr; Continue shopping</span>
+        </div>
+      </div>
+
+    </div>
+  </div>
+
+  <div style="height: 60px;"></div>
+</div>
+</x-dc>
+</body>
+</html>
