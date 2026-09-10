@@ -1,7 +1,6 @@
 "use client";
 
 import Link from "next/link";
-import { Package } from "lucide-react";
 import { useShopViewer } from "@/components/shop/ShopViewer";
 import { shopHref } from "@/lib/shop-routes";
 
@@ -51,16 +50,49 @@ export function Hero() {
       </div>
 
       {/* Decorative only — the real product photography lives on each
-          product card. Hidden below `lg`, where the hero is one column. */}
+          product card. Hidden below `lg`, where the hero is one column.
+          The three paths are the canvas's own bottle silhouettes
+          (Main.dc.html:81-92), not a stand-in icon: same viewBox, same
+          strokes, the middle bottle drawn larger. */}
       <div className="hidden items-end justify-end gap-md p-xxl pl-0 lg:flex" aria-hidden>
-        <div className="flex aspect-square w-20 items-center justify-center rounded-xl border border-canvas/30 bg-canvas/16">
-          <Package className="size-8 text-canvas/85" />
+        <div className="flex h-48 w-36 items-center justify-center rounded-xl border border-canvas/30 bg-canvas/16">
+          <svg
+            viewBox="0 0 60 112"
+            fill="none"
+            stroke="currentColor"
+            strokeWidth="2"
+            strokeLinejoin="round"
+            className="h-28 w-14 text-canvas/85"
+          >
+            <path d="M24 4h12v12l10 9v79a4 4 0 0 1-4 4H18a4 4 0 0 1-4-4V25l10-9z" />
+            <path d="M14 46h32" />
+          </svg>
         </div>
-        <div className="flex aspect-square w-28 items-center justify-center rounded-xl border border-canvas/38 bg-canvas/24">
-          <Package className="size-10 text-canvas/95" />
+        <div className="flex h-64 w-44 items-center justify-center rounded-xl border border-canvas/38 bg-canvas/24">
+          <svg
+            viewBox="0 0 60 112"
+            fill="none"
+            stroke="currentColor"
+            strokeWidth="2"
+            strokeLinejoin="round"
+            className="h-32 w-16 text-canvas/95"
+          >
+            <path d="M22 4h16v10l8 8v86a4 4 0 0 1-4 4H18a4 4 0 0 1-4-4V22l8-8z" />
+            <rect x="14" y="44" width="32" height="26" rx="4" />
+          </svg>
         </div>
-        <div className="flex aspect-square w-20 items-center justify-center rounded-xl border border-canvas/30 bg-canvas/16">
-          <Package className="size-8 text-canvas/85" />
+        <div className="flex h-48 w-36 items-center justify-center rounded-xl border border-canvas/30 bg-canvas/16">
+          <svg
+            viewBox="0 0 60 112"
+            fill="none"
+            stroke="currentColor"
+            strokeWidth="2"
+            strokeLinejoin="round"
+            className="h-28 w-14 text-canvas/85"
+          >
+            <path d="M20 4h20v8l6 12v84a4 4 0 0 1-4 4H18a4 4 0 0 1-4-4V24l6-12z" />
+            <path d="M14 52h32" />
+          </svg>
         </div>
       </div>
     </div>
