@@ -1,23 +1,27 @@
-import { CartTable } from "@/components/shop/CartTable";
-import { requireClient } from "@/lib/auth-guards";
-import { prisma } from "@/lib/prisma";
+import { ClientCart } from "@/components/shop/cart/ClientCart";
+import { GuestCart } from "@/components/shop/cart/GuestCart";
 import { loadCart } from "@/lib/queries/cart";
+import { loadShopViewer } from "@/lib/shop-viewer";
 
 export const dynamic = "force-dynamic";
 
+/**
+ * Both viewers land on this page; only the data source differs (§5.5). A
+ * client's cart is a `WebOrder` read server-side here, a guest's lives in
+ * `localStorage` and is read by `GuestCart` itself — this component never
+ * fetches a guest's cart.
+ */
 export default async function CartPage() {
-  const { id: userId, buyerId } = await requireClient();
-  const [, cart] = await Promise.all([
-    prisma.buyer.findUnique({ where: { id: buyerId }, select: { name: true } }),
-    loadCart(userId),
-  ]);
+  const viewer = await loadShopViewer();
+  // Unreachable in practice: the storefront layout already redirects staff
+  // to the portal before any page under it renders. Narrowed here only so
+  // `viewer.kind` below is typed as guest | client.
+  if (viewer === "staff") return null;
 
-  return (
-    <main>
-      <h1 className="mb-md font-display text-[length:var(--text-heading-md)] text-ink">
-        Your order
-      </h1>
-      <CartTable cart={cart} />
-    </main>
-  );
+  if (viewer.kind === "client") {
+    const cart = await loadCart(viewer.id);
+    return <ClientCart cart={cart} />;
+  }
+
+  return <GuestCart />;
 }
