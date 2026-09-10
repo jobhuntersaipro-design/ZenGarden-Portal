@@ -1,14 +1,13 @@
 import { notFound } from "next/navigation";
 import Link from "next/link";
-import { ArrowLeft } from "lucide-react";
+import { Prisma } from "@/generated/prisma/browser";
+import { BuyBox } from "@/components/shop/BuyBox";
 import { ProductGallery } from "@/components/products/ProductGallery";
-import { AddToCart } from "@/components/shop/AddToCart";
-import { requireClient } from "@/lib/auth-guards";
+import { ProductSpecs } from "@/components/shop/ProductSpecs";
+import { ShopProductCard } from "@/components/shop/ShopProductCard";
 import { unitLabel } from "@/lib/cartons";
 import { formatMYR } from "@/lib/money";
-import { prisma } from "@/lib/prisma";
-import { cartCount } from "@/lib/queries/cart";
-import { loadShopProduct } from "@/lib/queries/shop-catalogue";
+import { loadShopProduct, relatedShopProducts } from "@/lib/queries/shop-catalogue";
 import { shopHref } from "@/lib/shop-routes";
 
 export const dynamic = "force-dynamic";
@@ -19,28 +18,44 @@ export default async function ShopProductPage({
   params: Promise<{ id: string }>;
 }) {
   const { id } = await params;
-  const { id: userId, buyerId } = await requireClient();
 
-  const [, , product] = await Promise.all([
-    prisma.buyer.findUnique({ where: { id: buyerId }, select: { name: true } }),
-    cartCount(userId),
-    loadShopProduct(id),
-  ]);
+  const product = await loadShopProduct(id);
   // loadShopProduct applies SHOP_VISIBLE, so a product that is not on offer
-  // 404s here rather than showing a price nobody can order at.
+  // — archived, needsReview, or unpriced — 404s here rather than showing a
+  // price nobody can order at.
   if (!product) notFound();
 
-  return (
-    <main>
-      <Link
-        href={shopHref.home()}
-        className="mb-md inline-flex min-h-control-md items-center gap-xxs rounded-sm text-[length:var(--text-body-sm)] text-brand-link hover:underline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-focus sm:min-h-control-sm"
-      >
-        <ArrowLeft className="size-4" aria-hidden />
-        All products
-      </Link>
+  const related = await relatedShopProducts(product);
 
-      <div className="grid gap-lg lg:grid-cols-[5fr_7fr]">
+  const perPieceLabel =
+    product.packSize === null
+      ? null
+      : `${formatMYR(new Prisma.Decimal(product.listPrice).dividedBy(product.packSize))} a piece · ${unitLabel(product.packSize, product.unit)}`;
+
+  return (
+    <div className="pt-lg">
+      <nav
+        aria-label="Breadcrumb"
+        className="flex items-center gap-xs text-[length:var(--text-caption)] text-ink-tertiary"
+      >
+        <Link
+          href={shopHref.home()}
+          className="text-brand-link hover:underline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-focus"
+        >
+          Home
+        </Link>
+        <span aria-hidden>/</span>
+        <Link
+          href={shopHref.catalogue({ category: product.category })}
+          className="text-brand-link hover:underline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-focus"
+        >
+          {product.category}
+        </Link>
+        <span aria-hidden>/</span>
+        <span className="text-ink">{product.name}</span>
+      </nav>
+
+      <div className="mt-md grid gap-xl lg:grid-cols-[5fr_7fr]">
         <div className="self-start">
           <ProductGallery
             images={product.imageUrls.map((url, index) => ({
@@ -53,56 +68,69 @@ export default async function ShopProductPage({
           />
         </div>
 
-        <section className="rounded-lg border border-hairline bg-canvas p-lg">
-          <p className="font-mono text-[length:var(--text-eyebrow)] text-ink-tertiary">
-            {[product.brand, product.category].filter(Boolean).join(" · ")}
-          </p>
-          <h1 className="mt-xxs font-display text-[length:var(--text-heading-md)] text-ink">
-            {product.name}
-          </h1>
-
-          <p className="mt-md text-[length:var(--text-display-md)] font-semibold tabular-nums text-ink">
-            {formatMYR(Number(product.listPrice))}
-          </p>
-          <p className="text-[length:var(--text-body-sm)] text-ink-secondary">
-            {`per ${product.unit} · ${unitLabel(product.packSize, product.unit)}`}
-          </p>
-
-          {product.description ? (
-            <p className="mt-md text-[length:var(--text-body-sm)] text-ink-secondary">
-              {product.description}
+        <div>
+          {product.brand ? (
+            <p className="font-mono text-[length:var(--text-eyebrow)] uppercase text-ink-tertiary">
+              {product.brand}
             </p>
           ) : null}
+          <h1
+            className={`font-display text-[length:var(--text-display-md)] font-[650] text-ink ${product.brand ? "mt-xs" : ""}`}
+          >
+            {product.name}
+          </h1>
+          <div className="mt-sm flex flex-wrap items-center gap-sm text-[length:var(--text-caption)] text-ink-tertiary">
+            <span className="font-mono">{product.sku}</span>
+            <span aria-hidden className="h-3 w-px bg-hairline-strong" />
+            <span>{product.category}</span>
+            {product.market ? (
+              <>
+                <span aria-hidden className="h-3 w-px bg-hairline-strong" />
+                <span>{product.market}</span>
+              </>
+            ) : null}
+          </div>
 
-          <dl className="mt-md grid gap-sm sm:grid-cols-2">
-            {[
-              ["Code", product.sku],
-              ["Variant", product.variant],
-              ["Market", product.market],
-              ["Pack size", product.packSize ? `${product.packSize} per ${product.unit}` : null],
-            ]
-              .filter(([, value]) => Boolean(value))
-              .map(([label, value]) => (
-                <div key={label as string}>
-                  <dt className="font-mono text-[length:var(--text-eyebrow)] text-ink-tertiary">
-                    {label}
-                  </dt>
-                  <dd className="text-[length:var(--text-body-sm)] text-ink">{value}</dd>
-                </div>
-              ))}
-          </dl>
-
-          <div className="mt-lg border-t border-hairline pt-md">
-            <AddToCart
+          <div className="mt-lg">
+            <BuyBox
               productId={product.id}
               name={product.name}
-              packSize={product.packSize}
               unit={product.unit}
-              variant="buybox"
+              packSize={product.packSize}
+              listPrice={product.listPrice}
+              perPieceLabel={perPieceLabel}
             />
           </div>
-        </section>
+
+          <div className="mt-lg">
+            <ProductSpecs product={product} />
+          </div>
+        </div>
       </div>
-    </main>
+
+      {product.description ? (
+        <div className="mt-xl">
+          <h2 className="text-[length:var(--text-heading-sm)] font-[650] text-ink">
+            About this product
+          </h2>
+          <p className="mt-sm max-w-[65ch] text-[length:var(--text-body-md)] text-ink-secondary">
+            {product.description}
+          </p>
+        </div>
+      ) : null}
+
+      {related.length > 0 ? (
+        <div className="mt-xl">
+          <h2 className="text-[length:var(--text-heading-md)] font-[650] text-ink">
+            {product.brand ? `More from ${product.brand}` : "You may also like"}
+          </h2>
+          <ul className="mt-md grid grid-cols-2 gap-md lg:grid-cols-4">
+            {related.map((relatedProduct) => (
+              <ShopProductCard key={relatedProduct.id} product={relatedProduct} />
+            ))}
+          </ul>
+        </div>
+      ) : null}
+    </div>
   );
 }

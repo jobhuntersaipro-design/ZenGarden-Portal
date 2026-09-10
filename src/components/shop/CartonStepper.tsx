@@ -20,6 +20,7 @@ export function CartonStepper({
   min = 1,
   onChange,
   label,
+  size = "md",
 }: {
   value: number;
   packSize: number | null;
@@ -27,6 +28,11 @@ export function CartonStepper({
   min?: number;
   onChange: (cartons: number) => Promise<{ success: boolean; error?: string }>;
   label: string;
+  /** `lg` is the product page's buy box (§5.4): 52px buttons and value fused
+   * into one `rounded-pill` frame, matching the canvas exactly. `md` (the
+   * default) keeps every existing caller — the cart table's own row —
+   * unchanged, including the "N pieces" line under it. */
+  size?: "md" | "lg";
 }) {
   const [pending, startTransition] = useTransition();
   const [optimistic, setOptimistic] = useOptimistic(value);
@@ -42,6 +48,42 @@ export function CartonStepper({
   };
 
   const pieces = piecesFor(optimistic, packSize);
+
+  if (size === "lg") {
+    return (
+      <div className="flex h-control-lg items-center overflow-hidden rounded-pill border border-hairline-strong">
+        <button
+          type="button"
+          aria-label={`One fewer ${unit} — ${label}`}
+          disabled={pending || optimistic <= min}
+          onClick={() => commit(optimistic - 1)}
+          className="flex size-control-lg shrink-0 items-center justify-center text-ink hover:bg-surface-soft focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-focus disabled:pointer-events-none disabled:opacity-40"
+        >
+          <Minus className="size-4" aria-hidden />
+        </button>
+        <input
+          aria-label={`${unit}s — ${label}`}
+          inputMode="numeric"
+          value={typed ?? String(optimistic)}
+          onChange={(event) => setTyped(event.target.value.replace(/[^0-9]/g, ""))}
+          onBlur={() => {
+            if (typed !== null && typed !== "") commit(Number(typed));
+            setTyped(null);
+          }}
+          className="h-full w-14 border-0 bg-transparent text-center text-[length:var(--text-body-lg)] font-semibold tabular-nums text-ink focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-focus"
+        />
+        <button
+          type="button"
+          aria-label={`One more ${unit} — ${label}`}
+          disabled={pending}
+          onClick={() => commit(optimistic + 1)}
+          className="flex size-control-lg shrink-0 items-center justify-center text-ink hover:bg-surface-soft focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-focus disabled:pointer-events-none disabled:opacity-40"
+        >
+          <Plus className="size-4" aria-hidden />
+        </button>
+      </div>
+    );
+  }
 
   return (
     <div className="flex flex-col gap-xxs">

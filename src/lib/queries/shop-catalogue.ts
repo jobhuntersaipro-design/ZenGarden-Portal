@@ -215,31 +215,34 @@ export async function listShopProducts(
   };
 }
 
-/**
- * Up to `limit` other visible products sharing this product's brand — the
- * product page's "More from {brand}" rail. A product with no brand has
- * nothing to relate it to anyone else, so it gets an empty rail rather than a
- * query over the whole catalogue.
- */
-export async function relatedShopProducts(
-  productId: string,
-  brand: string | null,
-  limit = 4,
-): Promise<ShopProduct[]> {
-  if (!brand) return [];
-  const rows = await prisma.product.findMany({
-    where: { ...SHOP_VISIBLE, brand, id: { not: productId } },
-    select: SHOP_PRODUCT_SELECT,
-    orderBy: [{ name: "asc" }],
-    take: limit,
-  });
-  return Promise.all(rows.map(toShopProduct));
-}
-
 export type ShopProductDetail = ShopProduct & {
   description: string | null;
   imageUrls: string[];
 };
+
+/**
+ * Up to four other visible products sharing this product's category — the
+ * product page's "More from {brand}" rail, matched on brand too when the
+ * product carries one. A product with no brand relates on category alone,
+ * and the page heads the section "You may also like" instead.
+ */
+export async function relatedShopProducts(
+  product: ShopProductDetail,
+): Promise<ShopProduct[]> {
+  const where: Prisma.ProductWhereInput = {
+    ...SHOP_VISIBLE,
+    ...(product.brand ? { brand: product.brand } : {}),
+    category: product.category,
+    id: { not: product.id },
+  };
+  const rows = await prisma.product.findMany({
+    where,
+    select: SHOP_PRODUCT_SELECT,
+    orderBy: { name: "asc" },
+    take: 4,
+  });
+  return Promise.all(rows.map(toShopProduct));
+}
 
 export async function loadShopProduct(
   id: string,
