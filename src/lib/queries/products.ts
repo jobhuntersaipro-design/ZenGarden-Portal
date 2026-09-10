@@ -317,6 +317,25 @@ export function summarise(products: ProductRow[]) {
       priceMoved: products.filter((p) => p.flags.includes("price-moved")).length,
       needsReview: products.filter((p) => p.flags.includes("needs-review")).length,
     },
+    /**
+     * Products a client cannot order, and why.
+     *
+     * The shop shows `active && !needsReview && listPrice > 0`, so this is the
+     * pricing worklist made countable — on production, 312 products yielded 0
+     * visible, and 11 of those already carried a correct price from a real
+     * purchase order and were held back by the review flag alone (measured
+     * 2026-09-10). Without a number on screen that is invisible.
+     */
+    shop: {
+      visible: products.filter(
+        (p) => p.active && !p.flags.includes("needs-review") && p.listPrice > 0,
+      ).length,
+      unpriced: products.filter((p) => p.active && p.listPrice <= 0).length,
+      /** Priced, but nobody has confirmed the details yet. */
+      awaitingReview: products.filter(
+        (p) => p.active && p.flags.includes("needs-review") && p.listPrice > 0,
+      ).length,
+    },
   };
 }
 

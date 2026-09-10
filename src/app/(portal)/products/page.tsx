@@ -163,6 +163,44 @@ export default async function ProductsPage({
         <AttentionTile counts={all.attention} />
       </div>
 
+      {/* The shop shows priced, reviewed, active products only, so this is the
+          worklist made countable. Rendered only while something is missing:
+          once the catalogue is ready it is nothing to report, the same rule
+          WorkQueue follows. */}
+      {all.shop.visible < all.activeCount ? (
+        <section className="mb-lg rounded-md border border-hairline bg-canvas p-md">
+          <h2 className="font-mono text-[length:var(--text-eyebrow)] text-ink-tertiary">
+            In the shop
+          </h2>
+          <p className="mt-xxs text-[length:var(--text-body-md)] text-ink">
+            <span className="font-semibold tabular-nums">{all.shop.visible}</span>
+            {` of ${all.activeCount} products can be ordered on the shop.`}
+          </p>
+          <ul className="mt-xs flex flex-col gap-xxs text-[length:var(--text-body-sm)] text-ink-secondary">
+            {all.shop.unpriced > 0 ? (
+              <li>
+                <Link
+                  href="/products?filter=needs-review"
+                  className="text-brand-link hover:underline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-focus"
+                >
+                  {`${all.shop.unpriced} need a price`}
+                </Link>
+              </li>
+            ) : null}
+            {all.shop.awaitingReview > 0 ? (
+              <li>
+                <Link
+                  href="/products?filter=needs-review"
+                  className="text-brand-link hover:underline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-focus"
+                >
+                  {`${all.shop.awaitingReview} have a price but are still marked "Needs review" — saving one clears it`}
+                </Link>
+              </li>
+            ) : null}
+          </ul>
+        </section>
+      ) : null}
+
       <ProductToolbar
         view={view}
         filter={filter}
