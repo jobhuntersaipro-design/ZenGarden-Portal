@@ -47,7 +47,7 @@ describe("listShopProducts — where", () => {
     const brandsCall = productGroupBy.mock.calls.find(
       (c) => c[0].by[0] === "brand",
     );
-    expect(brandsCall![0].where.brand).not.toEqual({ in: ["ZEN GARDEN"] });
+    expect(brandsCall![0].where.brand).toBeUndefined();
     expect(brandsCall![0].where.packSize).toEqual({ in: [12] });
     expect(brandsCall![0].where.market).toEqual({ in: ["Vietnam"] });
   });

@@ -72,7 +72,7 @@ export default async function ShopCataloguePage({
 
       <div className="mt-lg">
         {catalogue.total === 0 ? (
-          <div className="rounded-lg border border-hairline p-xl text-center">
+          <div className="rounded-lg border border-hairline p-xxl text-center">
             <p className="text-[length:var(--text-body-md)] text-ink-secondary">
               Nothing matches that. Try a different search.
             </p>
