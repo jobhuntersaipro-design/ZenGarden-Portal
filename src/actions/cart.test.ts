@@ -14,7 +14,7 @@ const requireClient = vi.fn();
 
 const tx = {
   webOrder: { findFirst: webOrderFindFirst, update: webOrderUpdate },
-  webOrderLine: { update: lineUpdate },
+  webOrderLine: { update: lineUpdate, upsert: lineUpsert },
 };
 
 vi.mock("@/lib/prisma", () => ({

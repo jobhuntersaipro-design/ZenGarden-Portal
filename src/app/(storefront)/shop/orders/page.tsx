@@ -4,8 +4,6 @@ import { requireClient } from "@/lib/auth-guards";
 import { formatDate } from "@/lib/dates";
 import { formatMYR } from "@/lib/money";
 import { stageLabel } from "@/lib/po-stages";
-import { prisma } from "@/lib/prisma";
-import { cartCount } from "@/lib/queries/cart";
 import { listBuyerOrders } from "@/lib/queries/web-orders";
 import { shopHref } from "@/lib/shop-routes";
 
@@ -18,19 +16,15 @@ export default async function OrdersPage({
 }: {
   searchParams: Promise<Record<string, string | string[] | undefined>>;
 }) {
-  const { id: userId, buyerId } = await requireClient();
+  const { buyerId } = await requireClient();
   const query = await searchParams;
   const raw = query.page;
   const page = Math.max(1, Number(Array.isArray(raw) ? raw[0] : raw) || 1);
 
-  const [, , { orders, total }] = await Promise.all([
-    prisma.buyer.findUnique({ where: { id: buyerId }, select: { name: true } }),
-    cartCount(userId),
-    listBuyerOrders(buyerId, page, PER_PAGE),
-  ]);
+  const { orders, total } = await listBuyerOrders(buyerId, page, PER_PAGE);
 
   return (
-    <main>
+    <div className="pt-lg">
       <h1 className="mb-md font-display text-[length:var(--text-heading-md)] text-ink">
         My orders
       </h1>
@@ -84,6 +78,6 @@ export default async function OrdersPage({
           <TablePagination page={page} size={PER_PAGE} total={total} />
         </div>
       ) : null}
-    </main>
+    </div>
   );
 }

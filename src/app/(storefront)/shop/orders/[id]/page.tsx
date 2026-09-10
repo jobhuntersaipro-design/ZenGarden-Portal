@@ -5,8 +5,6 @@ import { StageStepper } from "@/components/purchase-orders/StageStepper";
 import { requireClient } from "@/lib/auth-guards";
 import { formatDate } from "@/lib/dates";
 import { formatMYR } from "@/lib/money";
-import { prisma } from "@/lib/prisma";
-import { cartCount } from "@/lib/queries/cart";
 import { loadBuyerOrder } from "@/lib/queries/web-orders";
 import { shopHref } from "@/lib/shop-routes";
 
@@ -18,18 +16,14 @@ export default async function OrderDetailPage({
   params: Promise<{ id: string }>;
 }) {
   const { id } = await params;
-  const { id: userId, buyerId } = await requireClient();
+  const { buyerId } = await requireClient();
 
-  const [, , order] = await Promise.all([
-    prisma.buyer.findUnique({ where: { id: buyerId }, select: { name: true } }),
-    cartCount(userId),
-    loadBuyerOrder(buyerId, id),
-  ]);
+  const order = await loadBuyerOrder(buyerId, id);
   // Scoped to the caller's buyer, so another buyer's id is simply not found.
   if (!order) notFound();
 
   return (
-    <main>
+    <div className="pt-lg">
       <Link
         href={shopHref.orders()}
         className="mb-md inline-flex min-h-control-md items-center gap-xxs rounded-sm text-[length:var(--text-body-sm)] text-brand-link hover:underline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-focus sm:min-h-control-sm"
@@ -98,6 +92,6 @@ export default async function OrderDetailPage({
           </span>
         </div>
       </section>
-    </main>
+    </div>
   );
 }

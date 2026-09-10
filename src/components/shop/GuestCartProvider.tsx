@@ -5,6 +5,7 @@ import {
   useCallback,
   useContext,
   useEffect,
+  useRef,
   useState,
   type ReactNode,
 } from "react";
@@ -28,6 +29,10 @@ export type GuestCartApi = {
   /** Today's priced figures for `cart`. Null until the first `priceCart` answers. */
   priced: Cart | null;
   pricing: boolean;
+  /** True when the most recent `priceCart` rejected or answered `{success:false}`. */
+  pricingFailed: boolean;
+  /** Re-runs `priceCart` immediately, bypassing the debounce. */
+  retryPricing: () => void;
   add: (productId: string, cartons: number) => void;
   set: (productId: string, cartons: number) => void;
   remove: (productId: string) => void;
@@ -44,6 +49,8 @@ const INERT_GUEST_CART: GuestCartApi = {
   cart: EMPTY_GUEST_CART,
   priced: null,
   pricing: false,
+  pricingFailed: false,
+  retryPricing: () => {},
   add: () => {},
   set: () => {},
   remove: () => {},
@@ -71,6 +78,12 @@ export function GuestCartProvider({ children }: { children: ReactNode }) {
   const [hydrated, setHydrated] = useState(false);
   const [priced, setPriced] = useState<Cart | null>(null);
   const [pricing, setPricing] = useState(false);
+  const [pricingFailed, setPricingFailed] = useState(false);
+  // A monotonic id, not a boolean "cancelled" flag, so a manual `retryPricing`
+  // call and the debounced effect's own call can each supersede the other:
+  // whichever `priceCart` answers last wins, and a superseded one is not
+  // allowed to write stale state over it.
+  const priceRequestRef = useRef(0);
 
   useEffect(() => {
     // The state write is inside a nested callback, never a bare statement in
@@ -143,42 +156,53 @@ export function GuestCartProvider({ children }: { children: ReactNode }) {
   );
   const clear = useCallback(() => persist(() => EMPTY_GUEST_CART), [persist]);
 
+  // The actual pricing call, shared by the debounced effect below and by
+  // `retryPricing` — the only difference between "add a line" and "click Try
+  // again" is when this runs, never how.
+  const priceNow = useCallback((lines: GuestCart["lines"]) => {
+    const requestId = ++priceRequestRef.current;
+    setPricing(true);
+    return priceCart(lines)
+      .then((result) => {
+        if (priceRequestRef.current !== requestId) return; // superseded
+        if (result.success) {
+          setPriced(result.data);
+          setPricingFailed(false);
+        } else {
+          // `priced` is left as it was: a stale figure beats a blank cart
+          // over a transient failure the guest did nothing to cause. The
+          // failure is still recorded, though, so a *first* pricing that
+          // never had a `priced` value to fall back on can show an error
+          // instead of shimmering forever.
+          console.error("[guest-cart] priceCart failed:", result.error);
+          setPricingFailed(true);
+        }
+      })
+      .catch((cause: unknown) => {
+        if (priceRequestRef.current !== requestId) return;
+        console.error("[guest-cart] priceCart threw:", cause);
+        setPricingFailed(true);
+      })
+      .finally(() => {
+        if (priceRequestRef.current === requestId) setPricing(false);
+      });
+  }, []);
+
   // Debounced live pricing. Runs once hydrated (so it never fires against the
   // placeholder empty cart before storage is read) and on every subsequent
   // change to the lines, including down to zero — `priceCart([])` answers
   // `EMPTY_CART` cheaply, without a query, so there is no special case here.
   useEffect(() => {
     if (isClient || !hydrated) return;
-    let cancelled = false;
     const timer = setTimeout(() => {
-      // `setPricing(true)` lives inside this callback, not as a bare
-      // statement in the effect body, for the same reason the hydration
-      // effect above does — and it happens to be more accurate besides: the
-      // spinner now means "a request is in flight", not "waiting to debounce".
-      setPricing(true);
-      void priceCart(cart.lines)
-        .then((result) => {
-          if (cancelled) return;
-          if (result.success) {
-            setPriced(result.data);
-          } else {
-            // `priced` is left as it was: a stale figure beats a blank cart
-            // over a transient failure the guest did nothing to cause.
-            console.error("[guest-cart] priceCart failed:", result.error);
-          }
-        })
-        .catch((cause: unknown) => {
-          if (!cancelled) console.error("[guest-cart] priceCart threw:", cause);
-        })
-        .finally(() => {
-          if (!cancelled) setPricing(false);
-        });
+      void priceNow(cart.lines);
     }, PRICE_DEBOUNCE_MS);
-    return () => {
-      cancelled = true;
-      clearTimeout(timer);
-    };
-  }, [cart.lines, isClient, hydrated]);
+    return () => clearTimeout(timer);
+  }, [cart.lines, isClient, hydrated, priceNow]);
+
+  const retryPricing = useCallback(() => {
+    void priceNow(cart.lines);
+  }, [priceNow, cart.lines]);
 
   if (isClient) {
     return (
@@ -189,7 +213,9 @@ export function GuestCartProvider({ children }: { children: ReactNode }) {
   }
 
   return (
-    <GuestCartContext.Provider value={{ hydrated, cart, priced, pricing, add, set, remove, clear }}>
+    <GuestCartContext.Provider
+      value={{ hydrated, cart, priced, pricing, pricingFailed, retryPricing, add, set, remove, clear }}
+    >
       {children}
     </GuestCartContext.Provider>
   );

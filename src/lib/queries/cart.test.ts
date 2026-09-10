@@ -63,6 +63,17 @@ describe("priceProductLines", () => {
     expect(subtotal).toBe("189.00");
   });
 
+  it("returns 0.00 for an unavailable line's unitPrice and amount, and still excludes it from the subtotal", async () => {
+    const { lines, subtotal } = await priceProductLines([
+      { productId: "p1", cartons: 1, product: product({ sku: "AVAILABLE" }) },
+      { productId: "p2", cartons: 5, product: product({ sku: "GONE", active: false }) },
+    ]);
+    const gone = lines.find((line) => line.sku === "GONE");
+    expect(gone?.unitPrice).toBe("0.00");
+    expect(gone?.amount).toBe("0.00");
+    expect(subtotal).toBe("189.00");
+  });
+
   it("counts cartons across every line, available or not", async () => {
     const { cartonCount } = await priceProductLines([
       { productId: "p1", cartons: 3, product: product({ sku: "A" }) },

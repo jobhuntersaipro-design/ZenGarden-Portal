@@ -3,9 +3,11 @@
 import Link from "next/link";
 import { Lock } from "lucide-react";
 import { Shimmer } from "@/components/portal/Skeletons";
+import { Button } from "@/components/ui/button";
 import { CartScreen } from "@/components/shop/cart/CartScreen";
 import { useGuestCart } from "@/components/shop/GuestCartProvider";
 import { shopHref } from "@/lib/shop-routes";
+import type { CartLine } from "@/lib/queries/cart";
 
 /**
  * A guest's cart: `useGuestCart().priced` is the same `Cart` shape
@@ -15,18 +17,34 @@ import { shopHref } from "@/lib/shop-routes";
  * source, its mutators, its own CTA and its loading-rows skeleton.
  */
 export function GuestCart() {
-  const { hydrated, cart, priced, set, remove } = useGuestCart();
+  const { hydrated, cart, priced, pricingFailed, retryPricing, set, remove } = useGuestCart();
 
   // Before hydration `cart.lines` is always empty — localStorage has not
   // been read yet — so a reload of a cart that actually holds lines must not
   // flash "Your cart is empty" in between. Once hydrated, a stored line
   // count that is genuinely zero can show the empty state at once; it needs
   // no round trip through `priceCart` to know that.
-  const loading = !hydrated || (cart.lines.length > 0 && priced === null);
+  const showError = hydrated && cart.lines.length > 0 && priced === null && pricingFailed;
+  const loading = !hydrated || (cart.lines.length > 0 && priced === null && !pricingFailed);
+
+  // Rows come from `cart.lines` — the guest's own local truth, updated
+  // synchronously by every mutator (`set`, `remove`) — not from `priced`,
+  // which only moves after the debounce plus a round trip. That is what
+  // makes a removed line disappear at once instead of sitting there for
+  // ~0.5s, and what stops the carton stepper's `useOptimistic` value from
+  // reverting: its `value` prop is now this same synchronous number, not the
+  // stale one still in `priced`. Money, name and image come from `priced`
+  // where a match exists; a line just added has no priced counterpart yet
+  // and is simply not shown until pricing catches up — no different from
+  // before, when `lines` came from `priced` alone.
+  const lines: CartLine[] = cart.lines.flatMap(({ productId, cartons }) => {
+    const pricedLine = priced?.lines.find((line) => line.productId === productId);
+    return pricedLine ? [{ ...pricedLine, cartons }] : [];
+  });
 
   return (
     <CartScreen
-      lines={priced?.lines ?? []}
+      lines={lines}
       subtotal={priced?.subtotal ?? "0.00"}
       onSetCartons={(productId, cartons) => {
         set(productId, cartons);
@@ -34,8 +52,27 @@ export function GuestCart() {
       }}
       onRemove={remove}
       cta={<GuestCta />}
-      skeleton={loading ? <CartLoadingRows count={cart.lines.length || 3} /> : undefined}
+      skeleton={
+        showError ? (
+          <PricingErrorCard onRetry={retryPricing} />
+        ) : loading ? (
+          <CartLoadingRows count={cart.lines.length || 3} />
+        ) : undefined
+      }
     />
+  );
+}
+
+function PricingErrorCard({ onRetry }: { onRetry: () => void }) {
+  return (
+    <div className="mt-lg rounded-lg border border-hairline p-xxl text-center">
+      <p className="text-[length:var(--text-body-md)] text-ink-secondary">
+        We couldn&rsquo;t price your cart.
+      </p>
+      <Button className="mt-md" onClick={onRetry}>
+        Try again
+      </Button>
+    </div>
   );
 }
 

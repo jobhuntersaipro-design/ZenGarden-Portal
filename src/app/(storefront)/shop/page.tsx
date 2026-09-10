@@ -25,7 +25,7 @@ export default async function ShopHome() {
         <CategoryGrid categories={home.categories} />
       </div>
       <div className="mt-xl">
-        <BestSellers products={home.bestSellers} />
+        <BestSellers products={home.bestSellers} isFallback={home.bestSellersAreFallback} />
       </div>
       <div className="mt-xl">
         <BrandCards brands={home.brands} />

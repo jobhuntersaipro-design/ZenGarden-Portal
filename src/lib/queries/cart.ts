@@ -55,7 +55,7 @@ export const EMPTY_CART_SUMMARY: CartSummary = {
  * `cartSummary` and (Task 5) the guest cart's `priceCart`, so the three price
  * exactly the same way from exactly the same columns.
  */
-export const PRICED_PRODUCT_SELECT = {
+const PRICED_PRODUCT_FIELDS = {
   sku: true,
   name: true,
   brand: true,
@@ -65,6 +65,10 @@ export const PRICED_PRODUCT_SELECT = {
   listPrice: true,
   active: true,
   needsReview: true,
+} satisfies Prisma.ProductSelect;
+
+export const PRICED_PRODUCT_SELECT = {
+  ...PRICED_PRODUCT_FIELDS,
   images: {
     take: 1,
     orderBy: { position: "asc" },
@@ -72,14 +76,82 @@ export const PRICED_PRODUCT_SELECT = {
   },
 } satisfies Prisma.ProductSelect;
 
+/**
+ * The same fields, without `images` — for a caller (`cartSummary`) that
+ * needs the money and availability but never renders a thumbnail. Selecting
+ * `images` and presigning one per line is wasted work for a component that
+ * shows no picture, and `cartSummary` runs on every shop page's layout for a
+ * signed-in client.
+ */
+export const PRICED_PRODUCT_SELECT_NO_IMAGES = PRICED_PRODUCT_FIELDS;
+
 export type PricedProductRow = Prisma.ProductGetPayload<{
   select: typeof PRICED_PRODUCT_SELECT;
 }>;
+type MoneyProductRow = Prisma.ProductGetPayload<{
+  select: typeof PRICED_PRODUCT_SELECT_NO_IMAGES;
+}>;
 
 /**
- * Prices a set of {product, cartons} rows at today's list price. The body of
- * `loadCart`'s old map/filter/reduce, lifted out so a guest cart (Task 5,
- * which has no `WebOrder` row to read) prices identically to a client's.
+ * Prices one {product, cartons} row. Shared by `priceProductLines` (which
+ * adds the thumbnail) and `priceProductLinesMoneyOnly` (which does not), so
+ * the two can never price a line differently.
+ *
+ * An unavailable line's `unitPrice` and `amount` come back `"0.00"` rather
+ * than the product's real list price — see `priceCart`'s doc comment in
+ * `src/actions/shop-public.ts` for why that matters for a public caller.
+ */
+function priceLine(
+  productId: string,
+  cartons: number,
+  product: MoneyProductRow,
+): Omit<CartLine, "imageUrl"> {
+  const unavailable =
+    !product.active || product.needsReview || product.listPrice.lessThanOrEqualTo(0);
+  const price = unavailable ? "0.00" : product.listPrice.toFixed(2);
+  return {
+    productId,
+    sku: product.sku,
+    name: product.name,
+    brand: product.brand,
+    variant: product.variant,
+    packSize: product.packSize,
+    unit: product.unit,
+    cartons,
+    unitPrice: price,
+    amount: unavailable ? "0.00" : lineTotal(cartons, price),
+    pieces: piecesFor(cartons, product.packSize),
+    unavailable,
+  };
+}
+
+/** Sorts, sums the subtotal and counts cartons — shared by both pricing paths. */
+function summarizeLines(
+  lines: CartLine[],
+): { lines: CartLine[]; subtotal: string; cartonCount: number } {
+  const sorted = [...lines].sort(
+    (a, b) => a.name.localeCompare(b.name) || a.sku.localeCompare(b.sku),
+  );
+
+  // Unavailable lines are shown but never counted: the client must be able to
+  // see and remove one, and must not be quoted a total that includes it.
+  const subtotal = sorted
+    .filter((line) => !line.unavailable)
+    .reduce((sum, line) => sum.plus(new Prisma.Decimal(line.amount)), new Prisma.Decimal(0))
+    .toFixed(2);
+
+  return {
+    lines: sorted,
+    subtotal,
+    cartonCount: sorted.reduce((sum, line) => sum + line.cartons, 0),
+  };
+}
+
+/**
+ * Prices a set of {product, cartons} rows at today's list price, with a
+ * thumbnail. The body of `loadCart`'s old map/filter/reduce, lifted out so a
+ * guest cart (Task 5, which has no `WebOrder` row to read) prices identically
+ * to a client's.
  *
  * Async because the thumbnail is a signed R2 GET, not a stored URL.
  */
@@ -87,46 +159,26 @@ export async function priceProductLines(
   rows: { productId: string; cartons: number; product: PricedProductRow }[],
 ): Promise<{ lines: CartLine[]; subtotal: string; cartonCount: number }> {
   const priced = await Promise.all(
-    rows.map(async (row) => {
-      const price = row.product.listPrice.toFixed(2);
-      const line: CartLine = {
-        productId: row.productId,
-        sku: row.product.sku,
-        name: row.product.name,
-        brand: row.product.brand,
-        variant: row.product.variant,
-        packSize: row.product.packSize,
-        unit: row.product.unit,
-        cartons: row.cartons,
-        unitPrice: price,
-        amount: lineTotal(row.cartons, price),
-        pieces: piecesFor(row.cartons, row.product.packSize),
-        imageUrl: await thumbUrl(row.product.images),
-        unavailable:
-          !row.product.active ||
-          row.product.needsReview ||
-          row.product.listPrice.lessThanOrEqualTo(0),
-      };
-      return line;
-    }),
+    rows.map(async (row) => ({
+      ...priceLine(row.productId, row.cartons, row.product),
+      imageUrl: await thumbUrl(row.product.images),
+    })),
   );
+  return summarizeLines(priced);
+}
 
-  const lines = priced.sort(
-    (a, b) => a.name.localeCompare(b.name) || a.sku.localeCompare(b.sku),
-  );
-
-  // Unavailable lines are shown but never counted: the client must be able to
-  // see and remove one, and must not be quoted a total that includes it.
-  const subtotal = lines
-    .filter((line) => !line.unavailable)
-    .reduce((sum, line) => sum.plus(new Prisma.Decimal(line.amount)), new Prisma.Decimal(0))
-    .toFixed(2);
-
-  return {
-    lines,
-    subtotal,
-    cartonCount: lines.reduce((sum, line) => sum + line.cartons, 0),
-  };
+/**
+ * The money-only counterpart: no `images` select, no presigned URL, for a
+ * caller that never renders a thumbnail.
+ */
+export function priceProductLinesMoneyOnly(
+  rows: { productId: string; cartons: number; product: MoneyProductRow }[],
+): { lines: CartLine[]; subtotal: string; cartonCount: number } {
+  const priced = rows.map((row) => ({
+    ...priceLine(row.productId, row.cartons, row.product),
+    imageUrl: null,
+  }));
+  return summarizeLines(priced);
 }
 
 /**
@@ -157,19 +209,14 @@ export async function loadCart(placedById: string): Promise<Cart> {
   return { id: order.id, lines, subtotal, cartonCount };
 }
 
-/** Just the badge on the shop header, without loading every product. */
-export async function cartCount(placedById: string): Promise<number> {
-  const order = await prisma.webOrder.findFirst({
-    where: { placedById, status: WebOrderStatus.DRAFT },
-    select: { _count: { select: { lines: true } } },
-  });
-  return order?._count.lines ?? 0;
-}
-
 /**
  * The cart, priced, without the full `CartLine` shape — what `ShopHeader` and
  * `ShopUtilityBar` (Task 7) need to show a total without loading images they
- * will not render.
+ * will not render. It selects `PRICED_PRODUCT_SELECT_NO_IMAGES` and prices
+ * through `priceProductLinesMoneyOnly`, so it genuinely never selects an
+ * image or signs an R2 URL — this runs on every shop page's layout for a
+ * signed-in client, and a 15-line cart signing 15 thumbnails nobody displays
+ * would be pure waste.
  */
 export async function cartSummary(placedById: string): Promise<CartSummary> {
   const order = await prisma.webOrder.findFirst({
@@ -179,14 +226,14 @@ export async function cartSummary(placedById: string): Promise<CartSummary> {
         select: {
           productId: true,
           cartons: true,
-          product: { select: PRICED_PRODUCT_SELECT },
+          product: { select: PRICED_PRODUCT_SELECT_NO_IMAGES },
         },
       },
     },
   });
   if (!order) return EMPTY_CART_SUMMARY;
 
-  const { lines, subtotal, cartonCount } = await priceProductLines(order.lines);
+  const { lines, subtotal, cartonCount } = priceProductLinesMoneyOnly(order.lines);
   return {
     count: lines.length,
     cartonCount,

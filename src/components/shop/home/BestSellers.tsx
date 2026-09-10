@@ -3,14 +3,27 @@ import { ShopProductCard } from "@/components/shop/ShopProductCard";
 import { shopHref } from "@/lib/shop-routes";
 import type { ShopProduct } from "@/lib/queries/shop-catalogue";
 
-export function BestSellers({ products }: { products: ShopProduct[] }) {
+/**
+ * `isFallback` is `loadShopHome`'s `bestSellersAreFallback`: true when
+ * nothing has sold in the window and `products` is really the newest four
+ * visible products, not an actual ranking. Badging index 0 "Best seller" in
+ * that case would be a lie the fallback happens to make look plausible, so
+ * the rail retitles instead of badging.
+ */
+export function BestSellers({
+  products,
+  isFallback,
+}: {
+  products: ShopProduct[];
+  isFallback: boolean;
+}) {
   if (products.length === 0) return null;
 
   return (
     <section>
       <div className="mb-md flex items-baseline justify-between gap-md">
         <h2 className="text-[length:var(--text-heading-md)] font-[650] text-ink">
-          Best sellers
+          {isFallback ? "New in the catalogue" : "Best sellers"}
         </h2>
         <Link
           href={shopHref.catalogue()}
@@ -24,7 +37,7 @@ export function BestSellers({ products }: { products: ShopProduct[] }) {
           <ShopProductCard
             key={product.id}
             product={product}
-            badge={index === 0 ? "Best seller" : undefined}
+            badge={!isFallback && index === 0 ? "Best seller" : undefined}
           />
         ))}
       </ul>

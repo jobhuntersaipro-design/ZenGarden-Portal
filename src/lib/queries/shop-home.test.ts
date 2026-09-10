@@ -63,6 +63,7 @@ describe("loadShopHome — bestSellers", () => {
 
     const home = await loadShopHome();
     expect(home.bestSellers.map((p) => p.id)).toEqual(["p2", "p1"]);
+    expect(home.bestSellersAreFallback).toBe(false);
 
     const groupByArgs = lineItemGroupBy.mock.calls[0][0];
     expect(groupByArgs.where.productId).toEqual({ not: null });
@@ -88,6 +89,7 @@ describe("loadShopHome — bestSellers", () => {
 
     const home = await loadShopHome();
     expect(home.bestSellers.map((p) => p.id)).toEqual(["n1", "n2"]);
+    expect(home.bestSellersAreFallback).toBe(true);
 
     const fallbackCall = productFindMany.mock.calls.find(
       (call) => call[0].orderBy?.createdAt === "desc",

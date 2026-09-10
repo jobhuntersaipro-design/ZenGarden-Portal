@@ -6,6 +6,14 @@ import { SHOP_VISIBLE, thumbUrl, type ShopProduct } from "@/lib/queries/shop-cat
 export type ShopHome = {
   categories: { name: string; count: number }[];
   bestSellers: ShopProduct[];
+  /**
+   * True when nothing has sold in the window and `bestSellers` is really
+   * `newestProducts()` — the development database, and production until the
+   * catalogue sells, both live here. `BestSellers.tsx` reads it to drop the
+   * "Best seller" badge and retitle the rail rather than mislabel an
+   * arbitrary new product.
+   */
+  bestSellersAreFallback: boolean;
   brands: { name: string; categories: string[] }[];
 };
 
@@ -61,11 +69,15 @@ async function newestProducts(): Promise<ShopProduct[]> {
  * that order. `findMany({ where: { id: { in } } })` makes no promise about
  * row order, so the reorder against `ids` happens here rather than being
  * assumed from the query.
+ *
+ * `isFallback` is true when nothing has sold and `products` is really
+ * `newestProducts()` — the caller needs to know this to stop badging an
+ * arbitrary new product "Best seller".
  */
 async function bestSellingProducts(window: {
   from: Date;
   to: Date;
-}): Promise<ShopProduct[]> {
+}): Promise<{ products: ShopProduct[]; isFallback: boolean }> {
   const totals = await prisma.lineItem.groupBy({
     by: ["productId"],
     where: {
@@ -81,7 +93,7 @@ async function bestSellingProducts(window: {
   const ids = totals
     .map((row) => row.productId)
     .filter((id): id is string => Boolean(id));
-  if (ids.length === 0) return newestProducts();
+  if (ids.length === 0) return { products: await newestProducts(), isFallback: true };
 
   const rows = await prisma.product.findMany({
     where: { id: { in: ids } },
@@ -91,7 +103,7 @@ async function bestSellingProducts(window: {
   const ordered = ids
     .map((id) => byId.get(id))
     .filter((row): row is HomeProductRow => Boolean(row));
-  return Promise.all(ordered.map(toShopProduct));
+  return { products: await Promise.all(ordered.map(toShopProduct)), isFallback: false };
 }
 
 /** Distinct brand → its categories, folded from a brand/category-sorted read. */
@@ -130,7 +142,8 @@ export async function loadShopHome(): Promise<ShopHome> {
 
   return {
     categories: categoryRows.map((row) => ({ name: row.category, count: row._count._all })),
-    bestSellers,
+    bestSellers: bestSellers.products,
+    bestSellersAreFallback: bestSellers.isFallback,
     brands,
   };
 }

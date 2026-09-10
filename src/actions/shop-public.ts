@@ -26,6 +26,22 @@ export type ActionResult<T = undefined> =
  * so this is called live instead of stored. A line whose product the
  * catalogue no longer holds is silently dropped rather than surfaced as an
  * error: the browser sent stale ids, not a request that failed.
+ *
+ * **Deviation from this phase's Global Constraint** — "A Server Action
+ * callable without a session reads `SHOP_VISIBLE` products and nothing
+ * else." This one cannot: it looks a product up by the id the guest's own
+ * cart already holds, not by browsing the catalogue, so there is no
+ * `SHOP_VISIBLE` filter to apply — a product the guest added before it was
+ * archived, marked `needsReview` or priced to zero still has to come back so
+ * the line can be shown and removed (acceptance criterion 6 needs it named,
+ * not silently dropped). What it must not do is leak that product's *money*:
+ * `priceProductLines` returns `"0.00"` for `unitPrice` and `amount` on an
+ * unavailable line, never the real list price, and it stays excluded from
+ * the subtotal — so an unauthenticated caller holding a stray product id
+ * learns that id's name and that it is unavailable, never a price ops has
+ * not published. `submitWebOrder` re-reads every price inside its own
+ * transaction when an order is actually sent, so nothing downstream ever
+ * trusts a figure this action returned.
  */
 export async function priceCart(lines: GuestCartLine[]): Promise<ActionResult<Cart>> {
   const parsed = guestCartLinesSchema.safeParse(lines);

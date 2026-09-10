@@ -67,6 +67,16 @@ export function GuestCartMerge() {
           : "";
       toast.success(`Your cart moved to your account${suffix}`);
       router.refresh();
+    }).catch((cause: unknown) => {
+      // A rejected promise (offline, a deploy mid-flight, an aborted POST) is
+      // not the same as `{success:false}` above — without this, it is an
+      // unhandled rejection and `ran.current` is already `true`, so nothing
+      // retries until the component remounts. Resetting the guard lets the
+      // next render of this effect (e.g. a manual retry, or navigating away
+      // and back) try again instead of leaving the cart stuck unmerged.
+      console.error("[shop] GuestCartMerge", cause);
+      ran.current = false;
+      toast.error("We couldn't move your cart. Try again.");
     });
   }, [viewer.kind, clear, router]);
 

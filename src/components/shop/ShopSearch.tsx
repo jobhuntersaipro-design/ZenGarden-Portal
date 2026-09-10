@@ -1,6 +1,6 @@
 "use client";
 
-import { Suspense } from "react";
+import { Suspense, useId } from "react";
 import { Search } from "lucide-react";
 import { useSearchParams } from "next/navigation";
 import { cn } from "cn";
@@ -13,6 +13,10 @@ import { cn } from "cn";
  */
 function ShopSearchField({ className }: { className?: string }) {
   const searchParams = useSearchParams();
+  // The desktop and mobile headers both render this field at once (only
+  // `display` differs, so both are in the DOM), so a fixed id would collide
+  // and the mobile label would resolve to the hidden desktop input.
+  const id = useId();
 
   return (
     <form
@@ -24,11 +28,11 @@ function ShopSearchField({ className }: { className?: string }) {
       )}
     >
       <Search className="size-4 shrink-0 text-ink-tertiary" aria-hidden />
-      <label htmlFor="shop-search-q" className="sr-only">
+      <label htmlFor={id} className="sr-only">
         Search the catalogue
       </label>
       <input
-        id="shop-search-q"
+        id={id}
         type="text"
         name="q"
         defaultValue={searchParams.get("q") ?? ""}

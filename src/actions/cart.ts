@@ -118,9 +118,19 @@ async function openCart(placedById: string, buyerId: string) {
  * adding the same product twice one line rather than a duplicate row — shared
  * by `addToCart` and `mergeGuestCart` so a merge behaves exactly like a click
  * would have, line by line.
+ *
+ * Takes the Prisma client to write through rather than reaching for the
+ * module-level `prisma` itself: `addToCart` passes `prisma` directly,
+ * `mergeGuestCart` passes a `$transaction` callback's `tx`, so every line of
+ * a merge commits together or not at all.
  */
-async function upsertLine(cartId: string, productId: string, cartons: number) {
-  await prisma.webOrderLine.upsert({
+async function upsertLine(
+  client: Prisma.TransactionClient,
+  cartId: string,
+  productId: string,
+  cartons: number,
+) {
+  await client.webOrderLine.upsert({
     where: { webOrderId_productId: { webOrderId: cartId, productId } },
     create: { webOrderId: cartId, productId, cartons },
     update: { cartons: { increment: cartons } },
@@ -147,7 +157,7 @@ export async function addToCart(input: {
       return { success: false, error: "That product is not available to order." };
     }
     const cart = await openCart(user.id, user.buyerId);
-    await upsertLine(cart.id, parsed.data.productId, parsed.data.cartons);
+    await upsertLine(prisma, cart.id, parsed.data.productId, parsed.data.cartons);
 
     revalidateShop();
     return { success: true, data: undefined };
@@ -195,19 +205,22 @@ export async function mergeGuestCart(
 
     const cart = await openCart(user.id, user.buyerId);
 
-    let merged = 0;
-    let skipped = 0;
-    for (const line of parsed.data) {
-      if (!orderableIds.has(line.productId)) {
-        skipped += 1;
-        continue;
+    const orderableLines = parsed.data.filter((line) => orderableIds.has(line.productId));
+    const skipped = parsed.data.length - orderableLines.length;
+
+    // One transaction for every orderable line: a failure halfway through N
+    // sequential upserts used to return `{success:false}` with some lines
+    // already merged, while the browser still held its un-cleared
+    // `localStorage` cart — a retry would then double-add whatever had
+    // already landed. Now it is all merged or none of it is.
+    await prisma.$transaction(async (tx) => {
+      for (const line of orderableLines) {
+        await upsertLine(tx, cart.id, line.productId, line.cartons);
       }
-      await upsertLine(cart.id, line.productId, line.cartons);
-      merged += 1;
-    }
+    });
 
     revalidateShop();
-    return { success: true, data: { merged, skipped } };
+    return { success: true, data: { merged: orderableLines.length, skipped } };
   } catch (cause) {
     console.error("[cart] mergeGuestCart", cause);
     return { success: false, error: "We couldn't merge your cart." };
