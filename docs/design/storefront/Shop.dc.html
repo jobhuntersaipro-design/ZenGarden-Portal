@@ -674,6 +674,53 @@
     </div>
   </sc-if>
 
+  <!-- ==================== PURCHASE ORDER LIST ==================== -->
+  <sc-if value="{{ isPos }}" hint-placeholder-val="{{ false }}">
+    <div>
+      <div class="page" style="padding-top: 32px;">
+        <h1 class="disp" style="margin: 0; font-size: 34px; line-height: 1.2; letter-spacing: -1.36px; font-weight: 650;">Purchase orders</h1>
+        <p style="margin: 8px 0 0; font-size: 16px; line-height: 1.375; letter-spacing: -0.32px; color: #646464; max-width: 640px;">One purchase order for every order you have placed with us, generated the moment you sent it. Open one to read or download the PDF.</p>
+      </div>
+
+      <div class="page" style="padding-top: 24px; padding-bottom: 60px;">
+        <div style="border: 1px solid #e8e8e8; border-radius: 14px; overflow: hidden;">
+          <div style="display: grid; grid-template-columns: minmax(0, 1fr) 160px 110px 90px 120px 150px 32px; gap: 16px; padding: 14px 20px; background: #f8f9fa; border-bottom: 1px solid #e8e8e8;">
+            <span class="lbl">Document</span><span class="lbl">Your PO number</span><span class="lbl">Order date</span>
+            <span class="lbl" style="text-align: right;">Products</span>
+            <span class="lbl" style="text-align: right;">Total</span>
+            <span class="lbl">Stage</span><span></span>
+          </div>
+
+          <sc-for list="{{ poList }}" as="d" hint-placeholder-count="5">
+            <button onClick="{{ d.open }}" style="display: grid; width: 100%; grid-template-columns: minmax(0, 1fr) 160px 110px 90px 120px 150px 32px; gap: 16px; align-items: center; padding: 16px 20px; border-bottom: 1px solid #e8e8e8; background: #ffffff;">
+              <span style="display: flex; align-items: center; gap: 12px; min-width: 0;">
+                <span style="width: 36px; height: 36px; border-radius: 9px; background: #7612fa; display: flex; align-items: center; justify-content: center; flex-shrink: 0;">
+                  <span class="mono" style="font-size: 11px; font-weight: 500; color: #ffffff;">PDF</span>
+                </span>
+                <span style="min-width: 0;">
+                  <span style="display: block; font-size: 14px; font-weight: 500; letter-spacing: -0.15px;">{{ d.file }}</span>
+                  <span class="lbl" style="display: block;">{{ d.meta }}</span>
+                </span>
+              </span>
+              <span class="mono" style="font-size: 14px; color: {{ d.refColor }};">{{ d.buyerRef }}</span>
+              <span class="lbl">{{ d.date }}</span>
+              <span class="num" style="text-align: right; font-size: 14px;">{{ d.products }}</span>
+              <span class="num" style="text-align: right; font-size: 16px; font-weight: 600; letter-spacing: -0.32px;">{{ d.total }}</span>
+              <span style="display: flex; align-items: center; gap: 8px;">
+                <span style="width: 8px; height: 8px; border-radius: 20px; background: {{ d.stageColor }}; flex-shrink: 0;"></span>
+                <span style="font-size: 12px; color: #292d34;">{{ d.stageLabel }}</span>
+              </span>
+              <span style="display: flex; justify-content: flex-end;">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#6f6f6f" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M14 4h6v6"></path><path d="M20 4l-8 8"></path><path d="M18 14v5a1 1 0 0 1-1 1H5a1 1 0 0 1-1-1V7a1 1 0 0 1 1-1h5"></path></svg>
+              </span>
+            </button>
+          </sc-for>
+        </div>
+        <p class="lbl" style="margin: 14px 0 0;">Opening a purchase order opens it in a new tab, so you keep this list where it is. Anything you have uploaded yourself lives under Settings &rarr; Documents.</p>
+      </div>
+    </div>
+  </sc-if>
+
   <!-- ====================== PURCHASE ORDER ======================= -->
   <sc-if value="{{ isPo }}" hint-placeholder-val="{{ false }}">
     <div style="background: #e9ebf0; min-height: 100%;">
@@ -687,7 +734,7 @@
             <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 4v11"></path><path d="M7.5 10.5L12 15l4.5-4.5"></path><path d="M4.5 19h15"></path></svg>
             Download PDF
           </div>
-          <button onClick="{{ goOrders }}" style="width: 36px; height: 36px; display: flex; align-items: center; justify-content: center; border-radius: 20px;">
+          <button onClick="{{ closePo }}" style="width: 36px; height: 36px; display: flex; align-items: center; justify-content: center; border-radius: 20px;">
             <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="rgba(255,255,255,0.85)" stroke-width="2" stroke-linecap="round"><path d="M6 6l12 12M18 6L6 18"></path></svg>
           </button>
         </div>
@@ -1075,7 +1122,7 @@ class Component extends DCLogic {
       view: "home", q: "", category: null, brand: null, sort: "name",
       productId: null, qty: 1, cart: {},
       signedIn: false, openOrder: null, poOrder: null, orderFilter: "all",
-      tab: "profile", docs: START_DOCS.slice(), docId: "d1", uploads: 0, menuOpen: false,
+      tab: "profile", docs: START_DOCS.slice(), docId: "d1", uploads: 0, menuOpen: false, poFrom: "orders",
     };
   }
 
@@ -1238,7 +1285,7 @@ class Component extends DCLogic {
         rowBg: open ? "#f8f9fa" : "#ffffff",
         chevron: open ? "rotate(180deg)" : "rotate(0deg)",
         toggle: function () { self.setState({ openOrder: open ? null : i }); },
-        viewPo: function () { self.setState({ view: "po", poOrder: i }); },
+        viewPo: function () { self.setState({ view: "po", poOrder: i, poFrom: "orders" }); },
         reorder: function () {
           const cart = Object.assign({}, self.state.cart);
           o.lines.forEach(function (l) { cart[l.id] = Math.min(999, (cart[l.id] || 0) + l.c); });
@@ -1325,6 +1372,24 @@ class Component extends DCLogic {
       { label: "Cartons ordered", value: String(allCartons), note: "Across " + ranked.length + " products" },
       { label: "Average order", value: rm(allSpend / ORDERS.length), note: "Your typical basket" },
     ];
+
+    // ---- the purchase orders list ----
+    const poList = ORDERS.map(function (o, i) {
+      const t = self.orderTotals(o);
+      const st = STAGE_BY_KEY[o.stage];
+      return {
+        file: o.ref + " purchase order.pdf",
+        meta: "PDF · generated " + o.date,
+        buyerRef: o.buyerRef || "—",
+        refColor: o.buyerRef ? "#292d34" : "#b4b4b4",
+        date: o.date,
+        products: o.lines.length,
+        total: rm(t.total),
+        stageLabel: st.label,
+        stageColor: st.color,
+        open: function () { self.setState({ view: "po", poOrder: i, poFrom: "pos" }); },
+      };
+    });
 
     // ---- the purchase order document ----
     const poIdx = s.poOrder === null ? 0 : s.poOrder;
@@ -1478,7 +1543,7 @@ class Component extends DCLogic {
         { key: "cart", label: "Cart" },
         { key: "checkout", label: "Checkout gate" },
         { key: "orders", label: "Order history" },
-        { key: "po", label: "Purchase order" },
+        { key: "pos", label: "Purchase orders" },
         { key: "account", label: "Customer settings" },
       ].map(function (j) {
         const on = s.view === j.key;
@@ -1487,7 +1552,7 @@ class Component extends DCLogic {
           color: on ? "#292d34" : "#7b68ee",
           underline: on ? "underline" : "none",
           pick: function () {
-            const signed = j.key === "orders" || j.key === "po" || j.key === "account";
+            const signed = j.key === "orders" || j.key === "pos" || j.key === "po" || j.key === "account";
             self.setState(signed ? { view: j.key, signedIn: true } : { view: j.key });
           },
         };
@@ -1498,7 +1563,7 @@ class Component extends DCLogic {
       toggleMenu: function () { self.setState({ menuOpen: !self.state.menuOpen }); },
       closeMenu: function () { self.setState({ menuOpen: false }); },
       menuOrders: function () { self.setState({ menuOpen: false, view: "orders" }); },
-      menuPo: function () { self.setState({ menuOpen: false, view: "po", poOrder: 0 }); },
+      menuPo: function () { self.setState({ menuOpen: false, view: "pos" }); },
       menuSettings: function () { self.setState({ menuOpen: false, view: "account", tab: "profile" }); },
       menuCompany: function () { self.setState({ menuOpen: false, view: "account", tab: "company" }); },
       menuDocs: function () { self.setState({ menuOpen: false, view: "account", tab: "documents" }); },
@@ -1515,6 +1580,10 @@ class Component extends DCLogic {
       goOrders: function () { self.go("orders"); },
       goAccount: function () { self.go("account"); },
       isOrders: s.view === "orders", isPo: s.view === "po", isAccount: s.view === "account",
+      isPos: s.view === "pos",
+      poList: poList,
+      goPos: function () { self.go("pos"); },
+      closePo: function () { self.setState({ view: self.state.poFrom || "orders" }); },
 
       // analytics
       months: months, topProducts: topProducts, kpis: kpis,
@@ -1534,7 +1603,7 @@ class Component extends DCLogic {
       docs: docs,
       docsSummary: s.docs.length + (s.docs.length === 1 ? " document" : " documents"),
       preview: preview,
-      openPoFromDocs: function () { self.setState({ view: "po", poOrder: chosen ? chosen.order : 0 }); },
+      openPoFromDocs: function () { self.setState({ view: "po", poOrder: chosen ? chosen.order : 0, poFrom: "account" }); },
       upload: function () {
         const n = self.state.uploads + 1;
         const doc = { id: "u" + n, name: "Scanned document " + n + ".pdf", ext: "PDF", kind: "paper", order: 0, size: "126 KB", when: "10 Sep 2026", who: "Uploaded by you" };
