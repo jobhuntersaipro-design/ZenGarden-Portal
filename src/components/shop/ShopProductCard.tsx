@@ -6,7 +6,14 @@ import { formatMYR } from "@/lib/money";
 import { shopHref } from "@/lib/shop-routes";
 import type { ShopProduct } from "@/lib/queries/shop-catalogue";
 
-export function ShopProductCard({ product }: { product: ShopProduct }) {
+export function ShopProductCard({
+  product,
+  badge,
+}: {
+  product: ShopProduct;
+  /** e.g. "Best seller" — a pill over the top-left of the image well. */
+  badge?: string;
+}) {
   const subtitle = [product.brand, product.variant].filter(Boolean).join(" · ");
 
   return (
@@ -15,8 +22,13 @@ export function ShopProductCard({ product }: { product: ShopProduct }) {
         href={shopHref.product(product.id)}
         className="rounded-md focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-focus"
       >
-        <div className="aspect-square overflow-hidden rounded-md bg-surface-soft">
+        <div className="relative aspect-square overflow-hidden rounded-md bg-surface-soft">
           <ProductThumb name={product.name} url={product.imageUrl} />
+          {badge ? (
+            <span className="absolute top-xs left-xs rounded-pill bg-ink px-xs py-xxs text-[length:var(--text-caption)] font-semibold text-canvas">
+              {badge}
+            </span>
+          ) : null}
         </div>
         <h3
           className="mt-xs text-[length:var(--text-body-sm)] font-semibold text-ink"
