@@ -41,6 +41,16 @@
 
 <div style="width: 1440px; height: 1024px; background: #ffffff; display: flex; flex-direction: column; overflow: hidden;">
 
+  <!-- prototype jump bar — not part of the design, so every screen is one click away -->
+  <div style="background: #f8f9fa; border-bottom: 1px dashed #d9d9d9; flex-shrink: 0;">
+    <div class="page" style="padding-top: 7px; padding-bottom: 7px; display: flex; align-items: center; gap: 16px;">
+      <span class="mono" style="font-size: 11px; text-transform: uppercase; color: #6f6f6f; letter-spacing: 0.4px;">Prototype &mdash; jump to</span>
+      <sc-for list="{{ jumps }}" as="j" hint-placeholder-count="6">
+        <button onClick="{{ j.pick }}" style="font-size: 12px; font-weight: 500; color: {{ j.color }}; text-decoration: {{ j.underline }};">{{ j.label }}</button>
+      </sc-for>
+    </div>
+  </div>
+
   <!-- utility bar -->
   <div style="background: #292d34; color: rgba(255,255,255,0.78); flex-shrink: 0;">
     <div class="page" style="padding-top: 9px; padding-bottom: 9px; display: flex; align-items: center; justify-content: space-between; font-size: 12px; line-height: 1.5;">
@@ -1209,6 +1219,28 @@ class Component extends DCLogic {
       cartEmpty: ids.length === 0,
       totalLabel: rm(total),
       cartSummaryLabel: ids.length + (ids.length === 1 ? " product · " : " products · ") + cartons + (cartons === 1 ? " carton" : " cartons"),
+
+      // prototype jump bar
+      jumps: [
+        { key: "home", label: "Home" },
+        { key: "catalogue", label: "Catalogue" },
+        { key: "cart", label: "Cart" },
+        { key: "checkout", label: "Checkout gate" },
+        { key: "orders", label: "Order history" },
+        { key: "po", label: "Purchase order" },
+        { key: "account", label: "Customer settings" },
+      ].map(function (j) {
+        const on = s.view === j.key;
+        return {
+          label: j.label,
+          color: on ? "#292d34" : "#7b68ee",
+          underline: on ? "underline" : "none",
+          pick: function () {
+            const signed = j.key === "orders" || j.key === "po" || j.key === "account";
+            self.setState(signed ? { view: j.key, signedIn: true } : { view: j.key });
+          },
+        };
+      }),
 
       // account
       signedIn: s.signedIn, signedOut: !s.signedIn,
