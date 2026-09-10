@@ -2,7 +2,7 @@ import { notFound } from "next/navigation";
 import Link from "next/link";
 import { ArrowLeft } from "lucide-react";
 import { ProductGallery } from "@/components/products/ProductGallery";
-import { AddToOrder } from "@/components/shop/AddToOrder";
+import { AddToCart } from "@/components/shop/AddToCart";
 import { requireClient } from "@/lib/auth-guards";
 import { unitLabel } from "@/lib/cartons";
 import { formatMYR } from "@/lib/money";
@@ -93,11 +93,12 @@ export default async function ShopProductPage({
           </dl>
 
           <div className="mt-lg border-t border-hairline pt-md">
-            <AddToOrder
+            <AddToCart
               productId={product.id}
               name={product.name}
               packSize={product.packSize}
               unit={product.unit}
+              variant="buybox"
             />
           </div>
         </section>

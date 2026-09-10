@@ -1,6 +1,7 @@
 import { Prisma } from "@/generated/prisma/client";
 import { prisma } from "@/lib/prisma";
 import { presignGet } from "@/lib/r2";
+import { SHOP_PER_PAGE, type ShopCatalogueQuery, type ShopSort } from "@/lib/shop-filters";
 
 /**
  * What the shop shows.
@@ -26,26 +27,24 @@ export type ShopProduct = {
   brand: string | null;
   variant: string | null;
   category: string;
+  market: string | null;
   packSize: number | null;
   unit: string;
   listPrice: string;
   imageUrl: string | null;
 };
 
+export type Facet<T extends string | number> = { value: T; count: number }[];
+
 export type ShopCatalogue = {
   products: ShopProduct[];
   total: number;
   categories: string[];
-  brands: string[];
+  facets: { brands: Facet<string>; packSizes: Facet<number>; markets: Facet<string> };
 };
 
-export type ShopFilters = {
-  q?: string;
-  category?: string;
-  brand?: string;
-  skip?: number;
-  take?: number;
-};
+/** `listShopProducts` takes the parsed query straight from `src/lib/shop-filters.ts`. */
+export type ShopFilters = ShopCatalogueQuery;
 
 /** A signed GET, or null when R2 is unreachable — the card shows a placeholder. */
 export async function thumbUrl(
@@ -79,11 +78,58 @@ export async function listShopCategories(): Promise<string[]> {
   return shopCategories();
 }
 
-function whereFor(filters: ShopFilters): Prisma.ProductWhereInput {
+const SHOP_PRODUCT_SELECT = {
+  id: true,
+  sku: true,
+  name: true,
+  brand: true,
+  variant: true,
+  category: true,
+  market: true,
+  packSize: true,
+  unit: true,
+  listPrice: true,
+  images: {
+    orderBy: { position: "asc" },
+    take: 1,
+    select: { thumbKey: true, r2Key: true },
+  },
+} satisfies Prisma.ProductSelect;
+
+type ShopProductRow = Prisma.ProductGetPayload<{ select: typeof SHOP_PRODUCT_SELECT }>;
+
+async function toShopProduct(row: ShopProductRow): Promise<ShopProduct> {
+  return {
+    id: row.id,
+    sku: row.sku,
+    name: row.name,
+    brand: row.brand,
+    variant: row.variant,
+    category: row.category,
+    market: row.market,
+    packSize: row.packSize,
+    unit: row.unit,
+    listPrice: row.listPrice.toFixed(2),
+    imageUrl: await thumbUrl(row.images),
+  };
+}
+
+/**
+ * The products `where`, or — passing `omit` — the same `where` minus one
+ * facet's own filter. That is what makes a facet's counts answer "what would
+ * I get if I also ticked this" rather than "what do I already have" (§5.3).
+ */
+function whereFor(
+  query: ShopCatalogueQuery,
+  omit?: "brands" | "packSizes" | "markets",
+): Prisma.ProductWhereInput {
   const where: Prisma.ProductWhereInput = { ...SHOP_VISIBLE };
-  if (filters.category) where.category = filters.category;
-  if (filters.brand) where.brand = filters.brand;
-  const q = filters.q?.trim();
+  if (query.category) where.category = query.category;
+  if (omit !== "brands" && query.brands.length) where.brand = { in: query.brands };
+  if (omit !== "packSizes" && query.packSizes.length)
+    where.packSize = { in: query.packSizes };
+  if (omit !== "markets" && query.markets.length) where.market = { in: query.markets };
+  const q = query.q?.trim();
   if (q) {
     // Name, brand and variant, so "vietnam" or "lavender" both find something.
     where.OR = [
@@ -96,69 +142,102 @@ function whereFor(filters: ShopFilters): Prisma.ProductWhereInput {
   return where;
 }
 
-export async function listShopProducts(
-  filters: ShopFilters = {},
-): Promise<ShopCatalogue> {
-  const where = whereFor(filters);
-  const [rows, total, categories, brands] = await Promise.all([
-    prisma.product.findMany({
-      where,
-      select: {
-        id: true,
-        sku: true,
-        name: true,
-        brand: true,
-        variant: true,
-        category: true,
-        packSize: true,
-        unit: true,
-        listPrice: true,
-        images: {
-          orderBy: { position: "asc" },
-          take: 1,
-          select: { thumbKey: true, r2Key: true },
-        },
-      },
-      orderBy: [{ name: "asc" }, { sku: "asc" }],
-      skip: filters.skip ?? 0,
-      take: filters.take ?? 30,
-    }),
-    prisma.product.count({ where }),
-    shopCategories(),
-    prisma.product.findMany({
-      where: { ...SHOP_VISIBLE, brand: { not: null } },
-      distinct: ["brand"],
-      select: { brand: true },
-      orderBy: { brand: "asc" },
-    }),
-  ]);
+function orderByFor(sort: ShopSort): Prisma.ProductOrderByWithRelationInput[] {
+  switch (sort) {
+    case "price-asc":
+      return [{ listPrice: "asc" }, { name: "asc" }];
+    case "price-desc":
+      return [{ listPrice: "desc" }, { name: "asc" }];
+    default:
+      return [{ name: "asc" }];
+  }
+}
 
-  const products = await Promise.all(
-    rows.map(async (row) => ({
-      id: row.id,
-      sku: row.sku,
-      name: row.name,
-      brand: row.brand,
-      variant: row.variant,
-      category: row.category,
-      packSize: row.packSize,
-      unit: row.unit,
-      listPrice: row.listPrice.toFixed(2),
-      imageUrl: await thumbUrl(row.images),
-    })),
-  );
+function toFacet<T extends string | number>(
+  rows: { count: number; value: T | null }[],
+): Facet<T> {
+  return rows.filter((row): row is { count: number; value: T } => row.value !== null);
+}
+
+export async function listShopProducts(
+  query: ShopCatalogueQuery,
+): Promise<ShopCatalogue> {
+  const where = whereFor(query);
+  const skip = (query.page - 1) * SHOP_PER_PAGE;
+
+  const [rows, total, categories, brandRows, packSizeRows, marketRows] =
+    await Promise.all([
+      prisma.product.findMany({
+        where,
+        select: SHOP_PRODUCT_SELECT,
+        orderBy: orderByFor(query.sort),
+        skip,
+        take: SHOP_PER_PAGE,
+      }),
+      prisma.product.count({ where }),
+      shopCategories(),
+      // Each facet's own `groupBy` runs against the where minus its own
+      // filter, in the same Promise.all as the products and the count — one
+      // round trip for the whole screen, not one per chip.
+      prisma.product.groupBy({
+        by: ["brand"],
+        where: whereFor(query, "brands"),
+        _count: { _all: true },
+        orderBy: { brand: "asc" },
+      }),
+      prisma.product.groupBy({
+        by: ["packSize"],
+        where: whereFor(query, "packSizes"),
+        _count: { _all: true },
+        orderBy: { packSize: "asc" },
+      }),
+      prisma.product.groupBy({
+        by: ["market"],
+        where: whereFor(query, "markets"),
+        _count: { _all: true },
+        orderBy: { market: "asc" },
+      }),
+    ]);
+
+  const products = await Promise.all(rows.map(toShopProduct));
 
   return {
     products,
     total,
     categories,
-    brands: brands.map((b) => b.brand).filter((b): b is string => Boolean(b)),
+    facets: {
+      brands: toFacet(brandRows.map((r) => ({ value: r.brand, count: r._count._all }))),
+      packSizes: toFacet(
+        packSizeRows.map((r) => ({ value: r.packSize, count: r._count._all })),
+      ),
+      markets: toFacet(marketRows.map((r) => ({ value: r.market, count: r._count._all }))),
+    },
   };
+}
+
+/**
+ * Up to `limit` other visible products sharing this product's brand — the
+ * product page's "More from {brand}" rail. A product with no brand has
+ * nothing to relate it to anyone else, so it gets an empty rail rather than a
+ * query over the whole catalogue.
+ */
+export async function relatedShopProducts(
+  productId: string,
+  brand: string | null,
+  limit = 4,
+): Promise<ShopProduct[]> {
+  if (!brand) return [];
+  const rows = await prisma.product.findMany({
+    where: { ...SHOP_VISIBLE, brand, id: { not: productId } },
+    select: SHOP_PRODUCT_SELECT,
+    orderBy: [{ name: "asc" }],
+    take: limit,
+  });
+  return Promise.all(rows.map(toShopProduct));
 }
 
 export type ShopProductDetail = ShopProduct & {
   description: string | null;
-  market: string | null;
   imageUrls: string[];
 };
 

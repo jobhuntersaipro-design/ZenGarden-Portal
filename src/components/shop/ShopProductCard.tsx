@@ -1,6 +1,6 @@
 import Link from "next/link";
+import { AddToCart } from "@/components/shop/AddToCart";
 import { ProductThumb } from "@/components/products/ProductThumb";
-import { AddToOrder } from "@/components/shop/AddToOrder";
 import { unitLabel } from "@/lib/cartons";
 import { formatMYR } from "@/lib/money";
 import { shopHref } from "@/lib/shop-routes";
@@ -15,9 +15,14 @@ export function ShopProductCard({
   badge?: string;
 }) {
   const subtitle = [product.brand, product.variant].filter(Boolean).join(" · ");
+  // "12 per carton · Malaysia" — the pack half is always there; the market
+  // half only when the catalogue actually names one.
+  const packCaption = [unitLabel(product.packSize, product.unit), product.market]
+    .filter(Boolean)
+    .join(" · ");
 
   return (
-    <li className="flex flex-col rounded-lg border border-hairline bg-canvas p-md">
+    <li className="flex flex-col rounded-lg border border-hairline bg-canvas p-md transition-colors hover:border-hairline-strong hover:shadow-sm">
       <Link
         href={shopHref.product(product.id)}
         className="rounded-md focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-focus"
@@ -43,7 +48,7 @@ export function ShopProductCard({
         </p>
       ) : null}
       <p className="mt-xxs text-[length:var(--text-caption)] text-ink-tertiary">
-        {unitLabel(product.packSize, product.unit)}
+        {packCaption}
       </p>
       <p className="mt-xs text-[length:var(--text-body-md)] font-semibold tabular-nums text-ink">
         {formatMYR(Number(product.listPrice))}
@@ -52,11 +57,12 @@ export function ShopProductCard({
         </span>
       </p>
       <div className="mt-auto pt-sm">
-        <AddToOrder
+        <AddToCart
           productId={product.id}
           name={product.name}
           packSize={product.packSize}
           unit={product.unit}
+          variant="card"
         />
       </div>
     </li>
