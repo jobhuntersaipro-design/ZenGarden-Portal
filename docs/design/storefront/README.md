@@ -2,8 +2,9 @@
 
 Canvas: https://claude.ai/code/artifact/52adbe2d-50aa-441c-b00b-2dc76be12c18
 
-Source of truth for the visuals of the storefront revamp. No phase spec exists
-for it yet — the canvas is the agreed design and nothing else is settled.
+Source of truth for the visuals of the storefront revamp. The implementation
+plans are `docs/specs/design/shop/` — `00-overview.md` first, then one file per
+phase (17–22).
 
 ## Artboards
 

@@ -2,33 +2,14 @@
 
 ## Status
 
-**Specced, not started: the client-facing storefront** (`feature/storefront-specs`).
-The customer asked for the other direction of the core loop — their own buyers
-browsing the catalogue and placing orders on a Shopee-shaped site at
-`shop.lovinghandsportal.com`, which arrives in the ops queue as a purchase
-order to confirm. Three phases, written 2026-09-09 and each independently
-shippable:
-
-- **14** `docs/specs/14-product-images.md` — the image upload path Phase 08
-  specced and never built, plus a bulk import for the 309 products.
-- **15** `docs/specs/15-client-accounts.md` — `Role.CLIENT`, `User.buyerId`, the
-  two-host proxy, `requireClient()`, and the ops-issued invite. The load-bearing
-  idea is that **`requireUser()` changes meaning** from "signed in" to
-  "signed-in staff", so all ~60 existing unscoped ops queries become
-  client-proof with no edit and later code fails closed.
-- **16** `docs/specs/16-storefront.md` — catalogue, cart, order placement, the
-  ops web-order review screen, and client order tracking.
-
-Sequencing: Phases 12, 14, 15 and **16 have all landed** — see History. The
-storefront is built and the loop is proven end to end, but **the shop opens
-near-empty until the catalogue is priced**: it shows only
-`active && !needsReview && listPrice > 0`, and production holds 309 products at
-RM 0.00. That is the one remaining thing, and it is the customer's to supply.
-Phase 13, the super-admin vocabulary screen, is independent and still unspecced.
-
-**Phase 16 is blocked until the catalogue is priced.** The shop shows only
-`active && !needsReview && listPrice > 0`, and production holds 309 products at
-`0.00` — so pricing them is a prerequisite, not a follow-up.
+**In progress: Phase 17 — shop shell and guest browsing** (`feature/shop-shell`).
+Plan: `docs/specs/design/shop/17-shop-shell.md`; the six-phase storefront plan
+(17–22) and its decisions are indexed in `docs/specs/design/shop/00-overview.md`,
+written 2026-09-10 from the storefront canvas. Phases 12, 14, 15 and 16 have
+landed — see History. The shop still shows only
+`active && !needsReview && listPrice > 0`, and production holds 309 products
+at RM 0.00; pricing the catalogue is the customer's and remains the blocker
+for anything to sell.
 
 Also outstanding from the catalog import: enter the 5 nested-sub-table blocks
 by hand, clear the 2 drafts in the review queue, and delete one of the duplicate
