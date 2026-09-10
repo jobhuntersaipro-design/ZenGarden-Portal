@@ -6,6 +6,10 @@ import { SkipLink } from "@/components/portal/SkipLink";
 import { Toaster } from "@/components/ui/sonner";
 import { CartSummaryProvider, GuestCartProvider } from "@/components/shop/GuestCartProvider";
 import { GuestCartMerge } from "@/components/shop/GuestCartMerge";
+import { MobileCartBar } from "@/components/shop/MobileCartBar";
+import { ShopFooter } from "@/components/shop/ShopFooter";
+import { ShopHeader } from "@/components/shop/ShopHeader";
+import { ShopUtilityBar } from "@/components/shop/ShopUtilityBar";
 import { ShopViewerProvider } from "@/components/shop/ShopViewer";
 import { env } from "@/lib/env";
 import { cartSummary } from "@/lib/queries/cart";
@@ -49,26 +53,36 @@ export default async function StorefrontLayout({
     listShopCategories(),
     viewer.kind === "client" ? cartSummary(viewer.id) : Promise.resolve(null),
   ]);
-  // Not rendered yet: ShopHeader and ShopFooter (Task 7) take `categories`.
-  // Loaded here now so that task adds JSX, not a second fetch.
-  void categories;
 
   return (
     <ShopViewerProvider viewer={viewer}>
       <GuestCartProvider>
         <CartSummaryProvider summary={summary}>
+          {/* Before the chrome, not inside NavProgressProvider with `main` —
+              same placement as the portal's Sidebar (00-master.md, SkipLink's
+              own doc comment): without it a keyboard user walks the wordmark,
+              the search field, the cart pill and the category strip before
+              ever reaching the page they asked for. */}
+          <SkipLink />
+          <ShopUtilityBar />
+          <ShopHeader
+            categories={categories}
+            summary={summary}
+            supplierEmail={env.SUPPLIER_EMAIL ?? null}
+          />
           <NavProgressProvider>
-            <SkipLink />
-            {/* ShopUtilityBar and ShopHeader (Task 7) mount above `main`; every
-                page still renders its own ShopHeader for now. */}
+            {/* pb-section, not pb-xxl: MobileCartBar is taller than the old
+                60px floor once its own safe-area padding is added, and it is
+                only ever present below `md`. */}
             <main
               id="main"
-              className="mx-auto w-full max-w-page px-md pb-xxl sm:px-lg md:pb-0"
+              className="mx-auto w-full max-w-page px-md pb-section sm:px-lg md:pb-0"
             >
               {children}
             </main>
-            {/* ShopFooter and MobileCartBar (Task 7) mount below `main`. */}
           </NavProgressProvider>
+          <ShopFooter categories={categories} />
+          <MobileCartBar />
           {/* Renders nothing; moves a guest's localStorage cart into their
               account the moment they sign in. */}
           <GuestCartMerge />

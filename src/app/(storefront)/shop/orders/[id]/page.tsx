@@ -1,7 +1,6 @@
 import { notFound } from "next/navigation";
 import Link from "next/link";
 import { ArrowLeft } from "lucide-react";
-import { ShopHeader } from "@/components/shop/ShopHeader";
 import { StageStepper } from "@/components/purchase-orders/StageStepper";
 import { requireClient } from "@/lib/auth-guards";
 import { formatDate } from "@/lib/dates";
@@ -21,7 +20,7 @@ export default async function OrderDetailPage({
   const { id } = await params;
   const { id: userId, buyerId } = await requireClient();
 
-  const [buyer, count, order] = await Promise.all([
+  const [, , order] = await Promise.all([
     prisma.buyer.findUnique({ where: { id: buyerId }, select: { name: true } }),
     cartCount(userId),
     loadBuyerOrder(buyerId, id),
@@ -31,8 +30,6 @@ export default async function OrderDetailPage({
 
   return (
     <main>
-      <ShopHeader buyerName={buyer?.name ?? ""} cartCount={count} />
-
       <Link
         href={shopHref.orders()}
         className="mb-md inline-flex min-h-control-md items-center gap-xxs rounded-sm text-[length:var(--text-body-sm)] text-brand-link hover:underline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-focus sm:min-h-control-sm"

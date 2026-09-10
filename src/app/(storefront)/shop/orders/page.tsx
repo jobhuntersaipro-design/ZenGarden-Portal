@@ -1,5 +1,4 @@
 import Link from "next/link";
-import { ShopHeader } from "@/components/shop/ShopHeader";
 import { TablePagination } from "@/components/portal/TablePagination";
 import { requireClient } from "@/lib/auth-guards";
 import { formatDate } from "@/lib/dates";
@@ -24,7 +23,7 @@ export default async function OrdersPage({
   const raw = query.page;
   const page = Math.max(1, Number(Array.isArray(raw) ? raw[0] : raw) || 1);
 
-  const [buyer, count, { orders, total }] = await Promise.all([
+  const [, , { orders, total }] = await Promise.all([
     prisma.buyer.findUnique({ where: { id: buyerId }, select: { name: true } }),
     cartCount(userId),
     listBuyerOrders(buyerId, page, PER_PAGE),
@@ -32,7 +31,6 @@ export default async function OrdersPage({
 
   return (
     <main>
-      <ShopHeader buyerName={buyer?.name ?? ""} cartCount={count} />
       <h1 className="mb-md font-display text-[length:var(--text-heading-md)] text-ink">
         My orders
       </h1>

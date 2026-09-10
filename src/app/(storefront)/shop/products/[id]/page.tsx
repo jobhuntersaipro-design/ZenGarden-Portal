@@ -3,7 +3,6 @@ import Link from "next/link";
 import { ArrowLeft } from "lucide-react";
 import { ProductGallery } from "@/components/products/ProductGallery";
 import { AddToOrder } from "@/components/shop/AddToOrder";
-import { ShopHeader } from "@/components/shop/ShopHeader";
 import { requireClient } from "@/lib/auth-guards";
 import { unitLabel } from "@/lib/cartons";
 import { formatMYR } from "@/lib/money";
@@ -22,7 +21,7 @@ export default async function ShopProductPage({
   const { id } = await params;
   const { id: userId, buyerId } = await requireClient();
 
-  const [buyer, count, product] = await Promise.all([
+  const [, , product] = await Promise.all([
     prisma.buyer.findUnique({ where: { id: buyerId }, select: { name: true } }),
     cartCount(userId),
     loadShopProduct(id),
@@ -33,8 +32,6 @@ export default async function ShopProductPage({
 
   return (
     <main>
-      <ShopHeader buyerName={buyer?.name ?? ""} cartCount={count} />
-
       <Link
         href={shopHref.home()}
         className="mb-md inline-flex min-h-control-md items-center gap-xxs rounded-sm text-[length:var(--text-body-sm)] text-brand-link hover:underline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-focus sm:min-h-control-sm"

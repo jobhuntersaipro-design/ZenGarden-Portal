@@ -1,7 +1,6 @@
 import Link from "next/link";
 import { SegmentGroup } from "@/components/portal/SegmentGroup";
 import { TablePagination } from "@/components/portal/TablePagination";
-import { ShopHeader } from "@/components/shop/ShopHeader";
 import { ShopProductCard } from "@/components/shop/ShopProductCard";
 import { requireClient } from "@/lib/auth-guards";
 import { prisma } from "@/lib/prisma";
@@ -33,7 +32,7 @@ export default async function ShopCatalogue({
     take: PER_PAGE,
   };
 
-  const [buyer, count, catalogue] = await Promise.all([
+  const [, , catalogue] = await Promise.all([
     prisma.buyer.findUnique({ where: { id: buyerId }, select: { name: true } }),
     cartCount(userId),
     listShopProducts(filters),
@@ -55,8 +54,6 @@ export default async function ShopCatalogue({
 
   return (
     <main>
-      <ShopHeader buyerName={buyer?.name ?? ""} cartCount={count} />
-
       <form className="mb-md" action="/">
         <label htmlFor="q" className="sr-only">
           Search the catalogue
