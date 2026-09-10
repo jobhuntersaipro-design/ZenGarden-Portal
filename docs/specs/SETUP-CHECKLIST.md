@@ -219,6 +219,20 @@ portal", which is what makes previews work at all. Locally, leave them unset or
 use `SHOP_HOST=shop.localhost` — Chrome and Safari resolve `*.localhost` to
 127.0.0.1 with no `/etc/hosts` edit.
 
+### 6.2 Supplier details on the storefront
+
+Four optional variables populate the storefront footer's contact column and the
+account menu's "Talk to our team" mailto. The purchase-order PDF (Phase 19) also
+prints them. An unset variable omits its row.
+
+- `SUPPLIER_NAME` — displays alone in the footer and as the link text in the account menu.
+- `SUPPLIER_EMAIL` — displays in the footer and powers the account menu's `mailto:` link.
+- `SUPPLIER_PHONE` — displays in the footer contact column.
+- `SUPPLIER_ADDRESS` — displays in the footer; use `\n` for line breaks (e.g. `Line 1\nLine 2\nLine 3`).
+
+All four are left blank in `.env.example` and are production-only — you never
+need to set them locally.
+
 ## 7. Local first run (after Phase 01 is merged)
 
 ```
