@@ -83,4 +83,10 @@ describe("priceCart", () => {
     expect(result.success).toBe(false);
     expect(productFindMany).not.toHaveBeenCalled();
   });
+
+  it("returns a typed error, rather than a rejected promise, when the query fails", async () => {
+    productFindMany.mockRejectedValue(new Error("connection reset"));
+    const result = await priceCart([{ productId: "p1", cartons: 1 }]);
+    expect(result).toEqual({ success: false, error: "We couldn't price your cart." });
+  });
 });

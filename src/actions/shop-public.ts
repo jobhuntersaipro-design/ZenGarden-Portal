@@ -32,20 +32,25 @@ export async function priceCart(lines: GuestCartLine[]): Promise<ActionResult<Ca
   if (!parsed.success) return { success: false, error: "That cart could not be read." };
   if (parsed.data.length === 0) return { success: true, data: EMPTY_CART };
 
-  const products = await prisma.product.findMany({
-    where: { id: { in: parsed.data.map((line) => line.productId) } },
-    // `id: true` added on top of the shared select — PRICED_PRODUCT_SELECT
-    // has no id column of its own, but this is the only caller of
-    // priceProductLines that has to look products up by id rather than
-    // already knowing it from the row it read them through.
-    select: { id: true, ...PRICED_PRODUCT_SELECT },
-  });
-  const byId = new Map(products.map((product) => [product.id, product]));
+  try {
+    const products = await prisma.product.findMany({
+      where: { id: { in: parsed.data.map((line) => line.productId) } },
+      // `id: true` added on top of the shared select — PRICED_PRODUCT_SELECT
+      // has no id column of its own, but this is the only caller of
+      // priceProductLines that has to look products up by id rather than
+      // already knowing it from the row it read them through.
+      select: { id: true, ...PRICED_PRODUCT_SELECT },
+    });
+    const byId = new Map(products.map((product) => [product.id, product]));
 
-  const rows = parsed.data.flatMap((line) => {
-    const product = byId.get(line.productId);
-    return product ? [{ productId: line.productId, cartons: line.cartons, product }] : [];
-  });
+    const rows = parsed.data.flatMap((line) => {
+      const product = byId.get(line.productId);
+      return product ? [{ productId: line.productId, cartons: line.cartons, product }] : [];
+    });
 
-  return { success: true, data: { id: null, ...(await priceProductLines(rows)) } };
+    return { success: true, data: { id: null, ...(await priceProductLines(rows)) } };
+  } catch (cause) {
+    console.error("[shop-public] priceCart", cause);
+    return { success: false, error: "We couldn't price your cart." };
+  }
 }

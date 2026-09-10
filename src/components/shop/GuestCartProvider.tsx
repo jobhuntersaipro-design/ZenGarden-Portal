@@ -104,34 +104,44 @@ export function GuestCartProvider({ children }: { children: ReactNode }) {
     return () => window.removeEventListener("storage", onStorage);
   }, [isClient]);
 
+  // Takes an updater rather than a computed `GuestCart` so two mutator calls
+  // inside the same synchronous handler each compose on the *other's*
+  // result instead of both reading the same stale `cart` from the last
+  // completed render and only the last `setCart` surviving.
   const persist = useCallback(
-    (next: GuestCart) => {
-      setCart(next);
-      if (isClient) return;
-      try {
-        localStorage.setItem(GUEST_CART_KEY, JSON.stringify(next));
-      } catch {
-        // Same private-browsing case as the read above: the mutation still
-        // lands in state, so this tab keeps working; it just will not
-        // survive a reload.
-      }
+    (updater: (prev: GuestCart) => GuestCart) => {
+      setCart((prev) => {
+        const next = updater(prev);
+        if (!isClient) {
+          try {
+            localStorage.setItem(GUEST_CART_KEY, JSON.stringify(next));
+          } catch {
+            // Private browsing, or storage disabled: the mutation still
+            // lands in state, so this tab keeps working; it just will not
+            // survive a reload.
+          }
+        }
+        return next;
+      });
     },
     [isClient],
   );
 
   const add = useCallback(
-    (productId: string, cartons: number) => persist(addLine(cart, productId, cartons)),
-    [cart, persist],
+    (productId: string, cartons: number) =>
+      persist((prev) => addLine(prev, productId, cartons)),
+    [persist],
   );
   const set = useCallback(
-    (productId: string, cartons: number) => persist(setLine(cart, productId, cartons)),
-    [cart, persist],
+    (productId: string, cartons: number) =>
+      persist((prev) => setLine(prev, productId, cartons)),
+    [persist],
   );
   const remove = useCallback(
-    (productId: string) => persist(removeLine(cart, productId)),
-    [cart, persist],
+    (productId: string) => persist((prev) => removeLine(prev, productId)),
+    [persist],
   );
-  const clear = useCallback(() => persist(EMPTY_GUEST_CART), [persist]);
+  const clear = useCallback(() => persist(() => EMPTY_GUEST_CART), [persist]);
 
   // Debounced live pricing. Runs once hydrated (so it never fires against the
   // placeholder empty cart before storage is read) and on every subsequent
