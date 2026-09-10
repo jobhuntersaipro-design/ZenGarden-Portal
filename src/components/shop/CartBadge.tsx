@@ -43,7 +43,7 @@ export function CartBadge({
         className={cn(
           "flex h-5 min-w-5 items-center justify-center rounded-pill px-xxs text-[length:var(--text-caption)] font-semibold tabular-nums",
           variant === "mobile"
-            ? "absolute top-xxs right-xxs bg-focus text-canvas"
+            ? "absolute top-xxs right-xxs bg-ink text-canvas"
             : "bg-canvas text-ink",
         )}
       >
