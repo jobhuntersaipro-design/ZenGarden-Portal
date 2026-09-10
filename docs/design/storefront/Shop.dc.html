@@ -42,6 +42,8 @@
     .bar { background: #7612fa; border-radius: 4px 4px 0 0; width: 100%; }
     .hbar { background: #7612fa; border-radius: 0 4px 4px 0; height: 12px; }
     .kpi { border: 1px solid #e8e8e8; border-radius: 14px; padding: 20px; }
+    .mrow { display: flex; align-items: center; gap: 12px; width: 100%; padding: 9px 10px; border-radius: 9px; font-size: 14px; letter-spacing: -0.15px; color: #292d34; }
+    .mrow:hover { background: #f8f9fa; }
   </style>
 </helmet>
 
@@ -66,7 +68,7 @@
   </div>
 
   <!-- header -->
-  <header style="border-bottom: 1px solid #e8e8e8; background: #ffffff; flex-shrink: 0;">
+  <header style="border-bottom: 1px solid #e8e8e8; background: #ffffff; flex-shrink: 0; position: relative; z-index: 20;">
     <div class="page" style="padding-top: 18px; padding-bottom: 18px; display: flex; align-items: center; gap: 32px;">
       <button onClick="{{ goHome }}" class="disp" style="font-size: 26px; line-height: 1.25; letter-spacing: -0.91px; font-weight: 700; white-space: nowrap;">
         <span style="background-image: linear-gradient(263deg,#fa12e3 -35%,#7612fa 41%,#12d0fa 135%); -webkit-background-clip: text; background-clip: text; color: transparent;">Loving</span><span style="color: #292d34;">&nbsp;Hands</span>
@@ -78,20 +80,7 @@
         <button onClick="{{ goCatalogue }}" style="height: 32px; padding: 0 18px; border-radius: 20px; background: #292d34; color: #ffffff; font-size: 14px; font-weight: 600; letter-spacing: -0.15px; display: flex; align-items: center;">Search</button>
       </div>
 
-      <div style="display: flex; align-items: center; gap: 20px; white-space: nowrap;">
-        <sc-if value="{{ signedOut }}" hint-placeholder-val="{{ true }}">
-          <button onClick="{{ signIn }}" style="font-size: 14px; letter-spacing: -0.15px; color: #7b68ee; font-weight: 500;">Sign in</button>
-        </sc-if>
-        <sc-if value="{{ signedIn }}" hint-placeholder-val="{{ false }}">
-          <span style="display: flex; align-items: center; gap: 18px;">
-            <button onClick="{{ goOrders }}" style="font-size: 14px; letter-spacing: -0.15px; color: #292d34; font-weight: 500;">My orders</button>
-            <button onClick="{{ goAccount }}" style="font-size: 14px; letter-spacing: -0.15px; color: #292d34; font-weight: 500;">Settings</button>
-            <span style="display: flex; align-items: center; gap: 8px;">
-              <span style="width: 32px; height: 32px; border-radius: 35px; background: #e9ebf0; display: flex; align-items: center; justify-content: center; font-size: 12px; font-weight: 600; color: #646464;">AR</span>
-              <button onClick="{{ signOut }}" style="font-size: 12px; color: #6f6f6f;">Sign out</button>
-            </span>
-          </span>
-        </sc-if>
+      <div style="display: flex; align-items: center; gap: 16px; white-space: nowrap;">
         <button onClick="{{ goCart }}" class="ink">
           <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><circle cx="9" cy="20" r="1.4"></circle><circle cx="18" cy="20" r="1.4"></circle><path d="M2.5 3h2.6l2.1 11.2a1.6 1.6 0 0 0 1.6 1.3h8.9a1.6 1.6 0 0 0 1.6-1.3L21 6.5H6"></path></svg>
           <span>Cart</span>
@@ -99,6 +88,95 @@
             <span class="num" style="min-width: 20px; height: 20px; padding: 0 6px; border-radius: 20px; background: #ffffff; color: #292d34; font-size: 12px; font-weight: 600; display: flex; align-items: center; justify-content: center;">{{ cartCount }}</span>
           </sc-if>
         </button>
+
+        <sc-if value="{{ signedOut }}" hint-placeholder-val="{{ true }}">
+          <button onClick="{{ signIn }}" style="font-size: 14px; letter-spacing: -0.15px; color: #7b68ee; font-weight: 500;">Sign in</button>
+        </sc-if>
+
+        <sc-if value="{{ signedIn }}" hint-placeholder-val="{{ false }}">
+          <span style="position: relative; display: flex;">
+            <button onClick="{{ toggleMenu }}" style="display: flex; align-items: center; gap: 6px; padding: 2px; border-radius: 35px;">
+              <span style="width: 36px; height: 36px; border-radius: 35px; background: #292d34; color: #ffffff; display: flex; align-items: center; justify-content: center; font-size: 13px; font-weight: 600;">AR</span>
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#6f6f6f" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 9l6 6 6-6"></path></svg>
+            </button>
+
+            <sc-if value="{{ menuOpen }}" hint-placeholder-val="{{ true }}">
+              <span>
+                <button onClick="{{ closeMenu }}" style="position: fixed; inset: 0; z-index: 20; cursor: default;"></button>
+                <span style="position: absolute; top: 46px; right: 0; z-index: 30; width: 288px; background: #ffffff; border: 1px solid #e8e8e8; border-radius: 12px; box-shadow: 0 16px 44px rgba(18,43,165,0.16); padding: 8px; display: block; white-space: normal;">
+
+                  <span style="display: flex; align-items: center; gap: 12px; padding: 10px 10px 12px;">
+                    <span style="width: 40px; height: 40px; border-radius: 35px; background: #292d34; color: #ffffff; display: flex; align-items: center; justify-content: center; font-size: 14px; font-weight: 600; flex-shrink: 0;">AR</span>
+                    <span style="min-width: 0;">
+                      <span style="display: block; font-size: 14px; font-weight: 600; letter-spacing: -0.15px;">Aisha Rahman</span>
+                      <span style="display: flex; align-items: center; gap: 6px;">
+                        <span style="width: 7px; height: 7px; border-radius: 20px; background: #078d3b;"></span>
+                        <span class="lbl">Acme Industrial Sdn Bhd</span>
+                      </span>
+                    </span>
+                  </span>
+
+                  <button onClick="{{ reorderLast }}" class="mrow" style="border: 1px solid #e8e8e8; border-radius: 9px; margin-bottom: 8px;">
+                    <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="#7612fa" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M4 12a8 8 0 0 1 13.7-5.6L20 8"></path><path d="M20 4v4h-4"></path><path d="M20 12a8 8 0 0 1-13.7 5.6L4 16"></path><path d="M4 20v-4h4"></path></svg>
+                    <span style="color: #7612fa; font-weight: 600;">Reorder your last order</span>
+                  </button>
+
+                  <span style="display: block; height: 1px; background: #e8e8e8; margin: 6px 4px;"></span>
+
+                  <button onClick="{{ menuOrders }}" class="mrow">
+                    <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="#292d34" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M4 6h16M4 12h16M4 18h10"></path></svg>
+                    <span>My orders</span>
+                  </button>
+                  <button onClick="{{ menuPo }}" class="mrow">
+                    <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="#292d34" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M6 3h8l4 4v14H6z"></path><path d="M14 3v4h4"></path></svg>
+                    <span>Purchase orders</span>
+                  </button>
+                  <button onClick="{{ closeMenu }}" class="mrow">
+                    <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="#292d34" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M18 9A6 6 0 0 0 6 9c0 5-2 6-2 6h16s-2-1-2-6z"></path><path d="M10.5 20a2 2 0 0 0 3 0"></path></svg>
+                    <span>Delivery updates</span>
+                    <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#6f6f6f" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="margin-left: auto;"><path d="M9 6l6 6-6 6"></path></svg>
+                  </button>
+
+                  <span style="display: block; height: 1px; background: #e8e8e8; margin: 6px 4px;"></span>
+                  <span class="lbl" style="display: block; padding: 8px 10px 4px; font-weight: 500;">Your company</span>
+
+                  <button onClick="{{ menuCompany }}" class="mrow">
+                    <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="#292d34" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M4 21V6l8-3v18"></path><path d="M12 9h8v12"></path><path d="M7 9h1M7 13h1M7 17h1M16 13h1M16 17h1"></path></svg>
+                    <span>Company details</span>
+                  </button>
+                  <button onClick="{{ menuDocs }}" class="mrow">
+                    <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="#292d34" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M3 7a2 2 0 0 1 2-2h4l2 2h8a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"></path></svg>
+                    <span>Documents</span>
+                  </button>
+                  <button onClick="{{ menuSettings }}" class="mrow">
+                    <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="#292d34" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"></circle><path d="M19.4 15a1.6 1.6 0 0 0 .3 1.8l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.6 1.6 0 0 0-2.7 1.1V21a2 2 0 1 1-4 0v-.1A1.6 1.6 0 0 0 7 19.4a1.6 1.6 0 0 0-1.8.3l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1A1.6 1.6 0 0 0 3 15a2 2 0 0 1-2-2 2 2 0 0 1 2-2 1.6 1.6 0 0 0 1.5-1 1.6 1.6 0 0 0-.3-1.8l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1A1.6 1.6 0 0 0 9 4.6 2 2 0 0 1 11 3a2 2 0 0 1 2 2 1.6 1.6 0 0 0 1 1.5 1.6 1.6 0 0 0 1.8-.3l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.6 1.6 0 0 0-.3 1.8V12a2 2 0 0 1 0 4z"></path></svg>
+                    <span>Account settings</span>
+                  </button>
+
+                  <span style="display: block; height: 1px; background: #e8e8e8; margin: 6px 4px;"></span>
+
+                  <button onClick="{{ closeMenu }}" class="mrow">
+                    <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="#292d34" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"></circle><path d="M9.5 9.5a2.5 2.5 0 1 1 3.2 2.4c-.6.2-.7.6-.7 1.1v.4"></path><path d="M12 17h.01"></path></svg>
+                    <span>Help</span>
+                  </button>
+                  <button onClick="{{ closeMenu }}" class="mrow">
+                    <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="#292d34" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M4 5h16v11H8l-4 4z"></path></svg>
+                    <span>Talk to our team</span>
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#6f6f6f" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" style="margin-left: auto;"><path d="M14 4h6v6"></path><path d="M20 4l-8 8"></path><path d="M18 14v5a1 1 0 0 1-1 1H5a1 1 0 0 1-1-1V7a1 1 0 0 1 1-1h5"></path></svg>
+                  </button>
+
+                  <span style="display: block; height: 1px; background: #e8e8e8; margin: 6px 4px;"></span>
+
+                  <button onClick="{{ signOut }}" class="mrow">
+                    <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="#292d34" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M10 20H5a1 1 0 0 1-1-1V5a1 1 0 0 1 1-1h5"></path><path d="M15 16l4-4-4-4"></path><path d="M19 12H9"></path></svg>
+                    <span>Sign out</span>
+                  </button>
+
+                </span>
+              </span>
+            </sc-if>
+          </span>
+        </sc-if>
       </div>
     </div>
 
@@ -997,7 +1075,7 @@ class Component extends DCLogic {
       view: "home", q: "", category: null, brand: null, sort: "name",
       productId: null, qty: 1, cart: {},
       signedIn: false, openOrder: null, poOrder: null, orderFilter: "all",
-      tab: "profile", docs: START_DOCS.slice(), docId: "d1", uploads: 0,
+      tab: "profile", docs: START_DOCS.slice(), docId: "d1", uploads: 0, menuOpen: false,
     };
   }
 
@@ -1415,10 +1493,25 @@ class Component extends DCLogic {
         };
       }),
 
+      // account menu
+      menuOpen: s.menuOpen,
+      toggleMenu: function () { self.setState({ menuOpen: !self.state.menuOpen }); },
+      closeMenu: function () { self.setState({ menuOpen: false }); },
+      menuOrders: function () { self.setState({ menuOpen: false, view: "orders" }); },
+      menuPo: function () { self.setState({ menuOpen: false, view: "po", poOrder: 0 }); },
+      menuSettings: function () { self.setState({ menuOpen: false, view: "account", tab: "profile" }); },
+      menuCompany: function () { self.setState({ menuOpen: false, view: "account", tab: "company" }); },
+      menuDocs: function () { self.setState({ menuOpen: false, view: "account", tab: "documents" }); },
+      reorderLast: function () {
+        const cart = Object.assign({}, self.state.cart);
+        ORDERS[1].lines.forEach(function (l) { cart[l.id] = Math.min(999, (cart[l.id] || 0) + l.c); });
+        self.setState({ cart: cart, menuOpen: false, view: "cart" });
+      },
+
       // account
       signedIn: s.signedIn, signedOut: !s.signedIn,
       signIn: function () { self.setState({ signedIn: true, view: "orders" }); },
-      signOut: function () { self.setState({ signedIn: false, view: "home" }); },
+      signOut: function () { self.setState({ signedIn: false, menuOpen: false, view: "home" }); },
       goOrders: function () { self.go("orders"); },
       goAccount: function () { self.go("account"); },
       isOrders: s.view === "orders", isPo: s.view === "po", isAccount: s.view === "account",
