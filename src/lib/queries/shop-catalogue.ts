@@ -48,7 +48,7 @@ export type ShopFilters = {
 };
 
 /** A signed GET, or null when R2 is unreachable — the card shows a placeholder. */
-async function thumbUrl(
+export async function thumbUrl(
   images: { thumbKey: string | null; r2Key: string }[],
 ): Promise<string | null> {
   const first = images[0];
@@ -58,6 +58,25 @@ async function thumbUrl(
   } catch {
     return null;
   }
+}
+
+/** The categories a product in the shop actually carries, ascending. */
+async function shopCategories(): Promise<string[]> {
+  // The filter lists are built from what is *in the shop*, not from the whole
+  // catalogue: offering a category with nothing behind it is a dead end.
+  const categories = await prisma.product.findMany({
+    where: SHOP_VISIBLE,
+    distinct: ["category"],
+    select: { category: true },
+    orderBy: { category: "asc" },
+  });
+  return categories.map((c) => c.category);
+}
+
+/** Same list `listShopProducts` builds its filter chips from — exported for
+ * the layout, which needs it before any product is loaded. */
+export async function listShopCategories(): Promise<string[]> {
+  return shopCategories();
 }
 
 function whereFor(filters: ShopFilters): Prisma.ProductWhereInput {
@@ -105,14 +124,7 @@ export async function listShopProducts(
       take: filters.take ?? 30,
     }),
     prisma.product.count({ where }),
-    // The filter lists are built from what is *in the shop*, not from the whole
-    // catalogue: offering a category with nothing behind it is a dead end.
-    prisma.product.findMany({
-      where: SHOP_VISIBLE,
-      distinct: ["category"],
-      select: { category: true },
-      orderBy: { category: "asc" },
-    }),
+    shopCategories(),
     prisma.product.findMany({
       where: { ...SHOP_VISIBLE, brand: { not: null } },
       distinct: ["brand"],
@@ -139,7 +151,7 @@ export async function listShopProducts(
   return {
     products,
     total,
-    categories: categories.map((c) => c.category),
+    categories,
     brands: brands.map((b) => b.brand).filter((b): b is string => Boolean(b)),
   };
 }

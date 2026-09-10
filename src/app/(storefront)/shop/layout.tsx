@@ -1,9 +1,14 @@
 import type { ReactNode } from "react";
 import type { Metadata } from "next";
 import { redirect } from "next/navigation";
-import { Role } from "@/generated/prisma/enums";
-import { UnauthorizedError, getSessionUser, requireClient } from "@/lib/auth-guards";
+import { NavProgressProvider } from "@/components/portal/NavProgress";
+import { SkipLink } from "@/components/portal/SkipLink";
+import { Toaster } from "@/components/ui/sonner";
+import { ShopViewerProvider } from "@/components/shop/ShopViewer";
 import { env } from "@/lib/env";
+import { cartSummary } from "@/lib/queries/cart";
+import { listShopCategories } from "@/lib/queries/shop-catalogue";
+import { loadShopViewer } from "@/lib/shop-viewer";
 
 export const metadata: Metadata = { title: "Loving Hands" };
 export const dynamic = "force-dynamic";
@@ -21,31 +26,50 @@ export const dynamic = "force-dynamic";
  * - every `revalidatePath` names the real path (`/shop/cart`), because
  *   revalidation keys on the resolved route, not the URL the browser asked for.
  *
- * `requireClient()` runs once here, so every page below may assume a buyer
- * rather than growing a "staff viewing" branch.
+ * Phase 17: a guest now gets this layout too — no `requireClient()` here any
+ * more. Every page below still calls it for its own data (Tasks 8–11 rewrite
+ * them to read `useShopViewer()` instead), so a guest reaches a page and is
+ * turned back only where the page actually needs a buyer.
  */
 export default async function StorefrontLayout({
   children,
 }: {
   children: ReactNode;
 }) {
+  const viewer = await loadShopViewer();
   // Staff go to the portal, not to an empty shop. Done here rather than in the
   // proxy because a cross-host redirect issued from the proxy comes back with
   // its origin stripped — both hosts are one deployment — and the browser then
   // loops against the same host (measured 2026-09-09).
-  const account = await getSessionUser();
-  if (account && account.role !== Role.CLIENT) redirect(env.APP_URL);
+  if (viewer === "staff") redirect(env.APP_URL);
 
-  try {
-    await requireClient();
-  } catch (cause) {
-    if (cause instanceof UnauthorizedError) redirect("/signin");
-    throw cause;
-  }
+  const [categories, summary] = await Promise.all([
+    listShopCategories(),
+    viewer.kind === "client" ? cartSummary(viewer.id) : Promise.resolve(null),
+  ]);
+  // Not rendered yet: ShopHeader and ShopFooter (Task 7) take `categories`,
+  // and ShopHeader and ShopUtilityBar (Task 7) take `summary`. Loaded here
+  // now so those tasks add JSX, not a second fetch.
+  void categories;
+  void summary;
 
   return (
-    <div className="mx-auto min-h-dvh max-w-page p-md sm:p-lg lg:p-xl">
-      {children}
-    </div>
+    <ShopViewerProvider viewer={viewer}>
+      {/* GuestCartProvider (Task 5) and GuestCartMerge (Task 6) wrap here once
+          they exist, so a guest's localStorage cart survives sign-in. */}
+      <NavProgressProvider>
+        <SkipLink />
+        {/* ShopUtilityBar and ShopHeader (Task 7) mount above `main`; every
+            page still renders its own ShopHeader for now. */}
+        <main
+          id="main"
+          className="mx-auto w-full max-w-page px-md pb-xxl sm:px-lg md:pb-0"
+        >
+          {children}
+        </main>
+        {/* ShopFooter and MobileCartBar (Task 7) mount below `main`. */}
+      </NavProgressProvider>
+      <Toaster />
+    </ShopViewerProvider>
   );
 }
