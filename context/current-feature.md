@@ -143,6 +143,31 @@ user's own decision to merge and delete it.
   `updateBuyer`'s spread never sends it to Prisma and a partial patch touches
   only the fields it names — the same data-loss class the uniqueMessage
   investigation was already watching for, checked and ruled safe.
+  **A third defect, found by the final whole-branch review after everything
+  else had passed: the screen said an invitation was sent when none was.**
+  `src/lib/email.ts` is documented "Never throws" — it returns
+  `{ sent: boolean }`, and a Resend API error, a bad recipient, a network
+  failure and the placeholder-key case local runs hit all resolve
+  `{ sent: false }`. `sendInviteEmail` awaited it and returned `true`
+  regardless, so `createCustomer` reported `invite: "sent"` and `/buyers/new`
+  toasted "Customer created and invitation sent." while the mail sat in no
+  outbox — ops would have told the customer to check an inbox that stays
+  empty. Acceptance criterion 2 was false for the whole build until this was
+  fixed. **Both things that were supposed to prove that path exercised a
+  contract the code cannot produce**: the unit test used
+  `sendEmail.mockRejectedValue`, and the browser proof forced the failure by
+  editing `email.ts` to throw. That is the third test on this branch to pass
+  by asserting its own mock rather than the real contract — after the
+  `meta.target` shape above, and the same class as Phase 16's vacuous
+  `deletePurchaseOrder` call. The helper now returns `sendEmail`'s own `sent`
+  and keeps its try/catch only as a fail-closed backstop; the new test
+  resolves `{ sent: false }`, was watched failing against the unfixed code
+  (`invite: "sent"` where `"failed"` was expected), and asserts the `Buyer`
+  and `User` rows survive rather than only checking the returned string.
+  **Left alone deliberately:** `inviteBuyerContact` and `resendClientInvite`
+  still ignore the send result and toast "Invite sent." either way. That is
+  pre-existing behaviour this branch did not introduce, and what those toasts
+  should say is a product decision rather than a defect to fix in passing.
   **The password loop was driven end to end and the stale password's failure
   was read from the wire.** A customer invited from `/buyers/new`, signed in
   with the temporary password, was forced to `/account/password`, changed it,
