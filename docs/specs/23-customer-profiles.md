@@ -328,13 +328,24 @@ already get.
 
 ## 8. What must never leak
 
-`Buyer.remark` is ops-only. The shop reads a buyer in two places today —
-`src/actions/cart.ts:440` (`{ name: true }`) and
-`src/lib/queries/web-orders.ts:284` (`{ name: true, paymentTerms: true }`) — and
-both are already narrow. Assert both by equality in their existing test files,
-so adding a column to either is a deliberate edit rather than a spread that
-quietly widened. Phase 18's `loadReviewBuyer` and Phase 21's `loadClientBuyer`
-inherit the same rule when they land.
+`Buyer.remark` is ops-only. **A shop page reads a `Buyer` in exactly one
+place** — `loadShopViewer` (`src/lib/shop-viewer.ts:24`), whose
+`buyer: { select: { name: true } }` supplies the company name in the shop
+header and account menu, and which runs in the storefront layout on every shop
+request. That select gains an equality assertion in
+`src/lib/shop-viewer.test.ts`, so widening it is a deliberate edit rather than a
+spread that quietly grew.
+
+Two other buyer selects look like candidates and are not: `notifyOps`
+(`src/actions/cart.ts:440`) composes an email **to ops staff**, and
+`loadWebOrderForReview` (`src/lib/queries/web-orders.ts:284`) feeds the **ops**
+review screen — which already selects `notes` on purpose. Neither renders to a
+customer. The shop's own order queries, `listBuyerOrders` and `loadBuyerOrder`,
+read no `Buyer` at all and already carry equality assertions and a `FORBIDDEN`
+list in `src/lib/queries/web-orders.test.ts`; nothing there needs to change.
+
+Phase 18's `loadReviewBuyer` and Phase 21's `loadClientBuyer` are the next two
+shop-side buyer reads and inherit the same rule when they land.
 
 `username` and `phone` are the customer's own facts, so they are free to appear
 on the shop later. This phase renders them in ops only.
@@ -428,10 +439,9 @@ on the shop later. This phase renders them in ops only.
 
 ### Task 6: Verification, cleanup and history
 
-**Files:** `src/actions/cart.test.ts`, `src/lib/queries/web-orders.test.ts`,
-`context/current-feature.md`
+**Files:** `src/lib/shop-viewer.test.ts`, `context/current-feature.md`
 
-- [ ] The §8 equality assertions on both shop buyer selects.
+- [ ] The §8 equality assertion on `loadShopViewer`'s buyer select.
 - [ ] Full suite, `tsc`, `lint`, `build`. Sweep `/buyers`, `/buyers/new` and a
       buyer detail page at 390 / 768 / 1440 — `scrollWidth === innerWidth` on
       all nine, and no control under 44px at 390 that is not already an accepted
