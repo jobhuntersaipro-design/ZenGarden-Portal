@@ -7,10 +7,10 @@ vi.mock("@/lib/prisma", () => ({
 }));
 vi.mock("@/lib/env", () => ({
   env: {
-    SUPPLIER_NAME: "Env Name",
-    SUPPLIER_EMAIL: "env@example.com",
-    SUPPLIER_PHONE: "+60 3-0000 0000",
-    SUPPLIER_ADDRESS: "Env address",
+    ZEN_GARDEN_NAME: "Env Name",
+    ZEN_GARDEN_EMAIL: "env@example.com",
+    ZEN_GARDEN_PHONE: "+60 3-0000 0000",
+    ZEN_GARDEN_ADDRESS: "Env address",
   },
 }));
 

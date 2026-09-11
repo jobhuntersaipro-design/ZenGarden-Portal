@@ -9,7 +9,7 @@ const FOOTER_LINK =
 /**
  * A server component. `supplier` is resolved once by the shop layout
  * (`loadSupplierDetails`, per field: the database row, else the matching
- * `SUPPLIER_*` env var, else null) and passed down here and to `ShopHeader`'s
+ * `ZEN_GARDEN_*` env var, else null) and passed down here and to `ShopHeader`'s
  * "Talk to our team" row, so both read the same figures a super admin's
  * `/admin` edit can change with no redeploy.
  */

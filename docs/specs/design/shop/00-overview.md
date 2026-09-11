@@ -36,13 +36,13 @@ These were not on the canvas and did not change the shape of the work, so they
 are stated here rather than asked. Any of them is a one-line change if wrong.
 
 - **Supplier details** (the bracketed `[YOUR …]` text on the footer and the
-  purchase order) come from environment variables — `SUPPLIER_NAME`,
-  `SUPPLIER_EMAIL`, `SUPPLIER_PHONE`, `SUPPLIER_ADDRESS`,
-  `SUPPLIER_REGISTRATION_NO`, `SUPPLIER_TAX_LABEL`, `SUPPLIER_TAX_RATE` — all
+  purchase order) come from environment variables — `ZEN_GARDEN_NAME`,
+  `ZEN_GARDEN_EMAIL`, `ZEN_GARDEN_PHONE`, `ZEN_GARDEN_ADDRESS`,
+  `ZEN_GARDEN_REGISTRATION_NO`, `ZEN_GARDEN_TAX_LABEL`, `ZEN_GARDEN_TAX_RATE` — all
   optional; an unset one omits its row. A settings table editable by a super
   admin is the better long-term home and is a phase of its own if asked for.
 - **Account-menu rows without a drawn destination.** *Delivery updates* opens
-  `/orders?filter=open`. *Talk to our team* is a `mailto:` to `SUPPLIER_EMAIL`
+  `/orders?filter=open`. *Talk to our team* is a `mailto:` to `ZEN_GARDEN_EMAIL`
   (the external-link glyph on the canvas says it leaves the site). *Help* is
   dropped — nothing on the canvas says what it opens, and a row that goes
   nowhere is worse than no row.
@@ -58,8 +58,8 @@ are stated here rather than asked. Any of them is a one-line change if wrong.
   keyed from an emailed PDF, which is the buyer's own document. The canvas copy
   mentions only generated ones; leaving the scanned ones out would make the
   list disagree with *Your orders*.
-- **Tax on the generated purchase order** prints only when `SUPPLIER_TAX_LABEL`
-  and `SUPPLIER_TAX_RATE` are set; otherwise the row is omitted and the total
+- **Tax on the generated purchase order** prints only when `ZEN_GARDEN_TAX_LABEL`
+  and `ZEN_GARDEN_TAX_RATE` are set; otherwise the row is omitted and the total
   equals the subtotal. Ops can still enter tax at confirm, as today.
 
 ## The phases

@@ -80,7 +80,7 @@ The shop layout mounts `AvatarSavingProvider` and `AvatarChangeListener` so the 
 
 ### 4.2 Company
 
-`CompanyCard` (server): `loadReviewBuyer` from Phase 18 widened to `loadClientBuyer(buyerId)` → `{ name, address, contactName, email, phone, paymentTerms }` (narrow select, asserted). Rows *Registered name · Delivery address · Contact · Email · Phone · Payment terms*; a null value's row is omitted, as `BuyerDetailsCard` does in ops. **Ask us to change this** outlined → `mailto:${SUPPLIER_EMAIL}?subject=Change of details for ${name}`, omitted when unset; the paragraph "These are the details we invoice and deliver against, so they are changed by our team rather than edited here."
+`CompanyCard` (server): `loadReviewBuyer` from Phase 18 widened to `loadClientBuyer(buyerId)` → `{ name, address, contactName, email, phone, paymentTerms }` (narrow select, asserted). Rows *Registered name · Delivery address · Contact · Email · Phone · Payment terms*; a null value's row is omitted, as `BuyerDetailsCard` does in ops. **Ask us to change this** outlined → `mailto:${ZEN_GARDEN_EMAIL}?subject=Change of details for ${name}`, omitted when unset; the paragraph "These are the details we invoice and deliver against, so they are changed by our team rather than edited here."
 
 ### 4.3 Documents
 

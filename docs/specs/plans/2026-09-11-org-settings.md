@@ -4,7 +4,7 @@
 
 **Goal:** A super admin edits the supplier contact details the public shop displays — name, email, phone, address — from `/admin`, with no Vercel access and no redeploy.
 
-**Architecture:** One row in a new `OrgSettings` table (`id = "singleton"`, enforced by a CHECK), read through one cached resolver that falls back **per field** to the existing `SUPPLIER_*` environment variables. A card on `/admin` writes it. The only existing component that changes is `ShopFooter`, which reads `env` directly today and takes props after this.
+**Architecture:** One row in a new `OrgSettings` table (`id = "singleton"`, enforced by a CHECK), read through one cached resolver that falls back **per field** to the existing `ZEN_GARDEN_*` environment variables. A card on `/admin` writes it. The only existing component that changes is `ShopFooter`, which reads `env` directly today and takes props after this.
 
 **Tech Stack:** Next.js 16 App Router, React 19, TypeScript strict, Tailwind v4 (`@theme` tokens only), Prisma 7 on Neon, Zod 4, Vitest.
 
@@ -188,7 +188,7 @@ In `prisma/schema.prisma`, add the model (place it after `AccessRequest`, near t
 ```prisma
 /// Exactly one row, id "singleton" — a CHECK constraint enforces it. Org-wide
 /// settings a super admin owns, read through src/lib/org-settings.ts with a
-/// per-field fallback to the SUPPLIER_* environment variables.
+/// per-field fallback to the ZEN_GARDEN_* environment variables.
 model OrgSettings {
   id              String   @id @default("singleton")
   supplierName    String?
@@ -300,10 +300,10 @@ vi.mock("@/lib/prisma", () => ({
 }));
 vi.mock("@/lib/env", () => ({
   env: {
-    SUPPLIER_NAME: "Env Name",
-    SUPPLIER_EMAIL: "env@example.com",
-    SUPPLIER_PHONE: "+60 3-0000 0000",
-    SUPPLIER_ADDRESS: "Env address",
+    ZEN_GARDEN_NAME: "Env Name",
+    ZEN_GARDEN_EMAIL: "env@example.com",
+    ZEN_GARDEN_PHONE: "+60 3-0000 0000",
+    ZEN_GARDEN_ADDRESS: "Env address",
   },
 }));
 
@@ -435,10 +435,10 @@ const SELECT = {
 } as const;
 
 const fromEnv = (): SupplierDetails => ({
-  name: env.SUPPLIER_NAME ?? null,
-  email: env.SUPPLIER_EMAIL ?? null,
-  phone: env.SUPPLIER_PHONE ?? null,
-  address: env.SUPPLIER_ADDRESS ?? null,
+  name: env.ZEN_GARDEN_NAME ?? null,
+  email: env.ZEN_GARDEN_EMAIL ?? null,
+  phone: env.ZEN_GARDEN_PHONE ?? null,
+  address: env.ZEN_GARDEN_ADDRESS ?? null,
 });
 
 /**
@@ -842,28 +842,28 @@ const [categories, summary, supplier] = await Promise.all([
 ]);
 ```
 
-Then `supplierEmail={supplier.email}` on `<ShopHeader>` (replacing `env.SUPPLIER_EMAIL ?? null`), and `supplier={supplier}` on `<ShopFooter>`.
+Then `supplierEmail={supplier.email}` on `<ShopHeader>` (replacing `env.ZEN_GARDEN_EMAIL ?? null`), and `supplier={supplier}` on `<ShopFooter>`.
 
-In `src/components/shop/ShopFooter.tsx`: take `supplier: SupplierDetails` as a prop, drop the `env` import, and replace each `env.SUPPLIER_*` read with the matching field. **Update its doc comment** — it currently says it reads `env` directly "unlike `ShopAccountMenu`", and that distinction no longer exists.
+In `src/components/shop/ShopFooter.tsx`: take `supplier: SupplierDetails` as a prop, drop the `env` import, and replace each `env.ZEN_GARDEN_*` read with the matching field. **Update its doc comment** — it currently says it reads `env` directly "unlike `ShopAccountMenu`", and that distinction no longer exists.
 
 Render the address with `whitespace-pre-line` so the stored line breaks show.
 
 - [ ] **Step 4: Typecheck, lint, build**
 
 Run: `npx tsc --noEmit && npm run lint && npm run build`
-Expected: all clean. If `env.SUPPLIER_*` is now unused anywhere, lint will say so — keep the keys in `env.ts` (they are the fallback) but remove dead imports.
+Expected: all clean. If `env.ZEN_GARDEN_*` is now unused anywhere, lint will say so — keep the keys in `env.ts` (they are the fallback) but remove dead imports.
 
 - [ ] **Step 5: Verify in the browser — this is the gate**
 
 You need a super admin. `aisha@lovinghandsportal.com` / `Password123!` is a `MEMBER` in development; promote her to `SUPER_ADMIN` with `scripts/grant-super-admin.ts` and **record it in your report so the last task can revert it**. Run `npm run dev`, and use the Playwright MCP browser.
 
-Local `.env.local` has `SUPPLIER_*` blank or partly set — check which before you start, and say so in your report, because the fallback behaviour depends on it. If all four are blank, set **one** of them (`SUPPLIER_PHONE`) via a **shell export** in the terminal running `npm run dev` — never by editing `.env.local`, which holds the only working Neon and R2 credentials and is git-ignored.
+Local `.env.local` has `ZEN_GARDEN_*` blank or partly set — check which before you start, and say so in your report, because the fallback behaviour depends on it. If all four are blank, set **one** of them (`ZEN_GARDEN_PHONE`) via a **shell export** in the terminal running `npm run dev` — never by editing `.env.local`, which holds the only working Neon and R2 credentials and is git-ignored.
 
 1. `/admin` as a super admin → the **Contact details** card is present below the users table, with the caption and four empty fields. An empty field whose env var is set shows "Currently … — from the environment"; one with no fallback shows "Not set".
 2. Type a supplier email and Save → toast; reload; the value persists in the field.
 3. **The whole point:** open the shop host and confirm the footer's email row and the account menu's *Talk to our team* link both show the new value — **with no redeploy and no server restart**. Read the `mailto:` href, not just the visible text.
 4. Save an address with two line breaks → the footer renders three lines, not one.
-5. **The per-field fallback, measured:** with `SUPPLIER_PHONE` exported and the phone field left empty, confirm the shop footer still shows the env phone **while** showing the stored email. This is acceptance criterion 2 and the defect the design exists to prevent.
+5. **The per-field fallback, measured:** with `ZEN_GARDEN_PHONE` exported and the phone field left empty, confirm the shop footer still shows the env phone **while** showing the stored email. This is acceptance criterion 2 and the defect the design exists to prevent.
 6. Clear the email field and Save → the footer falls back to the env email (or the row disappears if there is no fallback).
 7. Enter `nope` as the email → refused with a message, the typed values kept, and `prisma.orgSettings.findUnique` shows the old value unchanged.
 8. As a MEMBER (create a throwaway one; delete it afterwards), `/admin` is refused — confirm what actually happens (redirect or 404) and report it.
@@ -887,13 +887,13 @@ git commit -m "feat(settings): a super admin edits the shop's contact details"
 
 - [ ] **Step 1: Document the new home for these values**
 
-In `.env.example`, extend the four `SUPPLIER_*` comments to say they are fallbacks — for example:
+In `.env.example`, extend the four `ZEN_GARDEN_*` comments to say they are fallbacks — for example:
 
 ```
-SUPPLIER_EMAIL=                          # fallback only; set it in /admin instead (Phase 24)
+ZEN_GARDEN_EMAIL=                          # fallback only; set it in /admin instead (Phase 24)
 ```
 
-In `docs/specs/SETUP-CHECKLIST.md`, find where the `SUPPLIER_*` keys are described (near §6/§7) and add a line: these four can be left blank and set from **Contact details** on `/admin` after the first deploy, which needs no redeploy. Do not delete the existing guidance — the env vars still work and are what a preview deployment uses.
+In `docs/specs/SETUP-CHECKLIST.md`, find where the `ZEN_GARDEN_*` keys are described (near §6/§7) and add a line: these four can be left blank and set from **Contact details** on `/admin` after the first deploy, which needs no redeploy. Do not delete the existing guidance — the env vars still work and are what a preview deployment uses.
 
 - [ ] **Step 2: Full verification**
 

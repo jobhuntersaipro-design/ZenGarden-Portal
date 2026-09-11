@@ -130,7 +130,7 @@ enum AccessRequestStatus {
 
 /// Exactly one row, id "singleton" — a CHECK constraint enforces it. Org-wide
 /// settings a super admin owns, read through src/lib/org-settings.ts with a
-/// per-field fallback to the SUPPLIER_* environment variables.
+/// per-field fallback to the ZEN_GARDEN_* environment variables.
 model OrgSettings {
   id              String   @id @default("singleton")
   supplierName    String?

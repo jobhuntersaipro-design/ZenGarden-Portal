@@ -225,13 +225,13 @@ Four optional variables populate the storefront footer's contact column and the
 account menu's "Talk to our team" mailto. The purchase-order PDF (Phase 19) also
 prints them. An unset variable omits its row.
 
-- `SUPPLIER_NAME` — displays as the first row of the footer's contact column.
+- `ZEN_GARDEN_NAME` — displays as the first row of the footer's contact column.
   (It claimed the account menu too; it never appeared there, and Phase 24
   corrected the line rather than leaving it describing something that does not
   happen.)
-- `SUPPLIER_EMAIL` — displays in the footer and powers the account menu's `mailto:` link.
-- `SUPPLIER_PHONE` — displays in the footer contact column.
-- `SUPPLIER_ADDRESS` — displays in the footer; use `\n` for line breaks (e.g. `Line 1\nLine 2\nLine 3`).
+- `ZEN_GARDEN_EMAIL` — displays in the footer and powers the account menu's `mailto:` link.
+- `ZEN_GARDEN_PHONE` — displays in the footer contact column.
+- `ZEN_GARDEN_ADDRESS` — displays in the footer; use `\n` for line breaks (e.g. `Line 1\nLine 2\nLine 3`).
 
 All four are left blank in `.env.example` and are production-only — you never
 need to set them locally.

@@ -52,7 +52,7 @@ Migration `20260912100000_web_order_document`: `ADD COLUMN "documentId" TEXT`, u
 
 ## 2. Environment
 
-`SUPPLIER_REGISTRATION_NO`, `SUPPLIER_TAX_LABEL`, `SUPPLIER_TAX_RATE` (`z.coerce.number().min(0).max(100)`), all optional, beside Phase 17's four. The tax row prints only when both label and rate are set.
+`ZEN_GARDEN_REGISTRATION_NO`, `ZEN_GARDEN_TAX_LABEL`, `ZEN_GARDEN_TAX_RATE` (`z.coerce.number().min(0).max(100)`), all optional, beside Phase 17's four. The tax row prints only when both label and rate are set.
 
 ## 3. The document
 

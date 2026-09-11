@@ -7,7 +7,7 @@ displays — name, email, phone, address — from inside the portal, with no Ver
 access and no redeploy.
 
 **Architecture:** One row in a new `OrgSettings` table, read through a single
-cached resolver that falls back **per field** to the existing `SUPPLIER_*`
+cached resolver that falls back **per field** to the existing `ZEN_GARDEN_*`
 environment variables. A card on `/admin` writes it. The only existing component
 that changes is `ShopFooter`, which reads `env` directly today and takes props
 after this.
@@ -41,7 +41,7 @@ stated rather than asked" (which anticipated this phase), `docs/specs/09-admin.m
 
 ## 0. Why this exists
 
-`SUPPLIER_NAME`, `SUPPLIER_EMAIL`, `SUPPLIER_PHONE` and `SUPPLIER_ADDRESS`
+`ZEN_GARDEN_NAME`, `ZEN_GARDEN_EMAIL`, `ZEN_GARDEN_PHONE` and `ZEN_GARDEN_ADDRESS`
 (`src/lib/env.ts:23-26`) are business facts — the address on the footer, the
 number a customer rings, the inbox behind *Talk to our team*. Today changing any
 of them needs Vercel access **and** a redeploy, which puts a phone number behind
@@ -51,7 +51,7 @@ a deployment pipeline and out of reach of the person who actually knows it.
 settings table editable by a super admin is the better long-term home and is a
 phase of its own if asked for."* It has been asked for.
 
-The prompt was narrower — one field, `SUPPLIER_EMAIL`, which is unset in
+The prompt was narrower — one field, `ZEN_GARDEN_EMAIL`, which is unset in
 production and is why the shop footer has no contact row. All four are in scope
 because they render as one footer block and one account-menu row; making one
 editable and leaving three in Vercel means the footer is maintained in two
@@ -127,7 +127,7 @@ the email blanks the phone that is still living in Vercel. Each field resolves
 independently:
 
 ```ts
-email: row?.supplierEmail ?? env.SUPPLIER_EMAIL ?? null
+email: row?.supplierEmail ?? env.ZEN_GARDEN_EMAIL ?? null
 ```
 
 Wrapped in React's `cache()` so one request makes one query however many
@@ -142,8 +142,8 @@ an empty string that would shadow it forever.
 
 | File | Today | After |
 |---|---|---|
-| `src/app/(storefront)/shop/layout.tsx:71` | `supplierEmail={env.SUPPLIER_EMAIL ?? null}` | from `loadSupplierDetails()` |
-| `src/components/shop/ShopFooter.tsx:61` | reads `env.SUPPLIER_*` directly | takes a `supplier: SupplierDetails` prop |
+| `src/app/(storefront)/shop/layout.tsx:71` | `supplierEmail={env.ZEN_GARDEN_EMAIL ?? null}` | from `loadSupplierDetails()` |
+| `src/components/shop/ShopFooter.tsx:61` | reads `env.ZEN_GARDEN_*` directly | takes a `supplier: SupplierDetails` prop |
 
 `ShopFooter`'s own doc comment says it reads `env` directly "unlike
 `ShopAccountMenu`". That distinction goes away: both take props, and the layout
@@ -223,8 +223,8 @@ one is edited.
 
 ## 7. Out of scope
 
-- **Phase 19's `SUPPLIER_REGISTRATION_NO`, `SUPPLIER_TAX_LABEL` and
-  `SUPPLIER_TAX_RATE`** — they are in the overview's list but not in `env.ts`,
+- **Phase 19's `ZEN_GARDEN_REGISTRATION_NO`, `ZEN_GARDEN_TAX_LABEL` and
+  `ZEN_GARDEN_TAX_RATE`** — they are in the overview's list but not in `env.ts`,
   because the purchase-order document that needs them is not built. They join
   this table when Phase 19 needs them. Adding columns for an unbuilt feature is
   guessing at its shape.

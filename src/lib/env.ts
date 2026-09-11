@@ -20,10 +20,10 @@ const schema = z.object({
   SHOP_URL: emptyAsUndefined(z.url()),
 
   // Storefront (Phase 17)
-  SUPPLIER_NAME: emptyAsUndefined(z.string()),
-  SUPPLIER_EMAIL: emptyAsUndefined(z.email()),
-  SUPPLIER_PHONE: emptyAsUndefined(z.string()),
-  SUPPLIER_ADDRESS: emptyAsUndefined(z.string()),
+  ZEN_GARDEN_NAME: emptyAsUndefined(z.string()),
+  ZEN_GARDEN_EMAIL: emptyAsUndefined(z.email()),
+  ZEN_GARDEN_PHONE: emptyAsUndefined(z.string()),
+  ZEN_GARDEN_ADDRESS: emptyAsUndefined(z.string()),
 
   AUTH_SECRET: z.string().min(1),
   AUTH_GOOGLE_ID: z.string().min(1),

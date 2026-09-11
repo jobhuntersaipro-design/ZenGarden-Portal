@@ -29,10 +29,10 @@ const SELECT = {
 } as const;
 
 const fromEnv = (): SupplierDetails => ({
-  name: env.SUPPLIER_NAME ?? null,
-  email: env.SUPPLIER_EMAIL ?? null,
-  phone: env.SUPPLIER_PHONE ?? null,
-  address: env.SUPPLIER_ADDRESS ?? null,
+  name: env.ZEN_GARDEN_NAME ?? null,
+  email: env.ZEN_GARDEN_EMAIL ?? null,
+  phone: env.ZEN_GARDEN_PHONE ?? null,
+  address: env.ZEN_GARDEN_ADDRESS ?? null,
 });
 
 /**
