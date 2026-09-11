@@ -100,6 +100,25 @@ describe("inviteBuyerContact", () => {
     });
   });
 
+  // The nested shape Prisma 7's driver adapter actually emits for a real
+  // P2002 (meta.target is absent entirely there) — proves this call site
+  // reads real Prisma output, not only the flat shape hand-built above.
+  it("refuses a duplicate address reported in the real driver-adapter shape", async () => {
+    const { Prisma } = await import("@/generated/prisma/client");
+    userCreate.mockRejectedValueOnce(
+      new Prisma.PrismaClientKnownRequestError("dup", {
+        code: "P2002",
+        clientVersion: "7",
+        meta: { driverAdapterError: { cause: { constraint: { fields: ["email"] } } } },
+      }),
+    );
+    const result = await inviteBuyerContact(input);
+    expect(result).toEqual({
+      success: false,
+      error: "That email address is already in use.",
+    });
+  });
+
   it("refuses a buyer that is gone rather than creating an unlinked client", async () => {
     buyerFindUnique.mockResolvedValueOnce(null);
     const result = await inviteBuyerContact(input);
@@ -207,6 +226,23 @@ describe("updateBuyerContact", () => {
         code: "P2002",
         clientVersion: "7",
         meta: { target: ["username"] },
+      }),
+    );
+    expect(await updateBuyerContact("c1", patch)).toEqual({
+      success: false,
+      error: "That username is taken.",
+    });
+  });
+
+  // Same real driver-adapter shape as above, confirming the fix reaches this
+  // call site too — it uses the same `uniqueMessage` helper, not a copy.
+  it("names a duplicate handle reported in the real driver-adapter shape", async () => {
+    const { Prisma } = await import("@/generated/prisma/client");
+    userUpdate.mockRejectedValue(
+      new Prisma.PrismaClientKnownRequestError("unique", {
+        code: "P2002",
+        clientVersion: "7",
+        meta: { driverAdapterError: { cause: { constraint: { name: "User_username_key" } } } },
       }),
     );
     expect(await updateBuyerContact("c1", patch)).toEqual({

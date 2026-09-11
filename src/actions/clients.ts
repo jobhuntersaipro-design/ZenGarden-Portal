@@ -88,7 +88,7 @@ export async function inviteBuyerContact(
       cause instanceof Prisma.PrismaClientKnownRequestError &&
       cause.code === "P2002"
     ) {
-      return { success: false, error: uniqueMessage(cause.meta?.target) };
+      return { success: false, error: uniqueMessage(cause.meta) };
     }
     console.error("[clients] inviteBuyerContact", cause);
     return { success: false, error: "We couldn't invite that contact." };
@@ -202,7 +202,7 @@ export async function updateBuyerContact(
     return { success: true, data: undefined };
   } catch (cause) {
     if (cause instanceof Prisma.PrismaClientKnownRequestError && cause.code === "P2002") {
-      return { success: false, error: uniqueMessage(cause.meta?.target) };
+      return { success: false, error: uniqueMessage(cause.meta) };
     }
     console.error("[clients] updateBuyerContact", cause);
     return { success: false, error: "We couldn't save those changes." };

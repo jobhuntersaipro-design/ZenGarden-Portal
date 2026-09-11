@@ -80,7 +80,7 @@ export async function createCustomer(
     });
   } catch (cause) {
     if (cause instanceof Prisma.PrismaClientKnownRequestError && cause.code === "P2002") {
-      return { success: false, error: uniqueMessage(cause.meta?.target) };
+      return { success: false, error: uniqueMessage(cause.meta) };
     }
     console.error("[customers] createCustomer", cause);
     return { success: false, error: "We couldn't create that customer." };

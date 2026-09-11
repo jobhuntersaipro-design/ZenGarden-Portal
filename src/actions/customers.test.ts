@@ -156,6 +156,24 @@ describe("createCustomer", () => {
     expect(result).toEqual({ success: false, error: "That username is taken." });
   });
 
+  // Prisma 7's driver adapter does not emit the flat `{ target }` shape at
+  // all — this is the actual, observed shape (2026-09-11) — so this proves
+  // `createCustomer` reads a real P2002, not the hand-built mock above.
+  it.each([
+    [["username"], "That username is taken."],
+    [["email"], "That email address is already in use."],
+    [["name"], "Another customer already has that name."],
+  ])("names the field behind the real driver-adapter P2002 shape on %s", async (fields, message) => {
+    transaction.mockRejectedValue(
+      new Prisma.PrismaClientKnownRequestError("unique", {
+        code: "P2002",
+        clientVersion: "7",
+        meta: { driverAdapterError: { cause: { constraint: { fields } } } },
+      }),
+    );
+    expect(await createCustomer({ company, contact })).toEqual({ success: false, error: message });
+  });
+
   it("rejects a bad input before touching the database", async () => {
     const result = await createCustomer({ company: { ...company, name: "" } });
     expect(result.success).toBe(false);
