@@ -34,9 +34,8 @@ vi.mock("@/emails/TemporaryPassword", () => ({
   temporaryPasswordSubject: () => "Your temporary password",
 }));
 
-const { inviteBuyerContact, resendClientInvite, setClientAccess } = await import(
-  "@/actions/clients"
-);
+const { inviteBuyerContact, resendClientInvite, setClientAccess, updateBuyerContact } =
+  await import("@/actions/clients");
 
 beforeEach(() => {
   vi.resetAllMocks();
@@ -48,7 +47,13 @@ beforeEach(() => {
   sendEmail.mockResolvedValue({ sent: true });
 });
 
-const input = { buyerId: "buyer-1", name: "Siti", email: "siti@buyer.com" };
+const input = {
+  buyerId: "buyer-1",
+  name: "Siti",
+  email: "siti@buyer.com",
+  username: "Siti.Ops",
+  phone: " +60 12-345 6789 ",
+};
 
 describe("inviteBuyerContact", () => {
   it("writes CLIENT *with* the buyer — the CHECK refuses one without", async () => {
@@ -85,6 +90,26 @@ describe("inviteBuyerContact", () => {
       new Prisma.PrismaClientKnownRequestError("dup", {
         code: "P2002",
         clientVersion: "7",
+        meta: { target: ["email"] },
+      }),
+    );
+    const result = await inviteBuyerContact(input);
+    expect(result).toEqual({
+      success: false,
+      error: "That email address is already in use.",
+    });
+  });
+
+  // The nested shape Prisma 7's driver adapter actually emits for a real
+  // P2002 (meta.target is absent entirely there) — proves this call site
+  // reads real Prisma output, not only the flat shape hand-built above.
+  it("refuses a duplicate address reported in the real driver-adapter shape", async () => {
+    const { Prisma } = await import("@/generated/prisma/client");
+    userCreate.mockRejectedValueOnce(
+      new Prisma.PrismaClientKnownRequestError("dup", {
+        code: "P2002",
+        clientVersion: "7",
+        meta: { driverAdapterError: { cause: { constraint: { fields: ["email"] } } } },
       }),
     );
     const result = await inviteBuyerContact(input);
@@ -107,6 +132,32 @@ describe("inviteBuyerContact", () => {
     const result = await inviteBuyerContact(input);
     expect(result).toEqual({ success: false, error: "nope" });
     expect(userCreate).not.toHaveBeenCalled();
+  });
+
+  it("writes the handle lower-cased and the phone trimmed", async () => {
+    await inviteBuyerContact(input);
+    const data = userCreate.mock.calls[0][0].data;
+    expect(data.username).toBe("siti.ops");
+    expect(data.phone).toBe("+60 12-345 6789");
+  });
+
+  it("refuses a contact with no handle", async () => {
+    const { username, ...rest } = input;
+    const result = await inviteBuyerContact(rest as typeof input);
+    expect(result.success).toBe(false);
+    expect(userCreate).not.toHaveBeenCalled();
+  });
+
+  // sendEmail is documented "Never throws" — it reports a failed send as
+  // { sent: false }. The contact row is created before the email is sent, so
+  // a failed send must not undo it; this action ignores the send result by
+  // design (see updateBuyerContact's sibling actions), but the row still
+  // has to exist either way.
+  it("still creates the contact when the invite email fails to send", async () => {
+    sendEmail.mockResolvedValue({ sent: false, error: "Domain not verified" });
+    const result = await inviteBuyerContact(input);
+    expect(result.success).toBe(true);
+    expect(userCreate).toHaveBeenCalled();
   });
 });
 
@@ -145,5 +196,70 @@ describe("setClientAccess", () => {
     const data = userUpdate.mock.calls[0][0].data;
     expect(data.disabledAt).toBeNull();
     expect(data).not.toHaveProperty("sessionVersion");
+  });
+});
+
+describe("updateBuyerContact", () => {
+  const patch = { name: "Siti Nur", username: "siti.nur", phone: null };
+
+  beforeEach(() => {
+    userFindUnique.mockResolvedValue({ id: "c1", role: "CLIENT", buyerId: "buyer-1" });
+  });
+
+  it("refuses a member", async () => {
+    const { UnauthorizedError } = await import("@/lib/auth-guards");
+    requireSuperAdmin.mockRejectedValue(new UnauthorizedError("Super admin only."));
+    expect(await updateBuyerContact("c1", patch)).toEqual({
+      success: false,
+      error: "Super admin only.",
+    });
+    expect(userUpdate).not.toHaveBeenCalled();
+  });
+
+  it("refuses a row that is not a client — an ops user is not editable here", async () => {
+    userFindUnique.mockResolvedValue({ id: "u1", role: "MEMBER", buyerId: null });
+    expect(await updateBuyerContact("u1", patch)).toEqual({
+      success: false,
+      error: "That contact is gone.",
+    });
+    expect(userUpdate).not.toHaveBeenCalled();
+  });
+
+  it("writes only name, username and phone — never the email or the role", async () => {
+    await updateBuyerContact("c1", patch);
+    const data = userUpdate.mock.calls[0][0].data;
+    expect(Object.keys(data).sort()).toEqual(["name", "phone", "username"]);
+  });
+
+  it("names a duplicate handle", async () => {
+    const { Prisma } = await import("@/generated/prisma/client");
+    userUpdate.mockRejectedValue(
+      new Prisma.PrismaClientKnownRequestError("unique", {
+        code: "P2002",
+        clientVersion: "7",
+        meta: { target: ["username"] },
+      }),
+    );
+    expect(await updateBuyerContact("c1", patch)).toEqual({
+      success: false,
+      error: "That username is taken.",
+    });
+  });
+
+  // Same real driver-adapter shape as above, confirming the fix reaches this
+  // call site too — it uses the same `uniqueMessage` helper, not a copy.
+  it("names a duplicate handle reported in the real driver-adapter shape", async () => {
+    const { Prisma } = await import("@/generated/prisma/client");
+    userUpdate.mockRejectedValue(
+      new Prisma.PrismaClientKnownRequestError("unique", {
+        code: "P2002",
+        clientVersion: "7",
+        meta: { driverAdapterError: { cause: { constraint: { name: "User_username_key" } } } },
+      }),
+    );
+    expect(await updateBuyerContact("c1", patch)).toEqual({
+      success: false,
+      error: "That username is taken.",
+    });
   });
 });

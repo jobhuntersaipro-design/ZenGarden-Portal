@@ -14,7 +14,8 @@ export type ActionResult<T = undefined> =
 const emptyToNull = z
   .string()
   .nullable()
-  .transform((value) => value?.trim() || null);
+  .optional()
+  .transform((value) => (value === undefined ? undefined : value?.trim() || null));
 
 const buyerPatchSchema = z.object({
   /** Super admins only; the action checks the role before it applies. */
@@ -24,6 +25,7 @@ const buyerPatchSchema = z.object({
   phone: emptyToNull,
   address: emptyToNull,
   paymentTerms: emptyToNull,
+  remark: emptyToNull,
 });
 
 export type BuyerPatch = z.input<typeof buyerPatchSchema>;

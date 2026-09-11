@@ -13,6 +13,7 @@ import {
   SheetTitle,
   SheetTrigger,
 } from "@/components/ui/sheet";
+import { Textarea } from "@/components/ui/textarea";
 import { formatDate } from "@/lib/dates";
 
 export type BuyerDetails = {
@@ -23,6 +24,7 @@ export type BuyerDetails = {
   phone: string | null;
   address: string | null;
   paymentTerms: string | null;
+  remark: string | null;
   since: string | null;
 };
 
@@ -54,6 +56,7 @@ export function BuyerDetailsCard({
     phone: buyer.phone,
     address: buyer.address,
     paymentTerms: buyer.paymentTerms,
+    remark: buyer.remark,
     ...(canRename ? { name: buyer.name } : {}),
   });
   const [pending, setPending] = useState(false);
@@ -117,6 +120,25 @@ export function BuyerDetailsCard({
               </div>
             ),
           )}
+
+          <div className="flex flex-col gap-xxs">
+            <label
+              htmlFor="buyer-remark"
+              className="font-mono text-[length:var(--text-eyebrow)] text-ink-tertiary"
+            >
+              Remark
+            </label>
+            <Textarea
+              id="buyer-remark"
+              value={patch.remark ?? ""}
+              onChange={(event) =>
+                setPatch((current) => ({ ...current, remark: event.target.value }))
+              }
+            />
+            <p className="text-[length:var(--text-caption)] text-ink-tertiary">
+              Only our team sees this — it never appears on the shop.
+            </p>
+          </div>
 
           <Button
             pending={pending}
@@ -191,6 +213,16 @@ export function BuyerDetailsCard({
             {buyer.since ? formatDate(buyer.since) : "No orders yet"}
           </dd>
         </div>
+        {buyer.remark ? (
+          <div>
+            <dt className="font-mono text-[length:var(--text-eyebrow)] text-ink-tertiary">
+              Remark
+            </dt>
+            <dd className="whitespace-pre-wrap text-[length:var(--text-body-md)] text-ink">
+              {buyer.remark}
+            </dd>
+          </div>
+        ) : null}
       </dl>
     </section>
   );

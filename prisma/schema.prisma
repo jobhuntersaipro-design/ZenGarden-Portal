@@ -34,6 +34,12 @@ model User {
    * portal: `requireUser()` refuses them and `requireClient()` is theirs.
    */
   buyerId            String?
+  /// A display handle, shown in ops and (from Phase 21) on the customer's own
+  /// settings screen. NEVER an authentication identifier — see
+  /// docs/specs/23-customer-profiles.md §2.
+  username           String?              @unique
+  /// The contact's own line. The company's address stays on `Buyer`.
+  phone              String?
   createdAt          DateTime             @default(now())
   updatedAt          DateTime             @updatedAt
   accounts           Account[]
@@ -129,6 +135,8 @@ model Buyer {
   phone          String?
   address        String?
   paymentTerms   String?
+  /// Internal note about this customer. Ops only — no shop query may select it.
+  remark         String?
   createdAt      DateTime        @default(now())
   updatedAt      DateTime        @updatedAt
   /**

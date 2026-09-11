@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { emailSchema, passwordSchema } from "@/lib/validation/auth";
+import { emailSchema, passwordSchema, signInSchema } from "@/lib/validation/auth";
 
 describe("passwordSchema", () => {
   it("accepts a password with a letter, a digit and ten characters", () => {
@@ -46,5 +46,19 @@ describe("emailSchema", () => {
 
   it("rejects a non-address", () => {
     expect(emailSchema.safeParse("aisha").success).toBe(false);
+  });
+});
+
+describe("signInSchema is email + password and stays that way", () => {
+  // An absence test, deliberately. `User.username` reads like a login field to
+  // whoever meets it next (docs/specs/23-customer-profiles.md §2), and this is
+  // the cheapest way to say it is not one.
+  it("does not accept a username in place of an email", () => {
+    expect(signInSchema.safeParse({ username: "siti", password: "x" }).success).toBe(false);
+  });
+
+  it("parses to exactly email and password", () => {
+    const parsed = signInSchema.parse({ email: "a@b.com", password: "x" });
+    expect(Object.keys(parsed).sort()).toEqual(["email", "password"]);
   });
 });

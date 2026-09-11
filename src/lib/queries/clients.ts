@@ -5,6 +5,8 @@ export type BuyerContact = {
   id: string;
   name: string;
   email: string;
+  username: string | null;
+  phone: string | null;
   image: string | null;
   disabledAt: Date | null;
   lastActiveAt: Date | null;
@@ -20,6 +22,8 @@ export async function listBuyerContacts(buyerId: string): Promise<BuyerContact[]
       id: true,
       name: true,
       email: true,
+      username: true,
+      phone: true,
       image: true,
       disabledAt: true,
       lastActiveAt: true,

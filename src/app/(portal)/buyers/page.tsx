@@ -1,6 +1,10 @@
 import type { Metadata } from "next";
+import Link from "next/link";
+import { Role } from "@/generated/prisma/enums";
+import { LinkSpinner } from "@/components/portal/LinkSpinner";
 import { PageHeader } from "@/components/portal/PageHeader";
 import { UploadPoButton } from "@/components/portal/UploadPoButton";
+import { Button } from "@/components/ui/button";
 import { AttentionStrip } from "@/components/buyers/AttentionStrip";
 import { BuyersTable } from "@/components/buyers/BuyersTable";
 import { BuyerRangeChips } from "@/components/buyers/BuyerRangeChips";
@@ -10,6 +14,7 @@ import {
   buyerPreviousPeriod,
   parseBuyerRange,
 } from "@/lib/analytics/buyer-range";
+import { getSessionUser } from "@/lib/auth-guards";
 import { formatDate } from "@/lib/dates";
 import { formatMYR } from "@/lib/money";
 import {
@@ -35,6 +40,7 @@ export default async function BuyersPage({
   searchParams: Promise<SearchParams>;
 }) {
   const params = await searchParams;
+  const user = await getSessionUser();
   const range = parseBuyerRange(params);
   const previous = buyerPreviousPeriod(range);
 
@@ -55,7 +61,21 @@ export default async function BuyersPage({
       <PageHeader
         eyebrow="Directory"
         title="Buyers"
-        action={<UploadPoButton />}
+        action={
+          <div className="flex flex-wrap gap-xs">
+            {user?.role === Role.SUPER_ADMIN ? (
+              // A real anchor, not a router push: cmd-click opens a tab for
+              // free, the reasoning /products/new already recorded.
+              <Button asChild variant="secondary">
+                <Link href="/buyers/new">
+                  <LinkSpinner />
+                  New customer
+                </Link>
+              </Button>
+            ) : null}
+            <UploadPoButton />
+          </div>
+        }
       />
 
       <BuyerRangeChips

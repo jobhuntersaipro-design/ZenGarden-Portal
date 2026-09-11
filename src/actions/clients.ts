@@ -1,22 +1,26 @@
 "use server";
 
-import { randomBytes } from "node:crypto";
 import { revalidatePath } from "next/cache";
-import { hash } from "bcryptjs";
 import { Prisma } from "@/generated/prisma/client";
 import { Role } from "@/generated/prisma/enums";
-import { TemporaryPassword, temporaryPasswordSubject } from "@/emails/TemporaryPassword";
 import { UnauthorizedError, requireSuperAdmin } from "@/lib/auth-guards";
-import { sendEmail } from "@/lib/email";
-import { env } from "@/lib/env";
+import {
+  hashPassword,
+  sendInviteEmail,
+  temporaryPassword,
+  uniqueMessage,
+} from "@/lib/client-invites";
 import { prisma } from "@/lib/prisma";
-import { inviteContactSchema, type InviteContactInput } from "@/lib/validation/clients";
+import {
+  contactPatchSchema,
+  inviteContactSchema,
+  type ContactPatch,
+  type InviteContactInput,
+} from "@/lib/validation/clients";
 
 export type ActionResult<T = undefined> =
   | { success: true; data: T }
   | { success: false; error: string };
-
-const BCRYPT_COST = 12;
 
 async function guard() {
   try {
@@ -26,20 +30,6 @@ async function guard() {
     throw cause;
   }
 }
-
-/**
- * A temporary password the reader never chooses. 18 base64url characters is
- * well past the 10-character floor `passwordSchema` sets, and it is shown once
- * in the email and never stored in the clear.
- */
-const temporaryPassword = () => randomBytes(14).toString("base64url");
-
-/**
- * Where a client signs in. Falls back to the portal only so a deployment with
- * no shop host configured still sends a working link — on such a deployment
- * the proxy serves everything from one host anyway.
- */
-const clientSignInUrl = () => `${env.SHOP_URL ?? env.APP_URL}/signin`;
 
 /**
  * Invite one of a buyer's own staff to the shop.
@@ -78,26 +68,18 @@ export async function inviteBuyerContact(
       data: {
         name: data.name,
         email: data.email,
+        username: data.username,
+        phone: data.phone,
         role: Role.CLIENT,
         buyerId: buyer.id,
-        passwordHash: await hash(password, BCRYPT_COST),
+        passwordHash: await hashPassword(password),
         passwordChangedAt: new Date(),
         mustChangePassword: true,
       },
       select: { id: true, name: true, email: true },
     });
 
-    await sendEmail({
-      to: created.email,
-      subject: temporaryPasswordSubject(),
-      react: TemporaryPassword({
-        name: created.name,
-        password,
-        // The shop, never the portal: a client sent to the portal is
-        // redirected straight back out of it.
-        signInUrl: clientSignInUrl(),
-      }),
-    });
+    await sendInviteEmail(created, password);
 
     revalidatePath(`/buyers/${buyer.id}`);
     return { success: true, data: { id: created.id } };
@@ -106,7 +88,7 @@ export async function inviteBuyerContact(
       cause instanceof Prisma.PrismaClientKnownRequestError &&
       cause.code === "P2002"
     ) {
-      return { success: false, error: "That email address is already in use." };
+      return { success: false, error: uniqueMessage(cause.meta) };
     }
     console.error("[clients] inviteBuyerContact", cause);
     return { success: false, error: "We couldn't invite that contact." };
@@ -133,7 +115,7 @@ export async function resendClientInvite(
     await prisma.user.update({
       where: { id: contact.id },
       data: {
-        passwordHash: await hash(password, BCRYPT_COST),
+        passwordHash: await hashPassword(password),
         passwordChangedAt: new Date(),
         mustChangePassword: true,
         // Ends every live session for this contact, so an invite that is
@@ -142,15 +124,7 @@ export async function resendClientInvite(
       },
     });
 
-    await sendEmail({
-      to: contact.email,
-      subject: temporaryPasswordSubject(),
-      react: TemporaryPassword({
-        name: contact.name,
-        password,
-        signInUrl: clientSignInUrl(),
-      }),
-    });
+    await sendInviteEmail(contact, password);
 
     if (contact.buyerId) revalidatePath(`/buyers/${contact.buyerId}`);
     return { success: true, data: undefined };
@@ -192,5 +166,45 @@ export async function setClientAccess(
   } catch (cause) {
     console.error("[clients] setClientAccess", cause);
     return { success: false, error: "We couldn't change that contact's access." };
+  }
+}
+
+/**
+ * Name, username and phone. Deliberately not the email: that is how the
+ * account is identified, and changing it is a different, riskier operation.
+ */
+export async function updateBuyerContact(
+  contactId: string,
+  patch: ContactPatch,
+): Promise<ActionResult> {
+  const { user, error } = await guard();
+  if (!user) return { success: false, error: error! };
+
+  const parsed = contactPatchSchema.safeParse(patch);
+  if (!parsed.success) {
+    return {
+      success: false,
+      error: parsed.error.issues[0]?.message ?? "Those changes could not be saved.",
+    };
+  }
+
+  try {
+    const contact = await prisma.user.findUnique({
+      where: { id: contactId },
+      select: { id: true, role: true, buyerId: true },
+    });
+    if (!contact || contact.role !== Role.CLIENT) {
+      return { success: false, error: "That contact is gone." };
+    }
+
+    await prisma.user.update({ where: { id: contact.id }, data: parsed.data });
+    if (contact.buyerId) revalidatePath(`/buyers/${contact.buyerId}`);
+    return { success: true, data: undefined };
+  } catch (cause) {
+    if (cause instanceof Prisma.PrismaClientKnownRequestError && cause.code === "P2002") {
+      return { success: false, error: uniqueMessage(cause.meta) };
+    }
+    console.error("[clients] updateBuyerContact", cause);
+    return { success: false, error: "We couldn't save those changes." };
   }
 }

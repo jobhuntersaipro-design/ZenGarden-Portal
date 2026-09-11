@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { List, LogOut, Mail, ShoppingCart, User } from "lucide-react";
+import { KeyRound, List, LogOut, Mail, ShoppingCart, User } from "lucide-react";
 import { signOut } from "next-auth/react";
 import { Wordmark } from "@/components/portal/Wordmark";
 import { CartBadge } from "@/components/shop/CartBadge";
@@ -26,6 +26,16 @@ import { shopHref } from "@/lib/shop-routes";
 const accountRows = (supplierEmail: string | null): ShopAccountMenuRow[] => [
   { key: "orders", label: "My orders", icon: List, href: shopHref.orders() },
   { key: "sep-orders", separator: true },
+  {
+    key: "password",
+    label: "Change password",
+    icon: KeyRound,
+    // A literal, NOT shopHref: `shopHref`'s rule exists because storefront
+    // paths are rewritten under /shop, and `/account/password` is on
+    // `isShared()` in src/proxy.ts precisely so it is not.
+    href: "/account/password",
+  },
+  { key: "sep-password", separator: true },
   ...(supplierEmail
     ? ([
         {
