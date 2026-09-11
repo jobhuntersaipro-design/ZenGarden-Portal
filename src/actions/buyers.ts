@@ -24,6 +24,7 @@ const buyerPatchSchema = z.object({
   phone: emptyToNull,
   address: emptyToNull,
   paymentTerms: emptyToNull,
+  remark: emptyToNull,
 });
 
 export type BuyerPatch = z.input<typeof buyerPatchSchema>;

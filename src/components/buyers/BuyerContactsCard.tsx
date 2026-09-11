@@ -34,6 +34,8 @@ export function BuyerContactsCard({
   const [open, setOpen] = useState(false);
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
+  const [username, setUsername] = useState("");
+  const [phone, setPhone] = useState("");
   const [busy, setBusy] = useState<string | null>(null);
 
   const run = async (key: string, fn: () => Promise<{ success: boolean; error?: string }>) => {
@@ -139,12 +141,14 @@ export function BuyerContactsCard({
             event.preventDefault();
             startTransition(async () => {
               const ok = await run("invite", () =>
-                inviteBuyerContact({ buyerId, name, email }),
+                inviteBuyerContact({ buyerId, name, email, username, phone }),
               );
               if (ok) {
                 toast.success("Invite sent.");
                 setName("");
                 setEmail("");
+                setUsername("");
+                setPhone("");
                 setOpen(false);
               }
             });
@@ -162,6 +166,18 @@ export function BuyerContactsCard({
             placeholder="name@buyer.com"
             value={email}
             onChange={(event) => setEmail(event.target.value)}
+          />
+          <Input
+            aria-label="Contact username"
+            placeholder="siti.ops"
+            value={username}
+            onChange={(event) => setUsername(event.target.value)}
+          />
+          <Input
+            aria-label="Contact phone"
+            placeholder="+60 12-345 6789"
+            value={phone}
+            onChange={(event) => setPhone(event.target.value)}
           />
           <div className="flex items-center gap-xs">
             <Button type="submit" pending={busy === "invite"}>

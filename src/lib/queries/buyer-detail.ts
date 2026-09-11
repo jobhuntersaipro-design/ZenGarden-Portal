@@ -21,6 +21,7 @@ export type BuyerDetail = {
     phone: string | null;
     address: string | null;
     paymentTerms: string | null;
+    remark: string | null;
     since: string | null;
   };
   rank: number;
@@ -67,6 +68,7 @@ export async function loadBuyer(
       phone: true,
       address: true,
       paymentTerms: true,
+      remark: true,
     },
   });
   if (!buyer) return null;

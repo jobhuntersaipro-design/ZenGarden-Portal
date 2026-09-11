@@ -34,9 +34,8 @@ vi.mock("@/emails/TemporaryPassword", () => ({
   temporaryPasswordSubject: () => "Your temporary password",
 }));
 
-const { inviteBuyerContact, resendClientInvite, setClientAccess } = await import(
-  "@/actions/clients"
-);
+const { inviteBuyerContact, resendClientInvite, setClientAccess, updateBuyerContact } =
+  await import("@/actions/clients");
 
 beforeEach(() => {
   vi.resetAllMocks();
@@ -48,7 +47,13 @@ beforeEach(() => {
   sendEmail.mockResolvedValue({ sent: true });
 });
 
-const input = { buyerId: "buyer-1", name: "Siti", email: "siti@buyer.com" };
+const input = {
+  buyerId: "buyer-1",
+  name: "Siti",
+  email: "siti@buyer.com",
+  username: "Siti.Ops",
+  phone: " +60 12-345 6789 ",
+};
 
 describe("inviteBuyerContact", () => {
   it("writes CLIENT *with* the buyer — the CHECK refuses one without", async () => {
@@ -85,6 +90,7 @@ describe("inviteBuyerContact", () => {
       new Prisma.PrismaClientKnownRequestError("dup", {
         code: "P2002",
         clientVersion: "7",
+        meta: { target: ["email"] },
       }),
     );
     const result = await inviteBuyerContact(input);
@@ -106,6 +112,20 @@ describe("inviteBuyerContact", () => {
     requireSuperAdmin.mockRejectedValueOnce(new UnauthorizedError("nope"));
     const result = await inviteBuyerContact(input);
     expect(result).toEqual({ success: false, error: "nope" });
+    expect(userCreate).not.toHaveBeenCalled();
+  });
+
+  it("writes the handle lower-cased and the phone trimmed", async () => {
+    await inviteBuyerContact(input);
+    const data = userCreate.mock.calls[0][0].data;
+    expect(data.username).toBe("siti.ops");
+    expect(data.phone).toBe("+60 12-345 6789");
+  });
+
+  it("refuses a contact with no handle", async () => {
+    const { username, ...rest } = input;
+    const result = await inviteBuyerContact(rest as typeof input);
+    expect(result.success).toBe(false);
     expect(userCreate).not.toHaveBeenCalled();
   });
 });
@@ -145,5 +165,53 @@ describe("setClientAccess", () => {
     const data = userUpdate.mock.calls[0][0].data;
     expect(data.disabledAt).toBeNull();
     expect(data).not.toHaveProperty("sessionVersion");
+  });
+});
+
+describe("updateBuyerContact", () => {
+  const patch = { name: "Siti Nur", username: "siti.nur", phone: null };
+
+  beforeEach(() => {
+    userFindUnique.mockResolvedValue({ id: "c1", role: "CLIENT", buyerId: "buyer-1" });
+  });
+
+  it("refuses a member", async () => {
+    const { UnauthorizedError } = await import("@/lib/auth-guards");
+    requireSuperAdmin.mockRejectedValue(new UnauthorizedError("Super admin only."));
+    expect(await updateBuyerContact("c1", patch)).toEqual({
+      success: false,
+      error: "Super admin only.",
+    });
+    expect(userUpdate).not.toHaveBeenCalled();
+  });
+
+  it("refuses a row that is not a client — an ops user is not editable here", async () => {
+    userFindUnique.mockResolvedValue({ id: "u1", role: "MEMBER", buyerId: null });
+    expect(await updateBuyerContact("u1", patch)).toEqual({
+      success: false,
+      error: "That contact is gone.",
+    });
+    expect(userUpdate).not.toHaveBeenCalled();
+  });
+
+  it("writes only name, username and phone — never the email or the role", async () => {
+    await updateBuyerContact("c1", patch);
+    const data = userUpdate.mock.calls[0][0].data;
+    expect(Object.keys(data).sort()).toEqual(["name", "phone", "username"]);
+  });
+
+  it("names a duplicate handle", async () => {
+    const { Prisma } = await import("@/generated/prisma/client");
+    userUpdate.mockRejectedValue(
+      new Prisma.PrismaClientKnownRequestError("unique", {
+        code: "P2002",
+        clientVersion: "7",
+        meta: { target: ["username"] },
+      }),
+    );
+    expect(await updateBuyerContact("c1", patch)).toEqual({
+      success: false,
+      error: "That username is taken.",
+    });
   });
 });

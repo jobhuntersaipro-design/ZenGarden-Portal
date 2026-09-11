@@ -23,6 +23,7 @@ export type BuyerDetails = {
   phone: string | null;
   address: string | null;
   paymentTerms: string | null;
+  remark: string | null;
   since: string | null;
 };
 
@@ -54,6 +55,11 @@ export function BuyerDetailsCard({
     phone: buyer.phone,
     address: buyer.address,
     paymentTerms: buyer.paymentTerms,
+    // No input for this yet — that's Task 4's remark-editing UI — but the
+    // value still has to round-trip through the patch. Defaulting it to
+    // `null` here would silently erase an existing remark on every unrelated
+    // edit this sheet saves.
+    remark: buyer.remark,
     ...(canRename ? { name: buyer.name } : {}),
   });
   const [pending, setPending] = useState(false);
