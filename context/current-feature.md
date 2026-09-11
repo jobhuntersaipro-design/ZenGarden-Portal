@@ -2,6 +2,16 @@
 
 ## Status
 
+**Phase 24 — organisation settings — landed, all four tasks done**
+(`feature/org-settings`, spec `docs/specs/24-org-settings.md`, plan
+`docs/specs/plans/2026-09-11-org-settings.md`). Built on top of Phase 23's
+merge into `main`. A super admin now edits the shop's supplier name, email,
+phone and address from a **Contact details** card on `/admin`, and the change
+reaches the public shop footer and account menu with no redeploy — the four
+`SUPPLIER_*` env vars become a per-field fallback rather than the only source.
+See History for what was measured. **Not yet merged to `main`** — the branch
+is intact pending the user's own decision to merge and delete it.
+
 **Phase 17 — shop shell and guest browsing — landed** (`feature/shop-shell`).
 Plan: `docs/specs/design/shop/17-shop-shell.md`; the six-phase storefront plan
 (17–22) and its decisions are indexed in `docs/specs/design/shop/00-overview.md`,
@@ -90,6 +100,115 @@ user's own decision to merge and delete it.
   the brand/size/variant shape. Separate work, raised after the import.
 
 ## History
+- 2026-09-11: Phase 24 — organisation settings — built and verified across
+  four tasks on `feature/org-settings` (spec `docs/specs/24-org-settings.md`,
+  plan `docs/specs/plans/2026-09-11-org-settings.md`). The supplier contact
+  details the public shop footer and account menu print — name, email, phone,
+  address — move out of the four `SUPPLIER_*` env vars and into a database row
+  a super admin edits from `/admin`, falling back **per field** to the env var
+  where a field is unset.
+  **The row really is a singleton, seen to be refused rather than assumed.**
+  `OrgSettings` carries an `id` defaulting to `"singleton"` and a CHECK
+  constraint naming it. Task 1 proved it by writing the first row, then
+  attempting a second with `id: "other"`: Postgres refused it with **SQLSTATE
+  23514**, the message naming the constraint exactly —
+  `new row for relation "OrgSettings" violates check constraint
+  "OrgSettings_singleton"`. The table was left empty afterward for Task 2's
+  tests and Task 3's browser checks to start clean.
+  **The fallback resolves per field, not per row, and this was checked two
+  ways rather than argued once.** A per-row rule — "is there a settings row?
+  then use it, else use env" — would blank a phone still living in an env var
+  the moment someone saved only the email, which is exactly the failure the
+  spec's acceptance criterion 2 names. First, the reviewer ran the
+  counterfactual deliberately: rewriting `loadSupplierDetails` as a per-row
+  ternary made the suite fail on the stored-email/env-phone case with
+  `expected null to be '+60 3-0000 0000'`, and reverting made it pass again —
+  the same counterfactual run against `revalidatePath` (browser-relative paths
+  in place of `shopPath`'s resolved ones) also failed as expected. Second, and
+  the one that matters more because it is not a unit test asserting its own
+  mock: Task 3 exported `SUPPLIER_PHONE="+60 3-0000 0000"`, saved only the
+  email (`orders@lovinghands.my`) from `/admin`, and loaded the shop footer as
+  a guest. Both values rendered **in the same paint** — the stored email next
+  to the env-sourced phone — while `prisma.orgSettings.findUnique` confirmed
+  `supplierPhone: null` in the database throughout. One field came from the
+  row, its sibling from the environment, on one request.
+  **A change reaches the public shop with no redeploy and no restart — the
+  reason the phase exists — read from a real link, not from visible text.**
+  With the same `npm run dev` process running the whole time (no restart, no
+  build), Task 3 saved an email in `/admin`, then signed in as a client on
+  `shop.localhost`, opened the account menu, and read the "Talk to our team"
+  row's actual `href` via `browser_evaluate`: **`mailto:orders@lovinghands.my`**
+  — the value just saved, not a stale build artefact. The guest-facing footer
+  showed the same value on a plain page load, no session at all.
+  **`ShopFooter` stopped reading `env` directly.** It now takes a
+  `supplier: SupplierDetails` prop; `src/app/(storefront)/shop/layout.tsx` is
+  the one place that resolves `loadSupplierDetails()` and passes the result to
+  both `ShopFooter` and `ShopHeader`'s account menu, so the two can never read
+  two different snapshots of the same values in one request. A grep after the
+  branch's three feature commits found exactly one remaining
+  `env.SUPPLIER_*` read outside `env.ts`'s own schema and the generated Prisma
+  client's doc comments: `src/lib/org-settings.ts`, the resolver itself. No
+  component reads the env var directly anywhere else.
+  **A recorded deviation, not an oversight.** The card sits on `/admin` under
+  that page's existing `h1` ("Users") and eyebrow ("Access"), neither of which
+  describes it, with its own `h2` ("Contact details") and caption ("These
+  appear on your public shop."). The alternative — a second admin route for
+  four fields — is more chrome than they earn today. `/admin/settings` earns
+  its own page **when a third kind of setting arrives**; until then this is
+  the stated trade, not a thing nobody noticed.
+  **Two environment gotchas Task 3 hit, diagnosed, and are worth not
+  re-deriving.** First, a `shop.localhost` navigation came back redirected to
+  the portal host even after signing out on `localhost` — indistinguishable
+  from the 2026-09-10 Chrome/`shop.localhost` connection-refusal bug from the
+  outside, but a different cause: `page.context().cookies()` showed
+  `shop.localhost` was still carrying its own `authjs.session-token`, a
+  leftover from earlier phases' cross-host verification sitting in the shared
+  persistent browser profile — cookies are genuinely host-only, so signing out
+  on `localhost` cannot touch it. Fixed with `context.clearCookies()` plus
+  re-adding the non-`shop.localhost` cookies; a guest then reached the shop
+  cleanly. Second, typing an invalid email (`nope`) into the card's `Email`
+  field and clicking Save produced **no `POST` at all** in the server log —
+  the `<Input type="email">`'s native HTML5 validation intercepted the
+  submission before React's `onSubmit` ever ran, confirmed via
+  `el.validity.valid === false` and its `validationMessage`. The typed value
+  stayed in the field and the database row was untouched (`updatedAt`
+  unchanged). The server-side Zod rejection (`supplierPatchSchema`, message
+  "Enter a valid email address.") is real and independently verified by
+  calling it directly, but is effectively unreachable through a normal browser
+  session — the native check always intercepts first.
+  **Task 4's own cleanup, counted before and after.** `OrgSettings` held one
+  row left over from Task 3's numbered checks — `supplierEmail: null`,
+  `supplierPhone: null`, `supplierAddress` set to a three-line test address,
+  `supplierName: null` — test values (`orders@lovinghands.my` had already been
+  cleared in check 6; the address was the last successful save) rather than
+  the real business's details. Deleted rather than kept: a fresh clone's first
+  `npm run dev` should show the env fallback or "Not set", not a stray test
+  address nobody entered on purpose. `orgSettings.count()` **1 → 0**.
+  `aisha@lovinghandsportal.com`, promoted `MEMBER` → `SUPER_ADMIN` in Task 3
+  for its own browser checks, was reverted and **read back** rather than
+  trusted on the update's return value: `SUPER_ADMIN` → `MEMBER`, confirmed.
+  `user.count()` held at **2** throughout (both super admins, no throwaway
+  account survived — Task 3 already deleted its own two), `user.count({role:
+  'CLIENT'})` **0** throughout, `buyer.count()` **11** throughout, matching the
+  documented baseline. `git status` was clean before this task's own doc edits
+  and shows only `.env.example` and `docs/specs/SETUP-CHECKLIST.md` changed
+  afterward; `.env.local` untouched (`git diff --stat -- .env.local` empty).
+  **The full sweep, six combinations, all clean.** `/admin` and the shop home
+  at 390/768/1440 all measured `document.documentElement.scrollWidth ===
+  window.innerWidth` — no exceptions. At 390, every interactive element inside
+  the Contact details card cleared the 44px floor: the three text inputs and
+  the address textarea were 44px/44px/44px/90px tall, Save was 52px tall — no
+  sub-44px control in the new card.
+  **Verification: 710/710 tests, `tsc`, lint (2 pre-existing warnings in files
+  this branch never touched, 0 errors) and `build` all clean.**
+  **Not verified:** anything on production — this branch has never been
+  deployed and no production database was read or written. Phase 19's
+  purchase-order PDF, which the spec says will also print these fields, is not
+  built yet, so that read site does not exist to check. Concurrent saves to
+  the singleton row (two super admins racing a save) were not exercised beyond
+  what the `upsert` shape implies. The env-var path itself (a deployment with
+  no `OrgSettings` row at all) was exercised locally by Task 3's `SUPPLIER_PHONE`
+  check, not against a real preview deployment.
 - 2026-09-11: Phase 23 — customer profiles — built and verified across six
   tasks on `feature/customer-profiles` (spec `docs/specs/23-customer-profiles.md`,
   plan `docs/specs/plans/2026-09-11-customer-profiles.md`). **Not merged —

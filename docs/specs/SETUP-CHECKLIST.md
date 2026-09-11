@@ -233,6 +233,16 @@ prints them. An unset variable omits its row.
 All four are left blank in `.env.example` and are production-only — you never
 need to set them locally.
 
+**Since Phase 24, these four are fallback only.** A super admin can leave all
+four blank here and instead fill in **Contact details** on `/admin`, after the
+first deploy — that screen writes to the `OrgSettings` table and the shop reads
+it with no redeploy and no restart. The resolver falls back **per field**, not
+per row: saving only the email from `/admin` leaves a phone number still set
+here showing on the shop untouched. The env vars are not being retired — a
+preview deployment and a fresh local clone have no `OrgSettings` row yet, so
+they are exactly what those environments show until someone fills in the
+admin screen.
+
 ## 7. Local first run (after Phase 01 is merged)
 
 ```
