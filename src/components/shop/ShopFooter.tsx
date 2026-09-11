@@ -61,6 +61,13 @@ export function ShopFooter({
 
         <div className="flex flex-col gap-xs">
           <p className="text-[length:var(--text-caption)] font-semibold text-ink">Contact</p>
+          {/* First, so the column reads as an address block: who you are
+              contacting, then how. Omitted when unset like every row below. */}
+          {supplier.name ? (
+            <p className="text-[length:var(--text-caption)] text-ink-secondary">
+              {supplier.name}
+            </p>
+          ) : null}
           {supplier.phone ? (
             <p className="text-[length:var(--text-caption)] text-ink-secondary">
               {supplier.phone}

@@ -156,6 +156,20 @@ user's own decision to merge and delete it.
   four fields — is more chrome than they earn today. `/admin/settings` earns
   its own page **when a third kind of setting arrives**; until then this is
   the stated trade, not a thing nobody noticed.
+  **The final review caught a caption that was not true, and it was fixed
+  rather than shipped.** The card says "These appear on your public shop", and
+  `supplierName` appeared nowhere: `SUPPLIER_NAME` has been declared in
+  `env.ts` since Phase 17 and read by nothing, so the new card inherited a
+  field that edited a value with no reader. It is now the first row of the
+  footer's contact column — name, then phone, then email, then address, which
+  is how an address block reads — omitted when unset like every row beside it.
+  Verified on the wire rather than by eye: with `SUPPLIER_NAME` exported and no
+  database row, the rendered footer carried `Kim Brothers Sdn Bhd`; with
+  `supplierName: "STORED NAME WINS"` in the row, it carried that instead **and
+  still carried the env phone beside it**, so the per-field fallback holds for
+  the new field too. `SETUP-CHECKLIST.md`'s line for the key was corrected in
+  the same pass — it claimed the name "displays alone in the footer and as the
+  link text in the account menu", and neither half had ever been true.
   **Two environment gotchas Task 3 hit, diagnosed, and are worth not
   re-deriving.** First, a `shop.localhost` navigation came back redirected to
   the portal host even after signing out on `localhost` — indistinguishable
