@@ -12,6 +12,7 @@
     "db:deploy": "prisma migrate deploy",
     "db:seed": "tsx --env-file=.env.local prisma/seed.ts",
     "db:studio": "prisma studio",
+    "env:preview": "bash scripts/dev/wire-preview-env.sh",
     "test:e2e": "playwright test"
   },
   "dependencies": {

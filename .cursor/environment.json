@@ -4,13 +4,9 @@
   "start": "bash scripts/dev/cloud-agent-start.sh",
   "terminals": [
     {
-      "name": "neon-proxy",
-      "command": "node scripts/dev/neon-local-proxy.mjs"
-    },
-    {
       "name": "dev",
-      "command": "NEON_LOCAL=1 NODE_OPTIONS=\"--import ./scripts/dev/neon-local-preload.mjs\" npm run dev"
+      "command": "npm run dev"
     }
   ],
-  "ports": [3000, 5433]
+  "ports": [3000]
 }
