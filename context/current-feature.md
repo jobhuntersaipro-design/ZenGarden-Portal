@@ -18,6 +18,17 @@ Also outstanding from the catalog import: enter the 5 nested-sub-table blocks
 by hand, clear the 2 drafts in the review queue, and delete one of the duplicate
 `SVPPPO26090009` orders once the right buyer name is settled.
 
+**Phase 23 — customer profiles — landed** (`feature/customer-profiles`,
+6 tasks, spec `docs/specs/23-customer-profiles.md`, plan
+`docs/specs/plans/2026-09-11-customer-profiles.md`). Independent of the 18–22
+storefront sequence above — it depends on Phase 15 (the CLIENT role) and
+Phase 07 (buyer detail), not on the shop phases. Ops can now create a customer
+— company, contact, an internal remark, and an optional shop login — from
+`/buyers/new` in one screen, edit that remark and its contacts afterward, and a
+customer can change their shop password more than once. See History for what
+was measured. **Not yet merged to `main`** — the branch is intact pending the
+user's own decision to merge and delete it.
+
 ## Goals — storefront
 
 - A buyer's own staff sign in on their own host and see only their own company,
@@ -79,6 +90,124 @@ by hand, clear the 2 drafts in the review queue, and delete one of the duplicate
   the brand/size/variant shape. Separate work, raised after the import.
 
 ## History
+- 2026-09-11: Phase 23 — customer profiles — built and verified across six
+  tasks on `feature/customer-profiles` (spec `docs/specs/23-customer-profiles.md`,
+  plan `docs/specs/plans/2026-09-11-customer-profiles.md`). **Not merged —
+  stopped for the user's own review**, per the plan's own final step. Three
+  columns (`Buyer.remark`, `User.username`, `User.phone`) in one migration,
+  `20260911090000_customer_profiles`; **`username` is a display handle shown in
+  ops and, from Phase 21, on the customer's own settings screen, and is never a
+  credential** — nothing in the sign-in path looks it up, pinned by a test.
+  `/buyers/new` creates a customer — company, contact, an internal remark and
+  an optional shop login — in one screen and one action; the remark and a
+  buyer's contacts can be edited afterward; a customer can change their shop
+  password more than once, closing the loop the Phase 15 invitation email
+  opens.
+  **The leak assertion, and it was seen to fail before it was trusted to
+  pass.** `Buyer.remark` is internal and a shop page reads a `Buyer` in exactly
+  one place — `loadShopViewer` (`src/lib/shop-viewer.ts:24`), which supplies
+  the company name to the shop header and account menu. `notifyOps` and
+  `loadWebOrderForReview` look like the same kind of read and are not: the
+  first composes an email to ops staff, the second feeds the ops review
+  screen, which already selects `notes` on purpose — neither renders to a
+  customer, so neither got an assertion. `shop-viewer.test.ts` now asserts
+  `select.buyer` equals `{ select: { name: true } }` by equality, not subset,
+  so widening it later has to be a deliberate edit to that one line.
+  **Confirmed to actually catch a leak, not just to exist**: with the test
+  passing, `remark: true` was added to the shop-facing `select` — the test
+  failed, printing the added key in the diff — then `git checkout --
+  src/lib/shop-viewer.ts` reverted it and the same run passed again.
+  **A defect the browser found that the unit tests passed over.**
+  `uniqueMessage` read `meta.target` for a Postgres unique-violation message,
+  but Prisma 7's driver adapter emits
+  `meta.driverAdapterError.cause.constraint.fields` (with
+  `cause.originalMessage` naming the constraint, e.g. `Buyer_name_key`) — a
+  shape the original unit tests never saw, because they hand-built the flat
+  `{ target: [...] }` object their own mocks expected. Every real duplicate
+  therefore fell through to the generic "Something about that customer is
+  already in use." Reproduced against a real P2002 on the development
+  database and fixed to read the driver-adapter shape (falling back to the
+  flat one for any caller Prisma didn't route through the adapter); all three
+  collisions — `Buyer_name_key`, `User_username_key`, `User_email_key` — now
+  return their own message, verified live in a browser as "Another customer
+  already has that name.", "That username is taken." and "That email address
+  is already in use." respectively.
+  **The second latent defect: a partial patch could not be saved at all.**
+  `buyerPatchSchema`'s `emptyToNull` fields (contactName, email, phone,
+  address, paymentTerms, remark) were nullable but not optional, so a patch
+  naming only `{ remark: "…" }` failed validation before ever reaching
+  `updateBuyer` — every one-field edit on the buyer details card would have
+  been rejected. The shared `emptyToNull` builder was made `.optional()`, and
+  the fix was verified rather than trusted on the report alone: an omitted key
+  is absent from `parsed.data` entirely (`hasOwnProperty` false), so
+  `updateBuyer`'s spread never sends it to Prisma and a partial patch touches
+  only the fields it names — the same data-loss class the uniqueMessage
+  investigation was already watching for, checked and ruled safe.
+  **The password loop was driven end to end and the stale password's failure
+  was read from the wire.** A customer invited from `/buyers/new`, signed in
+  with the temporary password, was forced to `/account/password`, changed it,
+  and the *old* password's next sign-in attempt did not merely toast an
+  error — `POST /api/auth/callback/credentials` itself returned 200 with
+  `error=CredentialsSignin&code=credentials` in the body, read directly rather
+  than inferred from the UI. The new password then signed in cleanly from the
+  shop host's own account menu, which now carries a working "Change password"
+  row where Phase 15 left only *My orders*, *Talk to our team* and *Sign out*.
+  **The 2026-09-10 `shop.localhost` Chrome issue recurred**, in this same
+  checkout, across more than one of the six tasks: Chrome refused every
+  connection to `shop.localhost` while `curl` on the same machine reached it
+  instantly. The same recorded workaround was used again — a shell-exported
+  `SHOP_HOST`/`SHOP_URL` pointing the browser at `foo.localhost` against the
+  identical running server, confirmed behaviourally identical by `curl` first,
+  no file changed, nothing committed.
+  **The overflow sweep — nine combinations, all clean.** `/buyers`,
+  `/buyers/new` and a buyer detail page carrying a remark and two contacts (set
+  up directly against the development database for the sweep, since no
+  existing buyer had either, and removed afterward) were each measured at
+  390/768/1440: `document.documentElement.scrollWidth === window.innerWidth`
+  on all nine. At 390 the only sub-44px interactive elements were the
+  already-accepted classes — the `SkipLink` (visually off-canvas until
+  keyboard focus, not a touch target at rest) and plain-text row links (buyer
+  names, PO numbers) inside `DataTable` card mode, the same category named
+  "product names, footer rows" in the 2026-09-10 entry. **One new
+  finding, not on that accepted list**: `/buyers/new`'s "Give them a shop
+  login" control is the shared shadcn `Switch` (`src/components/ui/switch.tsx`,
+  already used by `ProductForm`, `ProductSheet` and `UserDrawer`) at 32×18px
+  visually — its `after:-inset-x-3 after:-inset-y-2` hit-area padding brings
+  the effective target to roughly 56×34px, still short of the 44px floor this
+  spec's own global constraints name. It predates this phase and was not
+  introduced by anything in these six tasks' diffs, so it was left unfixed —
+  Task 6's own file scope is `shop-viewer.test.ts` and this file — and is
+  flagged here rather than silently folded into the accepted list, per the
+  brief's own rule that a new one is a defect to record as found, not to wave
+  through.
+  **Four deferred minors, carried forward rather than fixed:** an unused
+  `username` in a destructure lint-warns in **two** files, not one —
+  `src/actions/clients.test.ts:145` and `src/lib/validation/clients.test.ts:57`
+  — both from the plan's own verbatim test code (warns, does not fail);
+  `uniqueMessage`'s generic fallback still stands for a P2002 that carries
+  neither shape; `/buyers/new`'s submit button keeps "Create customer" while
+  pending rather than switching to "Creating…" as `ProductForm` does; and
+  while a shop contact is being edited, its status text and Resend/Disable
+  buttons are hidden along with the caption, not just the caption alone.
+  **Verification: 688/688 tests (687 plus the one leak assertion), `tsc`,
+  lint (2 pre-existing warnings, 0 errors) and `build` all clean.**
+  **Cleanup, counted before and after**: `buyer.count()` 11 → 11,
+  `user.count()` 2 → 2, `user.count({ role: 'CLIENT' })` 0 throughout,
+  `webOrder.count()` 0 throughout — all five earlier tasks' own test data was
+  already gone when this task started, verified independently rather than
+  trusted. `aisha@lovinghandsportal.com`, promoted `MEMBER` → `SUPER_ADMIN` in
+  Task 3 for its own browser checks, was read back as `SUPER_ADMIN` and
+  reverted to `MEMBER`, confirmed by re-reading the row. This task's own sweep
+  fixture (Northwind Traders' remark, two `CLIENT` contacts) and the one
+  `LoginAttempt` row its own sign-in produced were all removed, `loginAttempts`
+  returning to the pre-existing 52.
+  **Not verified:** anything on production — this branch has never been
+  deployed and no production database was touched. The ops upload → extract →
+  confirm write path is untouched by this branch's files and was not
+  exercised. Phase 21 (`docs/specs/design/shop/21-customer-settings.md`), the
+  customer's own settings screen, stays out of scope here as the spec says —
+  the password-change row added to the shop account menu is the one piece of
+  that screen this phase needed.
 - 2026-09-10: Phase 17 — shop shell and guest browsing — built, verified end to
   end and merged (`feature/shop-shell`, spec `docs/specs/design/shop/17-shop-shell.md`).
   **The shop is public now.** A guest reaches `/`, `/products`, a product page

@@ -62,4 +62,21 @@ describe("loadShopViewer", () => {
     const viewer = await loadShopViewer();
     expect(viewer).toEqual(GUEST);
   });
+
+  it("asks the buyer for its name and nothing else — Buyer.remark is ops-only", async () => {
+    getSessionUser.mockResolvedValue({ id: "u1", role: "CLIENT" });
+    userFindUnique.mockResolvedValue({
+      name: "Aisha Rahman",
+      email: "aisha@acme.test",
+      image: null,
+      buyerId: "b1",
+      buyer: { name: "Acme Industrial Sdn Bhd" },
+    });
+    await loadShopViewer();
+    // An equality, not a subset: this is the only Buyer read on a shop page,
+    // so widening it has to be a deliberate edit to this line.
+    expect(userFindUnique.mock.calls[0][0].select.buyer).toEqual({
+      select: { name: true },
+    });
+  });
 });
