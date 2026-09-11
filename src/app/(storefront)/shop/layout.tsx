@@ -12,6 +12,7 @@ import { ShopHeader } from "@/components/shop/ShopHeader";
 import { ShopUtilityBar } from "@/components/shop/ShopUtilityBar";
 import { ShopViewerProvider } from "@/components/shop/ShopViewer";
 import { env } from "@/lib/env";
+import { loadSupplierDetails } from "@/lib/org-settings";
 import { cartSummary } from "@/lib/queries/cart";
 import { listShopCategories } from "@/lib/queries/shop-catalogue";
 import { loadShopViewer } from "@/lib/shop-viewer";
@@ -49,9 +50,10 @@ export default async function StorefrontLayout({
   // loops against the same host (measured 2026-09-09).
   if (viewer === "staff") redirect(env.APP_URL);
 
-  const [categories, summary] = await Promise.all([
+  const [categories, summary, supplier] = await Promise.all([
     listShopCategories(),
     viewer.kind === "client" ? cartSummary(viewer.id) : Promise.resolve(null),
+    loadSupplierDetails(),
   ]);
 
   return (
@@ -68,7 +70,7 @@ export default async function StorefrontLayout({
           <ShopHeader
             categories={categories}
             summary={summary}
-            supplierEmail={env.SUPPLIER_EMAIL ?? null}
+            supplierEmail={supplier.email}
           />
           <NavProgressProvider>
             {/* pb-section, not pb-xxl: MobileCartBar is taller than the old
@@ -81,7 +83,7 @@ export default async function StorefrontLayout({
               {children}
             </main>
           </NavProgressProvider>
-          <ShopFooter categories={categories} />
+          <ShopFooter categories={categories} supplier={supplier} />
           <MobileCartBar />
           {/* Renders nothing; moves a guest's localStorage cart into their
               account the moment they sign in. */}

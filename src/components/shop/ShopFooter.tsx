@@ -1,17 +1,25 @@
 import Link from "next/link";
 import { Wordmark } from "@/components/portal/Wordmark";
-import { env } from "@/lib/env";
+import type { SupplierDetails } from "@/lib/org-settings";
 import { shopHref } from "@/lib/shop-routes";
 
 const FOOTER_LINK =
   "text-[length:var(--text-caption)] text-ink-secondary hover:text-ink focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-focus";
 
 /**
- * A server component — it reads `SUPPLIER_*` from `env` directly, unlike
- * `ShopAccountMenu`'s "Talk to our team" row, which is client and takes
- * `supplierEmail` as a prop from `ShopHeader` for exactly that reason.
+ * A server component. `supplier` is resolved once by the shop layout
+ * (`loadSupplierDetails`, per field: the database row, else the matching
+ * `SUPPLIER_*` env var, else null) and passed down here and to `ShopHeader`'s
+ * "Talk to our team" row, so both read the same figures a super admin's
+ * `/admin` edit can change with no redeploy.
  */
-export function ShopFooter({ categories }: { categories: string[] }) {
+export function ShopFooter({
+  categories,
+  supplier,
+}: {
+  categories: string[];
+  supplier: SupplierDetails;
+}) {
   const shopCategories = categories.slice(0, 3);
 
   return (
@@ -53,19 +61,19 @@ export function ShopFooter({ categories }: { categories: string[] }) {
 
         <div className="flex flex-col gap-xs">
           <p className="text-[length:var(--text-caption)] font-semibold text-ink">Contact</p>
-          {env.SUPPLIER_PHONE ? (
+          {supplier.phone ? (
             <p className="text-[length:var(--text-caption)] text-ink-secondary">
-              {env.SUPPLIER_PHONE}
+              {supplier.phone}
             </p>
           ) : null}
-          {env.SUPPLIER_EMAIL ? (
+          {supplier.email ? (
             <p className="text-[length:var(--text-caption)] text-ink-secondary">
-              {env.SUPPLIER_EMAIL}
+              {supplier.email}
             </p>
           ) : null}
-          {env.SUPPLIER_ADDRESS ? (
+          {supplier.address ? (
             <p className="whitespace-pre-line text-[length:var(--text-caption)] text-ink-secondary">
-              {env.SUPPLIER_ADDRESS}
+              {supplier.address}
             </p>
           ) : null}
         </div>

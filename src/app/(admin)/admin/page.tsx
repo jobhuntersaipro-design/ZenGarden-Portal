@@ -1,6 +1,8 @@
 import type { Metadata } from "next";
+import { ContactDetailsCard } from "@/components/admin/ContactDetailsCard";
 import { PendingRequests } from "@/components/admin/PendingRequests";
 import { UsersTable } from "@/components/admin/UsersTable";
+import { loadSupplierSettings } from "@/lib/org-settings";
 import {
   USER_SORT_KEYS,
   listPendingRequests,
@@ -25,7 +27,11 @@ export default async function AdminPage({
   searchParams: Promise<SearchParams>;
 }) {
   const params = await searchParams;
-  const [users, requests] = await Promise.all([listUsers(), listPendingRequests()]);
+  const [users, requests, settings] = await Promise.all([
+    listUsers(),
+    listPendingRequests(),
+    loadSupplierSettings(),
+  ]);
 
   const statusParam = firstParam(params, "status") as UserStatusFilter;
   const status = STATUSES.includes(statusParam) ? statusParam : "all";
@@ -52,6 +58,8 @@ export default async function AdminPage({
         status={status}
         openUserId={openUserId}
       />
+
+      <ContactDetailsCard settings={settings} />
     </>
   );
 }
