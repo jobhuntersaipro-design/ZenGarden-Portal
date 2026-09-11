@@ -50,6 +50,7 @@ model User {
   productPrices      ProductPrice[]
   webOrdersPlaced    WebOrder[]           @relation("webOrdersPlaced")
   webOrdersReviewed  WebOrder[]           @relation("webOrdersReviewed")
+  orgSettingsUpdates OrgSettings[]        @relation("orgSettingsUpdatedBy")
   buyer              Buyer?               @relation(fields: [buyerId], references: [id])
 
   @@index([buyerId])
@@ -125,6 +126,20 @@ enum AccessRequestStatus {
   PENDING
   APPROVED
   DECLINED
+}
+
+/// Exactly one row, id "singleton" — a CHECK constraint enforces it. Org-wide
+/// settings a super admin owns, read through src/lib/org-settings.ts with a
+/// per-field fallback to the SUPPLIER_* environment variables.
+model OrgSettings {
+  id              String   @id @default("singleton")
+  supplierName    String?
+  supplierEmail   String?
+  supplierPhone   String?
+  supplierAddress String?
+  updatedAt       DateTime @updatedAt
+  updatedById     String?
+  updatedBy       User?    @relation("orgSettingsUpdatedBy", fields: [updatedById], references: [id], onDelete: SetNull)
 }
 
 model Buyer {
