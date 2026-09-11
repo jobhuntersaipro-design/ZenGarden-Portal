@@ -10,6 +10,7 @@ import {
   inviteBuyerContact,
   resendClientInvite,
   setClientAccess,
+  updateBuyerContact,
 } from "@/actions/clients";
 import type { BuyerContact } from "@/lib/queries/clients";
 
@@ -37,6 +38,8 @@ export function BuyerContactsCard({
   const [username, setUsername] = useState("");
   const [phone, setPhone] = useState("");
   const [busy, setBusy] = useState<string | null>(null);
+  const [editing, setEditing] = useState<string | null>(null);
+  const [draft, setDraft] = useState({ name: "", username: "", phone: "" });
 
   const run = async (key: string, fn: () => Promise<{ success: boolean; error?: string }>) => {
     setBusy(key);
@@ -85,50 +88,120 @@ export function BuyerContactsCard({
               key={contact.id}
               className="flex flex-wrap items-center gap-xs border-b border-hairline pb-xs last:border-0 last:pb-0"
             >
-              <div className="min-w-0 flex-1">
-                <PersonChip name={contact.name} image={contact.image} />
-                <p
-                  className="truncate text-[length:var(--text-caption)] text-ink-tertiary"
-                  title={contact.email}
-                >
-                  {contact.email}
-                </p>
-              </div>
-              <span className="text-[length:var(--text-caption)] text-ink-secondary">
-                {contact.disabledAt
-                  ? "Disabled"
-                  : contact.invited
-                    ? "Invited"
-                    : "Active"}
-              </span>
-              {canManage ? (
+              {editing === contact.id ? (
+                <div className="flex min-w-0 flex-1 flex-col gap-xxs">
+                  <Input
+                    aria-label="Edit contact name"
+                    value={draft.name}
+                    onChange={(event) =>
+                      setDraft((current) => ({ ...current, name: event.target.value }))
+                    }
+                  />
+                  <Input
+                    aria-label="Edit contact username"
+                    value={draft.username}
+                    onChange={(event) =>
+                      setDraft((current) => ({ ...current, username: event.target.value }))
+                    }
+                  />
+                  <Input
+                    aria-label="Edit contact phone"
+                    value={draft.phone}
+                    onChange={(event) =>
+                      setDraft((current) => ({ ...current, phone: event.target.value }))
+                    }
+                  />
+                </div>
+              ) : (
+                <div className="min-w-0 flex-1">
+                  <PersonChip name={contact.name} image={contact.image} />
+                  <p
+                    className="truncate text-[length:var(--text-caption)] text-ink-tertiary"
+                    title={contact.email}
+                  >
+                    {contact.username ? `${contact.username} · ` : ""}
+                    {contact.email}
+                  </p>
+                  {contact.phone ? (
+                    <p className="truncate text-[length:var(--text-caption)] text-ink-tertiary">
+                      {contact.phone}
+                    </p>
+                  ) : null}
+                </div>
+              )}
+              {editing === contact.id ? (
                 <div className="flex items-center gap-xxs">
                   <Button
-                    variant="secondary"
-                    pending={busy === `resend-${contact.id}`}
+                    pending={busy === `edit-${contact.id}`}
                     onClick={() =>
-                      void run(`resend-${contact.id}`, async () => {
-                        const result = await resendClientInvite(contact.id);
-                        if (result.success) toast.success("Invite sent again.");
+                      void run(`edit-${contact.id}`, async () => {
+                        const result = await updateBuyerContact(contact.id, draft);
+                        if (result.success) {
+                          toast.success("Contact updated.");
+                          setEditing(null);
+                        }
                         return result;
                       })
                     }
                   >
-                    Resend
+                    Save
                   </Button>
-                  <Button
-                    variant="secondary"
-                    pending={busy === `access-${contact.id}`}
-                    onClick={() =>
-                      void run(`access-${contact.id}`, () =>
-                        setClientAccess(contact.id, Boolean(contact.disabledAt)),
-                      )
-                    }
-                  >
-                    {contact.disabledAt ? "Restore" : "Disable"}
+                  <Button variant="secondary" onClick={() => setEditing(null)}>
+                    Cancel
                   </Button>
                 </div>
-              ) : null}
+              ) : (
+                <>
+                  <span className="text-[length:var(--text-caption)] text-ink-secondary">
+                    {contact.disabledAt
+                      ? "Disabled"
+                      : contact.invited
+                        ? "Invited"
+                        : "Active"}
+                  </span>
+                  {canManage ? (
+                    <div className="flex items-center gap-xxs">
+                      <Button
+                        variant="secondary"
+                        pending={busy === `resend-${contact.id}`}
+                        onClick={() =>
+                          void run(`resend-${contact.id}`, async () => {
+                            const result = await resendClientInvite(contact.id);
+                            if (result.success) toast.success("Invite sent again.");
+                            return result;
+                          })
+                        }
+                      >
+                        Resend
+                      </Button>
+                      <Button
+                        variant="secondary"
+                        pending={busy === `access-${contact.id}`}
+                        onClick={() =>
+                          void run(`access-${contact.id}`, () =>
+                            setClientAccess(contact.id, Boolean(contact.disabledAt)),
+                          )
+                        }
+                      >
+                        {contact.disabledAt ? "Restore" : "Disable"}
+                      </Button>
+                      <Button
+                        variant="secondary"
+                        onClick={() => {
+                          setDraft({
+                            name: contact.name,
+                            username: contact.username ?? "",
+                            phone: contact.phone ?? "",
+                          });
+                          setEditing(contact.id);
+                        }}
+                      >
+                        Edit
+                      </Button>
+                    </div>
+                  ) : null}
+                </>
+              )}
             </li>
           ))}
         </ul>
