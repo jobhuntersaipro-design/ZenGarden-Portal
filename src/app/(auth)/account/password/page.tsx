@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import { redirect } from "next/navigation";
+import { Role } from "@/generated/prisma/enums";
 import { getSessionUser } from "@/lib/auth-guards";
 import { AuthCard } from "@/components/auth/AuthCard";
 import { ChangePasswordForm } from "@/components/auth/ChangePasswordForm";
@@ -13,11 +14,13 @@ export default async function ChangePasswordPage() {
   if (!user) redirect("/signin?next=/account/password");
 
   const forced = user.mustChangePassword;
-  // A blanket redirect would ping-pong forever: the portal layout sends a
-  // `mustChangePassword` user *here*, so only the un-forced case may leave.
-  // The forced branch keeps this standalone AuthCard page, which must not
-  // depend on the portal shell.
-  if (!forced) redirect("/settings#password");
+  // A blanket redirect would ping-pong forever for staff: the portal layout
+  // sends a `mustChangePassword` user *here*, so only the un-forced case may
+  // leave. A client may not leave at all — `/settings` is under `(portal)`,
+  // whose layout redirects a CLIENT straight back to the shop host, so
+  // sending them there is a dead end (docs/specs/23-customer-profiles.md §0).
+  const isClient = user.role === Role.CLIENT;
+  if (!forced && !isClient) redirect("/settings#password");
 
   return (
     <AuthCard
