@@ -26,13 +26,19 @@ export const clientSignInUrl = () => `${env.SHOP_URL ?? env.APP_URL}/signin`;
  * Returns whether it went out rather than throwing. The customer is already
  * committed by the time this runs (docs/specs/23-customer-profiles.md §4), and
  * a Resend outage must not read as a failed creation.
+ *
+ * `sendEmail` is documented "Never throws" and reports a failed send as
+ * `{ sent: false }` — a Resend API error, an invalid recipient, or the
+ * placeholder-key case local runs hit — so that is what this reads. The
+ * try/catch is a backstop for if that contract is ever broken, not the
+ * expected path.
  */
 export async function sendInviteEmail(
   contact: { name: string; email: string },
   password: string,
 ): Promise<boolean> {
   try {
-    await sendEmail({
+    const { sent } = await sendEmail({
       to: contact.email,
       subject: temporaryPasswordSubject(),
       react: TemporaryPassword({
@@ -43,7 +49,7 @@ export async function sendInviteEmail(
         signInUrl: clientSignInUrl(),
       }),
     });
-    return true;
+    return sent;
   } catch (cause) {
     console.error("[client-invites] sendInviteEmail", cause);
     return false;

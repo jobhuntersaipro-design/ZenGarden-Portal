@@ -147,6 +147,18 @@ describe("inviteBuyerContact", () => {
     expect(result.success).toBe(false);
     expect(userCreate).not.toHaveBeenCalled();
   });
+
+  // sendEmail is documented "Never throws" — it reports a failed send as
+  // { sent: false }. The contact row is created before the email is sent, so
+  // a failed send must not undo it; this action ignores the send result by
+  // design (see updateBuyerContact's sibling actions), but the row still
+  // has to exist either way.
+  it("still creates the contact when the invite email fails to send", async () => {
+    sendEmail.mockResolvedValue({ sent: false, error: "Domain not verified" });
+    const result = await inviteBuyerContact(input);
+    expect(result.success).toBe(true);
+    expect(userCreate).toHaveBeenCalled();
+  });
 });
 
 describe("resendClientInvite", () => {

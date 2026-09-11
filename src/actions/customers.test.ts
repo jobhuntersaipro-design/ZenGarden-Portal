@@ -106,7 +106,22 @@ describe("createCustomer", () => {
     expect(sendEmail).not.toHaveBeenCalled();
   });
 
+  // sendEmail is documented "Never throws" (src/lib/email.ts) — it reports a
+  // failed send as { sent: false }, not a rejection. This is the case that
+  // actually happens (a Resend API error, an invalid recipient, the
+  // placeholder-key case local runs hit) and the one that matters.
   it("keeps the customer when the email fails — a Resend outage must not lose typing", async () => {
+    sendEmail.mockResolvedValue({ sent: false, error: "Domain not verified" });
+    const result = await createCustomer({ company, contact });
+    expect(result).toEqual({ success: true, data: { buyerId: "buyer-1", invite: "failed" } });
+    expect(buyerCreate).toHaveBeenCalled();
+    expect(userCreate).toHaveBeenCalled();
+  });
+
+  // sendEmail's own contract says it cannot reject, but sendInviteEmail's
+  // try/catch is a backstop for if that promise is ever broken — this proves
+  // the backstop itself, separately from the realistic case above.
+  it("keeps the customer even if sendEmail broke its own contract and threw", async () => {
     sendEmail.mockRejectedValue(new Error("resend is down"));
     const result = await createCustomer({ company, contact });
     expect(result).toEqual({ success: true, data: { buyerId: "buyer-1", invite: "failed" } });
