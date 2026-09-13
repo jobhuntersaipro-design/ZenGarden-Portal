@@ -2,13 +2,31 @@
 
 import { useState, useTransition } from "react";
 import { toast } from "sonner";
+import { MoreHorizontal } from "lucide-react";
 import { PersonChip } from "@/components/ui/person";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 import { useAwaitableRefresh } from "@/hooks/useAwaitableRefresh";
 import {
   inviteBuyerContact,
+  removeBuyerContact,
   resendClientInvite,
+  resetClientPassword,
   setClientAccess,
   updateBuyerContact,
 } from "@/actions/clients";
@@ -40,6 +58,9 @@ export function BuyerContactsCard({
   const [busy, setBusy] = useState<string | null>(null);
   const [editing, setEditing] = useState<string | null>(null);
   const [draft, setDraft] = useState({ name: "", username: "", phone: "" });
+  const [resetting, setResetting] = useState<BuyerContact | null>(null);
+  const [removing, setRemoving] = useState<BuyerContact | null>(null);
+  const [removeError, setRemoveError] = useState<string | null>(null);
 
   const run = async (key: string, fn: () => Promise<{ success: boolean; error?: string }>) => {
     setBusy(key);
@@ -160,45 +181,70 @@ export function BuyerContactsCard({
                         : "Active"}
                   </span>
                   {canManage ? (
-                    <div className="flex items-center gap-xxs">
-                      <Button
-                        variant="secondary"
-                        pending={busy === `resend-${contact.id}`}
-                        onClick={() =>
-                          void run(`resend-${contact.id}`, async () => {
-                            const result = await resendClientInvite(contact.id);
-                            if (result.success) toast.success("Invite sent again.");
-                            return result;
-                          })
-                        }
-                      >
-                        Resend
-                      </Button>
-                      <Button
-                        variant="secondary"
-                        pending={busy === `access-${contact.id}`}
-                        onClick={() =>
-                          void run(`access-${contact.id}`, () =>
-                            setClientAccess(contact.id, Boolean(contact.disabledAt)),
-                          )
-                        }
-                      >
-                        {contact.disabledAt ? "Restore" : "Disable"}
-                      </Button>
-                      <Button
-                        variant="secondary"
-                        onClick={() => {
-                          setDraft({
-                            name: contact.name,
-                            username: contact.username ?? "",
-                            phone: contact.phone ?? "",
-                          });
-                          setEditing(contact.id);
-                        }}
-                      >
-                        Edit
-                      </Button>
-                    </div>
+                    <DropdownMenu>
+                      <DropdownMenuTrigger asChild>
+                        <Button
+                          variant="secondary"
+                          aria-label={`Actions for ${contact.name}`}
+                          className="size-11 p-0 sm:size-control-sm"
+                        >
+                          <MoreHorizontal className="size-4" aria-hidden />
+                        </Button>
+                      </DropdownMenuTrigger>
+                      <DropdownMenuContent align="end">
+                        <DropdownMenuItem
+                          onSelect={() => {
+                            setDraft({
+                              name: contact.name,
+                              username: contact.username ?? "",
+                              phone: contact.phone ?? "",
+                            });
+                            setEditing(contact.id);
+                          }}
+                        >
+                          Edit
+                        </DropdownMenuItem>
+                        <DropdownMenuItem onSelect={() => setResetting(contact)}>
+                          Reset password
+                        </DropdownMenuItem>
+                        {/* Only while the invitation is still the way in. */}
+                        {contact.invited && !contact.disabledAt ? (
+                          <DropdownMenuItem
+                            onSelect={() =>
+                              void run(`resend-${contact.id}`, async () => {
+                                const result = await resendClientInvite(contact.id);
+                                if (result.success) {
+                                  toast[result.data.sent ? "success" : "warning"](
+                                    result.data.sent
+                                      ? "Invitation sent again."
+                                      : "Password reset, but the email didn't send. Try again.",
+                                  );
+                                }
+                                return result;
+                              })
+                            }
+                          >
+                            Resend invitation
+                          </DropdownMenuItem>
+                        ) : null}
+                        <DropdownMenuItem
+                          onSelect={() =>
+                            void run(`access-${contact.id}`, () =>
+                              setClientAccess(contact.id, Boolean(contact.disabledAt)),
+                            )
+                          }
+                        >
+                          {contact.disabledAt ? "Restore access" : "Disable access"}
+                        </DropdownMenuItem>
+                        <DropdownMenuSeparator />
+                        <DropdownMenuItem
+                          variant="destructive"
+                          onSelect={() => setRemoving(contact)}
+                        >
+                          Remove
+                        </DropdownMenuItem>
+                      </DropdownMenuContent>
+                    </DropdownMenu>
                   ) : null}
                 </>
               )}
@@ -262,6 +308,131 @@ export function BuyerContactsCard({
           </div>
         </form>
       ) : null}
+
+      <Dialog open={resetting !== null} onOpenChange={() => setResetting(null)}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Email a temporary password to {resetting?.email}?</DialogTitle>
+            <DialogDescription>
+              They will have to choose a new one the next time they sign in, and every
+              device they are signed in on will be signed out.
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter>
+            <Button variant="secondary" onClick={() => setResetting(null)}>
+              Cancel
+            </Button>
+            <Button
+              pending={busy === `reset-${resetting?.id}`}
+              onClick={() => {
+                const target = resetting;
+                if (!target) return;
+                void run(`reset-${target.id}`, async () => {
+                  const result = await resetClientPassword(target.id);
+                  if (result.success) {
+                    setResetting(null);
+                    // The toast says what happened, not what we hoped: a
+                    // Resend failure resolves { sent: false }, and telling
+                    // someone to check an inbox that stays empty is the
+                    // defect Phase 23 found in exactly this flow.
+                    toast[result.data.sent ? "success" : "warning"](
+                      result.data.sent
+                        ? `Temporary password emailed to ${target.email}`
+                        : "Password was reset, but the email didn't send. Try Reset password again.",
+                    );
+                  }
+                  return result;
+                });
+              }}
+            >
+              Reset password
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog
+        open={removing !== null}
+        onOpenChange={() => {
+          setRemoving(null);
+          setRemoveError(null);
+        }}
+      >
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Remove {removing?.name}?</DialogTitle>
+            <DialogDescription>
+              Their shop login is deleted. This cannot be undone.
+            </DialogDescription>
+          </DialogHeader>
+          {removeError ? (
+            <p className="text-[length:var(--text-body-sm)] text-brand-amber">{removeError}</p>
+          ) : null}
+          <DialogFooter>
+            <Button
+              variant="secondary"
+              onClick={() => {
+                setRemoving(null);
+                setRemoveError(null);
+              }}
+            >
+              Cancel
+            </Button>
+            {/* The refusal is not a dead end: the thing they should do
+                instead is a button, not a sentence telling them to go and
+                find one. */}
+            {removeError ? (
+              <Button
+                pending={busy === `access-${removing?.id}`}
+                onClick={() => {
+                  const target = removing;
+                  if (!target) return;
+                  void run(`access-${target.id}`, async () => {
+                    const result = await setClientAccess(target.id, false);
+                    if (result.success) {
+                      setRemoving(null);
+                      setRemoveError(null);
+                      toast.success(`${target.name}'s access is disabled.`);
+                    }
+                    return result;
+                  });
+                }}
+              >
+                Disable instead
+              </Button>
+            ) : (
+              <Button
+                pending={busy === `remove-${removing?.id}`}
+                onClick={() => {
+                  const target = removing;
+                  if (!target) return;
+                  void (async () => {
+                    setBusy(`remove-${target.id}`);
+                    try {
+                      const result = await removeBuyerContact(target.id);
+                      if (result.success) {
+                        setRemoving(null);
+                        toast.success(`${target.name} removed.`);
+                        await refresh();
+                      } else {
+                        // Shown in the dialog, not as a toast: the reason is
+                        // the answer to the question the dialog is asking.
+                        setRemoveError(result.error);
+                      }
+                    } catch {
+                      toast.error("We couldn't reach the server. Try again.");
+                    } finally {
+                      setBusy(null);
+                    }
+                  })();
+                }}
+              >
+                Remove
+              </Button>
+            )}
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </section>
   );
 }
