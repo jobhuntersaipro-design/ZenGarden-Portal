@@ -3,6 +3,7 @@
 import { revalidatePath } from "next/cache";
 import { Prisma } from "@/generated/prisma/client";
 import { Role } from "@/generated/prisma/enums";
+import { audit } from "@/lib/audit";
 import { UnauthorizedError, requireSuperAdmin } from "@/lib/auth-guards";
 import {
   hashPassword,
@@ -35,8 +36,9 @@ export type CreatedCustomer = {
 export async function createCustomer(
   input: CreateCustomerInput,
 ): Promise<ActionResult<CreatedCustomer>> {
+  let admin;
   try {
-    await requireSuperAdmin();
+    admin = await requireSuperAdmin();
   } catch (cause) {
     if (cause instanceof UnauthorizedError) return { success: false, error: cause.message };
     throw cause;
@@ -61,7 +63,15 @@ export async function createCustomer(
   try {
     created = await prisma.$transaction(async (tx) => {
       const buyer = await tx.buyer.create({ data: company, select: { id: true } });
-      if (!contact || !passwordHash) return { buyerId: buyer.id, contact: null };
+      if (!contact || !passwordHash) {
+        await audit(tx, {
+          action: "CUSTOMER_CREATED",
+          actorId: admin.id,
+          buyerId: buyer.id,
+          detail: { withContact: false, name: company.name },
+        });
+        return { buyerId: buyer.id, contact: null };
+      }
       const user = await tx.user.create({
         data: {
           name: contact.name,
@@ -75,6 +85,12 @@ export async function createCustomer(
           mustChangePassword: true,
         },
         select: { id: true, name: true, email: true },
+      });
+      await audit(tx, {
+        action: "CUSTOMER_CREATED",
+        actorId: admin.id,
+        buyerId: buyer.id,
+        detail: { withContact: true, name: company.name },
       });
       return { buyerId: buyer.id, contact: { name: user.name, email: user.email } };
     });

@@ -4,6 +4,7 @@ import { revalidatePath } from "next/cache";
 import { z } from "zod";
 import { Prisma } from "@/generated/prisma/client";
 import { Role } from "@/generated/prisma/enums";
+import { audit, changedFields } from "@/lib/audit";
 import { UnauthorizedError, requireUser } from "@/lib/auth-guards";
 import { prisma } from "@/lib/prisma";
 
@@ -63,12 +64,41 @@ export async function updateBuyer(
   }
 
   try {
-    await prisma.buyer.update({
+    const current = await prisma.buyer.findUnique({
       where: { id: buyerId },
-      data: { ...rest, ...(name !== undefined ? { name } : {}) },
+      select: {
+        name: true,
+        contactName: true,
+        email: true,
+        phone: true,
+        address: true,
+        paymentTerms: true,
+        remark: true,
+      },
     });
+    if (!current) return { success: false, error: "That buyer is gone." };
+
+    const data = { ...rest, ...(name !== undefined ? { name } : {}) };
+    const fields = changedFields(data, current);
+
+    await prisma.$transaction(async (tx) => {
+      await tx.buyer.update({ where: { id: buyerId }, data });
+      // A save that changed nothing is not an edit. Recording it would fill
+      // the timeline with "edited" entries naming no field.
+      if (fields.length > 0) {
+        await audit(tx, {
+          action: "CUSTOMER_UPDATED",
+          actorId: user.id,
+          buyerId,
+          detail: { fields },
+        });
+      }
+    });
+
     revalidatePath(`/buyers/${buyerId}`);
     revalidatePath("/buyers");
+    revalidatePath("/admin/customers");
+    revalidatePath(`/admin/customers/${buyerId}`);
     return { success: true, data: undefined };
   } catch (cause) {
     if (

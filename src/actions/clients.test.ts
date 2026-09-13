@@ -4,13 +4,26 @@ const userCreate = vi.fn();
 const userUpdate = vi.fn();
 const userFindUnique = vi.fn();
 const buyerFindUnique = vi.fn();
+const auditCreate = vi.fn();
 const sendEmail = vi.fn();
 const requireSuperAdmin = vi.fn();
+
+// The three actions that write and audit in one transaction hand the
+// callback a `tx` carrying the same spies the real client would.
+const transaction = vi.fn(async (fn: (tx: unknown) => unknown) =>
+  fn({
+    user: { create: userCreate, update: userUpdate },
+    buyer: { findUnique: buyerFindUnique },
+    auditEvent: { create: auditCreate },
+  }),
+);
 
 vi.mock("@/lib/prisma", () => ({
   prisma: {
     user: { create: userCreate, update: userUpdate, findUnique: userFindUnique },
     buyer: { findUnique: buyerFindUnique },
+    auditEvent: { create: auditCreate },
+    $transaction: transaction,
   },
 }));
 vi.mock("@/lib/auth-guards", () => ({
@@ -44,6 +57,14 @@ beforeEach(() => {
   buyerFindUnique.mockResolvedValue({ id: "buyer-1" });
   userCreate.mockResolvedValue({ id: "c1", name: "Siti", email: "siti@buyer.com" });
   userUpdate.mockResolvedValue({});
+  auditCreate.mockResolvedValue({ id: "evt-1" });
+  transaction.mockImplementation(async (fn: (tx: unknown) => unknown) =>
+    fn({
+      user: { create: userCreate, update: userUpdate },
+      buyer: { findUnique: buyerFindUnique },
+      auditEvent: { create: auditCreate },
+    }),
+  );
   sendEmail.mockResolvedValue({ sent: true });
 });
 
@@ -159,6 +180,33 @@ describe("inviteBuyerContact", () => {
     expect(result.success).toBe(true);
     expect(userCreate).toHaveBeenCalled();
   });
+
+  it("records an invitation against the buyer and the new contact", async () => {
+    await inviteBuyerContact({
+      buyerId: "buyer-1",
+      name: "Siti",
+      email: "siti@acme.com",
+      username: "siti",
+    });
+    const data = auditCreate.mock.calls[0][0].data;
+    expect(data.action).toBe("CONTACT_INVITED");
+    expect(data.buyerId).toBe("buyer-1");
+    expect(data.subjectUserId).toBe("c1");
+    // The name is stored as well as joined, so the entry still reads properly
+    // after the contact is removed and subjectUserId goes null.
+    expect(data.detail).toEqual({ name: "Siti" });
+  });
+
+  it("never records the temporary password", async () => {
+    await inviteBuyerContact({
+      buyerId: "buyer-1",
+      name: "Siti",
+      email: "siti@acme.com",
+      username: "siti",
+    });
+    const password = templateArgs.at(-1)!.password;
+    expect(JSON.stringify(auditCreate.mock.calls[0][0])).not.toContain(password);
+  });
 });
 
 describe("resendClientInvite", () => {
@@ -196,6 +244,17 @@ describe("setClientAccess", () => {
     const data = userUpdate.mock.calls[0][0].data;
     expect(data.disabledAt).toBeNull();
     expect(data).not.toHaveProperty("sessionVersion");
+  });
+
+  it("tells disabling and restoring apart", async () => {
+    userFindUnique.mockResolvedValue({
+      id: "c1", name: "Siti", role: "CLIENT", buyerId: "buyer-1", disabledAt: null,
+    });
+    await setClientAccess("c1", false);
+    expect(auditCreate.mock.calls[0][0].data.action).toBe("CONTACT_DISABLED");
+    auditCreate.mockClear();
+    await setClientAccess("c1", true);
+    expect(auditCreate.mock.calls[0][0].data.action).toBe("CONTACT_RESTORED");
   });
 });
 
@@ -260,6 +319,18 @@ describe("updateBuyerContact", () => {
     expect(await updateBuyerContact("c1", patch)).toEqual({
       success: false,
       error: "That username is taken.",
+    });
+  });
+
+  it("records which of a contact's fields changed", async () => {
+    userFindUnique.mockResolvedValue({
+      id: "c1", name: "Siti", username: "siti", phone: null,
+      role: "CLIENT", buyerId: "buyer-1",
+    });
+    await updateBuyerContact("c1", { name: "Siti", username: "siti.ops", phone: "" });
+    expect(auditCreate.mock.calls[0][0].data.detail).toEqual({
+      name: "Siti",
+      fields: ["username"],
     });
   });
 });

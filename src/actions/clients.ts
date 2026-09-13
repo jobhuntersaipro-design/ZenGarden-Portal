@@ -3,6 +3,7 @@
 import { revalidatePath } from "next/cache";
 import { Prisma } from "@/generated/prisma/client";
 import { Role } from "@/generated/prisma/enums";
+import { audit, changedFields } from "@/lib/audit";
 import { UnauthorizedError, requireSuperAdmin } from "@/lib/auth-guards";
 import {
   hashPassword,
@@ -29,6 +30,14 @@ async function guard() {
     if (cause instanceof UnauthorizedError) return { error: cause.message };
     throw cause;
   }
+}
+
+function revalidateCustomer(buyerId: string | null): void {
+  revalidatePath("/buyers");
+  revalidatePath("/admin/customers");
+  if (!buyerId) return;
+  revalidatePath(`/buyers/${buyerId}`);
+  revalidatePath(`/admin/customers/${buyerId}`);
 }
 
 /**
@@ -64,24 +73,38 @@ export async function inviteBuyerContact(
     if (!buyer) return { success: false, error: "That buyer is gone." };
 
     const password = temporaryPassword();
-    const created = await prisma.user.create({
-      data: {
-        name: data.name,
-        email: data.email,
-        username: data.username,
-        phone: data.phone,
-        role: Role.CLIENT,
+    // Bcrypt at cost 12 before the transaction opens: hundreds of
+    // milliseconds inside one holds a Neon connection for no reason.
+    const passwordHash = await hashPassword(password);
+
+    const created = await prisma.$transaction(async (tx) => {
+      const row = await tx.user.create({
+        data: {
+          name: data.name,
+          email: data.email,
+          username: data.username,
+          phone: data.phone,
+          role: Role.CLIENT,
+          buyerId: buyer.id,
+          passwordHash,
+          passwordChangedAt: new Date(),
+          mustChangePassword: true,
+        },
+        select: { id: true, name: true, email: true },
+      });
+      await audit(tx, {
+        action: "CONTACT_INVITED",
+        actorId: user.id,
         buyerId: buyer.id,
-        passwordHash: await hashPassword(password),
-        passwordChangedAt: new Date(),
-        mustChangePassword: true,
-      },
-      select: { id: true, name: true, email: true },
+        subjectUserId: row.id,
+        detail: { name: row.name },
+      });
+      return row;
     });
 
     await sendInviteEmail(created, password);
 
-    revalidatePath(`/buyers/${buyer.id}`);
+    revalidateCustomer(buyer.id);
     return { success: true, data: { id: created.id } };
   } catch (cause) {
     if (
@@ -126,7 +149,7 @@ export async function resendClientInvite(
 
     await sendInviteEmail(contact, password);
 
-    if (contact.buyerId) revalidatePath(`/buyers/${contact.buyerId}`);
+    revalidateCustomer(contact.buyerId);
     return { success: true, data: undefined };
   } catch (cause) {
     console.error("[clients] resendClientInvite", cause);
@@ -145,23 +168,32 @@ export async function setClientAccess(
   try {
     const contact = await prisma.user.findUnique({
       where: { id: contactId },
-      select: { id: true, role: true, buyerId: true },
+      select: { id: true, name: true, role: true, buyerId: true },
     });
     if (!contact || contact.role !== Role.CLIENT) {
       return { success: false, error: "That contact is gone." };
     }
 
-    await prisma.user.update({
-      where: { id: contact.id },
-      data: {
-        disabledAt: enabled ? null : new Date(),
-        // The jwt callback reads this, so revoking takes effect within the
-        // refresh interval rather than whenever their cookie expires.
-        ...(enabled ? {} : { sessionVersion: { increment: 1 } }),
-      },
+    await prisma.$transaction(async (tx) => {
+      await tx.user.update({
+        where: { id: contact.id },
+        data: {
+          disabledAt: enabled ? null : new Date(),
+          // The jwt callback reads this, so revoking takes effect within the
+          // refresh interval rather than whenever their cookie expires.
+          ...(enabled ? {} : { sessionVersion: { increment: 1 } }),
+        },
+      });
+      await audit(tx, {
+        action: enabled ? "CONTACT_RESTORED" : "CONTACT_DISABLED",
+        actorId: user.id,
+        buyerId: contact.buyerId,
+        subjectUserId: contact.id,
+        detail: { name: contact.name },
+      });
     });
 
-    if (contact.buyerId) revalidatePath(`/buyers/${contact.buyerId}`);
+    revalidateCustomer(contact.buyerId);
     return { success: true, data: undefined };
   } catch (cause) {
     console.error("[clients] setClientAccess", cause);
@@ -191,14 +223,27 @@ export async function updateBuyerContact(
   try {
     const contact = await prisma.user.findUnique({
       where: { id: contactId },
-      select: { id: true, role: true, buyerId: true },
+      select: { id: true, name: true, username: true, phone: true, role: true, buyerId: true },
     });
     if (!contact || contact.role !== Role.CLIENT) {
       return { success: false, error: "That contact is gone." };
     }
 
-    await prisma.user.update({ where: { id: contact.id }, data: parsed.data });
-    if (contact.buyerId) revalidatePath(`/buyers/${contact.buyerId}`);
+    const fields = changedFields(parsed.data, contact);
+    await prisma.$transaction(async (tx) => {
+      await tx.user.update({ where: { id: contact.id }, data: parsed.data });
+      if (fields.length > 0) {
+        await audit(tx, {
+          action: "CONTACT_UPDATED",
+          actorId: user.id,
+          buyerId: contact.buyerId,
+          subjectUserId: contact.id,
+          detail: { name: parsed.data.name ?? contact.name, fields },
+        });
+      }
+    });
+
+    revalidateCustomer(contact.buyerId);
     return { success: true, data: undefined };
   } catch (cause) {
     if (cause instanceof Prisma.PrismaClientKnownRequestError && cause.code === "P2002") {

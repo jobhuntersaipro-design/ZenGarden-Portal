@@ -3,13 +3,18 @@ import { Prisma } from "@/generated/prisma/client";
 
 const buyerCreate = vi.fn();
 const userCreate = vi.fn();
+const auditCreate = vi.fn();
 const sendEmail = vi.fn();
 const requireSuperAdmin = vi.fn();
 
 // The action runs both writes in one transaction, so the mock hands the
 // callback a `tx` carrying the same two spies the assertions read.
 const transaction = vi.fn(async (fn: (tx: unknown) => unknown) =>
-  fn({ buyer: { create: buyerCreate }, user: { create: userCreate } }),
+  fn({
+    buyer: { create: buyerCreate },
+    user: { create: userCreate },
+    auditEvent: { create: auditCreate },
+  }),
 );
 
 vi.mock("@/lib/prisma", () => ({ prisma: { $transaction: transaction } }));
@@ -55,10 +60,15 @@ beforeEach(() => {
   templateArgs.length = 0;
   requireSuperAdmin.mockResolvedValue({ id: "admin", role: "SUPER_ADMIN" });
   transaction.mockImplementation(async (fn: (tx: unknown) => unknown) =>
-    fn({ buyer: { create: buyerCreate }, user: { create: userCreate } }),
+    fn({
+      buyer: { create: buyerCreate },
+      user: { create: userCreate },
+      auditEvent: { create: auditCreate },
+    }),
   );
   buyerCreate.mockResolvedValue({ id: "buyer-1" });
   userCreate.mockResolvedValue({ id: "c1", name: "Siti", email: "siti@acme.com" });
+  auditCreate.mockResolvedValue({ id: "evt-1" });
   sendEmail.mockResolvedValue({ sent: true });
 });
 
@@ -132,7 +142,11 @@ describe("createCustomer", () => {
   it("sends the email only after the transaction has committed", async () => {
     const order: string[] = [];
     transaction.mockImplementation(async (fn: (tx: unknown) => unknown) => {
-      const value = await fn({ buyer: { create: buyerCreate }, user: { create: userCreate } });
+      const value = await fn({
+        buyer: { create: buyerCreate },
+        user: { create: userCreate },
+        auditEvent: { create: auditCreate },
+      });
       order.push("commit");
       return value;
     });
@@ -193,5 +207,31 @@ describe("createCustomer", () => {
     const result = await createCustomer({ company: { ...company, name: "" } });
     expect(result.success).toBe(false);
     expect(transaction).not.toHaveBeenCalled();
+  });
+
+  it("records the creation against the new buyer, inside the transaction", async () => {
+    await createCustomer({ company, contact });
+    expect(auditCreate).toHaveBeenCalledTimes(1);
+    const data = auditCreate.mock.calls[0][0].data;
+    expect(data.action).toBe("CUSTOMER_CREATED");
+    expect(data.buyerId).toBe("buyer-1");
+    expect(data.actorId).toBe("admin");
+    expect(data.detail).toEqual({ withContact: true, name: "Acme Industrial Sdn Bhd" });
+    // Never the remark: it is internal, and an audit row is read by more
+    // screens than the buyer page is.
+    expect(JSON.stringify(data)).not.toContain("Pays late");
+  });
+
+  it("writes no audit row when the write it describes rolled back", async () => {
+    buyerCreate.mockRejectedValue(
+      new Prisma.PrismaClientKnownRequestError("dupe", {
+        code: "P2002",
+        clientVersion: "7",
+        meta: { driverAdapterError: { cause: { constraint: { fields: ["name"] } } } },
+      }),
+    );
+    const result = await createCustomer({ company });
+    expect(result.success).toBe(false);
+    expect(auditCreate).not.toHaveBeenCalled();
   });
 });
