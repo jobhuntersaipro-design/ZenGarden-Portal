@@ -91,23 +91,35 @@ export default async function AdminCustomerPage({
       </h1>
 
       <div className="grid gap-lg lg:grid-cols-2">
-        <BuyerDetailsCard
-          buyer={{
-            id: buyer.id,
-            name: buyer.name,
-            contactName: buyer.contactName,
-            email: buyer.email,
-            phone: buyer.phone,
-            address: buyer.address,
-            paymentTerms: buyer.paymentTerms,
-            remark: buyer.remark,
-            since: buyer.purchaseOrders[0]?.poDate.toISOString() ?? null,
-          }}
-          // This route is super-admin-only twice over: the layout redirects
-          // and the proxy 404s. Anyone rendering this can rename.
-          canRename
-        />
-        <BuyerContactsCard buyerId={buyer.id} contacts={contacts} canManage />
+        {/* `min-w-0` on both grid items: unlike `/buyers/[id]`, which gives
+            `BuyerContactsCard` a full-width row of its own, this page puts it
+            beside `BuyerDetailsCard` in one two-column grid — the first time
+            either card has had to shrink below its content's natural width.
+            A grid item's default `min-width: auto` refuses that (the same
+            trap flex items fall into), so a shop contact's name/email row
+            forced the whole grid — and the page — 13px wider than the
+            viewport at 390px. Found by this task's own overflow sweep. */}
+        <div className="min-w-0">
+          <BuyerDetailsCard
+            buyer={{
+              id: buyer.id,
+              name: buyer.name,
+              contactName: buyer.contactName,
+              email: buyer.email,
+              phone: buyer.phone,
+              address: buyer.address,
+              paymentTerms: buyer.paymentTerms,
+              remark: buyer.remark,
+              since: buyer.purchaseOrders[0]?.poDate.toISOString() ?? null,
+            }}
+            // This route is super-admin-only twice over: the layout redirects
+            // and the proxy 404s. Anyone rendering this can rename.
+            canRename
+          />
+        </div>
+        <div className="min-w-0">
+          <BuyerContactsCard buyerId={buyer.id} contacts={contacts} canManage />
+        </div>
       </div>
 
       <div className="mt-lg">
