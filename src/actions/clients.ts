@@ -118,43 +118,80 @@ export async function inviteBuyerContact(
   }
 }
 
-/** A fresh temporary password, for an invite that was lost or expired. */
-export async function resendClientInvite(
+/**
+ * One implementation behind two names. A reset and a resent invite do exactly
+ * the same thing to the row — a fresh temporary password, a forced change and
+ * every session ended — and differ only in what the timeline should call it.
+ * Two copies of this would drift, and the half that drifted would be the half
+ * that leaves a session open.
+ */
+async function issueTemporaryPassword(
   contactId: string,
-): Promise<ActionResult> {
-  const { user, error } = await guard();
-  if (!user) return { success: false, error: error! };
-
+  actorId: string,
+  action: "PASSWORD_RESET" | "INVITE_RESENT",
+): Promise<ActionResult<{ sent: boolean }>> {
   try {
     const contact = await prisma.user.findUnique({
       where: { id: contactId },
       select: { id: true, name: true, email: true, role: true, buyerId: true },
     });
+    // A non-CLIENT is refused with the same words as a missing row: this must
+    // never become a way to take over an ops account from the customers screen.
     if (!contact || contact.role !== Role.CLIENT) {
       return { success: false, error: "That contact is gone." };
     }
 
     const password = temporaryPassword();
-    await prisma.user.update({
-      where: { id: contact.id },
-      data: {
-        passwordHash: await hashPassword(password),
-        passwordChangedAt: new Date(),
-        mustChangePassword: true,
-        // Ends every live session for this contact, so an invite that is
-        // being resent because it went astray cannot leave one open.
-        sessionVersion: { increment: 1 },
-      },
+    const passwordHash = await hashPassword(password);
+
+    await prisma.$transaction(async (tx) => {
+      await tx.user.update({
+        where: { id: contact.id },
+        data: {
+          passwordHash,
+          passwordChangedAt: new Date(),
+          mustChangePassword: true,
+          // The password they had is gone, so the sessions it opened go too.
+          sessionVersion: { increment: 1 },
+        },
+      });
+      await audit(tx, {
+        action,
+        actorId,
+        buyerId: contact.buyerId,
+        subjectUserId: contact.id,
+        detail: { name: contact.name },
+      });
     });
 
-    await sendInviteEmail(contact, password);
+    // After the transaction: the old password has already stopped working, so
+    // a Resend outage must not roll that back. The caller is told instead.
+    const sent = await sendInviteEmail(contact, password);
 
     revalidateCustomer(contact.buyerId);
-    return { success: true, data: undefined };
+    return { success: true, data: { sent } };
   } catch (cause) {
-    console.error("[clients] resendClientInvite", cause);
-    return { success: false, error: "We couldn't resend that invite." };
+    console.error("[clients] issueTemporaryPassword", cause);
+    return { success: false, error: "We couldn't reset that password." };
   }
+}
+
+/** A fresh temporary password for a customer who has lost theirs. */
+export async function resetClientPassword(
+  contactId: string,
+): Promise<ActionResult<{ sent: boolean }>> {
+  const { user, error } = await guard();
+  if (!user) return { success: false, error: error! };
+  return issueTemporaryPassword(contactId, user.id, "PASSWORD_RESET");
+}
+
+/** The same thing, for an invitation that was lost or expired. */
+export async function resendClientInvite(
+  contactId: string,
+): Promise<ActionResult<{ sent: boolean }>> {
+  const { user, error } = await guard();
+  if (!user) return { success: false, error: error! };
+  return issueTemporaryPassword(contactId, user.id, "INVITE_RESENT");
 }
 
 /** Revoke a contact's access. The row stays, so their orders stay attributed. */
@@ -251,5 +288,69 @@ export async function updateBuyerContact(
     }
     console.error("[clients] updateBuyerContact", cause);
     return { success: false, error: "We couldn't save those changes." };
+  }
+}
+
+/**
+ * Hard delete, unlike `deleteUser`'s soft one — and the difference is the
+ * point. An ops user's row stays because uploads, confirmations and stage
+ * events are attributed to it. A contact who has placed a shop order is in
+ * the same position, so this refuses; one who has not is attached to nothing
+ * and leaving a disabled row behind is just clutter.
+ */
+export async function removeBuyerContact(contactId: string): Promise<ActionResult> {
+  const { user, error } = await guard();
+  if (!user) return { success: false, error: error! };
+
+  try {
+    const contact = await prisma.user.findUnique({
+      where: { id: contactId },
+      select: {
+        id: true,
+        name: true,
+        email: true,
+        role: true,
+        buyerId: true,
+        _count: { select: { webOrdersPlaced: true } },
+      },
+    });
+    if (!contact || contact.role !== Role.CLIENT) {
+      return { success: false, error: "That contact is gone." };
+    }
+
+    const placed = contact._count.webOrdersPlaced;
+    if (placed > 0) {
+      return {
+        success: false,
+        error: `${contact.name} placed ${placed} shop ${
+          placed === 1 ? "order" : "orders"
+        }, so their account stays. Disable it instead.`,
+      };
+    }
+
+    await prisma.$transaction(async (tx) => {
+      // Before the delete: `subjectUserId` is SET NULL when the row goes, so
+      // the name has to be in the detail to survive it.
+      await audit(tx, {
+        action: "CONTACT_REMOVED",
+        actorId: user.id,
+        buyerId: contact.buyerId,
+        detail: { name: contact.name, email: contact.email },
+      });
+      await tx.user.delete({ where: { id: contact.id } });
+    });
+
+    revalidateCustomer(contact.buyerId);
+    return { success: true, data: undefined };
+  } catch (cause) {
+    // A foreign key we did not think to check is still a refusal, not a crash.
+    if (cause instanceof Prisma.PrismaClientKnownRequestError && cause.code === "P2003") {
+      return {
+        success: false,
+        error: "Something still references that contact, so their account stays. Disable it instead.",
+      };
+    }
+    console.error("[clients] removeBuyerContact", cause);
+    return { success: false, error: "We couldn't remove that contact." };
   }
 }

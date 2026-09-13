@@ -2,6 +2,7 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 
 const userCreate = vi.fn();
 const userUpdate = vi.fn();
+const userDelete = vi.fn();
 const userFindUnique = vi.fn();
 const buyerFindUnique = vi.fn();
 const auditCreate = vi.fn();
@@ -17,7 +18,7 @@ const requireSuperAdmin = vi.fn();
 // callback a `tx` carrying the same spies the real client would.
 const transaction = vi.fn(async (fn: (tx: unknown) => unknown) =>
   fn({
-    user: { create: userCreate, update: userUpdate },
+    user: { create: userCreate, update: userUpdate, delete: userDelete },
     buyer: { findUnique: buyerFindUnique },
     auditEvent: { create: auditCreate },
   }),
@@ -25,7 +26,7 @@ const transaction = vi.fn(async (fn: (tx: unknown) => unknown) =>
 
 vi.mock("@/lib/prisma", () => ({
   prisma: {
-    user: { create: userCreate, update: userUpdate, findUnique: userFindUnique },
+    user: { create: userCreate, update: userUpdate, delete: userDelete, findUnique: userFindUnique },
     buyer: { findUnique: buyerFindUnique },
     auditEvent: { create: looseAuditCreate },
     $transaction: transaction,
@@ -52,8 +53,14 @@ vi.mock("@/emails/TemporaryPassword", () => ({
   temporaryPasswordSubject: () => "Your temporary password",
 }));
 
-const { inviteBuyerContact, resendClientInvite, setClientAccess, updateBuyerContact } =
-  await import("@/actions/clients");
+const {
+  inviteBuyerContact,
+  resendClientInvite,
+  setClientAccess,
+  updateBuyerContact,
+  resetClientPassword,
+  removeBuyerContact,
+} = await import("@/actions/clients");
 
 beforeEach(() => {
   vi.resetAllMocks();
@@ -65,7 +72,7 @@ beforeEach(() => {
   auditCreate.mockResolvedValue({ id: "evt-1" });
   transaction.mockImplementation(async (fn: (tx: unknown) => unknown) =>
     fn({
-      user: { create: userCreate, update: userUpdate },
+      user: { create: userCreate, update: userUpdate, delete: userDelete },
       buyer: { findUnique: buyerFindUnique },
       auditEvent: { create: auditCreate },
     }),
@@ -350,5 +357,116 @@ describe("updateBuyerContact", () => {
       name: "Siti",
       fields: ["username"],
     });
+  });
+});
+
+describe("resetClientPassword", () => {
+  beforeEach(() => {
+    userFindUnique.mockResolvedValue({
+      id: "c1",
+      name: "Siti",
+      email: "siti@acme.com",
+      role: "CLIENT",
+      buyerId: "buyer-1",
+    });
+  });
+
+  it("refuses a member", async () => {
+    const { UnauthorizedError } = await import("@/lib/auth-guards");
+    requireSuperAdmin.mockRejectedValue(new UnauthorizedError("Super admin only."));
+    const result = await resetClientPassword("c1");
+    expect(result).toEqual({ success: false, error: "Super admin only." });
+    expect(userUpdate).not.toHaveBeenCalled();
+  });
+
+  it("refuses an ops user, so this cannot become a back door into staff accounts", async () => {
+    userFindUnique.mockResolvedValue({
+      id: "u1", name: "Aisha", email: "aisha@lovinghandsportal.com",
+      role: "SUPER_ADMIN", buyerId: null,
+    });
+    const result = await resetClientPassword("u1");
+    expect(result).toEqual({ success: false, error: "That contact is gone." });
+    expect(userUpdate).not.toHaveBeenCalled();
+  });
+
+  it("forces a change and ends every live session", async () => {
+    await resetClientPassword("c1");
+    const data = userUpdate.mock.calls[0][0].data;
+    expect(data.mustChangePassword).toBe(true);
+    expect(data.sessionVersion).toEqual({ increment: 1 });
+    expect(data.passwordHash).toMatch(/^\$2[aby]\$/);
+  });
+
+  it("emails the password it actually hashed", async () => {
+    const { compare } = await import("bcryptjs");
+    await resetClientPassword("c1");
+    const sent = templateArgs.at(-1)!.password;
+    expect(await compare(sent, userUpdate.mock.calls[0][0].data.passwordHash)).toBe(true);
+  });
+
+  // sendEmail is documented "Never throws" — it reports failure as
+  // { sent: false }. Returning a hard-coded true here is the exact defect
+  // Phase 23 found in sendInviteEmail, and the screen believes this value.
+  it("reports a failed send honestly, and keeps the reset", async () => {
+    sendEmail.mockResolvedValue({ sent: false, error: "Domain not verified" });
+    const result = await resetClientPassword("c1");
+    expect(result).toEqual({ success: true, data: { sent: false } });
+    expect(userUpdate).toHaveBeenCalled();
+  });
+
+  it("records PASSWORD_RESET, and never the password", async () => {
+    await resetClientPassword("c1");
+    const call = auditCreate.mock.calls[0][0];
+    expect(call.data.action).toBe("PASSWORD_RESET");
+    expect(call.data.subjectUserId).toBe("c1");
+    expect(call.data.buyerId).toBe("buyer-1");
+    expect(JSON.stringify(call)).not.toContain(templateArgs.at(-1)!.password);
+  });
+
+  it("records a resend as a resend, through the same code", async () => {
+    await resendClientInvite("c1");
+    expect(auditCreate.mock.calls[0][0].data.action).toBe("INVITE_RESENT");
+    expect(userUpdate.mock.calls[0][0].data.mustChangePassword).toBe(true);
+  });
+});
+
+describe("removeBuyerContact", () => {
+  it("refuses a contact who placed shop orders, and says how many", async () => {
+    userFindUnique.mockResolvedValue({
+      id: "c1", name: "Siti", email: "siti@acme.com", role: "CLIENT",
+      buyerId: "buyer-1", _count: { webOrdersPlaced: 3 },
+    });
+    const result = await removeBuyerContact("c1");
+    expect(result).toEqual({
+      success: false,
+      error: "Siti placed 3 shop orders, so their account stays. Disable it instead.",
+    });
+    expect(userDelete).not.toHaveBeenCalled();
+  });
+
+  it("says 'order' when there is one of them", async () => {
+    userFindUnique.mockResolvedValue({
+      id: "c1", name: "Siti", email: "siti@acme.com", role: "CLIENT",
+      buyerId: "buyer-1", _count: { webOrdersPlaced: 1 },
+    });
+    const result = await removeBuyerContact("c1");
+    expect(result.success).toBe(false);
+    expect((result as { error: string }).error).toContain("placed 1 shop order,");
+  });
+
+  it("deletes a contact with no orders, recording the name before the row goes", async () => {
+    userFindUnique.mockResolvedValue({
+      id: "c1", name: "Siti", email: "siti@acme.com", role: "CLIENT",
+      buyerId: "buyer-1", _count: { webOrdersPlaced: 0 },
+    });
+    const result = await removeBuyerContact("c1");
+    expect(result).toEqual({ success: true, data: undefined });
+    expect(userDelete).toHaveBeenCalledWith({ where: { id: "c1" } });
+    const data = auditCreate.mock.calls[0][0].data;
+    expect(data.action).toBe("CONTACT_REMOVED");
+    // subjectUserId would be SET NULL the moment the row goes, so the name
+    // has to live in the detail or the entry reads "removed (nobody)".
+    expect(data.subjectUserId).toBeNull();
+    expect(data.detail).toEqual({ name: "Siti", email: "siti@acme.com" });
   });
 });
