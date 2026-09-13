@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useTransition } from "react";
+import { useRef, useState, useTransition } from "react";
 import { toast } from "sonner";
 import { MoreHorizontal } from "lucide-react";
 import { PersonChip } from "@/components/ui/person";
@@ -61,6 +61,31 @@ export function BuyerContactsCard({
   const [resetting, setResetting] = useState<BuyerContact | null>(null);
   const [removing, setRemoving] = useState<BuyerContact | null>(null);
   const [removeError, setRemoveError] = useState<string | null>(null);
+  // Mirrors `resetting`/`removing` so an async completion can check who the
+  // dialog is *currently* showing, not who it was showing when the request
+  // started. `resetting`/`removing` themselves are stale inside a closure
+  // captured at click time — a ref read at completion time is always current.
+  const resettingRef = useRef<BuyerContact | null>(null);
+  const removingRef = useRef<BuyerContact | null>(null);
+
+  function openReset(contact: BuyerContact) {
+    resettingRef.current = contact;
+    setResetting(contact);
+  }
+  function closeReset() {
+    resettingRef.current = null;
+    setResetting(null);
+  }
+  function openRemove(contact: BuyerContact) {
+    removingRef.current = contact;
+    setRemoveError(null);
+    setRemoving(contact);
+  }
+  function closeRemove() {
+    removingRef.current = null;
+    setRemoveError(null);
+    setRemoving(null);
+  }
 
   const run = async (key: string, fn: () => Promise<{ success: boolean; error?: string }>) => {
     setBusy(key);
@@ -204,12 +229,13 @@ export function BuyerContactsCard({
                         >
                           Edit
                         </DropdownMenuItem>
-                        <DropdownMenuItem onSelect={() => setResetting(contact)}>
+                        <DropdownMenuItem onSelect={() => openReset(contact)}>
                           Reset password
                         </DropdownMenuItem>
                         {/* Only while the invitation is still the way in. */}
                         {contact.invited && !contact.disabledAt ? (
                           <DropdownMenuItem
+                            disabled={busy === `resend-${contact.id}`}
                             onSelect={() =>
                               void run(`resend-${contact.id}`, async () => {
                                 const result = await resendClientInvite(contact.id);
@@ -217,29 +243,36 @@ export function BuyerContactsCard({
                                   toast[result.data.sent ? "success" : "warning"](
                                     result.data.sent
                                       ? "Invitation sent again."
-                                      : "Password reset, but the email didn't send. Try again.",
+                                      : "Invitation resent, but the email didn't send. Try again.",
                                   );
                                 }
                                 return result;
                               })
                             }
                           >
-                            Resend invitation
+                            {busy === `resend-${contact.id}` ? "Resending…" : "Resend invitation"}
                           </DropdownMenuItem>
                         ) : null}
                         <DropdownMenuItem
+                          disabled={busy === `access-${contact.id}`}
                           onSelect={() =>
                             void run(`access-${contact.id}`, () =>
                               setClientAccess(contact.id, Boolean(contact.disabledAt)),
                             )
                           }
                         >
-                          {contact.disabledAt ? "Restore access" : "Disable access"}
+                          {busy === `access-${contact.id}`
+                            ? contact.disabledAt
+                              ? "Restoring…"
+                              : "Disabling…"
+                            : contact.disabledAt
+                              ? "Restore access"
+                              : "Disable access"}
                         </DropdownMenuItem>
                         <DropdownMenuSeparator />
                         <DropdownMenuItem
                           variant="destructive"
-                          onSelect={() => setRemoving(contact)}
+                          onSelect={() => openRemove(contact)}
                         >
                           Remove
                         </DropdownMenuItem>
@@ -309,7 +342,7 @@ export function BuyerContactsCard({
         </form>
       ) : null}
 
-      <Dialog open={resetting !== null} onOpenChange={() => setResetting(null)}>
+      <Dialog open={resetting !== null} onOpenChange={() => closeReset()}>
         <DialogContent>
           <DialogHeader>
             <DialogTitle>Email a temporary password to {resetting?.email}?</DialogTitle>
@@ -319,7 +352,11 @@ export function BuyerContactsCard({
             </DialogDescription>
           </DialogHeader>
           <DialogFooter>
-            <Button variant="secondary" onClick={() => setResetting(null)}>
+            <Button
+              variant="secondary"
+              disabled={busy === `reset-${resetting?.id}`}
+              onClick={() => closeReset()}
+            >
               Cancel
             </Button>
             <Button
@@ -330,7 +367,13 @@ export function BuyerContactsCard({
                 void run(`reset-${target.id}`, async () => {
                   const result = await resetClientPassword(target.id);
                   if (result.success) {
-                    setResetting(null);
+                    // The dialog can be cancelled and reopened for a
+                    // different contact while this request is still in
+                    // flight — close it only if it is still showing the
+                    // contact this request was for, or Alice's request
+                    // resolving would force-close whichever dialog Bob has
+                    // open by then.
+                    if (resettingRef.current?.id === target.id) closeReset();
                     // The toast says what happened, not what we hoped: a
                     // Resend failure resolves { sent: false }, and telling
                     // someone to check an inbox that stays empty is the
@@ -351,13 +394,7 @@ export function BuyerContactsCard({
         </DialogContent>
       </Dialog>
 
-      <Dialog
-        open={removing !== null}
-        onOpenChange={() => {
-          setRemoving(null);
-          setRemoveError(null);
-        }}
-      >
+      <Dialog open={removing !== null} onOpenChange={() => closeRemove()}>
         <DialogContent>
           <DialogHeader>
             <DialogTitle>Remove {removing?.name}?</DialogTitle>
@@ -371,10 +408,10 @@ export function BuyerContactsCard({
           <DialogFooter>
             <Button
               variant="secondary"
-              onClick={() => {
-                setRemoving(null);
-                setRemoveError(null);
-              }}
+              disabled={
+                busy === `remove-${removing?.id}` || busy === `access-${removing?.id}`
+              }
+              onClick={() => closeRemove()}
             >
               Cancel
             </Button>
@@ -390,8 +427,10 @@ export function BuyerContactsCard({
                   void run(`access-${target.id}`, async () => {
                     const result = await setClientAccess(target.id, false);
                     if (result.success) {
-                      setRemoving(null);
-                      setRemoveError(null);
+                      // Same race as Reset password: this dialog may now
+                      // belong to a different contact than the one this
+                      // request was for.
+                      if (removingRef.current?.id === target.id) closeRemove();
                       toast.success(`${target.name}'s access is disabled.`);
                     }
                     return result;
@@ -411,13 +450,19 @@ export function BuyerContactsCard({
                     try {
                       const result = await removeBuyerContact(target.id);
                       if (result.success) {
-                        setRemoving(null);
+                        if (removingRef.current?.id === target.id) closeRemove();
                         toast.success(`${target.name} removed.`);
                         await refresh();
-                      } else {
+                      } else if (removingRef.current?.id === target.id) {
                         // Shown in the dialog, not as a toast: the reason is
-                        // the answer to the question the dialog is asking.
+                        // the answer to the question the dialog is asking —
+                        // but only when this dialog is still asking about
+                        // the contact this refusal is for. Otherwise it has
+                        // moved on to a different contact and this reason
+                        // is not the answer to what that dialog is asking.
                         setRemoveError(result.error);
+                      } else {
+                        toast.error(result.error);
                       }
                     } catch {
                       toast.error("We couldn't reach the server. Try again.");
