@@ -2,6 +2,7 @@ import type { ReactNode } from "react";
 import Link from "next/link";
 import { redirect } from "next/navigation";
 import { Role } from "@/generated/prisma/enums";
+import { AdminNav } from "@/components/admin/AdminNav";
 import { NavProgressProvider } from "@/components/portal/NavProgress";
 import { Wordmark } from "@/components/portal/Wordmark";
 import { PersonAvatar } from "@/components/ui/person";
@@ -47,6 +48,7 @@ export default async function AdminLayout({
           </header>
 
           <main className="mx-auto w-full max-w-[var(--container-page)] p-xl">
+            <AdminNav />
             {children}
           </main>
         </div>
