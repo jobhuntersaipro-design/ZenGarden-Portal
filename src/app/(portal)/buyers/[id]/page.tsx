@@ -127,12 +127,22 @@ export default async function BuyerPage({
         eyebrow="Buyer"
         title={data.buyer.name}
         action={
-          <Button asChild>
-            {/* Pre-filled to this buyer, so the signal leads into the work. */}
-            <Link href={`/upload?buyer=${encodeURIComponent(id)}`}>
-              Upload PO
-            </Link>
-          </Button>
+          <div className="flex flex-wrap items-center gap-xs">
+            {user?.role === Role.SUPER_ADMIN ? (
+              <Link
+                href={`/admin/customers/${id}`}
+                className="inline-flex min-h-control-md items-center rounded-xxs text-[length:var(--text-body-sm)] text-brand-link underline-offset-2 hover:underline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-focus sm:min-h-0"
+              >
+                Manage in Admin ›
+              </Link>
+            ) : null}
+            <Button asChild>
+              {/* Pre-filled to this buyer, so the signal leads into the work. */}
+              <Link href={`/upload?buyer=${encodeURIComponent(id)}`}>
+                Upload PO
+              </Link>
+            </Button>
+          </div>
         }
       />
 
