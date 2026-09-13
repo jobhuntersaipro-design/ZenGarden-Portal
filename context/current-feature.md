@@ -2,6 +2,20 @@
 
 ## Status
 
+**Phase 25 — Admin › Customers — in design, spec written, not yet built**
+(`feature/admin-customers`, spec `docs/specs/25-admin-customers.md`, branched
+from `feature/org-settings` on 2026-09-13). Asked for as: the *New customer*
+button is too hidden and hard to manage; a super admin should be able to
+create/edit/delete a buyer, reset a contact's password and see their activity.
+Decided in one round of questions: a **Customers** section in the `(admin)`
+shell beside Users (table → detail page, reusing `BuyerDetailsCard` and
+`BuyerContactsCard`); delete **refused** when any order references the row,
+never archived; reset password = the existing resend mechanics under an honest
+name; activity = sign-ins, shop orders, purchase orders and admin changes,
+which needs a new `AuditEvent` table. Finding that shaped it: `LoginAttempt`
+is swept after 24 h, so successful client sign-ins are written durably as
+`SIGNED_IN` audit events. Next: implementation plan, then build.
+
 **Phase 24 — organisation settings — landed, all four tasks done**
 (`feature/org-settings`, spec `docs/specs/24-org-settings.md`, plan
 `docs/specs/plans/2026-09-11-org-settings.md`). Built on top of Phase 23's
