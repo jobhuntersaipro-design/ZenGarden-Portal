@@ -119,4 +119,93 @@ describe("listCustomers", () => {
       where: { status: { not: WebOrderStatus.DRAFT } },
     });
   });
+
+  // Every other test in this file works on hand-built `CustomerRow`s, so
+  // none of them can see `listCustomers`'s own mapping from a Prisma buyer
+  // row to that shape. This is the one test that does: it stands in for
+  // Prisma's actual return shape — `Date` objects, not strings, the way the
+  // real client hands them back — and checks the derivation end to end.
+  it("maps buyer rows into CustomerRows", async () => {
+    buyerFindMany.mockResolvedValue([
+      {
+        id: "b1",
+        name: "Acme Industrial Sdn Bhd",
+        contactName: "Raj",
+        createdAt: new Date("2026-01-01T00:00:00.000Z"),
+        _count: { purchaseOrders: 3, webOrders: 2 },
+        contacts: [
+          {
+            name: "Active One",
+            email: "active@acme.com",
+            disabledAt: null,
+            mustChangePassword: false,
+            lastActiveAt: new Date("2026-09-10T02:00:00.000Z"),
+          },
+          {
+            name: "Invited One",
+            email: "invited@acme.com",
+            disabledAt: null,
+            mustChangePassword: true,
+            lastActiveAt: null,
+          },
+          // Deliberately also carries mustChangePassword: true, so the test
+          // exercises the precedence that a disabled contact counts as
+          // disabled even while they still have a temporary password —
+          // rather than leaving that branch order unexercised.
+          {
+            name: "Disabled One",
+            email: "disabled@acme.com",
+            disabledAt: new Date("2026-08-01T00:00:00.000Z"),
+            mustChangePassword: true,
+            // The latest of the three lastActiveAt values, so the assertion
+            // below proves Math.max picks the newest rather than the first
+            // or the last contact in the array.
+            lastActiveAt: new Date("2026-09-12T02:00:00.000Z"),
+          },
+        ],
+      },
+      {
+        id: "b2",
+        name: "Kim's Mart",
+        contactName: null,
+        createdAt: new Date("2026-02-01T00:00:00.000Z"),
+        _count: { purchaseOrders: 0, webOrders: 0 },
+        contacts: [],
+      },
+    ]);
+
+    const rows = await listCustomers();
+
+    expect(rows).toEqual([
+      {
+        id: "b1",
+        name: "Acme Industrial Sdn Bhd",
+        contactName: "Raj",
+        contactNames: ["Active One", "Invited One", "Disabled One"],
+        contactEmails: ["active@acme.com", "invited@acme.com", "disabled@acme.com"],
+        active: 1,
+        invited: 1,
+        disabled: 1,
+        lastActiveAt: "2026-09-12T02:00:00.000Z",
+        orders: 5,
+        createdAt: "2026-01-01T00:00:00.000Z",
+      },
+      {
+        id: "b2",
+        name: "Kim's Mart",
+        contactName: null,
+        contactNames: [],
+        contactEmails: [],
+        active: 0,
+        invited: 0,
+        disabled: 0,
+        // The seen.length > 0 guard: no contact at all, not even one who
+        // has never signed in, so this must be null rather than an empty
+        // Math.max blowing up into -Infinity or NaN.
+        lastActiveAt: null,
+        orders: 0,
+        createdAt: "2026-02-01T00:00:00.000Z",
+      },
+    ]);
+  });
 });
