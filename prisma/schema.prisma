@@ -51,6 +51,8 @@ model User {
   webOrdersPlaced    WebOrder[]           @relation("webOrdersPlaced")
   webOrdersReviewed  WebOrder[]           @relation("webOrdersReviewed")
   orgSettingsUpdates OrgSettings[]        @relation("orgSettingsUpdatedBy")
+  auditActions       AuditEvent[]         @relation("auditActor")
+  auditSubjects      AuditEvent[]         @relation("auditSubject")
   buyer              Buyer?               @relation(fields: [buyerId], references: [id])
 
   @@index([buyerId])
@@ -160,6 +162,7 @@ model Buyer {
   contacts       User[]
   purchaseOrders PurchaseOrder[]
   webOrders      WebOrder[]
+  auditEvents    AuditEvent[]
 }
 
 model Document {
@@ -401,4 +404,47 @@ model WebOrderLine {
 
   @@unique([webOrderId, productId])
   @@index([productId])
+}
+
+enum AuditAction {
+  CUSTOMER_CREATED
+  CUSTOMER_UPDATED
+  CUSTOMER_DELETED
+  CONTACT_INVITED
+  CONTACT_UPDATED
+  CONTACT_REMOVED
+  CONTACT_DISABLED
+  CONTACT_RESTORED
+  PASSWORD_RESET
+  INVITE_RESENT
+  SIGNED_IN
+}
+
+/**
+ * Who did what to a customer's account, and when a customer signed in.
+ *
+ * This exists because `LoginAttempt` cannot answer either question: it is
+ * rate-limit state, swept after 24 hours (`src/lib/rate-limit.ts`), and
+ * `User.lastActiveAt` is one timestamp with no history behind it.
+ *
+ * `detail` holds field *names*, counts and references — never a password,
+ * never the value of `Buyer.remark`, never an email body.
+ */
+model AuditEvent {
+  id            String      @id @default(cuid())
+  action        AuditAction
+  /// The person who did it. Null once that user's row is gone.
+  actorId       String?
+  actor         User?       @relation("auditActor", fields: [actorId], references: [id], onDelete: SetNull)
+  /// SetNull, never Cascade: the trail has to outlive the customer it is about.
+  buyerId       String?
+  buyer         Buyer?      @relation(fields: [buyerId], references: [id], onDelete: SetNull)
+  /// The contact acted on, where there is one.
+  subjectUserId String?
+  subjectUser   User?       @relation("auditSubject", fields: [subjectUserId], references: [id], onDelete: SetNull)
+  detail        Json?
+  at            DateTime    @default(now())
+
+  @@index([buyerId, at])
+  @@index([actorId, at])
 }
