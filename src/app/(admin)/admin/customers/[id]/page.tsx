@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";
-import { WebOrderStatus } from "@/generated/prisma/enums";
+import { Role, WebOrderStatus } from "@/generated/prisma/enums";
 import { CustomerActivity } from "@/components/admin/CustomerActivity";
 import { DeleteCustomer } from "@/components/admin/DeleteCustomer";
 import { BuyerContactsCard } from "@/components/buyers/BuyerContactsCard";
@@ -35,7 +35,10 @@ async function loadCustomer(id: string) {
         select: {
           purchaseOrders: true,
           webOrders: { where: { status: { not: WebOrderStatus.DRAFT } } },
-          contacts: true,
+          // role: CLIENT — matches `listBuyerContacts`'s own filter, or the
+          // danger-zone sentence could count a contact the card above it
+          // does not list.
+          contacts: { where: { role: Role.CLIENT } },
         },
       },
       purchaseOrders: {
