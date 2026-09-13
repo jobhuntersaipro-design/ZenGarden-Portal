@@ -134,6 +134,14 @@ async function issueTemporaryPassword(
   actorId: string,
   action: "PASSWORD_RESET" | "INVITE_RESENT",
 ): Promise<ActionResult<{ sent: boolean }>> {
+  // Validated here, in the one body both `resetClientPassword` and
+  // `resendClientInvite` share, rather than in each wrapper — a check placed
+  // in only one of two callers over one implementation is exactly the kind
+  // of divergence that let removeBuyerContact's draft-cart bug happen.
+  if (!idSchema.safeParse(contactId).success) {
+    return { success: false, error: "That contact is gone." };
+  }
+
   try {
     const contact = await prisma.user.findUnique({
       where: { id: contactId },
@@ -186,9 +194,6 @@ export async function resetClientPassword(
 ): Promise<ActionResult<{ sent: boolean }>> {
   const { user, error } = await guard();
   if (!user) return { success: false, error: error! };
-  if (!idSchema.safeParse(contactId).success) {
-    return { success: false, error: "That contact is gone." };
-  }
   return issueTemporaryPassword(contactId, user.id, "PASSWORD_RESET");
 }
 

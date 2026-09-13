@@ -143,19 +143,23 @@ describe("mergeActivity", () => {
   ];
 
   it("interleaves every source, newest first", () => {
-    const { entries, total } = mergeActivity(lists, { kind: "all", page: 1, size: 20 });
+    const { entries, total } = mergeActivity(lists, { kind: "all", page: 1, size: 20, total: 4 });
     expect(entries.map((e) => e.id)).toEqual(["s:1", "w:1", "a:1", "p:1"]);
     expect(total).toBe(4);
   });
 
-  it("filters to one kind, and totals what it kept", () => {
-    const { entries, total } = mergeActivity(lists, { kind: "sign-in", page: 1, size: 20 });
+  // `total` is the caller's own authoritative count — `mergeActivity` never
+  // derives it — so this exercises the slice logic alone: the same 1 that
+  // happens to equal how many "sign-in" entries the fixture holds is passed
+  // in, not computed here.
+  it("filters to one kind, and returns whatever total the caller supplied", () => {
+    const { entries, total } = mergeActivity(lists, { kind: "sign-in", page: 1, size: 20, total: 1 });
     expect(entries.map((e) => e.id)).toEqual(["s:1"]);
     expect(total).toBe(1);
   });
 
   it("pages", () => {
-    const { entries, total } = mergeActivity(lists, { kind: "all", page: 2, size: 2 });
+    const { entries, total } = mergeActivity(lists, { kind: "all", page: 2, size: 2, total: 4 });
     expect(entries.map((e) => e.id)).toEqual(["a:1", "p:1"]);
     expect(total).toBe(4);
   });
@@ -167,18 +171,18 @@ describe("mergeActivity", () => {
       [entry({ id: "b", at: "2026-09-12T02:00:00.000Z" })],
       [entry({ id: "a", at: "2026-09-12T02:00:00.000Z" })],
     ];
-    expect(mergeActivity(tied, { kind: "all", page: 1, size: 20 }).entries.map((e) => e.id)).toEqual(
-      ["a", "b"],
-    );
+    expect(
+      mergeActivity(tied, { kind: "all", page: 1, size: 20, total: 2 }).entries.map((e) => e.id),
+    ).toEqual(["a", "b"]);
   });
 
-  // Each source is read with `take: page * ACTIVITY_PAGE_SIZE`, so `all` here
-  // is always a truncated union, never the real row count once a customer has
-  // more history than one page's worth. `loadCustomerActivity` computes the
-  // real total from `count()` queries and hands it in; the slice logic must
-  // not quietly fall back to `all.length` once that authoritative total is
-  // supplied — a customer with 200+ real entries must not be told "40".
-  it("trusts an explicit total over the truncated list length", () => {
+  // Each source is read with `take: page * ACTIVITY_PAGE_SIZE`, so the
+  // truncated union's own length is never the real row count once a
+  // customer has more history than one page's worth. `total` is required,
+  // not defaulted from that length, precisely so a caller cannot forget to
+  // supply the real one — `loadCustomerActivity` computes it from `count()`
+  // queries; a customer with 200+ real entries must not be told "4".
+  it("returns the total it was given, not the length of what it was handed", () => {
     const { entries, total } = mergeActivity(lists, {
       kind: "all",
       page: 1,

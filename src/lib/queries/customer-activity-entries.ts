@@ -112,19 +112,20 @@ export function mergeActivity(
     page,
     size,
     total,
-  }: { kind: ActivityKind | "all"; page: number; size: number; total?: number },
+  }: { kind: ActivityKind | "all"; page: number; size: number; total: number },
 ): { entries: ActivityEntry[]; total: number } {
   const all = lists
     .flat()
     .filter((entry) => kind === "all" || entry.kind === kind)
     .sort((a, b) => (a.at === b.at ? a.id.localeCompare(b.id) : a.at < b.at ? 1 : -1));
 
-  // Each source is read bounded to `take: page * ACTIVITY_PAGE_SIZE`, so
-  // `all.length` here is the size of a *truncated* union — right only while
-  // every source's real row count fits inside that bound. A caller that
-  // knows the real counts (`loadCustomerActivity`, from `count()` queries)
-  // passes an authoritative `total`; falling back to `all.length` is only
-  // for a caller — such as this file's own unit tests — that has no better
-  // number to give.
-  return { entries: all.slice((page - 1) * size, page * size), total: total ?? all.length };
+  // `total` is required, not defaulted from `all.length`: each source is
+  // read bounded to `take: page * ACTIVITY_PAGE_SIZE`, so `all.length` is
+  // the size of a *truncated* union — right only while every source's real
+  // row count fits inside that bound, silently wrong the moment it doesn't.
+  // An optional parameter whose fallback is the wrong answer is a trap a
+  // future caller could fall into with no type error and no test failure —
+  // the caller (`loadCustomerActivity`) always has the real counts from its
+  // own `count()` queries, so it always has a real number to pass.
+  return { entries: all.slice((page - 1) * size, page * size), total };
 }

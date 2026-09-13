@@ -256,6 +256,22 @@ describe("resendClientInvite", () => {
     expect(result.success).toBe(false);
     expect(userUpdate).not.toHaveBeenCalled();
   });
+
+  // The id check lives in issueTemporaryPassword, the one body both this and
+  // resetClientPassword share — proving it here is what makes sure the two
+  // wrappers cannot drift back apart the way resetClientPassword alone would
+  // have if the check had stayed a copy in just one of them.
+  it("refuses a non-string id before touching the database", async () => {
+    const result = await resendClientInvite(42 as unknown as string);
+    expect(result.success).toBe(false);
+    expect(userFindUnique).not.toHaveBeenCalled();
+  });
+
+  it("refuses an empty id before touching the database", async () => {
+    const result = await resendClientInvite("");
+    expect(result.success).toBe(false);
+    expect(userFindUnique).not.toHaveBeenCalled();
+  });
 });
 
 describe("setClientAccess", () => {
