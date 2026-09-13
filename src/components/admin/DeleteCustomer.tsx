@@ -14,6 +14,7 @@ import {
 } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { useUrlNavigation } from "@/hooks/useUrlNavigation";
+import { blockedMessage } from "@/lib/customer-delete-message";
 
 /**
  * The button is disabled with its reason beside it rather than failing on
@@ -39,11 +40,17 @@ export function DeleteCustomer({
   const [pending, setPending] = useState(false);
 
   const blocked = purchaseOrders > 0 || webOrders > 0;
-  const parts: string[] = [];
-  if (purchaseOrders > 0) {
-    parts.push(`${purchaseOrders} purchase order${purchaseOrders === 1 ? "" : "s"}`);
-  }
-  if (webOrders > 0) parts.push(`${webOrders} shop order${webOrders === 1 ? "" : "s"}`);
+
+  // One close path, called from both Cancel and `onOpenChange` (Escape,
+  // overlay click, the built-in X): Cancel used to call `setOpen(false)`
+  // directly, which skipped the `setTyped("")` cleanup that only lived in
+  // `onOpenChange`. That let a typed name survive a Cancel and reopen,
+  // enabling Delete with nothing re-typed — the opposite of what typing the
+  // name is for.
+  const close = () => {
+    setOpen(false);
+    setTyped("");
+  };
 
   // Case-insensitive and trimmed, the same rule the action applies — a dialog
   // that enables on something the server then rejects is a worse experience
@@ -58,7 +65,7 @@ export function DeleteCustomer({
       <div className="mt-xs flex flex-wrap items-center justify-between gap-md">
         <p className="min-w-0 flex-1 text-[length:var(--text-body-sm)] text-ink-secondary">
           {blocked
-            ? `${parts.join(" and ")} reference this customer, so it can't be deleted. Disable their shop contacts instead.`
+            ? blockedMessage(purchaseOrders, webOrders)
             : `This removes ${name}${
                 contacts > 0
                   ? ` and its ${contacts} shop contact${contacts === 1 ? "" : "s"}`
@@ -80,8 +87,8 @@ export function DeleteCustomer({
       <Dialog
         open={open}
         onOpenChange={(next) => {
-          setOpen(next);
-          if (!next) setTyped("");
+          if (next) setOpen(true);
+          else close();
         }}
       >
         <DialogContent>
@@ -98,7 +105,7 @@ export function DeleteCustomer({
             onChange={(event) => setTyped(event.target.value)}
           />
           <DialogFooter>
-            <Button variant="secondary" onClick={() => setOpen(false)}>
+            <Button variant="secondary" onClick={close}>
               Cancel
             </Button>
             <Button
@@ -106,15 +113,23 @@ export function DeleteCustomer({
               pending={pending}
               onClick={async () => {
                 setPending(true);
-                const result = await deleteBuyer(buyerId, typed);
-                setPending(false);
-                if (!result.success) {
-                  toast.error(result.error);
-                  return;
+                try {
+                  const result = await deleteBuyer(buyerId, typed);
+                  if (!result.success) {
+                    toast.error(result.error);
+                    return;
+                  }
+                  close();
+                  toast.success(`${name} deleted.`);
+                  push("/admin/customers");
+                } catch {
+                  // An unguarded await here is what left the avatar picker
+                  // permanently disabled on 2026-09-08 — the same trap,
+                  // guarded the same way.
+                  toast.error("We couldn't reach the server. Try again.");
+                } finally {
+                  setPending(false);
                 }
-                setOpen(false);
-                toast.success(`${name} deleted.`);
-                push("/admin/customers");
               }}
             >
               Delete

@@ -11,6 +11,7 @@ import {
   temporaryPassword,
   uniqueMessage,
 } from "@/lib/client-invites";
+import { blockedMessage } from "@/lib/customer-delete-message";
 import { prisma } from "@/lib/prisma";
 import { createCustomerSchema, type CreateCustomerInput } from "@/lib/validation/clients";
 
@@ -201,18 +202,4 @@ export async function deleteBuyer(
     console.error("[customers] deleteBuyer", cause);
     return { success: false, error: "We couldn't delete that customer." };
   }
-}
-
-/** "14 purchase orders and 2 shop orders reference this customer, so…" */
-function blockedMessage(purchaseOrders: number, webOrders: number): string {
-  const parts: string[] = [];
-  if (purchaseOrders > 0) {
-    parts.push(`${purchaseOrders} purchase order${purchaseOrders === 1 ? "" : "s"}`);
-  }
-  if (webOrders > 0) {
-    parts.push(`${webOrders} shop order${webOrders === 1 ? "" : "s"}`);
-  }
-  const subject = parts.join(" and ");
-  const verb = purchaseOrders + webOrders === 1 ? "references" : "reference";
-  return `${subject} ${verb} this customer, so it can't be deleted. Disable their shop contacts instead.`;
 }
