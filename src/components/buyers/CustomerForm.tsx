@@ -39,8 +39,12 @@ const BLANK_CONTACT: Contact = { name: "", username: "", email: "", phone: "" };
  * optionally the person who signs in to the shop. Those last two are often the
  * same human and often are not, which is why the shop block prefills from the
  * point of contact rather than reusing it.
+ *
+ * `afterCreate` is required and has no default: the same form is reached from
+ * the portal and from the admin room, and landing a super admin back in the
+ * wrong one is the kind of thing a default quietly does forever.
  */
-export function CustomerForm() {
+export function CustomerForm({ afterCreate }: { afterCreate: string }) {
   const { pending: navigating, push } = useUrlNavigation();
   const [company, setCompany] = useState<Company>(BLANK_COMPANY);
   const [contact, setContact] = useState<Contact>(BLANK_CONTACT);
@@ -99,7 +103,7 @@ export function CustomerForm() {
           ? "Customer created, but we couldn't send the invitation. Use Resend invite on their page."
           : "Customer created.",
     );
-    push(`/buyers/${result.data.buyerId}`);
+    push(`${afterCreate}/${result.data.buyerId}`);
   };
 
   return (

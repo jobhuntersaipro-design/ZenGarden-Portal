@@ -64,16 +64,22 @@ export default async function BuyersPage({
         action={
           <div className="flex flex-wrap gap-xs">
             {user?.role === Role.SUPER_ADMIN ? (
-              // A real anchor, not a router push: cmd-click opens a tab for
-              // free, the reasoning /products/new already recorded.
-              <Button asChild variant="secondary">
-                <Link href="/buyers/new">
-                  <LinkSpinner />
-                  New customer
-                </Link>
-              </Button>
-            ) : null}
-            <UploadPoButton />
+              <>
+                {/* A real anchor, not a router push: cmd-click opens a tab for
+                    free, the reasoning /products/new already recorded. */}
+                <Button asChild>
+                  <Link href="/buyers/new">
+                    <LinkSpinner />
+                    New customer
+                  </Link>
+                </Button>
+                {/* Two primaries would be no primary. A member sees Upload PO
+                    as the page's only action and it stays primary for them. */}
+                <UploadPoButton variant="secondary" />
+              </>
+            ) : (
+              <UploadPoButton />
+            )}
           </div>
         }
       />

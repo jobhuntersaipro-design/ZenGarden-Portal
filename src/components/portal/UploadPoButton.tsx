@@ -7,9 +7,19 @@ import { Button } from "@/components/ui/button";
  * never appears in the sidebar (00-master.md §4, docs/specs/03-upload.md §2).
  * `buyerId` carries buyer detail's context through to the review screen.
  */
-export function UploadPoButton({ buyerId }: { buyerId?: string }) {
+export function UploadPoButton({
+  buyerId,
+  variant,
+}: {
+  buyerId?: string;
+  /**
+   * Secondary on a page where creating a customer is the primary action.
+   * Upload PO is the portal's default primary everywhere else.
+   */
+  variant?: "secondary";
+}) {
   return (
-    <Button asChild>
+    <Button asChild variant={variant}>
       <Link href={buyerId ? `/upload?buyer=${encodeURIComponent(buyerId)}` : "/upload"}>
         <LinkSpinner />
         Upload PO

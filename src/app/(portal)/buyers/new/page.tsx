@@ -34,7 +34,7 @@ export default async function NewCustomerPage() {
         </span>
       </nav>
 
-      <CustomerForm />
+      <CustomerForm afterCreate="/buyers" />
     </>
   );
 }
