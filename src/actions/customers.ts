@@ -2,7 +2,7 @@
 
 import { revalidatePath } from "next/cache";
 import { Prisma } from "@/generated/prisma/client";
-import { Role } from "@/generated/prisma/enums";
+import { Role, WebOrderStatus } from "@/generated/prisma/enums";
 import { audit } from "@/lib/audit";
 import { UnauthorizedError, requireSuperAdmin } from "@/lib/auth-guards";
 import {
@@ -110,4 +110,109 @@ export async function createCustomer(
   revalidatePath("/buyers");
   revalidatePath("/admin/customers");
   return { success: true, data: { buyerId: created.buyerId, invite } };
+}
+
+/**
+ * A real delete, refused wherever an order points at the row.
+ *
+ * Postgres would refuse it anyway — `PurchaseOrder.buyerId` and
+ * `WebOrder.buyerId` are required with no `onDelete`, so the database
+ * restricts. The counts exist to turn that into a sentence naming what is in
+ * the way, and to make the button honest before it is pressed.
+ *
+ * A cart is a `WebOrder` too — `openCart` creates one at DRAFT the moment a
+ * signed-in client adds their first item, and Phase 17's guest-cart merge
+ * does the same on sign-in — so the web-order count below excludes DRAFT,
+ * the same filter `removeBuyerContact` applies for the identical reason.
+ * Any draft that survives that filter is deleted here anyway, before the
+ * contacts: its `placedById` points at one of this buyer's own contacts,
+ * `WebOrder` has no `onDelete` on that relation, and deleting the contact
+ * first would throw a foreign-key error. `WebOrderLine.webOrder` cascades
+ * (`onDelete: Cascade` in the schema), so deleting the draft order is enough
+ * to take its lines with it.
+ */
+export async function deleteBuyer(
+  buyerId: string,
+  confirmName: string,
+): Promise<ActionResult> {
+  let admin;
+  try {
+    admin = await requireSuperAdmin();
+  } catch (cause) {
+    if (cause instanceof UnauthorizedError) return { success: false, error: cause.message };
+    throw cause;
+  }
+
+  try {
+    const buyer = await prisma.buyer.findUnique({
+      where: { id: buyerId },
+      select: {
+        id: true,
+        name: true,
+        _count: {
+          select: {
+            purchaseOrders: true,
+            webOrders: { where: { status: { not: WebOrderStatus.DRAFT } } },
+            contacts: true,
+          },
+        },
+      },
+    });
+    if (!buyer) return { success: false, error: "That customer is gone." };
+
+    if (buyer.name.trim().toLowerCase() !== confirmName.trim().toLowerCase()) {
+      return {
+        success: false,
+        error: "That name doesn't match. Type the customer's name exactly to delete them.",
+      };
+    }
+
+    const { purchaseOrders, webOrders, contacts } = buyer._count;
+    if (purchaseOrders > 0 || webOrders > 0) {
+      return { success: false, error: blockedMessage(purchaseOrders, webOrders) };
+    }
+
+    await prisma.$transaction(async (tx) => {
+      // First, and with `buyerId: null`: the foreign key is SET NULL, so an id
+      // written here would be blanked by the delete a few lines below.
+      await audit(tx, {
+        action: "CUSTOMER_DELETED",
+        actorId: admin.id,
+        detail: { name: buyer.name, contacts },
+      });
+      // Before the contacts: a leftover draft order's placedById is one of them.
+      await tx.webOrder.deleteMany({
+        where: { buyerId: buyer.id, status: WebOrderStatus.DRAFT },
+      });
+      await tx.user.deleteMany({ where: { buyerId: buyer.id } });
+      await tx.buyer.delete({ where: { id: buyer.id } });
+    });
+
+    revalidatePath("/buyers");
+    revalidatePath("/admin/customers");
+    return { success: true, data: undefined };
+  } catch (cause) {
+    if (cause instanceof Prisma.PrismaClientKnownRequestError && cause.code === "P2003") {
+      return {
+        success: false,
+        error: "Something still references this customer, so it can't be deleted.",
+      };
+    }
+    console.error("[customers] deleteBuyer", cause);
+    return { success: false, error: "We couldn't delete that customer." };
+  }
+}
+
+/** "14 purchase orders and 2 shop orders reference this customer, so…" */
+function blockedMessage(purchaseOrders: number, webOrders: number): string {
+  const parts: string[] = [];
+  if (purchaseOrders > 0) {
+    parts.push(`${purchaseOrders} purchase order${purchaseOrders === 1 ? "" : "s"}`);
+  }
+  if (webOrders > 0) {
+    parts.push(`${webOrders} shop order${webOrders === 1 ? "" : "s"}`);
+  }
+  const subject = parts.join(" and ");
+  const verb = purchaseOrders + webOrders === 1 ? "references" : "reference";
+  return `${subject} ${verb} this customer, so it can't be deleted. Disable their shop contacts instead.`;
 }

@@ -1,8 +1,13 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { Prisma } from "@/generated/prisma/client";
+import { WebOrderStatus } from "@/generated/prisma/enums";
 
 const buyerCreate = vi.fn();
+const buyerFindUnique = vi.fn();
+const buyerDelete = vi.fn();
 const userCreate = vi.fn();
+const userDeleteMany = vi.fn();
+const webOrderDeleteMany = vi.fn();
 const auditCreate = vi.fn();
 const sendEmail = vi.fn();
 const requireSuperAdmin = vi.fn();
@@ -11,13 +16,19 @@ const requireSuperAdmin = vi.fn();
 // callback a `tx` carrying the same two spies the assertions read.
 const transaction = vi.fn(async (fn: (tx: unknown) => unknown) =>
   fn({
-    buyer: { create: buyerCreate },
-    user: { create: userCreate },
+    buyer: { create: buyerCreate, delete: buyerDelete },
+    user: { create: userCreate, deleteMany: userDeleteMany },
+    webOrder: { deleteMany: webOrderDeleteMany },
     auditEvent: { create: auditCreate },
   }),
 );
 
-vi.mock("@/lib/prisma", () => ({ prisma: { $transaction: transaction } }));
+// `deleteBuyer` reads the row and its counts *before* opening the
+// transaction, so `buyer.findUnique` sits on the module-level mock rather
+// than inside the transaction callback above.
+vi.mock("@/lib/prisma", () => ({
+  prisma: { $transaction: transaction, buyer: { findUnique: buyerFindUnique } },
+}));
 vi.mock("@/lib/auth-guards", () => ({
   UnauthorizedError: class UnauthorizedError extends Error {},
   requireSuperAdmin,
@@ -37,7 +48,7 @@ vi.mock("@/emails/TemporaryPassword", () => ({
   temporaryPasswordSubject: () => "Your temporary password",
 }));
 
-const { createCustomer } = await import("@/actions/customers");
+const { createCustomer, deleteBuyer } = await import("@/actions/customers");
 
 const company = {
   name: "Acme Industrial Sdn Bhd",
@@ -61,8 +72,9 @@ beforeEach(() => {
   requireSuperAdmin.mockResolvedValue({ id: "admin", role: "SUPER_ADMIN" });
   transaction.mockImplementation(async (fn: (tx: unknown) => unknown) =>
     fn({
-      buyer: { create: buyerCreate },
-      user: { create: userCreate },
+      buyer: { create: buyerCreate, delete: buyerDelete },
+      user: { create: userCreate, deleteMany: userDeleteMany },
+      webOrder: { deleteMany: webOrderDeleteMany },
       auditEvent: { create: auditCreate },
     }),
   );
@@ -233,5 +245,118 @@ describe("createCustomer", () => {
     const result = await createCustomer({ company });
     expect(result.success).toBe(false);
     expect(auditCreate).not.toHaveBeenCalled();
+  });
+});
+
+describe("deleteBuyer", () => {
+  const clean = {
+    id: "buyer-1",
+    name: "Kim's Mart",
+    _count: { purchaseOrders: 0, webOrders: 0, contacts: 2 },
+  };
+
+  beforeEach(() => {
+    buyerFindUnique.mockResolvedValue(clean);
+  });
+
+  it("refuses a member", async () => {
+    const { UnauthorizedError } = await import("@/lib/auth-guards");
+    requireSuperAdmin.mockRejectedValue(new UnauthorizedError("Super admin only."));
+    const result = await deleteBuyer("buyer-1", "Kim's Mart");
+    expect(result).toEqual({ success: false, error: "Super admin only." });
+    expect(transaction).not.toHaveBeenCalled();
+  });
+
+  it("refuses when the typed name does not match", async () => {
+    const result = await deleteBuyer("buyer-1", "Kims Mart");
+    expect(result).toEqual({
+      success: false,
+      error: "That name doesn't match. Type the customer's name exactly to delete them.",
+    });
+    expect(transaction).not.toHaveBeenCalled();
+  });
+
+  it("accepts the name with different case and stray spaces", async () => {
+    const result = await deleteBuyer("buyer-1", "  kim's mart ");
+    expect(result.success).toBe(true);
+  });
+
+  it("refuses a customer with purchase orders, naming both counts", async () => {
+    buyerFindUnique.mockResolvedValue({
+      ...clean,
+      _count: { purchaseOrders: 14, webOrders: 2, contacts: 2 },
+    });
+    const result = await deleteBuyer("buyer-1", "Kim's Mart");
+    expect(result).toEqual({
+      success: false,
+      error:
+        "14 purchase orders and 2 shop orders reference this customer, so it can't be deleted. Disable their shop contacts instead.",
+    });
+    expect(transaction).not.toHaveBeenCalled();
+  });
+
+  it("refuses on shop orders alone", async () => {
+    buyerFindUnique.mockResolvedValue({
+      ...clean,
+      _count: { purchaseOrders: 0, webOrders: 1, contacts: 1 },
+    });
+    const result = await deleteBuyer("buyer-1", "Kim's Mart");
+    expect((result as { error: string }).error).toContain("1 shop order references");
+  });
+
+  // The count must exclude DRAFT: `openCart` creates one at that status the
+  // moment a signed-in client adds their first item, so an unfiltered count
+  // would make a customer who only ever abandoned a cart undeletable — the
+  // same bug already found and fixed in `removeBuyerContact` (Task 3).
+  it("does not count an abandoned cart as a reason to refuse", async () => {
+    await deleteBuyer("buyer-1", "Kim's Mart");
+    expect(buyerFindUnique).toHaveBeenCalledWith({
+      where: { id: "buyer-1" },
+      select: {
+        id: true,
+        name: true,
+        _count: {
+          select: {
+            purchaseOrders: true,
+            webOrders: { where: { status: { not: WebOrderStatus.DRAFT } } },
+            contacts: true,
+          },
+        },
+      },
+    });
+  });
+
+  // A DRAFT web order can still exist on a clean buyer (it was excluded from
+  // the blocking count above), and its `placedById` points at one of this
+  // buyer's own contacts. `WebOrder` has no `onDelete` on that relation, so
+  // deleting the contact first would throw a foreign-key error — the draft
+  // order has to go first. `WebOrderLine.webOrder` cascades in the schema, so
+  // deleting the order is enough to take its lines with it.
+  it("deletes the buyer's draft web orders before the contacts, so a placedById foreign key never trips", async () => {
+    const result = await deleteBuyer("buyer-1", "Kim's Mart");
+    expect(result.success).toBe(true);
+    expect(webOrderDeleteMany).toHaveBeenCalledWith({
+      where: { buyerId: "buyer-1", status: WebOrderStatus.DRAFT },
+    });
+    const draftOrderCall = webOrderDeleteMany.mock.invocationCallOrder[0];
+    const contactDeleteCall = userDeleteMany.mock.invocationCallOrder[0];
+    expect(draftOrderCall).toBeLessThan(contactDeleteCall);
+  });
+
+  it("deletes the contacts and the buyer in one transaction", async () => {
+    const result = await deleteBuyer("buyer-1", "Kim's Mart");
+    expect(result).toEqual({ success: true, data: undefined });
+    expect(userDeleteMany).toHaveBeenCalledWith({ where: { buyerId: "buyer-1" } });
+    expect(buyerDelete).toHaveBeenCalledWith({ where: { id: "buyer-1" } });
+  });
+
+  it("records the deletion with the name, detached from the row it is about", async () => {
+    await deleteBuyer("buyer-1", "Kim's Mart");
+    const data = auditCreate.mock.calls[0][0].data;
+    expect(data.action).toBe("CUSTOMER_DELETED");
+    // buyerId must be null: the FK is SET NULL, so writing the id here would
+    // simply be blanked, and the name is what makes the entry readable.
+    expect(data.buyerId).toBeNull();
+    expect(data.detail).toEqual({ name: "Kim's Mart", contacts: 2 });
   });
 });
