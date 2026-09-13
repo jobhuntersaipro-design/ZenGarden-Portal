@@ -108,5 +108,6 @@ export async function createCustomer(
   }
 
   revalidatePath("/buyers");
+  revalidatePath("/admin/customers");
   return { success: true, data: { buyerId: created.buyerId, invite } };
 }

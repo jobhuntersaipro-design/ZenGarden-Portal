@@ -5,6 +5,11 @@ const userUpdate = vi.fn();
 const userFindUnique = vi.fn();
 const buyerFindUnique = vi.fn();
 const auditCreate = vi.fn();
+// The bare (non-transactional) client's own `auditEvent.create` — kept as a
+// distinct spy from the one handed into `$transaction` below, so a future
+// `audit(prisma, …)` in place of `audit(tx, …)` shows up here instead of
+// silently satisfying the same assertions as the real transactional write.
+const looseAuditCreate = vi.fn();
 const sendEmail = vi.fn();
 const requireSuperAdmin = vi.fn();
 
@@ -22,7 +27,7 @@ vi.mock("@/lib/prisma", () => ({
   prisma: {
     user: { create: userCreate, update: userUpdate, findUnique: userFindUnique },
     buyer: { findUnique: buyerFindUnique },
-    auditEvent: { create: auditCreate },
+    auditEvent: { create: looseAuditCreate },
     $transaction: transaction,
   },
 }));
@@ -206,6 +211,19 @@ describe("inviteBuyerContact", () => {
     });
     const password = templateArgs.at(-1)!.password;
     expect(JSON.stringify(auditCreate.mock.calls[0][0])).not.toContain(password);
+  });
+
+  it("writes the audit row through the transaction, not the bare client", async () => {
+    await inviteBuyerContact({
+      buyerId: "buyer-1",
+      name: "Siti",
+      email: "siti@acme.com",
+      username: "siti",
+    });
+    expect(auditCreate).toHaveBeenCalledTimes(1);
+    // If this ever fires, someone called audit(prisma, …) and the row would
+    // survive a rolled-back invite.
+    expect(looseAuditCreate).not.toHaveBeenCalled();
   });
 });
 

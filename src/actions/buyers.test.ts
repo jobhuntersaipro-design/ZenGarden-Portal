@@ -3,6 +3,11 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 const buyerUpdate = vi.fn();
 const buyerFindUnique = vi.fn();
 const auditCreate = vi.fn();
+// The bare (non-transactional) client's own `auditEvent.create` — kept as a
+// distinct spy from the one handed into `$transaction` below, so a future
+// `audit(prisma, …)` in place of `audit(tx, …)` shows up here instead of
+// silently satisfying the same assertions as the real transactional write.
+const looseAuditCreate = vi.fn();
 const requireUser = vi.fn();
 
 // The action now reads the row, then writes the update and its audit row in
@@ -14,7 +19,7 @@ const transaction = vi.fn(async (fn: (tx: unknown) => unknown) =>
 vi.mock("@/lib/prisma", () => ({
   prisma: {
     buyer: { update: buyerUpdate, findUnique: buyerFindUnique },
-    auditEvent: { create: auditCreate },
+    auditEvent: { create: looseAuditCreate },
     $transaction: transaction,
   },
 }));
@@ -106,5 +111,23 @@ describe("updateBuyer", () => {
     const result = await updateBuyer("buyer-1", { contactName: "Raj" });
     expect(result.success).toBe(true);
     expect(auditCreate).not.toHaveBeenCalled();
+  });
+
+  it("writes the audit row through the transaction, not the bare client", async () => {
+    buyerFindUnique.mockResolvedValue({
+      id: "buyer-1",
+      name: "Acme",
+      contactName: null,
+      email: null,
+      phone: null,
+      address: null,
+      paymentTerms: null,
+      remark: null,
+    });
+    await updateBuyer("buyer-1", { phone: "+60 3-2222" });
+    expect(auditCreate).toHaveBeenCalledTimes(1);
+    // If this ever fires, someone called audit(prisma, …) and the row would
+    // survive a rolled-back update.
+    expect(looseAuditCreate).not.toHaveBeenCalled();
   });
 });
