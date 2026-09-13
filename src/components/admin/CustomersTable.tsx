@@ -7,26 +7,9 @@ import { Input } from "@/components/ui/input";
 import { useTableSort } from "@/hooks/useTableSort";
 import { useUrlNavigation } from "@/hooks/useUrlNavigation";
 import { formatDate, formatDateTime } from "@/lib/dates";
+import { loginsLabel } from "@/lib/queries/admin-customer-labels";
 import type { CustomerRow } from "@/lib/queries/admin-customers";
 import type { SortDirection } from "@/lib/queries/pagination";
-
-/**
- * A client-side copy of `loginsLabel` (`src/lib/queries/admin-customers.ts`),
- * not an import of it. That module also imports `prisma`, and Turbopack
- * cannot chunk `@prisma/adapter-neon`'s `node:module` use for the browser —
- * pulling in even one runtime export drags the whole module, and the build
- * fails with "the chunking context (unknown) does not support external
- * modules". Every other table in this app (`UsersTable`, `BuyersTable`,
- * `ProductsList`) takes only *types* from its query module for exactly this
- * reason; this keeps the same rule rather than being the one exception.
- */
-function loginsLabel(row: Pick<CustomerRow, "active" | "invited" | "disabled">): string {
-  const parts: string[] = [];
-  if (row.active > 0) parts.push(`${row.active} active`);
-  if (row.invited > 0) parts.push(`${row.invited} invited`);
-  if (row.disabled > 0) parts.push(`${row.disabled} disabled`);
-  return parts.length > 0 ? parts.join(" · ") : "None";
-}
 
 export function CustomersTable({
   customers,

@@ -1,5 +1,14 @@
 import { Role, WebOrderStatus } from "@/generated/prisma/enums";
 import { prisma } from "@/lib/prisma";
+import { loginsLabel } from "@/lib/queries/admin-customer-labels";
+
+// Re-exported rather than defined here: `loginsLabel` lives in
+// `admin-customer-labels.ts` because it must stay importable from a client
+// component (`CustomersTable`) without dragging `prisma` into the browser
+// bundle — see that file's doc comment. Re-exporting keeps this test's own
+// import path (`from "@/lib/queries/admin-customers"`) working unchanged, so
+// there is still exactly one implementation and one place it is tested.
+export { loginsLabel };
 
 export type CustomerRow = {
   id: string;
@@ -88,15 +97,6 @@ export async function listCustomers(): Promise<CustomerRow[]> {
       createdAt: buyer.createdAt.toISOString(),
     };
   });
-}
-
-/** "2 active · 1 invited", or "None" — never an empty cell. */
-export function loginsLabel(row: Pick<CustomerRow, "active" | "invited" | "disabled">): string {
-  const parts: string[] = [];
-  if (row.active > 0) parts.push(`${row.active} active`);
-  if (row.invited > 0) parts.push(`${row.invited} invited`);
-  if (row.disabled > 0) parts.push(`${row.disabled} disabled`);
-  return parts.length > 0 ? parts.join(" · ") : "None";
 }
 
 /** Search and sort in memory: this is a roster of dozens, not a feed. */
