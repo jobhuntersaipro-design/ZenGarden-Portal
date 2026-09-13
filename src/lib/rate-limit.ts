@@ -8,8 +8,12 @@ const LOGIN_WINDOW_MINUTES = 15;
 const RESET_MAX_REQUESTS = 3;
 const RESET_WINDOW_MINUTES = 60;
 
-/** Attempt rows are useless after a day; swept on 1 call in 50. */
-const ATTEMPT_RETENTION_HOURS = 24;
+/**
+ * How long a login attempt is kept. Exported because the activity timeline
+ * prints this number to the reader — "failed sign-ins are kept for 24 hours" —
+ * and a caption that disagrees with the sweep is worse than no caption.
+ */
+export const ATTEMPT_RETENTION_HOURS = 24;
 const CLEANUP_ODDS = 50;
 
 /**
