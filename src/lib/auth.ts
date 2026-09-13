@@ -93,7 +93,8 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
         if (!ok) return null;
 
         // Not awaited: the sign-in does not depend on it, and the function
-        // swallows its own failures. Same treatment as `touchLastActive`.
+        // swallows its own failures — the same property `touchLastActive`
+        // has, though that one is awaited at its own call site below.
         void recordClientSignIn({
           id: user!.id,
           role: user!.role,
