@@ -18,6 +18,7 @@ const row = (over: Partial<CustomerRow>): CustomerRow => ({
   id: "b1",
   name: "Acme Industrial Sdn Bhd",
   contactName: "Raj",
+  email: "accounts@acme.com",
   contactNames: ["Siti"],
   contactEmails: ["siti@acme.com"],
   active: 1,
@@ -77,6 +78,22 @@ describe("selectCustomers", () => {
     expect(selectCustomers(rows, { q: "siti", sort }).map((r) => r.id)).toEqual(["b1"]);
   });
 
+  // Spec §2: search matches the company's own `email`, not only a contact's.
+  // A super admin usually has the company's accounts address, not a person's.
+  it("matches the company's own accounts email", () => {
+    const withCompanyEmail = rows.map((r) =>
+      r.id === "b2" ? { ...r, email: "accounts@kimsmart.example" } : r,
+    );
+    expect(
+      selectCustomers(withCompanyEmail, { q: "accounts@kimsmart", sort }).map((r) => r.id),
+    ).toEqual(["b2"]);
+  });
+
+  it("does not choke on a customer with no email on file", () => {
+    const withoutEmail = rows.map((r) => (r.id === "b2" ? { ...r, email: null } : r));
+    expect(selectCustomers(withoutEmail, { q: "kim", sort }).map((r) => r.id)).toEqual(["b2"]);
+  });
+
   it("sorts by orders descending", () => {
     const sorted = selectCustomers(rows, { sort: { key: "orders", dir: "desc" } });
     expect(sorted.map((r) => r.id)).toEqual(["b2", "b1", "b3"]);
@@ -131,6 +148,7 @@ describe("listCustomers", () => {
         id: "b1",
         name: "Acme Industrial Sdn Bhd",
         contactName: "Raj",
+        email: "accounts@acme.com",
         createdAt: new Date("2026-01-01T00:00:00.000Z"),
         _count: { purchaseOrders: 3, webOrders: 2 },
         contacts: [
@@ -179,6 +197,7 @@ describe("listCustomers", () => {
         id: "b2",
         name: "Kim's Mart",
         contactName: null,
+        email: null,
         createdAt: new Date("2026-02-01T00:00:00.000Z"),
         _count: { purchaseOrders: 0, webOrders: 0 },
         contacts: [],
@@ -192,6 +211,7 @@ describe("listCustomers", () => {
         id: "b1",
         name: "Acme Industrial Sdn Bhd",
         contactName: "Raj",
+        email: "accounts@acme.com",
         contactNames: ["Active One", "Invited One", "Disabled One", "Never Signed In"],
         contactEmails: [
           "active@acme.com",
@@ -212,6 +232,7 @@ describe("listCustomers", () => {
         id: "b2",
         name: "Kim's Mart",
         contactName: null,
+        email: null,
         contactNames: [],
         contactEmails: [],
         active: 0,

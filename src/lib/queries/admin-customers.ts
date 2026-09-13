@@ -14,6 +14,8 @@ export type CustomerRow = {
   id: string;
   name: string;
   contactName: string | null;
+  /** The company's own accounts address — search only, never shown as a column. */
+  email: string | null;
   /** Their shop contacts, for search only — the table shows counts. */
   contactNames: string[];
   contactEmails: string[];
@@ -47,6 +49,7 @@ export async function listCustomers(): Promise<CustomerRow[]> {
       id: true,
       name: true,
       contactName: true,
+      email: true,
       createdAt: true,
       _count: {
         select: {
@@ -85,6 +88,7 @@ export async function listCustomers(): Promise<CustomerRow[]> {
       id: buyer.id,
       name: buyer.name,
       contactName: buyer.contactName,
+      email: buyer.email,
       contactNames: buyer.contacts.map((contact) => contact.name),
       contactEmails: buyer.contacts.map((contact) => contact.email),
       active: buyer.contacts.filter((c) => !c.disabledAt && !c.mustChangePassword).length,
@@ -108,7 +112,13 @@ export function selectCustomers(
 
   const filtered = rows.filter((row) => {
     if (!needle) return true;
-    const haystack = [row.name, row.contactName ?? "", ...row.contactNames, ...row.contactEmails];
+    const haystack = [
+      row.name,
+      row.contactName ?? "",
+      row.email ?? "",
+      ...row.contactNames,
+      ...row.contactEmails,
+    ];
     return haystack.some((value) => value.toLowerCase().includes(needle));
   });
 
