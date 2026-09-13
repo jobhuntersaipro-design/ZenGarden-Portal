@@ -4,7 +4,7 @@ import {
   mergeActivity,
   readDetail,
   type ActivityEntry,
-} from "@/lib/queries/customer-activity";
+} from "@/lib/queries/customer-activity-entries";
 
 const entry = (over: Partial<ActivityEntry>): ActivityEntry => ({
   id: "audit:1",
@@ -92,6 +92,42 @@ describe("auditText", () => {
   it("says something sensible for an edit that recorded no fields", () => {
     expect(auditText({ ...base, action: "CUSTOMER_UPDATED", detail: {} })).toBe(
       "Chris Lam edited this customer",
+    );
+  });
+
+  it("says who created the customer", () => {
+    expect(auditText({ ...base, action: "CUSTOMER_CREATED" })).toBe(
+      "Chris Lam created this customer",
+    );
+  });
+
+  // The only branch that reads `name` from the detail rather than
+  // `subjectName` — the buyer row is gone by the time this renders, so there
+  // is no `subjectName` to read at all, only what deleteBuyer stored.
+  it("names a deleted customer from the detail, not from subjectName", () => {
+    expect(
+      auditText({
+        ...base,
+        action: "CUSTOMER_DELETED",
+        subjectName: null,
+        detail: { name: "Acme Industrial Sdn Bhd", contacts: ["siti@acme.com"] },
+      }),
+    ).toBe("Chris Lam deleted Acme Industrial Sdn Bhd");
+  });
+
+  it("edits a contact's fields, naming them", () => {
+    expect(
+      auditText({
+        ...base,
+        action: "CONTACT_UPDATED",
+        detail: { fields: ["email", "phone"] },
+      }),
+    ).toBe("Chris Lam edited Siti's email, phone");
+  });
+
+  it("edits a contact with no fields recorded", () => {
+    expect(auditText({ ...base, action: "CONTACT_UPDATED", detail: {} })).toBe(
+      "Chris Lam edited Siti",
     );
   });
 });

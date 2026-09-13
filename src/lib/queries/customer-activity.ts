@@ -1,110 +1,25 @@
-import { PoEventKind, WebOrderStatus } from "@/generated/prisma/enums";
-import type { AuditAction } from "@/generated/prisma/enums";
+import { AuditAction, PoEventKind, WebOrderStatus } from "@/generated/prisma/enums";
 import { formatMYR } from "@/lib/money";
 import { stageLabel } from "@/lib/po-stages";
 import { prisma } from "@/lib/prisma";
+import {
+  ACTIVITY_KINDS,
+  ACTIVITY_PAGE_SIZE,
+  auditText,
+  mergeActivity,
+  readDetail,
+  type ActivityEntry,
+  type ActivityKind,
+} from "@/lib/queries/customer-activity-entries";
 import { ATTEMPT_RETENTION_HOURS } from "@/lib/rate-limit";
 
-export const ACTIVITY_KINDS = ["sign-in", "shop-order", "purchase-order", "change"] as const;
-export type ActivityKind = (typeof ACTIVITY_KINDS)[number];
-export const ACTIVITY_PAGE_SIZE = 20;
-
-export type ActivityEntry = {
-  /** `${source}:${rowId}` — unique across sources, and a stable tie-break. */
-  id: string;
-  kind: ActivityKind;
-  /** ISO, because a server component hands these to a client one. */
-  at: string;
-  /** Composed here: the component renders, it does not decide wording. */
-  text: string;
-  actor: { name: string; image: string | null } | null;
-  href: string | null;
-};
-
-const FIELD_LABELS: Record<string, string> = {
-  name: "name",
-  contactName: "contact",
-  email: "email",
-  phone: "phone",
-  address: "address",
-  paymentTerms: "payment terms",
-  remark: "remark",
-  username: "username",
-};
-
-/**
- * `detail` is a Json column, so its shape is a promise the database does not
- * keep — including for rows written by an older version of this code. This
- * narrows it without `any` and without throwing at render time.
- */
-export function readDetail(detail: unknown): { name: string | null; fields: string[] } {
-  if (typeof detail !== "object" || detail === null) return { name: null, fields: [] };
-  const record = detail as Record<string, unknown>;
-  return {
-    name: typeof record.name === "string" ? record.name : null,
-    fields: Array.isArray(record.fields)
-      ? record.fields.filter((field): field is string => typeof field === "string")
-      : [],
-  };
-}
-
-export function auditText(event: {
-  action: AuditAction;
-  actorName: string | null;
-  subjectName: string | null;
-  detail: unknown;
-}): string {
-  const { name, fields } = readDetail(event.detail);
-  // An ops user's row can be gone (SET NULL). "Someone" is honest and short.
-  const actor = event.actorName ?? "Someone";
-  const subject = event.subjectName ?? name ?? "a contact";
-  const list = fields.map((field) => FIELD_LABELS[field] ?? field).join(", ");
-
-  switch (event.action) {
-    case "SIGNED_IN":
-      return `${actor} signed in`;
-    case "CUSTOMER_CREATED":
-      return `${actor} created this customer`;
-    case "CUSTOMER_UPDATED":
-      return list ? `${actor} edited ${list}` : `${actor} edited this customer`;
-    case "CUSTOMER_DELETED":
-      return `${actor} deleted ${name ?? "this customer"}`;
-    case "CONTACT_INVITED":
-      return `${actor} invited ${subject}`;
-    case "CONTACT_UPDATED":
-      return list ? `${actor} edited ${subject}'s ${list}` : `${actor} edited ${subject}`;
-    case "CONTACT_REMOVED":
-      return `${actor} removed ${subject}`;
-    case "CONTACT_DISABLED":
-      return `${actor} disabled ${subject}'s access`;
-    case "CONTACT_RESTORED":
-      return `${actor} restored ${subject}'s access`;
-    case "PASSWORD_RESET":
-      return `${actor} reset ${subject}'s password`;
-    case "INVITE_RESENT":
-      return `${actor} resent ${subject}'s invitation`;
-  }
-}
-
-/**
- * Sort, filter and page the four sources as one list.
- *
- * ISO strings compare chronologically as strings — same length, same `Z`
- * suffix — so no Date is constructed to order them. Ties break on `id`
- * because a transaction stamps all its rows with one timestamp, and an
- * unstable sort would reshuffle the page on every render.
- */
-export function mergeActivity(
-  lists: ActivityEntry[][],
-  { kind, page, size }: { kind: ActivityKind | "all"; page: number; size: number },
-): { entries: ActivityEntry[]; total: number } {
-  const all = lists
-    .flat()
-    .filter((entry) => kind === "all" || entry.kind === kind)
-    .sort((a, b) => (a.at === b.at ? a.id.localeCompare(b.id) : a.at < b.at ? 1 : -1));
-
-  return { entries: all.slice((page - 1) * size, page * size), total: all.length };
-}
+// Re-exported rather than defined here: these live in
+// `customer-activity-entries.ts` because they must stay importable from a
+// client component without dragging `prisma` into the browser bundle — see
+// that file's doc comment. Re-exporting keeps every existing import path
+// (`from "@/lib/queries/customer-activity"`) working unchanged.
+export { ACTIVITY_KINDS, ACTIVITY_PAGE_SIZE, auditText, mergeActivity, readDetail };
+export type { ActivityEntry, ActivityKind };
 
 const WEB_ORDER_STATUS: Record<WebOrderStatus, string> = {
   DRAFT: "Draft",
@@ -122,9 +37,28 @@ export async function loadCustomerActivity(
   const take = page * ACTIVITY_PAGE_SIZE;
   const failedSince = new Date(Date.now() - ATTEMPT_RETENTION_HOURS * 3_600_000);
 
-  const [events, webOrders, purchaseOrders, stageEvents, contacts] = await Promise.all([
+  const [signIns, changes, webOrders, purchaseOrders, stageEvents, contacts] = await Promise.all([
+    // Split from the "change" read below rather than one query for the whole
+    // buyer: one AuditEvent query serving two kinds under one `take` bound
+    // would let a customer's frequent sign-ins push their rare edits outside
+    // the window entirely — filtering to "Changes" would then show nothing
+    // for edits that genuinely exist. Splitting by kind up front, each with
+    // its own `take`, keeps every source below homogeneous over one kind.
     prisma.auditEvent.findMany({
-      where: { buyerId },
+      where: { buyerId, action: AuditAction.SIGNED_IN },
+      orderBy: { at: "desc" },
+      take,
+      select: {
+        id: true,
+        action: true,
+        at: true,
+        detail: true,
+        actor: { select: { name: true, image: true } },
+        subjectUser: { select: { name: true } },
+      },
+    }),
+    prisma.auditEvent.findMany({
+      where: { buyerId, action: { not: AuditAction.SIGNED_IN } },
       orderBy: { at: "desc" },
       take,
       select: {
@@ -159,7 +93,10 @@ export async function loadCustomerActivity(
         poNumber: true,
         total: true,
         confirmedAt: true,
-        documentId: true,
+        // The provenance sentence needs whoever *uploaded* the document, not
+        // whoever *confirmed* the order — two different people on this
+        // model, exactly why PoTable renders them as two separate columns.
+        document: { select: { uploadedBy: { select: { name: true } } } },
         confirmedBy: { select: { name: true, image: true } },
       },
     }),
@@ -192,19 +129,26 @@ export async function loadCustomerActivity(
         })
       : [];
 
-  const auditEntries: ActivityEntry[] = events.map((event) => ({
-    id: `audit:${event.id}`,
-    kind: event.action === "SIGNED_IN" ? "sign-in" : "change",
-    at: event.at.toISOString(),
-    text: auditText({
-      action: event.action,
-      actorName: event.actor?.name ?? null,
-      subjectName: event.subjectUser?.name ?? null,
-      detail: event.detail,
-    }),
-    actor: event.actor ?? null,
-    href: null,
-  }));
+  const toAuditEntry =
+    (entryKind: ActivityKind) =>
+    (event: (typeof signIns)[number]): ActivityEntry => ({
+      id: `audit:${event.id}`,
+      kind: entryKind,
+      at: event.at.toISOString(),
+      text: auditText({
+        action: event.action,
+        actorName: event.actor?.name ?? null,
+        subjectName: event.subjectUser?.name ?? null,
+        detail: event.detail,
+      }),
+      actor: event.actor ?? null,
+      href: null,
+    });
+
+  const auditEntries: ActivityEntry[] = [
+    ...signIns.map(toAuditEntry("sign-in")),
+    ...changes.map(toAuditEntry("change")),
+  ];
 
   const webEntries: ActivityEntry[] = webOrders.map((order) => ({
     id: `web:${order.id}`,
@@ -226,8 +170,10 @@ export async function loadCustomerActivity(
     id: `po:${order.id}`,
     kind: "purchase-order",
     at: order.confirmedAt.toISOString(),
+    // `document` is null exactly when the order has no scan behind it — a
+    // web order, confirmed straight from the shop cart.
     text: `${order.poNumber} confirmed · ${formatMYR(order.total.toString())} · ${
-      order.documentId ? `uploaded by ${order.confirmedBy.name}` : "from the shop"
+      order.document ? `uploaded by ${order.document.uploadedBy.name}` : "from the shop"
     }`,
     actor: order.confirmedBy,
     href: `/purchase-orders/${order.id}`,
