@@ -1,6 +1,7 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
+import { z } from "zod";
 import { Prisma } from "@/generated/prisma/client";
 import { Role, WebOrderStatus } from "@/generated/prisma/enums";
 import { audit } from "@/lib/audit";
@@ -18,6 +19,9 @@ import { createCustomerSchema, type CreateCustomerInput } from "@/lib/validation
 export type ActionResult<T = undefined> =
   | { success: true; data: T }
   | { success: false; error: string };
+
+/** Every id these actions take is a real row's cuid — never empty, never absent. */
+const idSchema = z.string().min(1);
 
 export type CreatedCustomer = {
   buyerId: string;
@@ -143,6 +147,9 @@ export async function deleteBuyer(
     if (cause instanceof UnauthorizedError) return { success: false, error: cause.message };
     throw cause;
   }
+  if (!idSchema.safeParse(buyerId).success) {
+    return { success: false, error: "That customer is gone." };
+  }
 
   try {
     const buyer = await prisma.buyer.findUnique({
@@ -185,7 +192,13 @@ export async function deleteBuyer(
       await tx.webOrder.deleteMany({
         where: { buyerId: buyer.id, status: WebOrderStatus.DRAFT },
       });
-      await tx.user.deleteMany({ where: { buyerId: buyer.id } });
+      // role: CLIENT, not buyerId alone: the CHECK constraint enforces
+      // CLIENT ⇒ buyerId, not the converse, so nothing in the schema stops a
+      // MEMBER row from carrying a buyerId. Nothing sets one today, but an
+      // unfiltered deleteMany would hard-delete an ops account from the
+      // customers screen if one ever did — the one thing this phase's
+      // authorization rule says must never happen.
+      await tx.user.deleteMany({ where: { buyerId: buyer.id, role: Role.CLIENT } });
       await tx.buyer.delete({ where: { id: buyer.id } });
     });
 

@@ -1,6 +1,6 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { Prisma } from "@/generated/prisma/client";
-import { WebOrderStatus } from "@/generated/prisma/enums";
+import { Role, WebOrderStatus } from "@/generated/prisma/enums";
 
 const buyerCreate = vi.fn();
 const buyerFindUnique = vi.fn();
@@ -346,8 +346,33 @@ describe("deleteBuyer", () => {
   it("deletes the contacts and the buyer in one transaction", async () => {
     const result = await deleteBuyer("buyer-1", "Kim's Mart");
     expect(result).toEqual({ success: true, data: undefined });
-    expect(userDeleteMany).toHaveBeenCalledWith({ where: { buyerId: "buyer-1" } });
+    expect(userDeleteMany).toHaveBeenCalledWith({
+      where: { buyerId: "buyer-1", role: Role.CLIENT },
+    });
     expect(buyerDelete).toHaveBeenCalledWith({ where: { id: "buyer-1" } });
+  });
+
+  // The CHECK constraint enforces CLIENT ⇒ buyerId, not the converse, so
+  // nothing in the schema stops a MEMBER row from carrying a buyerId. An
+  // unfiltered deleteMany would hard-delete an ops account from the
+  // customers screen if one ever did — the one thing this phase's
+  // authorization rule says must never happen.
+  it("only ever deletes CLIENT rows, never an ops account that happened to carry this buyerId", async () => {
+    await deleteBuyer("buyer-1", "Kim's Mart");
+    const where = userDeleteMany.mock.calls[0][0].where;
+    expect(where.role).toBe(Role.CLIENT);
+  });
+
+  it("refuses a non-string buyerId before touching the database", async () => {
+    const result = await deleteBuyer(42 as unknown as string, "Kim's Mart");
+    expect(result.success).toBe(false);
+    expect(buyerFindUnique).not.toHaveBeenCalled();
+  });
+
+  it("refuses an empty buyerId before touching the database", async () => {
+    const result = await deleteBuyer("", "Kim's Mart");
+    expect(result.success).toBe(false);
+    expect(buyerFindUnique).not.toHaveBeenCalled();
   });
 
   it("records the deletion with the name, detached from the row it is about", async () => {
