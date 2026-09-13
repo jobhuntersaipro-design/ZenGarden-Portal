@@ -171,4 +171,21 @@ describe("mergeActivity", () => {
       ["a", "b"],
     );
   });
+
+  // Each source is read with `take: page * ACTIVITY_PAGE_SIZE`, so `all` here
+  // is always a truncated union, never the real row count once a customer has
+  // more history than one page's worth. `loadCustomerActivity` computes the
+  // real total from `count()` queries and hands it in; the slice logic must
+  // not quietly fall back to `all.length` once that authoritative total is
+  // supplied — a customer with 200+ real entries must not be told "40".
+  it("trusts an explicit total over the truncated list length", () => {
+    const { entries, total } = mergeActivity(lists, {
+      kind: "all",
+      page: 1,
+      size: 20,
+      total: 200,
+    });
+    expect(entries.map((e) => e.id)).toEqual(["s:1", "w:1", "a:1", "p:1"]);
+    expect(total).toBe(200);
+  });
 });

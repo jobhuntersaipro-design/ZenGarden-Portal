@@ -107,12 +107,24 @@ export function auditText(event: {
  */
 export function mergeActivity(
   lists: ActivityEntry[][],
-  { kind, page, size }: { kind: ActivityKind | "all"; page: number; size: number },
+  {
+    kind,
+    page,
+    size,
+    total,
+  }: { kind: ActivityKind | "all"; page: number; size: number; total?: number },
 ): { entries: ActivityEntry[]; total: number } {
   const all = lists
     .flat()
     .filter((entry) => kind === "all" || entry.kind === kind)
     .sort((a, b) => (a.at === b.at ? a.id.localeCompare(b.id) : a.at < b.at ? 1 : -1));
 
-  return { entries: all.slice((page - 1) * size, page * size), total: all.length };
+  // Each source is read bounded to `take: page * ACTIVITY_PAGE_SIZE`, so
+  // `all.length` here is the size of a *truncated* union — right only while
+  // every source's real row count fits inside that bound. A caller that
+  // knows the real counts (`loadCustomerActivity`, from `count()` queries)
+  // passes an authoritative `total`; falling back to `all.length` is only
+  // for a caller — such as this file's own unit tests — that has no better
+  // number to give.
+  return { entries: all.slice((page - 1) * size, page * size), total: total ?? all.length };
 }

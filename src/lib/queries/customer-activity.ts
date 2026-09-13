@@ -37,7 +37,19 @@ export async function loadCustomerActivity(
   const take = page * ACTIVITY_PAGE_SIZE;
   const failedSince = new Date(Date.now() - ATTEMPT_RETENTION_HOURS * 3_600_000);
 
-  const [signIns, changes, webOrders, purchaseOrders, stageEvents, contacts] = await Promise.all([
+  const [
+    signIns,
+    changes,
+    webOrders,
+    purchaseOrders,
+    stageEvents,
+    contacts,
+    signInCount,
+    changeCount,
+    webOrderCount,
+    purchaseOrderCount,
+    stageEventCount,
+  ] = await Promise.all([
     // Split from the "change" read below rather than one query for the whole
     // buyer: one AuditEvent query serving two kinds under one `take` bound
     // would let a customer's frequent sign-ins push their rare edits outside
@@ -116,18 +128,54 @@ export async function loadCustomerActivity(
       },
     }),
     prisma.user.findMany({ where: { buyerId }, select: { email: true } }),
+    // The take-bounded reads above answer "what fits on this page"; these
+    // answer "how many are there really" — each filtered exactly like its
+    // sibling read, or the total printed in the footer would disagree with
+    // the rows it is supposedly counting. mergeActivity's own all.length
+    // would otherwise be the size of a *truncated* union: right only while
+    // every source's real count fits inside `take`, wrong the moment a
+    // buyer's history — up to 400 purchase orders in production — exceeds it.
+    prisma.auditEvent.count({ where: { buyerId, action: AuditAction.SIGNED_IN } }),
+    prisma.auditEvent.count({ where: { buyerId, action: { not: AuditAction.SIGNED_IN } } }),
+    prisma.webOrder.count({ where: { buyerId, status: { not: WebOrderStatus.DRAFT } } }),
+    prisma.purchaseOrder.count({ where: { buyerId } }),
+    prisma.poStageEvent.count({
+      where: { kind: PoEventKind.STAGE, fromStage: { not: null }, purchaseOrder: { buyerId } },
+    }),
   ]);
 
   const emails = contacts.map((contact) => contact.email);
+  const failedWhere = { email: { in: emails }, success: false, at: { gte: failedSince } };
   const failed =
     emails.length > 0
       ? await prisma.loginAttempt.findMany({
-          where: { email: { in: emails }, success: false, at: { gte: failedSince } },
+          where: failedWhere,
           orderBy: { at: "desc" },
           take,
           select: { id: true, email: true, at: true },
         })
       : [];
+  // Same filter as the read above, or the "sign-in" total would disagree
+  // with what the failed-sign-in rows on screen actually are. Skipped when
+  // there are no contacts at all, matching the read's own short-circuit.
+  const failedCount = emails.length > 0 ? await prisma.loginAttempt.count({ where: failedWhere }) : 0;
+
+  const totalFor = (selected: ActivityKind | "all"): number => {
+    switch (selected) {
+      case "sign-in":
+        return signInCount + failedCount;
+      case "shop-order":
+        return webOrderCount;
+      case "purchase-order":
+        return purchaseOrderCount + stageEventCount;
+      case "change":
+        return changeCount;
+      case "all":
+        return (
+          signInCount + changeCount + webOrderCount + purchaseOrderCount + stageEventCount + failedCount
+        );
+    }
+  };
 
   const toAuditEntry =
     (entryKind: ActivityKind) =>
@@ -202,7 +250,7 @@ export async function loadCustomerActivity(
   return {
     ...mergeActivity(
       [auditEntries, webEntries, poEntries, stageEntries, failedEntries],
-      { kind, page, size: ACTIVITY_PAGE_SIZE },
+      { kind, page, size: ACTIVITY_PAGE_SIZE, total: totalFor(kind) },
     ),
     failedWindowHours: ATTEMPT_RETENTION_HOURS,
   };
