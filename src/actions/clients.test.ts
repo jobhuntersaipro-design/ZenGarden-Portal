@@ -469,4 +469,18 @@ describe("removeBuyerContact", () => {
     expect(data.subjectUserId).toBeNull();
     expect(data.detail).toEqual({ name: "Siti", email: "siti@acme.com" });
   });
+
+  it("counts only submitted orders, not an abandoned cart", async () => {
+    userFindUnique.mockResolvedValue({
+      id: "c1", name: "Siti", email: "siti@acme.com", role: "CLIENT",
+      buyerId: "buyer-1", _count: { webOrdersPlaced: 0 },
+    });
+    await removeBuyerContact("c1");
+    // A cart is a WebOrder with status DRAFT (src/actions/cart.ts openCart), so
+    // an unfiltered count would refuse to remove a contact who only browsed.
+    const select = userFindUnique.mock.calls[0][0].select;
+    expect(select._count.select.webOrdersPlaced).toEqual({
+      where: { status: { not: "DRAFT" } },
+    });
+  });
 });

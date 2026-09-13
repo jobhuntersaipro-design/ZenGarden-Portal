@@ -2,7 +2,7 @@
 
 import { revalidatePath } from "next/cache";
 import { Prisma } from "@/generated/prisma/client";
-import { Role } from "@/generated/prisma/enums";
+import { Role, WebOrderStatus } from "@/generated/prisma/enums";
 import { audit, changedFields } from "@/lib/audit";
 import { UnauthorizedError, requireSuperAdmin } from "@/lib/auth-guards";
 import {
@@ -311,7 +311,15 @@ export async function removeBuyerContact(contactId: string): Promise<ActionResul
         email: true,
         role: true,
         buyerId: true,
-        _count: { select: { webOrdersPlaced: true } },
+        // A cart is a WebOrder too — `openCart` creates one at DRAFT the
+        // moment a signed-in client adds their first item — so counting every
+        // status would refuse removal for someone who only browsed. Only a
+        // submitted order is what attributes real business to this row.
+        _count: {
+          select: {
+            webOrdersPlaced: { where: { status: { not: WebOrderStatus.DRAFT } } },
+          },
+        },
       },
     });
     if (!contact || contact.role !== Role.CLIENT) {
