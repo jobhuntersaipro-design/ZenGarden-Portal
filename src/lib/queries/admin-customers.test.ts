@@ -141,12 +141,17 @@ describe("listCustomers", () => {
             mustChangePassword: false,
             lastActiveAt: new Date("2026-09-10T02:00:00.000Z"),
           },
+          // Deliberately carries the LATEST lastActiveAt of the four, and
+          // sits in the middle of the resulting `seen` array (index 1 of 3
+          // once the null below is filtered out) — so "take the first" and
+          // "take the last" both land on the wrong contact, and only an
+          // actual maximum picks this one.
           {
             name: "Invited One",
             email: "invited@acme.com",
             disabledAt: null,
             mustChangePassword: true,
-            lastActiveAt: null,
+            lastActiveAt: new Date("2026-09-14T02:00:00.000Z"),
           },
           // Deliberately also carries mustChangePassword: true, so the test
           // exercises the precedence that a disabled contact counts as
@@ -157,10 +162,16 @@ describe("listCustomers", () => {
             email: "disabled@acme.com",
             disabledAt: new Date("2026-08-01T00:00:00.000Z"),
             mustChangePassword: true,
-            // The latest of the three lastActiveAt values, so the assertion
-            // below proves Math.max picks the newest rather than the first
-            // or the last contact in the array.
             lastActiveAt: new Date("2026-09-12T02:00:00.000Z"),
+          },
+          // A contact who has never signed in at all: their null must be
+          // filtered out of `seen` rather than coerced into the comparison.
+          {
+            name: "Never Signed In",
+            email: "never@acme.com",
+            disabledAt: null,
+            mustChangePassword: false,
+            lastActiveAt: null,
           },
         ],
       },
@@ -181,12 +192,19 @@ describe("listCustomers", () => {
         id: "b1",
         name: "Acme Industrial Sdn Bhd",
         contactName: "Raj",
-        contactNames: ["Active One", "Invited One", "Disabled One"],
-        contactEmails: ["active@acme.com", "invited@acme.com", "disabled@acme.com"],
-        active: 1,
+        contactNames: ["Active One", "Invited One", "Disabled One", "Never Signed In"],
+        contactEmails: [
+          "active@acme.com",
+          "invited@acme.com",
+          "disabled@acme.com",
+          "never@acme.com",
+        ],
+        active: 2,
         invited: 1,
         disabled: 1,
-        lastActiveAt: "2026-09-12T02:00:00.000Z",
+        // The maximum of the four (Invited One's), not Active One's (first)
+        // and not Disabled One's (last before the null-signed-in contact).
+        lastActiveAt: "2026-09-14T02:00:00.000Z",
         orders: 5,
         createdAt: "2026-01-01T00:00:00.000Z",
       },
