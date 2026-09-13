@@ -1,6 +1,7 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
+import { z } from "zod";
 import { Prisma } from "@/generated/prisma/client";
 import { Role, WebOrderStatus } from "@/generated/prisma/enums";
 import { audit, changedFields } from "@/lib/audit";
@@ -22,6 +23,9 @@ import {
 export type ActionResult<T = undefined> =
   | { success: true; data: T }
   | { success: false; error: string };
+
+/** Every id these actions take is a real row's cuid — never empty, never absent. */
+const idSchema = z.string().min(1);
 
 async function guard() {
   try {
@@ -182,6 +186,9 @@ export async function resetClientPassword(
 ): Promise<ActionResult<{ sent: boolean }>> {
   const { user, error } = await guard();
   if (!user) return { success: false, error: error! };
+  if (!idSchema.safeParse(contactId).success) {
+    return { success: false, error: "That contact is gone." };
+  }
   return issueTemporaryPassword(contactId, user.id, "PASSWORD_RESET");
 }
 
@@ -301,6 +308,9 @@ export async function updateBuyerContact(
 export async function removeBuyerContact(contactId: string): Promise<ActionResult> {
   const { user, error } = await guard();
   if (!user) return { success: false, error: error! };
+  if (!idSchema.safeParse(contactId).success) {
+    return { success: false, error: "That contact is gone." };
+  }
 
   try {
     const contact = await prisma.user.findUnique({
@@ -344,6 +354,15 @@ export async function removeBuyerContact(contactId: string): Promise<ActionResul
         actorId: user.id,
         buyerId: contact.buyerId,
         detail: { name: contact.name, email: contact.email },
+      });
+      // Before the user delete: the count above only excludes DRAFT, so a
+      // contact whose only WebOrder is an abandoned cart passes it — but
+      // WebOrder.placedById is ON DELETE RESTRICT, and `tx.user.delete` would
+      // still throw P2003 unless that draft is cleared first. The same shape
+      // `deleteBuyer` (src/actions/customers.ts) already uses.
+      // WebOrderLine.webOrder cascades, so its lines go with it.
+      await tx.webOrder.deleteMany({
+        where: { placedById: contact.id, status: WebOrderStatus.DRAFT },
       });
       await tx.user.delete({ where: { id: contact.id } });
     });

@@ -6,6 +6,10 @@ const userDelete = vi.fn();
 const userFindUnique = vi.fn();
 const buyerFindUnique = vi.fn();
 const auditCreate = vi.fn();
+// A contact's abandoned cart is a DRAFT WebOrder (openCart, src/actions/cart.ts)
+// and has to be cleared before the user row can go — the same shape
+// deleteBuyer already uses in src/actions/customers.ts.
+const webOrderDeleteMany = vi.fn();
 // The bare (non-transactional) client's own `auditEvent.create` — kept as a
 // distinct spy from the one handed into `$transaction` below, so a future
 // `audit(prisma, …)` in place of `audit(tx, …)` shows up here instead of
@@ -20,6 +24,7 @@ const transaction = vi.fn(async (fn: (tx: unknown) => unknown) =>
   fn({
     user: { create: userCreate, update: userUpdate, delete: userDelete },
     buyer: { findUnique: buyerFindUnique },
+    webOrder: { deleteMany: webOrderDeleteMany },
     auditEvent: { create: auditCreate },
   }),
 );
@@ -74,6 +79,7 @@ beforeEach(() => {
     fn({
       user: { create: userCreate, update: userUpdate, delete: userDelete },
       buyer: { findUnique: buyerFindUnique },
+      webOrder: { deleteMany: webOrderDeleteMany },
       auditEvent: { create: auditCreate },
     }),
   );
@@ -428,6 +434,24 @@ describe("resetClientPassword", () => {
     expect(auditCreate.mock.calls[0][0].data.action).toBe("INVITE_RESENT");
     expect(userUpdate.mock.calls[0][0].data.mustChangePassword).toBe(true);
   });
+
+  it("writes the audit row through the transaction, not the bare client", async () => {
+    await resetClientPassword("c1");
+    expect(auditCreate).toHaveBeenCalledTimes(1);
+    expect(looseAuditCreate).not.toHaveBeenCalled();
+  });
+
+  it("refuses a non-string id before touching the database", async () => {
+    const result = await resetClientPassword(42 as unknown as string);
+    expect(result.success).toBe(false);
+    expect(userFindUnique).not.toHaveBeenCalled();
+  });
+
+  it("refuses an empty id before touching the database", async () => {
+    const result = await resetClientPassword("");
+    expect(result.success).toBe(false);
+    expect(userFindUnique).not.toHaveBeenCalled();
+  });
 });
 
 describe("removeBuyerContact", () => {
@@ -482,5 +506,49 @@ describe("removeBuyerContact", () => {
     expect(select._count.select.webOrdersPlaced).toEqual({
       where: { status: { not: "DRAFT" } },
     });
+  });
+
+  // The count above correctly excludes DRAFT, so a contact whose only
+  // WebOrder is an abandoned cart passes the "did they place orders?" gate —
+  // but WebOrder.placedById is ON DELETE RESTRICT
+  // (prisma/migrations/20260910090000_web_orders/migration.sql), so
+  // tx.user.delete would still throw P2003 unless that draft is cleared
+  // first, the same shape deleteBuyer already uses in
+  // src/actions/customers.ts.
+  it("deletes the contact's draft web orders before deleting the user, inside the transaction", async () => {
+    userFindUnique.mockResolvedValue({
+      id: "c1", name: "Siti", email: "siti@acme.com", role: "CLIENT",
+      buyerId: "buyer-1", _count: { webOrdersPlaced: 0 },
+    });
+    const result = await removeBuyerContact("c1");
+    expect(result.success).toBe(true);
+    expect(webOrderDeleteMany).toHaveBeenCalledWith({
+      where: { placedById: "c1", status: "DRAFT" },
+    });
+    const draftOrderCall = webOrderDeleteMany.mock.invocationCallOrder[0];
+    const userDeleteCall = userDelete.mock.invocationCallOrder[0];
+    expect(draftOrderCall).toBeLessThan(userDeleteCall);
+  });
+
+  it("writes the audit row through the transaction, not the bare client", async () => {
+    userFindUnique.mockResolvedValue({
+      id: "c1", name: "Siti", email: "siti@acme.com", role: "CLIENT",
+      buyerId: "buyer-1", _count: { webOrdersPlaced: 0 },
+    });
+    await removeBuyerContact("c1");
+    expect(auditCreate).toHaveBeenCalledTimes(1);
+    expect(looseAuditCreate).not.toHaveBeenCalled();
+  });
+
+  it("refuses a non-string id before touching the database", async () => {
+    const result = await removeBuyerContact(42 as unknown as string);
+    expect(result.success).toBe(false);
+    expect(userFindUnique).not.toHaveBeenCalled();
+  });
+
+  it("refuses an empty id before touching the database", async () => {
+    const result = await removeBuyerContact("");
+    expect(result.success).toBe(false);
+    expect(userFindUnique).not.toHaveBeenCalled();
   });
 });
