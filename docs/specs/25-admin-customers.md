@@ -352,7 +352,20 @@ time; a removed contact's `CONTACT_REMOVED` event reads its name from
 
 1. A super admin sees **Users · Customers** tabs on `/admin`; a member
    requesting `/admin/customers` or `/admin/customers/<id>` gets the same 404
-   `/admin` already returns, read off the wire.
+   `/admin` already returns, read off the wire. **This holds for a member's
+   session** — verified 2026-09-13, `curl -o /dev/null -w '%{http_code}'`
+   returned `404` for a `MEMBER` on `/admin`, `/admin/customers` and
+   `/admin/customers/<a real id>` alike. It does **not** hold for a
+   super-admin session on a nonexistent id: `GET /admin/customers/does-not-exist`
+   as a signed-in super admin answers `200`, not `404` — the same app-wide
+   streaming-layout property already recorded for `/products/[id]` (2026-09-10)
+   and equally true of `/buyers/[id]` and `/purchase-orders/[id]`. `notFound()`
+   sits correctly at the top of the component, outside any try/catch, and
+   nothing about the nonexistent customer leaks into the body — the response
+   contains "Page not found" and none of a real customer's data — so the
+   criterion holds on **content** everywhere and on **status** only for the
+   signed-in-staff `/admin` case. Fixing the streaming behaviour itself is out
+   of scope for this phase.
 2. `/admin/customers` lists every buyer with logins, last active, orders and
    since, sorted and searched through the URL; **New customer** is the ink
    pill and creates a customer that lands on `/admin/customers/[id]`.

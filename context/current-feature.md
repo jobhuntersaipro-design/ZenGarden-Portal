@@ -2,7 +2,7 @@
 
 ## Status
 
-**Phase 25 — Admin › Customers — in design, spec written, not yet built**
+**Phase 25 — Admin › Customers — landed, all thirteen tasks done**
 (`feature/admin-customers`, spec `docs/specs/25-admin-customers.md`, branched
 from `feature/org-settings` on 2026-09-13). Asked for as: the *New customer*
 button is too hidden and hard to manage; a super admin should be able to
@@ -14,7 +14,9 @@ never archived; reset password = the existing resend mechanics under an honest
 name; activity = sign-ins, shop orders, purchase orders and admin changes,
 which needs a new `AuditEvent` table. Finding that shaped it: `LoginAttempt`
 is swept after 24 h, so successful client sign-ins are written durably as
-`SIGNED_IN` audit events. Next: implementation plan, then build.
+`SIGNED_IN` audit events. See History for what was measured. **Not yet merged
+to `main`** — `feature/org-settings`, this branch's own parent, is not on
+`main` either, so the branch is intact pending the user's own decision.
 
 **Phase 24 — organisation settings — landed, all four tasks done**
 (`feature/org-settings`, spec `docs/specs/24-org-settings.md`, plan
@@ -114,6 +116,152 @@ user's own decision to merge and delete it.
   the brand/size/variant shape. Separate work, raised after the import.
 
 ## History
+- 2026-09-13: Phase 25 — Admin › Customers — built across twelve tasks and
+  verified end to end by Task 13 on `feature/admin-customers` (spec
+  `docs/specs/25-admin-customers.md`). A super admin now creates, edits and
+  deletes a customer, resets or removes a shop contact, and reads a merged
+  activity timeline — sign-ins, shop orders, purchase orders and admin
+  changes — from `/admin/customers`, `/admin/customers/new` and
+  `/admin/customers/[id]`. Behind it: `AuditEvent`, written inside the
+  transaction of every customer mutation and on every successful client
+  sign-in.
+  **The database baseline held exactly, both ends, read back rather than
+  trusted.** Before: 11 buyers, 2 users (1 `SUPER_ADMIN`, 1 `MEMBER`), 0
+  `CLIENT` rows, 0 `AuditEvent` rows, 58 `LoginAttempt` rows, 0 `WebOrder`
+  rows. After a full customer-lifecycle journey — two test customers created,
+  three password resets, an invite, a real shop order, a disable, two
+  contact removals (one refused, one that succeeded) and a full buyer
+  delete — every number returned to the same reading: `buyer.count()` **11**,
+  `user.count()` **2** (`aisha@lovinghandsportal.com` back to `MEMBER`, read
+  back rather than trusted on the update's return value), `user.count({role:
+  CLIENT})` **0**, `auditEvent.count()` **0** (14 rows deleted **by id,
+  collected as you go**, never by a wildcard — the brief's own rule, because
+  a deleted test buyer's audit rows carry `buyerId: null` via `SetNull` and
+  cannot be traced to it afterward), `webOrder.count()` **0**.
+  **`LoginAttempt`: the excess this task itself created was cleared, the
+  pre-existing gap above the historical 52 was not.** Six rows from the test
+  contacts' own sign-ins and two from this task's own extra `aisha` sign-ins
+  (66 total mid-task) were deleted by id; the count returned to **58**, the
+  number this task started at and was asked to return to. The six-row gap
+  between 58 and the "historical 52" the brief mentioned predates this task
+  and was left alone — deleting rows this task did not create would be
+  guessing which are safe to remove.
+  **Criterion 1 does not hold the way it was written, and the spec was
+  corrected rather than the finding buried.** A `MEMBER` gets a real 404 off
+  the wire on `/admin`, `/admin/customers` and `/admin/customers/<id>` alike
+  — measured directly with `curl -o /dev/null -w '%{http_code}'`, all three
+  `404`. But `GET /admin/customers/does-not-exist` as the signed-in super
+  admin answers **200**, not 404 — the same app-wide streaming-layout gap
+  already recorded for `/products/[id]` (2026-09-10) and equally true of
+  `/buyers/[id]` and `/purchase-orders/[id]`; `notFound()` sits correctly
+  outside any try/catch, and the body contains "Page not found" and nothing
+  of a real customer's, so the gap is in *status*, not *content*. §8
+  criterion 1 now says exactly this rather than claiming a clean pass.
+  **Criterion 7's pin was watched catching its own removal, not assumed to.**
+  The `audit(tx, { action: "CUSTOMER_CREATED", ... })` call inside
+  `createCustomer` was deleted, `npx vitest run src/actions/customers.test.ts
+  -t "records the creation against the new buyer"` failed with `expected
+  "vi.fn()" to be called 1 times, but got 0 times`, and restoring the call
+  made it pass again. `src/actions/customers.ts` carries no diff afterward.
+  **The password-reset and old-password-fails proof ran on the real wire, not
+  the toast.** A contact's temporary password was reset three times in a row;
+  each time `mustChangePassword` came back `true` and `sessionVersion`
+  incremented (0 → 1 → 2 in the reads), and the contact signed in with the
+  *second* reset's password, changed it to one of their own choosing on
+  `/account/password`, and — after a *third* admin reset superseded it —
+  `POST /api/auth/callback/credentials` on the shop host with the now-old
+  (second) password returned `302` to
+  `/signin?error=CredentialsSignin&code=credentials`, while the third reset's
+  password signed in cleanly (`role: CLIENT`, session cookie set). Getting the
+  plaintext password required an environmental workaround, recorded below.
+  **Remove and Disable, both proven with real counts.** A contact with no
+  orders was removed: `user.count()` **3 → 2**, `CONTACT_REMOVED` audit row
+  with `subjectUserId` blank (`SET NULL`) and `{name, email}` in `detail` —
+  no password. A second contact placed a real shop order first (`W-2609-00008`,
+  `RM 210.00`, `SUBMITTED`, via the actual cart → checkout flow, not a
+  fixture), then Remove was refused with the exact wording
+  `"SDD Order Contact placed 1 shop order, so their account stays. Disable it
+  instead."`, the button itself relabelling to **Disable instead**; clicking
+  it set `disabledAt` and bumped `sessionVersion`, and `CONTACT_DISABLED` was
+  written. **Delete customer, both ways, with the real counts a reviewer
+  could check against the roster.** On Acme Industrial Sdn Bhd (63 purchase
+  orders) the danger zone read "63 purchase orders reference this customer,
+  so it can't be deleted" with the button disabled — not touched, read-only.
+  On the test buyer with its one shop order, the same danger zone named "1
+  shop order" and disabled the button; after the order was cleared and the
+  contact re-enabled, typing the buyer's exact name enabled Delete, and
+  `buyer.count()` went **12 → 11**, `user.count({role: CLIENT})` **1 → 0**,
+  the buyer row itself confirmed gone (`findUnique` → `null`), and
+  `CUSTOMER_DELETED` survived with `buyerId: null` and
+  `{name, contacts: 1}` in `detail`.
+  **A defect the sweep found and fixed, not deferred.** At 390px, a customer
+  with a shop contact overflowed the page by 13px
+  (`scrollWidth: 403` against `innerWidth: 390`) — new, not on the
+  2026-09-11 accepted list. Traced to the one thing this phase's page does
+  that `/buyers/[id]` never did: it puts `BuyerDetailsCard` and
+  `BuyerContactsCard` **beside each other** in one `grid gap-lg
+  lg:grid-cols-2`, where the portal page gives the contacts card a full-width
+  row of its own. Neither card had ever had to shrink below its content's
+  natural width before, and a grid item's default `min-width: auto` refused
+  to let it. Wrapping each card in its own `min-w-0` div fixed it —
+  re-measured at 390 → `390 = 390`. The full sweep, all clean after the fix:
+  `/admin/customers`, `/admin/customers/new`, `/admin/customers/[id]` (both
+  a buyer with a shop contact and Acme's 63-order page) and `/buyers`, each
+  at 390/768/1440 — twelve combinations. The 390px sub-44px probe on the
+  customer page (with a contact, an overflow menu, and a disabled danger-zone
+  button all present) returned **zero** elements under 44px — no new
+  accepted-list entry needed.
+  `shop-viewer.test.ts` passed unchanged (5/5). `git diff` against `main`
+  shows one storefront file (`shop/layout.tsx`) — that is Phase 24's own
+  change, still unmerged to `main`; diffed against this branch's real parent,
+  `feature/org-settings`, `src/lib/shop-viewer.ts` and every file under
+  `src/app/(storefront)` show **zero** difference, which is the comparison
+  that actually answers whether *this* phase touched the shop.
+  **The comment `src/lib/auth.ts` carried since Task 5 was wrong, and is
+  fixed.** It said a fire-and-forget `recordClientSignIn` call gets "the same
+  treatment as `touchLastActive`" — but `touchLastActive` **is** awaited at
+  its own call site in the `jwt` callback. The real equivalence, now what the
+  comment says, is that both swallow their own errors internally.
+  **An environmental blocker, found, worked around for testing, and left for
+  the user to fix for real.** `sendInviteEmail` failed on every attempt with
+  "Failed to render React component. Make sure to install
+  `@react-email/render` or `@react-email/components`" — not a code defect:
+  `resend`'s `emails.send()` treats `@react-email/render` as an *optional*
+  peer dependency, nothing in this project's own `package.json` names it
+  directly, and `package-lock.json` has no top-level entry for it at all, so
+  `node -e "require.resolve('@react-email/render')"` fails on a plain
+  `npm install` from the committed lockfile — reproducible on any fresh
+  clone, not particular to this machine. `npm install --no-save
+  @react-email/render@2.0.6` (no `package.json`/`package-lock.json` change,
+  confirmed by `git diff --stat` afterward) unblocked local testing for this
+  task only. Once installed, a real send correctly reached Resend's API and
+  was correctly rejected by *Resend itself* — `422`, "Invalid `to` field.
+  Please use our testing email address instead of domains like `example.com`"
+  — since every test contact's address was `@example.com`; `resetClientPassword`
+  still wrote `mustChangePassword`/`sessionVersion` regardless, matching the
+  documented "a failed send must not read as a failed action" contract. The
+  actual plaintext passwords used in the sign-in proof above were read via a
+  one-line `console.log` temporarily added to `sendInviteEmail` and removed
+  with `git checkout` immediately after each use (`git diff` empty both
+  times, verified). **Not fixed**: adding `@react-email/render` as a real
+  dependency is a `package.json` change outside this task's two-file scope;
+  until it lands, a fresh `npm install` on this branch cannot send a real
+  email locally.
+  **Verification: 780/780 tests, `tsc --noEmit`, `npm run lint` (2
+  pre-existing warnings in files this task did not touch, 0 errors) and
+  `npm run build` all clean.**
+  **Not verified:** anything on production — this branch has never been
+  deployed, and no production database was read or written. `updateBuyer`
+  and `updateBuyerContact`'s own `AuditEvent` writes were not exercised live
+  in this task (criterion 7's test-removal pin covers their correctness
+  structurally; Steps 3–4's actual audit trail covers `CUSTOMER_CREATED`,
+  `PASSWORD_RESET`, `CONTACT_REMOVED`, `CONTACT_INVITED`, `CONTACT_DISABLED`
+  and `CUSTOMER_DELETED`). The eighteen deferred minors accumulated across
+  the twelve build tasks (`.superpowers/sdd/2026-09-13-admin-customers/progress.md`)
+  were read and left as recorded — none was in scope to fix beyond the
+  `auth.ts` comment and the 390px grid overflow above. A second, whole-branch
+  review runs after this task; nothing here should be read as that review's
+  substitute.
 - 2026-09-11: Phase 24 — organisation settings — built and verified across
   four tasks on `feature/org-settings` (spec `docs/specs/24-org-settings.md`,
   plan `docs/specs/plans/2026-09-11-org-settings.md`). The supplier contact
