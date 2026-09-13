@@ -6,6 +6,7 @@ import { PrismaAdapter } from "@auth/prisma-adapter";
 import { compare } from "bcryptjs";
 import { authConfig } from "@/lib/auth.config";
 import { resolveGoogleSignIn } from "@/lib/auth-access";
+import { recordClientSignIn } from "@/lib/client-sign-in";
 import { prisma } from "@/lib/prisma";
 import {
   TooManyAttemptsError,
@@ -90,6 +91,14 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
 
         await recordLoginAttempt(email, ip, ok);
         if (!ok) return null;
+
+        // Not awaited: the sign-in does not depend on it, and the function
+        // swallows its own failures. Same treatment as `touchLastActive`.
+        void recordClientSignIn({
+          id: user!.id,
+          role: user!.role,
+          buyerId: user!.buyerId,
+        });
 
         return {
           id: user!.id,
