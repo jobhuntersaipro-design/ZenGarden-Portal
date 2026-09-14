@@ -1,13 +1,12 @@
 "use client";
 
 import { useState, useTransition } from "react";
+import Link from "next/link";
 import { toast } from "sonner";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
 import { CartScreen } from "@/components/shop/cart/CartScreen";
 import { cartCaptions } from "@/components/shop/cart/CartLines";
-import { removeFromCart, setCartons, submitWebOrder } from "@/actions/cart";
-import { useAwaitableRefresh } from "@/hooks/useAwaitableRefresh";
+import { removeFromCart, setCartons } from "@/actions/cart";
+import { shopHref } from "@/lib/shop-routes";
 import type { Cart } from "@/lib/queries/cart";
 
 /**
@@ -31,7 +30,6 @@ import type { Cart } from "@/lib/queries/cart";
  * which by then says the same thing.
  */
 export function ClientCart({ cart }: { cart: Cart }) {
-  const refresh = useAwaitableRefresh();
   const [, startTransition] = useTransition();
 
   // Derived state, the React way: the prop wins whenever it changes.
@@ -63,67 +61,50 @@ export function ClientCart({ cart }: { cart: Cart }) {
           setLocal(result.data);
         });
       }}
-      cta={<SendOrderCta hasUnavailable={hasUnavailable} refresh={refresh} />}
+      cta={<ReviewCta hasUnavailable={hasUnavailable} />}
     />
   );
 }
 
-function SendOrderCta({
-  hasUnavailable,
-  refresh,
-}: {
-  hasUnavailable: boolean;
-  refresh: () => Promise<void>;
-}) {
-  const [pending, startTransition] = useTransition();
-  const [reference, setReference] = useState("");
-  const [notes, setNotes] = useState("");
+/**
+ * The cart hands off; it no longer sends (Phase 32).
+ *
+ * The buyer's own PO number, the date they want delivery and any note used to
+ * be two unlabelled inputs beside a Send button here. They belong on a screen
+ * whose job is to show what is about to be sent, so this is a link to
+ * `/checkout/review` and nothing else — and the requested date, whose column
+ * has existed since Phase 16 and which nothing ever filled in, finally has
+ * somewhere to be asked for.
+ */
+function ReviewCta({ hasUnavailable }: { hasUnavailable: boolean }) {
+  if (hasUnavailable) {
+    return (
+      <div>
+        <span
+          aria-disabled
+          className="flex h-control-lg w-full cursor-not-allowed items-center justify-center rounded-pill bg-ink/40 text-[length:var(--text-button-md)] font-semibold text-canvas"
+        >
+          Review and send
+        </span>
+        <p className="mt-xxs text-[length:var(--text-caption)] text-ink-tertiary">
+          Remove the unavailable line first
+        </p>
+      </div>
+    );
+  }
 
   return (
     <div>
-      <div className="flex flex-col gap-xs">
-        <Input
-          aria-label="Your reference"
-          placeholder="Your own PO number (optional)"
-          value={reference}
-          onChange={(event) => setReference(event.target.value)}
-        />
-        <Input
-          aria-label="Notes for the team"
-          placeholder="Anything the team should know (optional)"
-          value={notes}
-          onChange={(event) => setNotes(event.target.value)}
-        />
-      </div>
-
-      <div className="mt-sm">
-        <Button
-          pending={pending}
-          disabled={hasUnavailable}
-          className="w-full"
-          onClick={() =>
-            startTransition(async () => {
-              const result = await submitWebOrder({
-                buyerReference: reference || null,
-                notes: notes || null,
-              });
-              if (result.success) {
-                toast.success(`Order ${result.data.reference} sent.`);
-                await refresh();
-              } else {
-                toast.error(result.error);
-              }
-            })
-          }
-        >
-          Send order
-        </Button>
-        {hasUnavailable ? (
-          <p className="mt-xxs text-[length:var(--text-caption)] text-ink-tertiary">
-            Remove the unavailable line first
-          </p>
-        ) : null}
-      </div>
+      <Link
+        href={shopHref.checkoutReview()}
+        className="flex h-control-lg w-full items-center justify-center rounded-pill bg-ink text-[length:var(--text-button-md)] font-semibold text-canvas hover:bg-ink-deep focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-focus"
+      >
+        Review and send
+      </Link>
+      <p className="mt-sm text-[length:var(--text-caption)] text-ink-tertiary">
+        You&rsquo;ll add your own PO number and a delivery date next, and see
+        everything before it is sent.
+      </p>
     </div>
   );
 }

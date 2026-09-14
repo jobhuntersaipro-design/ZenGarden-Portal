@@ -1,17 +1,25 @@
-# Current Feature: Product variants
+# Current Feature: Variants and order review
 
 ## Status
 
-**Phase 31 — Product variants — built and verified on
-`feature/product-variants`** (2026-09-14). Spec
-`docs/specs/31-product-variants.md`. Asked for as: a product should show its
-variants to the buyer, GOAT'S MILK/PAPAYA rather than separate products.
-Decided in one round: derive the group from brand, name, pack size and
-market, tolerating the importer's `"NAME — Variant"` format, with no
-migration and no ops screen.
+**Phase 31 — Product variants — and Phase 32 — Review and send — both built
+and verified on `feature/product-variants`** (2026-09-14). Specs
+`docs/specs/31-product-variants.md` and `docs/specs/32-order-review.md`.
 
-The shop went from **308 cards to 83**, 81 of them offering a choice. The
-user's own example is one card, `ZEN 2.1L NORMAL/DIY`, with eight flavours.
+Phase 31 was asked for as: a product should show its variants to the buyer,
+GOAT'S MILK/PAPAYA rather than separate products. The group is derived from
+brand, name, pack size and market, tolerating the importer's
+`"NAME — Variant"` format, with no migration and no ops screen. The shop went
+from **308 cards to 83**, 81 of them offering a choice; the user's own example
+is one card, `ZEN 2.1L NORMAL/DIY`, with eight flavours.
+
+Phase 32 was asked for as: a PO preview before the buyer confirms. It builds
+the review half of the never-built Phase 18 design — `/checkout/review` and
+`/checkout/sent/[reference]` — and the cart stops sending. `requestedDate`,
+a column that has existed since Phase 16 and that nothing had ever written,
+is finally asked for and stored as the day the client picked. The client now
+gets a receipt email naming their reference. The `/checkout` sign-in gate and
+the new-customer access request from that same spec stay unbuilt on purpose.
 
 ## Goals
 
@@ -21,17 +29,21 @@ user's own example is one card, `ZEN 2.1L NORMAL/DIY`, with eight flavours.
 - A picker on the product page, built from links so each flavour stays
   shareable.
 - Counts and facets count cards, because that is what the reader sees.
+- `/checkout/review` collecting the PO number, requested date and notes, with
+  narrow buyer and order projections asserted by equality.
+- `/checkout/sent/[reference]`, scoped to the caller's own buyer.
+- `notify()` sending the ops nudge and the client's receipt from one read.
 
 ## Notes
 
-- Production holds **one** active product, so none of this can be seen there
-  yet; it was built against the development catalogue's 308.
-- **Phase 32 — order review — is next and not started.** Agreed scope: build
-  `/checkout/review` and `/checkout/sent` from the existing, unbuilt spec
-  `docs/specs/design/shop/18-checkout-and-sending.md`, carrying the buyer's
-  PO number, a requested delivery date and notes, and move sending off the
-  cart. The guest sign-in gate and the new-customer access request in that
-  same spec stay out of scope.
+- Production holds **one** active product, so the variant grouping cannot be
+  seen there yet; it was built against the development catalogue's 308.
+- **Production's `DIRECT_URL` is still wrong** and will fail the next deploy
+  that has to run a migration. It points at the pooled Neon endpoint; it must
+  drop `-pooler`. `.env.local` line 37 has the same inversion. See the Phase
+  30 entry below for why this is not transient.
+- Still unbuilt from the Phase 18 design: the `/checkout` gate, the
+  new-customer access request and its admin approval.
 
 ## History
 - 2026-09-14: Phase 30 — Shop cart speed — built, verified, merged and
