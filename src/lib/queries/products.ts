@@ -1,7 +1,7 @@
 import { dateColumnRange } from "@/lib/dates";
 import { Prisma } from "@/generated/prisma/client";
 import { prisma } from "@/lib/prisma";
-import { categoryOptions } from "@/lib/product-categories";
+import { FIELD_KIND, LABEL_FIELD } from "@/lib/catalog-labels";
 import {
   needsAttention,
   productStats,
@@ -197,41 +197,37 @@ export async function listProducts(
 export type GrowingLabel = "brand" | "variant" | "market" | "category";
 
 /**
- * The values already used on a product for one label, which is the whole of
- * that picker's list. There is no hardcoded catalogue: super admins build it
- * by typing a brand, variant or market once, and every later product can pick
- * it. Nulls are dropped by the `not` clause, and the schema stores no blanks,
- * so nothing empty can reach the dropdown.
+ * One picker's list, read from the catalogue's vocabulary (Phase 28).
+ *
+ * This used to be a `distinct` over `Product`, which meant a value existed
+ * only while something carried it — nothing could be created ahead of a
+ * product, renamed, or removed. `CatalogLabel` holds the vocabulary now, and
+ * `createProduct`/`updateProduct` register anything typed into a product, so
+ * a value a product carries cannot be missing from the list.
  */
 export async function listLabels(field: GrowingLabel): Promise<string[]> {
-  const rows = await prisma.product.findMany({
-    // `category` is the one label that cannot be null, and Prisma rejects
-    // `not: null` against a non-nullable column at *runtime* — the computed
-    // key hides the mismatch from the type checker, so this cost a page that
-    // would not render rather than a failed build (2026-09-14).
-    where: field === "category" ? {} : { [field]: { not: null } },
-    distinct: [field],
-    select: { [field]: true },
-    orderBy: { [field]: "asc" },
+  const rows = await prisma.catalogLabel.findMany({
+    where: { kind: FIELD_KIND[field] },
+    select: { value: true },
+    orderBy: { value: "asc" },
   });
-  // A computed `select` key gives Prisma's result type every column at once;
-  // the row really holds the one field asked for.
-  return rows
-    .map((row) => (row as Partial<Record<GrowingLabel, string | null>>)[field])
-    .filter((value): value is string => Boolean(value));
+  return rows.map((row) => row.value);
 }
 
-/** Everything the pickers need, in one round trip of four queries. */
+/** Everything the pickers need, in one round trip. */
 export async function listAllLabels(): Promise<Record<GrowingLabel, string[]>> {
-  const [brand, variant, market, inUse] = await Promise.all([
-    listLabels("brand"),
-    listLabels("variant"),
-    listLabels("market"),
-    listLabels("category"),
-  ]);
-  // The seeds are unioned in here rather than at each call site, so every
-  // picker and every filter in the app offers the same list.
-  return { brand, variant, market, category: categoryOptions(inUse) };
+  const rows = await prisma.catalogLabel.findMany({
+    select: { kind: true, value: true },
+    orderBy: { value: "asc" },
+  });
+  const labels: Record<GrowingLabel, string[]> = {
+    brand: [],
+    variant: [],
+    market: [],
+    category: [],
+  };
+  for (const row of rows) labels[LABEL_FIELD[row.kind]].push(row.value);
+  return labels;
 }
 
 /** Filtering, searching and sorting happen after the stats exist. */

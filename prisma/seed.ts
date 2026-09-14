@@ -11,6 +11,7 @@ import { BUYERS, buyerContact } from "./seed/buyers";
 import { PRICE_EPOCH, PRODUCTS } from "./seed/products";
 import { PO_STAGES_ORDER, planDates, planOrder } from "./seed/orders";
 import { createRng } from "./seed/rng";
+import { PRODUCT_CATEGORIES } from "../src/lib/product-categories";
 
 const RESET = process.argv.includes("--reset");
 const WINDOW_START = new Date("2025-09-04T00:00:00+08:00");
@@ -121,6 +122,36 @@ async function main() {
       listPrice: product.base.toFixed(2),
     })),
   });
+  // The vocabulary the pickers read (Phase 28). Seeded here as well as by the
+  // migration's backfill: a `--reset` truncates `CatalogLabel` with everything
+  // else, and a catalogue whose products carry brands its own pickers do not
+  // offer is worse than an empty one.
+  await prisma.catalogLabel.createMany({
+    data: [
+      ...new Set(PRODUCTS.map((p) => p.brand).filter(Boolean)),
+    ].map((value) => ({ kind: "BRAND" as const, value: value as string })),
+    skipDuplicates: true,
+  });
+  await prisma.catalogLabel.createMany({
+    data: [
+      ...new Set(PRODUCTS.map((p) => p.variant).filter(Boolean)),
+    ].map((value) => ({ kind: "VARIANT" as const, value: value as string })),
+    skipDuplicates: true,
+  });
+  await prisma.catalogLabel.createMany({
+    data: [
+      ...new Set(PRODUCTS.map((p) => p.market).filter(Boolean)),
+    ].map((value) => ({ kind: "MARKET" as const, value: value as string })),
+    skipDuplicates: true,
+  });
+  await prisma.catalogLabel.createMany({
+    data: PRODUCT_CATEGORIES.map((value) => ({
+      kind: "CATEGORY" as const,
+      value,
+    })),
+    skipDuplicates: true,
+  });
+
   await prisma.productPrice.createMany({
     data: PRODUCTS.map((product, i) => ({
       id: rng.id("prc"),

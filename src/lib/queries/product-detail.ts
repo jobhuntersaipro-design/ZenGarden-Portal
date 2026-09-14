@@ -48,6 +48,8 @@ export type ProductDetail = {
     needsReview: boolean;
     updatedAt: string;
   };
+  /** What would be orphaned by a delete — the danger zone's whole argument. */
+  references: { purchaseOrderLines: number; shopOrderLines: number };
   images: { id: string; url: string | null; position: number }[];
   stats: ProductStats;
   revenueShare: number;
@@ -92,6 +94,10 @@ export async function loadProduct(
         select: { id: true, r2Key: true, thumbKey: true, position: true },
       },
       prices: { orderBy: { from: "asc" }, select: { price: true, from: true } },
+      // Every reference, not the twelve-month window the rest of this file
+      // reads: what the danger zone needs to know is whether *anything*
+      // anywhere points at this product (Phase 28 §4).
+      _count: { select: { lineItems: true, webOrderLines: true } },
     },
   });
   if (!product) return null;
@@ -226,6 +232,10 @@ export async function loadProduct(
       active: product.active,
       needsReview: product.needsReview,
       updatedAt: product.updatedAt.toISOString(),
+    },
+    references: {
+      purchaseOrderLines: product._count.lineItems,
+      shopOrderLines: product._count.webOrderLines,
     },
     images,
     stats,

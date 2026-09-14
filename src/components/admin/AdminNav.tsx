@@ -7,11 +7,12 @@ import { LinkSpinner } from "@/components/portal/LinkSpinner";
 const TABS = [
   { href: "/admin", label: "User management" },
   { href: "/admin/buyers", label: "Buyer management" },
+  { href: "/admin/catalogue", label: "Catalogue" },
 ] as const;
 
 /**
- * Two rooms in the admin shell. `/admin` matches exactly — a prefix match
- * would light both tabs on every buyers page.
+ * Three rooms in the admin shell. `/admin` matches exactly — a prefix match
+ * would light it on every buyers and catalogue page.
  *
  * The underline is a pseudo-element that scales from its centre rather than
  * a border that appears: the new tab's line grows as the old one's shrinks,

@@ -302,6 +302,35 @@ model Product {
   updatedAt     DateTime       @updatedAt
 }
 
+/// The vocabulary the catalogue's four labels are chosen from (Phase 28).
+///
+/// Brand, variant, market and category were *derived* until this table
+/// existed: `listLabels` ran a `distinct` over `Product`, so a value lived
+/// only while some product carried it — which is why nobody could create one
+/// ahead of a product, and why a typo could never be corrected in one move.
+///
+/// `Product` keeps storing plain strings and takes no foreign key. This is a
+/// registry of what may be typed, not the field itself; a FK would pull the
+/// purchase-order intake path, the catalogue importer and every seeded row
+/// into a change none of them need. `createProduct` and `updateProduct`
+/// register whatever they are given, so the two cannot drift.
+model CatalogLabel {
+  id        String           @id @default(cuid())
+  kind      CatalogLabelKind
+  value     String
+  createdAt DateTime         @default(now())
+
+  @@unique([kind, value])
+  @@index([kind])
+}
+
+enum CatalogLabelKind {
+  BRAND
+  VARIANT
+  MARKET
+  CATEGORY
+}
+
 model ProductPrice {
   id        String   @id @default(cuid())
   productId String

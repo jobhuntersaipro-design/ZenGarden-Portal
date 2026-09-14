@@ -96,7 +96,7 @@ export function ProductsList({
           <span
             className={`rounded-full bg-surface-soft px-sm py-xxs text-[length:var(--text-caption)] ${row.active ? "text-brand-amber" : "text-ink-tertiary"}`}
           >
-            {row.active ? `${row.flags.length} to fix` : "Inactive"}
+            {row.active ? `${row.flags.length} to fix` : "Unpublished"}
           </span>
         ),
     },

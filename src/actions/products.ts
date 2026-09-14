@@ -5,6 +5,8 @@ import { Prisma } from "@/generated/prisma/client";
 import { UnauthorizedError, requireSuperAdmin } from "@/lib/auth-guards";
 import { prisma } from "@/lib/prisma";
 import { deleteObject } from "@/lib/r2";
+import { registerLabels } from "@/lib/catalog-label-registry";
+import { productBlockedMessage } from "@/lib/product-delete-message";
 import { NEEDS_AN_IMAGE } from "@/lib/validation/product-images";
 import { productSchema, type ProductInput } from "@/lib/validation/products";
 
@@ -78,6 +80,15 @@ export async function createProduct(
           price: new Prisma.Decimal(data.listPrice),
           setById: user.id,
         },
+      });
+      // Anything typed into a picker joins the vocabulary, inside the same
+      // transaction — so a value cannot outlive its product only by accident,
+      // nor vanish with it.
+      await registerLabels(tx, {
+        brand: data.brand,
+        variant: data.variant,
+        market: data.market,
+        category: data.category,
       });
       return created;
     });
@@ -156,6 +167,12 @@ export async function updateProduct(
           data: { productId, price: nextPrice, setById: user.id },
         });
       }
+      await registerLabels(tx, {
+        brand: data.brand,
+        variant: data.variant,
+        market: data.market,
+        category: data.category,
+      });
     });
 
     revalidate(productId);
@@ -169,21 +186,111 @@ export async function updateProduct(
   }
 }
 
-/** Archiving keeps every line item that references the product. */
-export async function archiveProduct(productId: string): Promise<ActionResult> {
+/**
+ * Publish or unpublish, which is what `Product.active` has always meant: the
+ * shop lists a product only when it is active, carries a price and is not
+ * awaiting review (`shop-catalogue.ts`). Phase 28 gave the flag the word a
+ * reader would use for it and took the control out of the edit drawer.
+ *
+ * Deliberately not gated on having an image, unlike saving edits: unpublishing
+ * is a reasonable thing to do *about* a product with no picture, and the
+ * imported catalogue is full of them. Every line item that references the
+ * product is untouched either way — this is visibility, not deletion.
+ */
+export async function setProductPublished(
+  productId: string,
+  published: boolean,
+): Promise<ActionResult> {
   const { user, error } = await guard();
   if (!user) return { success: false, error: error! };
 
   try {
     await prisma.product.update({
       where: { id: productId },
-      data: { active: false },
+      data: { active: published },
     });
     revalidate(productId);
     return { success: true, data: undefined };
   } catch (cause) {
-    console.error("[products] archiveProduct", cause);
-    return { success: false, error: "We couldn't archive that product." };
+    console.error("[products] setProductPublished", cause);
+    return {
+      success: false,
+      error: published
+        ? "We couldn't publish that product."
+        : "We couldn't unpublish that product.",
+    };
+  }
+}
+
+/**
+ * Delete a product outright — the row, its price history, its images and the
+ * objects those images hold in R2.
+ *
+ * Refused while anything references it. A purchase-order line's `productId` is
+ * nullable and would be set null by a delete, silently detaching a confirmed
+ * order's line from the thing it was for; a shop-order line's is not nullable
+ * at all and the delete would simply fail. Both are the same answer to the
+ * reader: unpublish it instead.
+ *
+ * The name is re-checked here rather than only in the dialog, and the
+ * references re-counted: the dialog is what the screen was showing when the
+ * button was drawn, not what is true now.
+ */
+export async function deleteProduct(
+  productId: string,
+  confirmName: string,
+): Promise<ActionResult> {
+  const { user, error } = await guard();
+  if (!user) return { success: false, error: error! };
+
+  try {
+    const product = await prisma.product.findUnique({
+      where: { id: productId },
+      select: {
+        id: true,
+        name: true,
+        images: { select: { r2Key: true, thumbKey: true } },
+        _count: { select: { lineItems: true, webOrderLines: true } },
+      },
+    });
+    if (!product) return { success: false, error: "That product is gone." };
+
+    if (product.name.trim().toLowerCase() !== confirmName.trim().toLowerCase()) {
+      return {
+        success: false,
+        error: "That name doesn't match. Type the product's name exactly to delete it.",
+      };
+    }
+
+    const { lineItems, webOrderLines } = product._count;
+    if (lineItems > 0 || webOrderLines > 0) {
+      return { success: false, error: productBlockedMessage(lineItems, webOrderLines) };
+    }
+
+    // The row first: if R2 fails afterwards the catalogue is still correct and
+    // the orphans cost storage, where deleting the objects first and failing
+    // on the row would leave tiles nobody can load and nobody can remove.
+    // `ProductImage` and `ProductPrice` both cascade from the product.
+    await prisma.product.delete({ where: { id: product.id } });
+
+    for (const image of product.images) {
+      for (const key of [image.r2Key, image.thumbKey]) {
+        if (!key) continue;
+        try {
+          await deleteObject(key);
+        } catch (cause) {
+          // Reported, never thrown: the product is already gone, and telling
+          // the reader the delete failed would be false.
+          console.error("[products] deleteProduct orphaned object", key, cause);
+        }
+      }
+    }
+
+    revalidate(product.id);
+    return { success: true, data: undefined };
+  } catch (cause) {
+    console.error("[products] deleteProduct", cause);
+    return { success: false, error: "We couldn't delete that product." };
   }
 }
 

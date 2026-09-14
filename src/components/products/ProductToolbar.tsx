@@ -19,7 +19,9 @@ const CHIPS: { value: ProductFilter; label: string }[] = [
   { value: null, label: "All" },
   { value: "needs-review", label: "Needs review" },
   { value: "missing-image", label: "Missing image" },
-  { value: "inactive", label: "Inactive" },
+  // The key stays `inactive` on purpose: a saved link must keep working, and
+  // the column behind it is still `Product.active` (Phase 28 §3).
+  { value: "inactive", label: "Unpublished" },
   { value: "price-moved", label: "Price moved > 3%" },
   { value: "not-sold-60d", label: "Not sold in 60 days" },
 ];

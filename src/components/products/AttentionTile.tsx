@@ -29,7 +29,7 @@ export function AttentionTile({
       count: counts.missingImage,
       label: "missing image",
     },
-    { filter: "inactive", count: counts.inactive, label: "inactive" },
+    { filter: "inactive", count: counts.inactive, label: "unpublished" },
     { filter: "not-sold-60d", count: counts.notSold, label: "not sold 60d" },
   ];
 

@@ -5,6 +5,7 @@ import Link from "next/link";
 import { toast } from "sonner";
 import { createProduct } from "@/actions/products";
 import { GrowingListPicker } from "@/components/products/GrowingListPicker";
+import { ManageLabelsLink } from "@/components/products/ManageLabelsLink";
 import { StagedImages, type StagedImage } from "@/components/products/StagedImages";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -308,6 +309,7 @@ export function ProductForm({
                 known={labels.brand}
                 onChange={(brand) => set("brand", brand)}
               />
+              <ManageLabelsLink hint="Type to add one" />
             </div>
 
             <div className="flex flex-col gap-xxs">
@@ -318,9 +320,7 @@ export function ProductForm({
                 known={labels.variant}
                 onChange={(variant) => set("variant", variant)}
               />
-              <p className="text-[length:var(--text-caption)] text-ink-tertiary">
-                Fragrance or formulation — type to add one
-              </p>
+              <ManageLabelsLink hint="Fragrance or formulation — type to add one" />
             </div>
 
             <div className="flex flex-col gap-xxs">
@@ -335,9 +335,7 @@ export function ProductForm({
                 // whatever was chosen last.
                 onChange={(category) => set("category", category ?? form.category)}
               />
-              <p className="text-[length:var(--text-caption)] text-ink-tertiary">
-                What kind of product it is — type to add one
-              </p>
+              <ManageLabelsLink hint="What kind of product it is — type to add one" />
             </div>
 
             <div className="flex flex-col gap-xxs">
@@ -348,9 +346,7 @@ export function ProductForm({
                 known={labels.market}
                 onChange={(market) => set("market", market)}
               />
-              <p className="text-[length:var(--text-caption)] text-ink-tertiary">
-                Country or customer it&rsquo;s made for — type to add one
-              </p>
+              <ManageLabelsLink hint="Country or customer it’s made for — type to add one" />
             </div>
 
             <div className="flex flex-col gap-xxs">

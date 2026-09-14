@@ -5,7 +5,7 @@ import { formatMYR } from "@/lib/money";
 
 /** The one flag worth surfacing on a card, most serious first. */
 function flagFor(product: ProductRow) {
-  if (!product.active) return { label: "Inactive", tone: "text-ink-tertiary" };
+  if (!product.active) return { label: "Unpublished", tone: "text-ink-tertiary" };
   if (product.flags.includes("missing-image")) {
     return { label: "No image", tone: "text-brand-amber" };
   }

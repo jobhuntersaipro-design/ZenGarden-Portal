@@ -34,7 +34,16 @@ export default async function AdminLayout({
       <NavProgressProvider>
         <div className="min-h-dvh bg-canvas">
           <header className="flex h-topbar items-center gap-md border-b border-hairline px-lg">
-            <Wordmark />
+            {/* The way home, as it is in the portal sidebar and the shop
+                header: a wordmark a reader clicks and nothing happens is a
+                dead control in the corner of every admin page. */}
+            <Link
+              href="/"
+              aria-label="Loving Hands — go to the dashboard"
+              className="flex min-h-control-md items-center rounded-xxs transition-opacity duration-[0.25s] hover:opacity-80 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-focus"
+            >
+              <Wordmark />
+            </Link>
             {/* Hidden below `sm`: with "Back to portal" kept on one line, the
                 eyebrow is what pushed the header 26px past a 390px viewport. */}
             <span className="hidden font-mono text-[length:var(--text-eyebrow)] text-ink-tertiary sm:inline">
