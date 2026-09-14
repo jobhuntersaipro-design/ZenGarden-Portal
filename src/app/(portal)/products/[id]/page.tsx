@@ -161,6 +161,7 @@ export default async function ProductPage({
                   brand: data.product.brand,
                   variant: data.product.variant,
                   packSize: data.product.packSize,
+                  cartonsPerPallet: data.product.cartonsPerPallet,
                   market: data.product.market,
                   listPrice: data.product.listPrice.toFixed(2),
                   description: data.product.description,
@@ -247,6 +248,12 @@ export default async function ProductPage({
                   : `per ${data.product.unit}`,
               ],
               ["Market", data.product.market ?? "—"],
+              [
+                "Per pallet",
+                data.product.cartonsPerPallet
+                  ? `${data.product.cartonsPerPallet} cartons`
+                  : "—",
+              ],
               [
                 "First sold",
                 data.stats.firstSold ? formatDate(data.stats.firstSold) : "—",

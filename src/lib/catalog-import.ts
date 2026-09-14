@@ -30,6 +30,8 @@ export type ImportedProduct = {
   line: string;
   size: string | null;
   packSize: number | null;
+  /** "60CTNS/PALLET" — printed on the customer's own labels and on the sheet. */
+  cartonsPerPallet: number | null;
   variant: string | null;
   category: ProductCategory;
   name: string;
@@ -145,6 +147,7 @@ export function parseBlock(block: string): {
   line: string;
   size: string | null;
   packSize: number | null;
+  cartonsPerPallet: number | null;
 } {
   let rest = block.trim();
   let market: string | null = null;
@@ -164,6 +167,14 @@ export function parseBlock(block: string): {
   const packSize = pack ? Number(pack[1]) : null;
   const size = rest.match(/\b(\d+(?:\.\d+)?\s?(?:ML|L|KG|G))\b/i)?.[1] ?? null;
 
+  // The pallet note in the same three shapes the line strips below. Read
+  // rather than discarded since Phase 29: the number is on the customer's own
+  // labels, and it was being parsed out and thrown away.
+  const pallet = rest.match(
+    /\(?\s*-?\s*(\d+)\s?CTNS?\s*\/\s*(?:PALLET|PLT|P)\s*\)?/i,
+  );
+  const cartonsPerPallet = pallet ? Number(pallet[1]) : null;
+
   // The line is the block minus its pack count and any pallet note, kept in
   // the sheet's own capitals so it matches what the ops team reads there.
   // Pallet notes appear bare ("52CTNS/PALLET"), parenthesised ("(48CTNS/P)")
@@ -177,7 +188,13 @@ export function parseBlock(block: string): {
     .trim()
     .toUpperCase();
 
-  return { market, line, size: size?.toUpperCase().replace(/\s/g, "") ?? null, packSize };
+  return {
+    market,
+    line,
+    size: size?.toUpperCase().replace(/\s/g, "") ?? null,
+    packSize,
+    cartonsPerPallet,
+  };
 }
 
 /** Category from the words in the line; anything unrecognised is Uncategorised. */
@@ -281,7 +298,7 @@ export function toProducts(rows: SheetLabels[]): ImportReport {
       continue;
     }
 
-    const { market, line, size, packSize } = parseBlock(first.block);
+    const { market, line, size, packSize, cartonsPerPallet } = parseBlock(first.block);
     if (!line) continue;
     const brand = titleCase(first.brand);
     const category = categorise(line);
@@ -302,6 +319,7 @@ export function toProducts(rows: SheetLabels[]): ImportReport {
         line,
         size,
         packSize,
+        cartonsPerPallet,
         variant,
         category,
         name,

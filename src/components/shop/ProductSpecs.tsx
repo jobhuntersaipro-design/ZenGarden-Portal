@@ -12,6 +12,10 @@ export function ProductSpecs({ product }: { product: ShopProductDetail }) {
       "Pack size",
       product.packSize === null ? "—" : `${product.packSize} per ${product.unit}`,
     ],
+    [
+      "Cartons per pallet",
+      product.cartonsPerPallet === null ? "—" : String(product.cartonsPerPallet),
+    ],
     ["Unit", product.unit.charAt(0).toUpperCase() + product.unit.slice(1)],
     ["Brand", product.brand ?? "—"],
     ["Variant", product.variant ?? "—"],

@@ -29,6 +29,8 @@ export type ShopProduct = {
   category: string;
   market: string | null;
   packSize: number | null;
+  /** Widened on purpose in Phase 29: buyers plan full-pallet orders. */
+  cartonsPerPallet: number | null;
   unit: string;
   listPrice: string;
   imageUrl: string | null;
@@ -87,6 +89,7 @@ const SHOP_PRODUCT_SELECT = {
   category: true,
   market: true,
   packSize: true,
+  cartonsPerPallet: true,
   unit: true,
   listPrice: true,
   images: {
@@ -108,6 +111,7 @@ async function toShopProduct(row: ShopProductRow): Promise<ShopProduct> {
     category: row.category,
     market: row.market,
     packSize: row.packSize,
+    cartonsPerPallet: row.cartonsPerPallet,
     unit: row.unit,
     listPrice: row.listPrice.toFixed(2),
     imageUrl: await thumbUrl(row.images),
@@ -261,6 +265,7 @@ export async function loadShopProduct(
       category: true,
       market: true,
       packSize: true,
+      cartonsPerPallet: true,
       unit: true,
       listPrice: true,
       description: true,
@@ -285,6 +290,7 @@ export async function loadShopProduct(
     category: row.category,
     market: row.market,
     packSize: row.packSize,
+    cartonsPerPallet: row.cartonsPerPallet,
     unit: row.unit,
     listPrice: row.listPrice.toFixed(2),
     description: row.description,

@@ -76,6 +76,7 @@ describe("relatedShopProducts", () => {
     category: "Shower cream & gel",
     market: "Vietnam",
     packSize: 6,
+    cartonsPerPallet: 60,
     unit: "carton",
     listPrice: "225.50",
     description: null,

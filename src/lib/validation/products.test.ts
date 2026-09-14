@@ -10,6 +10,7 @@ const valid = {
   brand: "ZEN GARDEN",
   variant: "Goat's Milk",
   packSize: 6,
+  cartonsPerPallet: 60,
   market: "Malaysia",
   description: "Flamed finish.",
   active: true,
@@ -132,6 +133,27 @@ describe("productSchema", () => {
       packSize: null,
     });
     expect(parsed.packSize).toBeNull();
+  });
+
+  it("takes cartons per pallet as typed, and refuses a fraction", () => {
+    const parsed = productSchema.safeParse({ ...valid, cartonsPerPallet: "60" });
+    expect(parsed.success).toBe(true);
+    if (parsed.success) expect(parsed.data.cartonsPerPallet).toBe(60);
+
+    // Half a carton does not go on a pallet; that is a typo, like "1.5 per
+    // carton" is for pack size.
+    const bad = productSchema.safeParse({ ...valid, cartonsPerPallet: "60.5" });
+    expect(bad.success).toBe(false);
+    if (!bad.success) {
+      expect(bad.error.issues[0]?.message).toBe(
+        "Cartons per pallet must be a whole number above zero",
+      );
+    }
+
+    // Left blank, it is simply unknown.
+    const blank = productSchema.safeParse({ ...valid, cartonsPerPallet: "" });
+    expect(blank.success).toBe(true);
+    if (blank.success) expect(blank.data.cartonsPerPallet).toBeNull();
   });
 
   it("takes the pack size as typed, so a form field can feed it", () => {
