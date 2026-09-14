@@ -1,35 +1,54 @@
-# Current Feature: Cartons per pallet
+# Current Feature: Shop cart speed
 
 ## Status
 
-**Phase 29 — Cartons per pallet — built and verified on
-`feature/cartons-per-pallet`** (2026-09-14). Spec
-`docs/specs/29-cartons-per-pallet.md`. Asked for as: when creating a product,
-also allow entering how many cartons go on a pallet — prompted by a product
-label reading `SUPER INDO 2.1L (6) 60CTNS/PALLET ZEN SIGNATURE`. Decided in
-one round: capture it in the importer and backfill development (not
-production), and show it in ops **and** on the shop product page.
+**Phase 30 — Shop cart speed — built and verified on `fix/shop-cart-speed`,
+awaiting commit** (2026-09-14). Spec `docs/specs/30-shop-cart-speed.md`.
+Reported as: adding to the cart and stepping cartons on
+`shop.lovinghandsportal.com` take very long. Four causes, measured: every
+stepper tap and every remove sat on `useAwaitableRefresh`'s 8 s give-up
+(8198 ms locally against a 0.6 s wire) because the refresh transition was
+entangled with the stepper's own pending action; every mutation rendered
+the route twice, since `revalidatePath` inside the action already renders
+it into the response; production functions ran in `iad1` (read off
+`x-vercel-id: sin1::iad1::…`) while Neon is in `ap-southeast-1`; and the
+viewer was read twice per render. After: one request and 17 queries per
+tap instead of two and 28, stepper unlocked at 280 ms instead of 8198 ms,
+Add to cart and Remove each one `POST`, `vercel.json` pinned to `sin1`.
+Not verified: the production region after deploy (read `x-vercel-id` once
+it lands) and a timed signed-in tap on production.
+
+Two follow-on phases were agreed in the same round and are queued behind
+this one: **Phase 31 — product variants** (group products sharing brand,
+name, pack size and market into one shop card with a variant picker; no
+schema change) and **Phase 32 — order review** (a full review step, buyer,
+contact, address, lines and totals, before Send order).
 
 ## Goals
 
-- `Product.cartonsPerPallet`, nullable, whole number above zero — one
-  additive migration, validated by the same rule as pack size.
-- A field on `/products/new` and in the edit drawer; a row on the product
-  detail page and in the shop's product specs.
-- The catalogue importer stops discarding the pallet note it has been parsing
-  out of every block since Phase 13.
-- `scripts/backfill-cartons-per-pallet.ts` fills the existing catalogue from
-  the same labels file it was imported from, matched by exact SKU, dry run
-  first.
+- `vercel.json` pins functions to `sin1`.
+- `loadShopViewer` is read once per request (React `cache()`), not once by
+  the layout and again by the page.
+- `setCartons` and `removeFromCart` return the re-priced cart, and
+  `ClientCart` renders it at once; the route refresh runs un-awaited so the
+  header badge and mobile bar catch up in the background.
 
 ## Notes
 
-- Production is untouched by the backfill; running it there is its own
-  decision.
-- Editing an imported product's pallet figure by hand means giving it an
-  image first — Phase 27's gate, working as designed.
+- A signed-in click on production could not be timed before the fix: there
+  is no client login available to this work on production. The per-click
+  figure is derived from the query chain and the measured guest baseline
+  (0.57–0.65 s warm, 1.3–1.4 s cold for a page with one query batch).
 
 ## History
+- 2026-09-14: Phase 29 — Cartons per pallet — built, verified and merged
+  from `feature/cartons-per-pallet` (spec `docs/specs/29-cartons-per-pallet.md`).
+  `Product.cartonsPerPallet`, nullable, whole number above zero, one
+  additive migration; a field on `/products/new` and in the edit drawer, a
+  row on the product detail page and in the shop's product specs; the
+  catalogue importer keeps the pallet note it had been parsing since Phase
+  13; `scripts/backfill-cartons-per-pallet.ts` filled development from the
+  labels file by exact SKU. Production untouched by the backfill.
 - 2026-09-14: Phase 28 — the catalogue's vocabulary, and a product's life —
   built, verified and merged from `feature/catalogue-and-lifecycle` (spec
   `docs/specs/28-catalogue-and-product-lifecycle.md`). One additive migration,

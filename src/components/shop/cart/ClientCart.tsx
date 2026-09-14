@@ -13,29 +13,54 @@ import type { Cart } from "@/lib/queries/cart";
 /**
  * A signed-in client's cart: `cart` is the `WebOrder` `loadCart` already
  * read server-side, and every mutation goes through the Server Actions
- * (`setCartons`, `removeFromCart`, `submitWebOrder`) unchanged from Phase 16
- * — `CartScreen` is the shared "one screen" (§5.5); this component supplies
- * only the client's data source, its mutators and its own CTA.
+ * (`setCartons`, `removeFromCart`, `submitWebOrder`) — `CartScreen` is the
+ * shared "one screen" (§5.5); this component supplies only the client's data
+ * source, its mutators and its own CTA.
+ *
+ * Phase 30: a line edit renders the cart the action answers with, at once,
+ * and asks for no refresh. Two things were wrong before. Every tap awaited
+ * `useAwaitableRefresh()` from inside the stepper's own pending transition,
+ * and React entangles a transition started while an async action is pending
+ * with that action — so the refresh could not settle until the action did,
+ * and the action was waiting on the refresh: every tap sat on the hook's 8 s
+ * give-up (measured 8198 ms locally against a 0.6 s wire). And the refresh
+ * itself was redundant: `revalidateShop()` inside the action already
+ * re-renders this route into the action's own response, which is how the
+ * header badge and the mobile bar (the layout's `cartSummary`) catch up.
+ * When that payload lands, the fresh `cart` prop replaces the local copy,
+ * which by then says the same thing.
  */
 export function ClientCart({ cart }: { cart: Cart }) {
   const refresh = useAwaitableRefresh();
   const [, startTransition] = useTransition();
-  const hasUnavailable = cartCaptions(cart.lines).unavailableLabel !== null;
+
+  // Derived state, the React way: the prop wins whenever it changes.
+  const [local, setLocal] = useState(cart);
+  const [seen, setSeen] = useState(cart);
+  if (cart !== seen) {
+    setSeen(cart);
+    setLocal(cart);
+  }
+
+  const hasUnavailable = cartCaptions(local.lines).unavailableLabel !== null;
 
   return (
     <CartScreen
-      lines={cart.lines}
-      subtotal={cart.subtotal}
+      lines={local.lines}
+      subtotal={local.subtotal}
       onSetCartons={async (productId, cartons) => {
         const result = await setCartons({ productId, cartons });
-        if (result.success) await refresh();
+        if (result.success) setLocal(result.data);
         return result;
       }}
       onRemove={(productId) => {
         startTransition(async () => {
           const result = await removeFromCart(productId);
-          if (!result.success) toast.error(result.error);
-          else await refresh();
+          if (!result.success) {
+            toast.error(result.error);
+            return;
+          }
+          setLocal(result.data);
         });
       }}
       cta={<SendOrderCta hasUnavailable={hasUnavailable} refresh={refresh} />}
