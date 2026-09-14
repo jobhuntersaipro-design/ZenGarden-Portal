@@ -39,9 +39,21 @@ No migration, no new dependency, no schema change.
   `Zen Garden Portal <portal@lovinghandsportal.com>`, but the live value is a
   Vercel environment variable this branch cannot reach — until it is changed,
   every email arrives from "Loving Hands Portal" however the body reads.
-- `docs/specs/**`, `context/*.md`, `CLAUDE.md` and the Claude Design canvas
-  still say "Loving Hands" throughout. Those are internal documents rather
-  than pages, so they were left alone rather than rewritten in passing.
+- **The docs and the canvas were swept in a second pass**, after the app
+  merged: `CLAUDE.md`, `context/project-overview.md`,
+  `context/design-system.md`, `docs/specs/00-master.md`, `02-auth.md`,
+  `04-extraction-review.md`, `SETUP-CHECKLIST.md`, the portal design spec, the
+  four `docs/specs/design/shop` specs, and all 40 canvas files — every
+  artboard, both published bundles (whose wordmark spans are JSON-escaped, so
+  they needed their own pass) and every render. 51 files.
+  **Dated historical records were deliberately not swept**, because editing the
+  old name out of them would make them false: `docs/specs/plans/**`,
+  `docs/superpowers/plans/**`, `docs/specs/20260906_UI_change.md`, and this
+  file's own History — the 2026-09-05 entry records renaming ZenGarden *to*
+  Loving Hands, which cannot be rewritten without becoming nonsense.
+  **Filenames were left alone too** — `loving-hands-portal-canvas.html`,
+  `loving-hands-storefront.html` and `docs/specs/design/loving-hands-portal-design.md`
+  keep their names, like the domains, so no path or link breaks.
 - `AvatarBroadcast`'s `BroadcastChannel` key is still `"loving-hands.avatar"`.
   It is an internal channel name with no user-visible surface, and renaming it
   would only desynchronise tabs open across the deploy.

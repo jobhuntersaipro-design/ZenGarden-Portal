@@ -1,4 +1,4 @@
-# Loving Hands Portal — Master Spec
+# Zen Garden Portal — Master Spec
 
 Version 1.0 — 2026-09-04. Owner: Chris Lam. Audience: AI coders.
 
@@ -20,7 +20,7 @@ acceptance criteria, the design reference wins for copy and component detail.
 
 | | |
 |---|---|
-| Name | Loving Hands Portal |
+| Name | Zen Garden Portal |
 | Users | Two audiences on two hosts. **Ops staff** on `www.` — one org, roles `MEMBER` and `SUPER_ADMIN`. **Buyer contacts** on `shop.` — role `CLIENT`, each linked to one `Buyer` (Phase 15) |
 | Job | Get customer POs out of attachments into a queryable database without retyping, then track fulfillment and see sales, buyer and product trends. From Phase 16, also let the buyer place the order directly |
 | Buyer | The customer who issued the PO. Called "buyer" everywhere |
@@ -564,7 +564,7 @@ R2_BUCKET=loving-hands-portal
 
 # Resend
 RESEND_API_KEY=
-EMAIL_FROM="Loving Hands Portal <portal@lovinghandsportal.com>"
+EMAIL_FROM="Zen Garden Portal <portal@lovinghandsportal.com>"
 
 # Anthropic
 ANTHROPIC_API_KEY=

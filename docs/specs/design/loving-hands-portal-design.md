@@ -1,7 +1,7 @@
-# Loving Hands Portal — Design Spec
+# Zen Garden Portal — Design Spec
 
-Purchase-order intake portal. **Customers send purchase orders to Loving Hands**
-(Loving Hands is the seller; a PO's total is revenue). Users sign in with Google,
+Purchase-order intake portal. **Customers send purchase orders to Zen Garden**
+(Zen Garden is the seller; a PO's total is revenue). Users sign in with Google,
 upload a PO (PDF or image), the system extracts the structured data, the user
 reviews and confirms, and the record lands in Neon with the original file kept
 in R2. The dashboard then reads the confirmed POs as a sales trend.
@@ -19,7 +19,7 @@ Status: **Design reference v12 — 2026-09-05** (screens and states only). v12 a
 
 | | |
 |---|---|
-| Name | Loving Hands Portal |
+| Name | Zen Garden Portal |
 | Users | Internal ops staff (small team, one org) |
 | Job | Get customer POs out of email attachments and into a queryable database, fast, without retyping — then see the sales trend |
 | Buyer | The customer who issued the PO. Called "buyer" everywhere in UI and schema. |
@@ -88,7 +88,7 @@ Twelve artboards, desktop 1440 wide. Content column `max-w-[--container-page]`
 
 - **Left sidebar** — 240px, `bg-surface`, 1px `border-hairline` on the
   right, full viewport height, `p-lg` vertical / `p-md` horizontal.
-  Top: wordmark "Loving Hands" with "Loving" in `bg-brand-gradient` text clip.
+  Top: wordmark "Zen Garden" with "Zen" in `bg-brand-gradient` text clip.
   Below: nav rows *Dashboard · Purchase orders · Buyers · Products* — each 44px,
   `rounded-sm`, stroke icon + label at `text-body-sm` weight 500. Inactive
   `text-ink-secondary`; hover `bg-canvas text-ink`; active `bg-surface-soft
@@ -117,7 +117,7 @@ Centered card on `bg-surface` canvas.
 
 - Card: `rounded-xxl` (35px), canvas bg, hairline border, `p-xxl` (60px),
   `shadow-md` (indigo-tinted), 480px wide.
-- Wordmark large, then `h1` "Sign in to Loving Hands" at `text-display-lg`.
+- Wordmark large, then `h1` "Sign in to Zen Garden" at `text-display-lg`.
 - Sub copy `text-body-md text-ink-secondary`: "Purchase-order intake for the
   ops team."
 - **The card signposts two paths**, because a first-time visitor could not
@@ -144,7 +144,7 @@ Centered card on `bg-surface` canvas.
 **Access requested — `/signin/pending`** (own artboard). What a Google
 sign-in from an email that is not yet a user lands on. Same card: eyebrow
 "Access requested", `h1` "You're on the list", copy "We've sent your request
-to a Loving Hands admin. You'll get an email at the address below once it's
+to a Zen Garden admin. You'll get an email at the address below once it's
 approved — usually within a working day." Then a `bg-surface` row with the
 Google avatar, name, "daniel.tan@gmail.com · via Google" and a `brand-amber`
 "Pending" badge. One `button-secondary` "Use a different account". No dark
@@ -762,7 +762,7 @@ bar, `shadow-md`, hairline left edge. Fields:
 
 Rules: a super admin cannot delete or demote themselves; the last super
 admin cannot be demoted; **deleting a user is typed-confirmation only**: a dialog headed "Delete Priya
-Kumar?", body copy saying their uploads and stage history stay in Loving Hands
+Kumar?", body copy saying their uploads and stage history stay in Zen Garden
 attributed to a deleted user and that they lose access immediately, then the
 label "Type their email to confirm" over a `text-input` and the caption "Must
 match priya@lovinghandsportal.com exactly." The Delete button renders disabled
@@ -949,7 +949,7 @@ smaller slices stay readable.
   what to follow up on before the customer chases. The card header carries a
   `button-tertiary` **"Upload PO"** with the caption "Opens the upload screen
   with this buyer preselected" — the signal is only useful if acting on it is
-  one click away, and the label has to name what actually happens: Loving Hands is
+  one click away, and the label has to name what actually happens: Zen Garden is
   the seller, so nothing here is being bought.
 - *Details* — contact, email, phone, delivery address, payment terms, "buyer
   since". Fields that have values show them. Fields that do not are **not**

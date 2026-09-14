@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Rebuild the Loving Hands Portal artifact HTML from the edited canvas/ files."""
+"""Rebuild the Zen Garden Portal artifact HTML from the edited canvas/ files."""
 import json, sys, os
 SRC="loving-hands-portal-canvas.html"   # the published bundle doubles as the shell
 OUT="loving-hands-portal-canvas.html"

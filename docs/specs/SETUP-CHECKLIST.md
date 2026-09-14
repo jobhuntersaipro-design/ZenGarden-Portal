@@ -131,7 +131,7 @@ and a lock there would leave an object behind on every picture change.
 
 ## 3. Google OAuth
 
-1. console.cloud.google.com → new project `Loving Hands Portal` → APIs &
+1. console.cloud.google.com → new project `Zen Garden Portal` → APIs &
    Services → OAuth consent screen → Internal if you have Google Workspace,
    otherwise External with the ops team's emails as test users until published.
 2. Credentials → Create OAuth client ID → Web application. Authorised

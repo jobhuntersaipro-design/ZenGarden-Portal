@@ -145,7 +145,7 @@ one letter and one digit. Same schema for admin-set, reset and change.
 | `TemporaryPassword` | user | Phase 09 create user with password | the password in mono, "you'll be asked to change it" |
 
 All use `src/emails/Layout.tsx`. Subject lines are plain: "Access request from
-Daniel Tan", "Reset your Loving Hands Portal password", etc.
+Daniel Tan", "Reset your Zen Garden Portal password", etc.
 
 ## 6. Sidebar user row
 
