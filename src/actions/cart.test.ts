@@ -41,13 +41,16 @@ vi.mock("@/lib/auth-guards", () => ({
   requireClient,
 }));
 vi.mock("next/cache", () => ({ revalidatePath: vi.fn() }));
+const loadCart = vi.fn();
+vi.mock("@/lib/queries/cart", () => ({ loadCart }));
 vi.mock("@/lib/env", () => ({ env: { APP_URL: "https://www.example.com" } }));
 vi.mock("@/lib/email", () => ({ sendEmail: vi.fn().mockResolvedValue({ sent: true }) }));
 // `after` runs the ops notification once the response is out. Invoked inline
 // here so its failure modes are still exercised rather than silently skipped.
 vi.mock("next/server", () => ({ after: (fn: () => unknown) => fn() }));
 
-const { addToCart, setCartons, submitWebOrder, mergeGuestCart } = await import("@/actions/cart");
+const { addToCart, setCartons, removeFromCart, submitWebOrder, mergeGuestCart } =
+  await import("@/actions/cart");
 const { Prisma } = await import("@/generated/prisma/client");
 
 const dec = (v: string) => new Prisma.Decimal(v);
@@ -121,6 +124,30 @@ describe("setCartons", () => {
     lineUpdateMany.mockResolvedValue({ count: 0 });
     const result = await setCartons({ productId: "p1", cartons: 4 });
     expect(result.success).toBe(false);
+    expect(loadCart).not.toHaveBeenCalled();
+  });
+
+  it("answers with the caller's re-priced cart, so the screen needs no refresh", async () => {
+    const repriced = { id: "cart1", lines: [], subtotal: "756.00", cartonCount: 4 };
+    loadCart.mockResolvedValue(repriced);
+    const result = await setCartons({ productId: "p1", cartons: 4 });
+    expect(loadCart).toHaveBeenCalledWith("c1");
+    expect(result).toEqual({ success: true, data: repriced });
+  });
+});
+
+describe("removeFromCart", () => {
+  it("answers with the caller's re-priced cart, so the screen needs no refresh", async () => {
+    lineDeleteMany.mockResolvedValue({ count: 1 });
+    const repriced = { id: "cart1", lines: [], subtotal: "0.00", cartonCount: 0 };
+    loadCart.mockResolvedValue(repriced);
+    const result = await removeFromCart("p1");
+    expect(lineDeleteMany.mock.calls[0][0].where.webOrder).toEqual({
+      placedById: "c1",
+      status: "DRAFT",
+    });
+    expect(loadCart).toHaveBeenCalledWith("c1");
+    expect(result).toEqual({ success: true, data: repriced });
   });
 });
 

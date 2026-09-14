@@ -13,6 +13,7 @@ import { env } from "@/lib/env";
 import { formatMYR } from "@/lib/money";
 import { prisma } from "@/lib/prisma";
 import { shopPath } from "@/lib/shop-routes";
+import { loadCart, type Cart } from "@/lib/queries/cart";
 import { webOrderReference } from "@/lib/web-order-number";
 import type { GuestCartLine } from "@/lib/guest-cart";
 import {
@@ -39,8 +40,14 @@ async function guard() {
 const revalidateShop = () => {
   // The real path, not the one the browser asked for: revalidation keys on the
   // resolved route. src/lib/shop-routes.ts is the only place either is written.
-  revalidatePath(shopPath.cart());
-  revalidatePath(shopPath.home());
+  //
+  // The whole storefront layout, not the cart and home pages alone: the
+  // layout's `cartSummary` feeds the header badge, the mobile bar and every
+  // "In cart (n)" button, and a Server Action's revalidation re-renders the
+  // route the viewer is on into the action's own response only when that
+  // route is covered — a product page was not, which is why `AddToCart` used
+  // to follow up with a second full `router.refresh()` (Phase 30).
+  revalidatePath(shopPath.home(), "layout");
 };
 
 /** Reused by both the single-product and the batch (merge) orderability checks. */
@@ -227,10 +234,17 @@ export async function mergeGuestCart(
   }
 }
 
+/**
+ * Answers with the caller's re-priced cart. `ClientCart` renders that at
+ * once, so the stepper unlocks when this action returns rather than after a
+ * full route refresh has re-run the layout's reads and the page's — one
+ * `loadCart` here is cheaper than the six reads a refresh costs, and the
+ * buyer is no longer waiting on the refresh at all (Phase 30).
+ */
 export async function setCartons(input: {
   productId: string;
   cartons: number;
-}): Promise<ActionResult> {
+}): Promise<ActionResult<Cart>> {
   const { user, error } = await guard();
   if (!user) return { success: false, error: error! };
 
@@ -255,14 +269,15 @@ export async function setCartons(input: {
       return { success: false, error: "That line is no longer in your order." };
     }
     revalidateShop();
-    return { success: true, data: undefined };
+    return { success: true, data: await loadCart(user.id) };
   } catch (cause) {
     console.error("[cart] setCartons", cause);
     return { success: false, error: "We couldn't change that quantity." };
   }
 }
 
-export async function removeFromCart(productId: string): Promise<ActionResult> {
+/** Same contract as `setCartons`: the re-priced cart comes back with the answer. */
+export async function removeFromCart(productId: string): Promise<ActionResult<Cart>> {
   const { user, error } = await guard();
   if (!user) return { success: false, error: error! };
 
@@ -274,7 +289,7 @@ export async function removeFromCart(productId: string): Promise<ActionResult> {
       },
     });
     revalidateShop();
-    return { success: true, data: undefined };
+    return { success: true, data: await loadCart(user.id) };
   } catch (cause) {
     console.error("[cart] removeFromCart", cause);
     return { success: false, error: "We couldn't remove that line." };

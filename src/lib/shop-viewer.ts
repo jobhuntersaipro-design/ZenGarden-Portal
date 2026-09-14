@@ -1,3 +1,4 @@
+import { cache } from "react";
 import { Role } from "@/generated/prisma/enums";
 import { getSessionUser } from "@/lib/auth-guards";
 import { prisma } from "@/lib/prisma";
@@ -15,8 +16,15 @@ export const GUEST: ShopViewer = { kind: "guest" };
  *
  * Reads the row, not the token, for the same reason `requireClient` does:
  * a revoked contact has to stop now, not within five minutes.
+ *
+ * Wrapped in React's `cache()` because the storefront layout and every page
+ * under it each call this, and each call is an `auth()` — which re-reads the
+ * user row whenever the token is older than five minutes, and a Server
+ * Component render cannot write the refreshed token back — plus a second
+ * read here. One render, one viewer (Phase 30). Outside a request `cache`
+ * calls straight through, so the unit tests see it unchanged.
  */
-export async function loadShopViewer(): Promise<ShopViewer | "staff"> {
+export const loadShopViewer = cache(async (): Promise<ShopViewer | "staff"> => {
   const session = await getSessionUser();
   if (!session) return GUEST;
   if (session.role !== Role.CLIENT) return "staff";
@@ -26,4 +34,4 @@ export async function loadShopViewer(): Promise<ShopViewer | "staff"> {
   });
   if (!row?.buyerId || !row.buyer) return GUEST;
   return { kind: "client", id: session.id, name: row.name, email: row.email, image: row.image, buyerId: row.buyerId, buyerName: row.buyer.name };
-}
+});
