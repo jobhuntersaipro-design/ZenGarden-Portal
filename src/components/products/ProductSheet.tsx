@@ -3,8 +3,9 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
-import { archiveProduct, updateProduct } from "@/actions/products";
+import { updateProduct } from "@/actions/products";
 import { GrowingListPicker } from "@/components/products/GrowingListPicker";
+import { ManageLabelsLink } from "@/components/products/ManageLabelsLink";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import {
@@ -15,7 +16,6 @@ import {
   SheetTitle,
   SheetTrigger,
 } from "@/components/ui/sheet";
-import { Switch } from "@/components/ui/switch";
 import { Textarea } from "@/components/ui/textarea";
 import { NEEDS_AN_IMAGE } from "@/lib/validation/product-images";
 import type { GrowingLabel } from "@/lib/queries/products";
@@ -48,8 +48,6 @@ export function ProductSheet({
   const [open, setOpen] = useState(false);
   const [form, setForm] = useState<ProductInput>(product);
   const [pending, setPending] = useState(false);
-  /** Its own flag: "Saving…" must never show while an archive is what runs. */
-  const [archiving, setArchiving] = useState(false);
 
   const set = <K extends keyof ProductInput>(key: K, value: ProductInput[K]) =>
     setForm((current) => ({ ...current, [key]: value }));
@@ -124,6 +122,7 @@ export function ProductSheet({
                 // fail the schema, so clearing it keeps what was there.
                 onChange={(category) => set("category", category ?? form.category)}
               />
+              <ManageLabelsLink />
             </div>
 
             <div className="flex flex-col gap-xxs">
@@ -219,17 +218,14 @@ export function ProductSheet({
             />
           </div>
 
-          <label className="flex items-center gap-xs text-[length:var(--text-body-sm)] text-ink">
-            <Switch
-              checked={form.active}
-              onCheckedChange={(value) => set("active", value === true)}
-            />
-            Active
-          </label>
-
+          {/* Publishing left this drawer in Phase 28. It is one visible act on
+              the product page now — a pill and a button — rather than a switch
+              a reader has to open a form to find, and "Archive" was never the
+              word for what it did. The `active` field still travels with the
+              form, unchanged, so a save cannot flip it by omission. */}
           <div className="flex flex-wrap items-center gap-sm">
             <Button
-              disabled={archiving || imageCount === 0}
+              disabled={imageCount === 0}
               pending={pending}
               onClick={async () => {
                 setPending(true);
@@ -246,29 +242,6 @@ export function ProductSheet({
             >
               {pending ? "Saving…" : "Save changes"}
             </Button>
-
-            {form.active ? (
-              <Button
-                variant="secondary"
-                disabled={pending}
-                pending={archiving}
-                onClick={async () => {
-                  setArchiving(true);
-                  const result = await archiveProduct(product.id);
-                  setArchiving(false);
-                  if (!result.success) {
-                    toast.error(result.error);
-                    return;
-                  }
-                  setOpen(false);
-                  // Archiving keeps every line item that references it.
-                  toast.success("Product archived");
-                  router.refresh();
-                }}
-              >
-                {archiving ? "Archiving…" : "Archive"}
-              </Button>
-            ) : null}
           </div>
         </div>
       </SheetContent>

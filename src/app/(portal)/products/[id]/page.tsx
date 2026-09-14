@@ -12,7 +12,9 @@ import {
   type TrendMode,
 } from "@/components/products/PriceTrendChart";
 import { ProductGallery } from "@/components/products/ProductGallery";
+import { DeleteProduct } from "@/components/products/DeleteProduct";
 import { ProductImageManager } from "@/components/products/ProductImageManager";
+import { PublishToggle } from "@/components/products/PublishToggle";
 import { ProductSheet } from "@/components/products/ProductSheet";
 import { Button } from "@/components/ui/button";
 import { WhatTheyBuy } from "@/components/buyers/WhatTheyBuy";
@@ -132,12 +134,22 @@ export default async function ProductPage({
         eyebrow={eyebrow}
         title={data.product.name}
         action={
-          <div className="flex items-center gap-sm">
-            <span
-              className={`rounded-full bg-surface-soft px-sm py-xxs text-[length:var(--text-caption)] ${data.product.active ? "text-accent-green" : "text-ink-tertiary"}`}
-            >
-              {data.product.active ? "Active" : "Inactive"}
-            </span>
+          <div className="flex flex-wrap items-center gap-sm">
+            {/* Published state and its control together: a pill that says what
+                the shop does with this product and the one button that
+                changes it. A super admin sees both; everyone else the pill. */}
+            {isSuperAdmin ? (
+              <PublishToggle
+                productId={data.product.id}
+                published={data.product.active}
+              />
+            ) : (
+              <span
+                className={`rounded-full bg-surface-soft px-sm py-xxs text-[length:var(--text-caption)] ${data.product.active ? "text-accent-green" : "text-ink-tertiary"}`}
+              >
+                {data.product.active ? "Published" : "Unpublished"}
+              </span>
+            )}
             {isSuperAdmin ? (
               <ProductSheet
                 product={{
@@ -382,6 +394,18 @@ export default async function ProductPage({
           total={data.history.length}
         />
       </section>
+
+      {/* Last on the page, as the buyer's is: a delete should be found by
+          someone looking for it, not met on the way to something else. */}
+      {isSuperAdmin ? (
+        <DeleteProduct
+          productId={data.product.id}
+          name={data.product.name}
+          images={data.images.length}
+          purchaseOrderLines={data.references.purchaseOrderLines}
+          shopOrderLines={data.references.shopOrderLines}
+        />
+      ) : null}
     </>
   );
 }

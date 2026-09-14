@@ -1,64 +1,107 @@
-# Current Feature: Product images required, categories that grow
+# Current Feature: The catalogue's vocabulary, and a product's life
 
 ## Status
 
-**Phase 27 — A product cannot exist without a picture — complete and merged
-to `main` on 2026-09-14** from `feature/product-images-required`, and pushed.
-833/833 tests, typecheck, lint and build clean; browser-verified end to end,
-with the proof and the two defects it found recorded in the spec §4 and §6. Spec:
-`docs/specs/27-product-images-and-categories.md`. Asked for as: creating a
-new product must require the admin to upload product images, and let an
-admin or super admin create brand, market "or other" field values. Settled in
-one round of questions: brand, variant and market already grow by typing, so
-the field that changes is **category**; at least one image, with Create
-blocked until one is staged; and an image-less product cannot be edited
-either.
+**Phase 28 — The catalogue's vocabulary, and a product's life — complete and
+merged to `main` on 2026-09-14** from `feature/catalogue-and-lifecycle`.
+854/854 tests, typecheck, lint and build clean; browser-verified end to end,
+with the proof in `docs/specs/28-catalogue-and-product-lifecycle.md` §7. Asked
+for as: let an admin clearly create, edit and remove the values behind brand,
+variant, market and category; always make the Loving Hands header link home;
+and let an admin publish, unpublish and delete a product. Settled in one round
+of questions: a third admin tab; rename rewrites every product carrying the
+value while remove is refused until nothing uses it; "Published" replaces
+"Active" and "Archive"; delete is refused with its reasons while any order
+line references the product.
 
 ## Goals
 
-- `/products/new` stages images in the browser — drop or browse, previews,
-  cover first, arrows and a bin — and **Create product** stays disabled until
-  at least one valid file is staged. On submit the product is written, the
-  staged files upload against its new id, and the reader lands on the detail
-  page with the pictures already there.
-- A failed upload after the row is written does not delete the product: the
-  page says so, links to it, and the existing `missing-image` attention flag
-  carries it as a worklist item.
-- `updateProduct` refuses a product with zero images —
-  "Add at least one image before saving changes." — and `ProductSheet` shows
-  the same sentence above a disabled Save. Archive is not gated, and neither
-  is the purchase-order intake path that creates products from printed codes.
-- **Category** becomes a `GrowingListPicker` like brand, variant and market:
-  `PRODUCT_CATEGORIES` becomes a seed list unioned with every category in
-  use, `generateSku` falls back to the initials rule for a category it has no
-  table entry for, and the catalog's category filter lists the union.
-- Tests for the update gate, the free-text category schema and the SKU
-  fallback; browser proof of a create with two images end to end; overflow
-  sweep at 390/768/1440.
+- `/admin/catalogue` lists brands, variants, markets and categories with real
+  product counts, and offers Add, Rename and Remove on each. Renaming rewrites
+  the vocabulary and every product carrying it in one transaction and says how
+  many moved; removing is refused while anything uses it; "Uncategorised" is
+  protected because the purchase-order intake writes it.
+- `CatalogLabel` gives those four lists an existence of their own — they were
+  a `distinct` over `Product` until now, which is why a value could not be
+  created ahead of a product, renamed, or removed. Products keep their plain
+  strings and take no foreign key; `createProduct`/`updateProduct` register
+  whatever they are given.
+- A product page carries a **Published / Unpublished** pill and the one button
+  that changes it. "Archive" is gone; the column stays `active` and the
+  `?filter=inactive` URL key still works.
+- A danger zone deletes a product nothing references — row, price history,
+  images and their R2 objects — after its name is typed exactly.
+- The wordmark links home from the admin header and the 404 page.
 
 ## Notes
 
-- No migration: `Product.category` is already a `String` column.
-- The create page cannot enforce the image rule on the server — presign needs
-  a `productId`, so the row exists before any image can reference it. The
-  gate there is the disabled button; the server gate is on edit.
-- Accepted cost: every one of the ~308 existing products has no image, so
-  each needs one before its next edit.
-- Two defects the browser found and this phase fixed: `listLabels`'s
-  `not: null` is a Prisma *runtime* error on the non-nullable `category`
-  column (the create page would not render, and `tsc` and `build` both
-  passed), and the category picker offered a "No category" row that could
-  not be honoured.
-- Accepted risk: a category is what every share chart groups by, and a
-  synonym ("Haircare" beside "Hair care") now splits a slice. Casing alone
-  cannot fork it — `Combobox` matches case-insensitively.
-- Still outstanding elsewhere: Phase 18 (`docs/specs/design/shop/18-checkout-and-sending.md`)
-  is next in the storefront sequence; the shop still shows only priced
-  products and production holds 309 at RM 0.00; the 5 nested-sub-table
-  catalog blocks, the 2 review-queue drafts and the duplicate
-  `SVPPPO26090009` order are still the customer's to settle.
+- No foreign key from `Product` to `CatalogLabel`, on purpose: the table is a
+  registry of what may be typed, and a FK would pull the intake path, the
+  importer and every seeded row into the change.
+- Merging two spellings is not one move: rename is refused onto an existing
+  value, so the products must be repointed first and the emptied value then
+  removed. The customer's variant list has real duplicates ("Aloe Vera" beside
+  "Aloevera") — which spelling is right is their call.
+- Still outstanding elsewhere: Phase 18
+  (`docs/specs/design/shop/18-checkout-and-sending.md`) is next in the
+  storefront sequence; the shop still shows only priced products and
+  production holds 309 at RM 0.00; the 5 nested-sub-table catalog blocks, the
+  2 review-queue drafts and the duplicate `SVPPPO26090009` order are still the
+  customer's to settle.
 
 ## History
+- 2026-09-14: Phase 28 — the catalogue's vocabulary, and a product's life —
+  built, verified and merged from `feature/catalogue-and-lifecycle` (spec
+  `docs/specs/28-catalogue-and-product-lifecycle.md`). One additive migration,
+  `20260914120000_catalog_labels`, whose backfill read the vocabulary out of
+  the products that carried it: **18 brands, 88 variants, 9 markets, 9
+  categories**, 124 rows.
+  **The screen's counts were checked against the database, not against
+  themselves** — "Aara · 9 products" and "Buddha · 3 products" matched
+  `product.count()` exactly. Adding **"Brunei"** produced a market with *no*
+  products that the next create's picker offered, which the old derived list
+  could not express at all. Renaming **"Buddha" → "Buddha Therapy"** toasted
+  "3 products updated" and the rows then read `Buddha Therapy` on all three
+  SKUs and `Buddha` on none; it was renamed back the same way afterwards.
+  Renaming "Aara" onto **"darce"** was refused — *"There is already a brand
+  called “Darce”."* — so a list cannot fork on casing; Remove is disabled on a
+  value in use and on **"Uncategorised"**, which the purchase-order intake
+  writes verbatim.
+  **A real member gets the room's 404 on the new route.** Signed in freshly as
+  a `MEMBER` so the proxy read a token carrying that role, `/admin`,
+  `/admin/buyers` and `/admin/catalogue` each answered **404** with "Page not
+  found" and no vocabulary in the body.
+  **Publish round-tripped on the shop's own wire**: `curl` on `shop.localhost`
+  found a test product in the shop's search (1 hit), lost it after Unpublish
+  (0 hits), and found it again after Publish (1 hit) — the pill and the toast
+  moving with it. **Delete was refused and then done**: with one
+  purchase-order line pointed at the product, the danger zone read "1
+  purchase-order line references this product, so it can't be deleted.
+  Unpublish it instead." with the button disabled; with the reference removed,
+  Delete stayed disabled for a partial name and enabled for the name typed in
+  the wrong case with spaces around it, and afterwards the row was `null`, its
+  image and price rows gone by cascade, and **both R2 objects answered
+  `NotFound`**.
+  **Two pins watched failing first:** deleting the `updateMany` from
+  `renameLabel` broke the rewrite test; disabling the reference check in
+  `deleteProduct` broke the refusal test.
+  **Sweep:** `/admin/catalogue`, `/products` and a product page at
+  390/768/1440 — nine combinations, `scrollWidth === innerWidth` on all. Every
+  Rename/Remove/Add control is 44×44 at 390. The catalog chip reads
+  **Unpublished** while `?filter=inactive` still answers 200.
+  **Cleanup, counted:** products **308**, `CatalogLabel` **124**, line items
+  **1606**, purchase orders **400**, users **2** — the numbers this task
+  started with, and `aisha@lovinghandsportal.com` read back as **MEMBER**. One
+  label the task itself created (`MARKET "Malaysia"`, registered by its
+  throwaway product because the create form defaults to it) was deleted by id
+  after confirming no product used it.
+  **Known, recorded rather than fixed:** merging two spellings is not one move
+  — rename is refused onto an existing value, so products must be repointed
+  first and the emptied value then removed. The customer's own variant list
+  holds real duplicates ("Aloe Vera"/"Aloevera", "Anti Dandruff"/"Anti-
+  Dandruff"); which spelling is right is theirs to say.
+  **Not verified:** anything on production — the branch had never been
+  deployed when this was written and the migration has not run there.
 - 2026-09-14: Phase 27 — a product cannot exist without a picture — built,
   verified and merged from `feature/product-images-required` (spec
   `docs/specs/27-product-images-and-categories.md`). `/products/new` stages

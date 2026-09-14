@@ -3,16 +3,26 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 const productCreate = vi.fn();
 const productUpdate = vi.fn();
 const productFindUnique = vi.fn();
+const productDelete = vi.fn();
 const priceCreate = vi.fn();
+// Phase 28: a product write registers whatever it was given in the catalogue's
+// vocabulary, inside the same transaction.
+const labelFindFirst = vi.fn();
+const labelCreate = vi.fn();
 
 const tx = {
   product: { create: productCreate, update: productUpdate },
   productPrice: { create: priceCreate },
+  catalogLabel: { findFirst: labelFindFirst, create: labelCreate },
 };
 
 vi.mock("@/lib/prisma", () => ({
   prisma: {
-    product: { findUnique: productFindUnique, update: productUpdate },
+    product: {
+      findUnique: productFindUnique,
+      update: productUpdate,
+      delete: productDelete,
+    },
     $transaction: (fn: (client: typeof tx) => unknown) => fn(tx),
   },
 }));
@@ -24,11 +34,11 @@ vi.mock("@/lib/auth-guards", () => ({
   requireSuperAdmin: () => requireSuperAdmin(),
 }));
 vi.mock("next/cache", () => ({ revalidatePath: vi.fn() }));
-vi.mock("@/lib/r2", () => ({ deleteObject: vi.fn() }));
+const deleteObject = vi.fn();
+vi.mock("@/lib/r2", () => ({ deleteObject: (key: string) => deleteObject(key) }));
 
-const { archiveProduct, createProduct, updateProduct } = await import(
-  "@/actions/products"
-);
+const { createProduct, deleteProduct, setProductPublished, updateProduct } =
+  await import("@/actions/products");
 const { NEEDS_AN_IMAGE } = await import("@/lib/validation/product-images");
 
 const admin = {
@@ -59,7 +69,12 @@ beforeEach(() => {
   requireSuperAdmin.mockResolvedValue(admin);
   productCreate.mockResolvedValue({ id: "prod-1" });
   productUpdate.mockResolvedValue({});
+  productDelete.mockResolvedValue({});
+  deleteObject.mockResolvedValue(undefined);
   priceCreate.mockResolvedValue({});
+  // Every value already on record, so the default case writes no labels.
+  labelFindFirst.mockResolvedValue({ id: "lbl-1" });
+  labelCreate.mockResolvedValue({});
   productFindUnique.mockResolvedValue({
     listPrice: { equals: (other: { toString(): string }) => other.toString() === "42.5" },
     // One picture, which every product has carried since Phase 27. The gate
@@ -89,8 +104,8 @@ describe("permissions", () => {
     expect(productUpdate).not.toHaveBeenCalled();
   });
 
-  it("refuses archiveProduct", async () => {
-    expect(await archiveProduct("prod-1")).toEqual(refused);
+  it("refuses setProductPublished", async () => {
+    expect(await setProductPublished("prod-1", false)).toEqual(refused);
     expect(productUpdate).not.toHaveBeenCalled();
   });
 });
@@ -143,6 +158,38 @@ describe("createProduct", () => {
   });
 });
 
+describe("createProduct — the vocabulary keeps what was typed", () => {
+  it("registers a value the catalogue has never seen", async () => {
+    // "Pet care" typed into the picker has to outlive the product it was typed
+    // on; otherwise deleting that product takes the category with it.
+    labelFindFirst.mockResolvedValue(null);
+
+    await createProduct({ ...input, brand: "New Brand" });
+
+    expect(labelCreate).toHaveBeenCalledWith({
+      data: { kind: "BRAND", value: "New Brand" },
+    });
+  });
+
+  it("registers nothing that is already on record", async () => {
+    await createProduct(input);
+
+    expect(labelCreate).not.toHaveBeenCalled();
+  });
+
+  it("registers inside the product's own transaction", async () => {
+    labelFindFirst.mockResolvedValue(null);
+
+    await createProduct(input);
+
+    // The mocked `$transaction` hands `tx` to the callback, so a label written
+    // through it is a label written in the transaction — the assertion that
+    // would fail if the action reached for the bare client instead.
+    expect(labelFindFirst).toHaveBeenCalled();
+    expect(labelCreate).toHaveBeenCalled();
+  });
+});
+
 describe("updateProduct — a product carries at least one picture", () => {
   it("refuses to save a product with no images", async () => {
     productFindUnique.mockResolvedValue({
@@ -166,20 +213,30 @@ describe("updateProduct — a product carries at least one picture", () => {
     expect(productUpdate).toHaveBeenCalled();
   });
 
-  it("still archives a product with no images", async () => {
-    // Archiving is the reasonable answer to a product nobody photographed;
+  it("still unpublishes a product with no images", async () => {
+    // Unpublishing is the reasonable answer to a product nobody photographed;
     // gating it would leave the imported catalogue with no move at all.
     productFindUnique.mockResolvedValue({
       listPrice: { equals: () => true },
       _count: { images: 0 },
     });
 
-    const result = await archiveProduct("prod-1");
+    const result = await setProductPublished("prod-1", false);
 
     expect(result.success).toBe(true);
     expect(productUpdate).toHaveBeenCalledWith({
       where: { id: "prod-1" },
       data: { active: false },
+    });
+  });
+
+  it("publishes as well as unpublishes", async () => {
+    const result = await setProductPublished("prod-1", true);
+
+    expect(result.success).toBe(true);
+    expect(productUpdate).toHaveBeenCalledWith({
+      where: { id: "prod-1" },
+      data: { active: true },
     });
   });
 });
@@ -222,5 +279,86 @@ describe("updateProduct — price history", () => {
       success: false,
       error: "That product is gone.",
     });
+  });
+});
+
+describe("deleteProduct", () => {
+  const product = {
+    id: "prod-1",
+    name: "Granite stepping stone 40cm",
+    images: [
+      { r2Key: "products/prod-1/a.jpg", thumbKey: "products/prod-1/a.1600.webp" },
+    ],
+    _count: { lineItems: 0, webOrderLines: 0 },
+  };
+
+  it("refuses a name that does not match, before anything is deleted", async () => {
+    productFindUnique.mockResolvedValue(product);
+
+    const result = await deleteProduct("prod-1", "granite stepping stone");
+
+    expect(result).toEqual({
+      success: false,
+      error: "That name doesn't match. Type the product's name exactly to delete it.",
+    });
+    expect(productDelete).not.toHaveBeenCalled();
+    expect(deleteObject).not.toHaveBeenCalled();
+  });
+
+  it("accepts the name in any casing, with surrounding space", async () => {
+    productFindUnique.mockResolvedValue(product);
+
+    const result = await deleteProduct("prod-1", "  granite STEPPING stone 40cm  ");
+
+    expect(result.success).toBe(true);
+    expect(productDelete).toHaveBeenCalledWith({ where: { id: "prod-1" } });
+  });
+
+  it("refuses while purchase-order lines reference it", async () => {
+    productFindUnique.mockResolvedValue({
+      ...product,
+      _count: { lineItems: 14, webOrderLines: 0 },
+    });
+
+    const result = await deleteProduct("prod-1", product.name);
+
+    expect(result).toEqual({
+      success: false,
+      error:
+        "14 purchase-order lines reference this product, so it can't be deleted. Unpublish it instead.",
+    });
+    expect(productDelete).not.toHaveBeenCalled();
+  });
+
+  it("refuses while a shop order references it", async () => {
+    productFindUnique.mockResolvedValue({
+      ...product,
+      _count: { lineItems: 0, webOrderLines: 1 },
+    });
+
+    const result = await deleteProduct("prod-1", product.name);
+
+    expect(result.success).toBe(false);
+    expect(productDelete).not.toHaveBeenCalled();
+  });
+
+  it("deletes both R2 objects of every image", async () => {
+    productFindUnique.mockResolvedValue(product);
+
+    await deleteProduct("prod-1", product.name);
+
+    expect(deleteObject).toHaveBeenCalledWith("products/prod-1/a.jpg");
+    expect(deleteObject).toHaveBeenCalledWith("products/prod-1/a.1600.webp");
+  });
+
+  it("still reports success when R2 refuses an object", async () => {
+    // The row is already gone by then; telling the reader the delete failed
+    // would be false, and the orphan costs storage rather than correctness.
+    productFindUnique.mockResolvedValue(product);
+    deleteObject.mockRejectedValue(new Error("nope"));
+
+    const result = await deleteProduct("prod-1", product.name);
+
+    expect(result.success).toBe(true);
   });
 });

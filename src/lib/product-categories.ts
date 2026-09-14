@@ -1,7 +1,9 @@
 /**
- * The seed catalogue: one entry per kind of product the customer actually
+ * The seed vocabulary: one entry per kind of product the customer actually
  * makes, taken from their inventory master list (ZEN GARDEN DC INVENTORY
- * 2026).
+ * 2026). Since Phase 28 the live list lives in `CatalogLabel`, and this array
+ * is what a new database is born knowing — read by the migration's backfill
+ * and by `prisma/seed.ts`, not by any screen.
  *
  * This was a *closed* list until Phase 27, on the reasoning that a free-text
  * category fragments into "Shower cream", "shower cream" and "S/C" inside a
@@ -34,21 +36,3 @@ export type ProductCategory = (typeof PRODUCT_CATEGORIES)[number];
 
 export const isProductCategory = (value: string): value is ProductCategory =>
   (PRODUCT_CATEGORIES as readonly string[]).includes(value);
-
-/**
- * What a category picker or filter offers: the seed list first, in the order
- * above, then anything else in use, alphabetically. The seeds are unioned in
- * rather than read from the database alone so a fresh catalogue still offers
- * them and "Uncategorised" cannot disappear the day the last such product is
- * renamed. Matched case-insensitively, so a stored "hair care" does not
- * appear twice beside the seeded "Hair care".
- */
-export function categoryOptions(inUse: readonly string[]): string[] {
-  const seeded = new Set(
-    PRODUCT_CATEGORIES.map((category) => category.toLowerCase()),
-  );
-  const extra = inUse
-    .filter((category) => !seeded.has(category.toLowerCase()))
-    .sort((a, b) => a.localeCompare(b));
-  return [...PRODUCT_CATEGORIES, ...extra];
-}

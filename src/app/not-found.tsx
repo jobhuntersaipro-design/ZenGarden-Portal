@@ -10,7 +10,13 @@ import { Button } from "@/components/ui/button";
 export default function NotFound() {
   return (
     <main className="flex min-h-dvh flex-col items-center justify-center gap-md bg-surface px-md text-center">
-      <Wordmark />
+      <Link
+        href="/"
+        aria-label="Loving Hands — go to the dashboard"
+        className="rounded-xxs transition-opacity duration-[0.25s] hover:opacity-80 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-focus"
+      >
+        <Wordmark />
+      </Link>
       <h1 className="text-[length:var(--text-display-md)] font-display font-[650] tracking-[-1.36px] text-ink">
         Page not found
       </h1>
