@@ -12,7 +12,9 @@ import { shopHref } from "@/lib/shop-routes";
 export const metadata: Metadata = { title: "Products · Loving Hands" };
 export const dynamic = "force-dynamic";
 
-/** "48 products · showing 1–24" / "1 product" / "Nothing yet" (§5.3). */
+/** "48 products · showing 1–24" / "1 product" / "Nothing yet" (§5.3).
+ * Phase 31: the figure counts cards, so a product sold in eight flavours is
+ * one product here, which is what the reader is looking at. */
 function resultLabel(total: number, from: number, to: number): string {
   if (total === 0) return "Nothing yet";
   if (total === 1) return "1 product";
@@ -85,8 +87,8 @@ export default async function ShopCataloguePage({
           </div>
         ) : (
           <ul className="grid grid-cols-2 gap-md md:grid-cols-3 lg:grid-cols-4">
-            {catalogue.products.map((product) => (
-              <ShopProductCard key={product.id} product={product} />
+            {catalogue.groups.map((group) => (
+              <ShopProductCard key={group.key} group={group} />
             ))}
           </ul>
         )}
