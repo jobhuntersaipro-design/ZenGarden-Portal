@@ -1,51 +1,63 @@
-# Current Feature: Variants and order review
+# Current Feature: The purchase order preview, and the steps
 
 ## Status
 
-**Phase 31 — Product variants — and Phase 32 — Review and send — both built
-and verified on `feature/product-variants`** (2026-09-14). Specs
-`docs/specs/31-product-variants.md` and `docs/specs/32-order-review.md`.
+**Phase 33 — The purchase order preview, and the steps — built and verified
+on `feature/po-preview-and-steps`** (2026-09-14). Spec
+`docs/specs/33-po-preview-and-steps.md`. Asked for as: "still no preview of
+the purchase order?" and "show the step for each order. Cart → Review →
+Confirm → Will be contact by team."
 
-Phase 31 was asked for as: a product should show its variants to the buyer,
-GOAT'S MILK/PAPAYA rather than separate products. The group is derived from
-brand, name, pack size and market, tolerating the importer's
-`"NAME — Variant"` format, with no migration and no ops screen. The shop went
-from **308 cards to 83**, 81 of them offering a choice; the user's own example
-is one card, `ZEN 2.1L NORMAL/DIY`, with eight flavours.
+The buyer now reads the real purchase order — the approved artboard, drawn
+from a pure builder — on the review screen, and it updates as they type. A
+four-step bar runs across the cart, the review screen, the sent screen and
+each order's own page. The review button says **Confirm order**.
 
-Phase 32 was asked for as: a PO preview before the buyer confirms. It builds
-the review half of the never-built Phase 18 design — `/checkout/review` and
-`/checkout/sent/[reference]` — and the cart stops sending. `requestedDate`,
-a column that has existed since Phase 16 and that nothing had ever written,
-is finally asked for and stored as the day the client picked. The client now
-gets a receipt email naming their reference. The `/checkout` sign-in gate and
-the new-customer access request from that same spec stay unbuilt on purpose.
+No migration and no new dependency. The document is a preview, not a stored
+file: generating a PDF remains Phase 19, still unbuilt.
 
 ## Goals
 
-- `src/lib/product-groups.ts`, pure and unit-tested, deriving the group.
-- One card per group in the catalogue, with a flavour picker that retargets
-  the card's link, price and Add to cart.
-- A picker on the product page, built from links so each flavour stays
-  shareable.
-- Counts and facets count cards, because that is what the reader sees.
-- `/checkout/review` collecting the PO number, requested date and notes, with
-  narrow buyer and order projections asserted by equality.
-- `/checkout/sent/[reference]`, scoped to the caller's own buyer.
-- `notify()` sending the ops nudge and the client's receipt from one read.
+- `src/lib/purchase-order-document.ts`, pure, totalling from its own lines and
+  refusing to draw a document that contradicts the order.
+- `PurchaseOrderPreview`, the artboard rebuilt on design-system tokens, fixed
+  at A4 and scrolling inside its own container.
+- `CheckoutSteps` on four screens, with a guest's cart and a declined order
+  both deliberately excluded from promising what is not coming.
 
 ## Notes
 
-- Production holds **one** active product, so the variant grouping cannot be
-  seen there yet; it was built against the development catalogue's 308.
+- **The supplier block prints only a name until the contact details are
+  filled in on `/admin`.** No `OrgSettings` row and no `ZEN_GARDEN_*`
+  variable exist, so Phase 24's per-field fallback correctly yields nothing
+  for address, email and phone. This needs doing before a purchase order
+  reaches a real customer; it takes no deploy.
 - **Production's `DIRECT_URL` is still wrong** and will fail the next deploy
-  that has to run a migration. It points at the pooled Neon endpoint; it must
-  drop `-pooler`. `.env.local` line 37 has the same inversion. See the Phase
-  30 entry below for why this is not transient.
+  that carries a migration. It points at the pooled Neon endpoint and must
+  drop `-pooler`. `.env.local` line 37 has the same inversion.
+- Production holds **one** active product, so the Phase 31 variant grouping
+  cannot be seen there yet.
 - Still unbuilt from the Phase 18 design: the `/checkout` gate, the
-  new-customer access request and its admin approval.
+  new-customer access request and its admin approval. Phase 19, the generated
+  purchase-order file, is also unbuilt.
 
 ## History
+- 2026-09-14: Phases 31 and 32 — product variants, and review and send — built,
+  verified and merged from `feature/product-variants` (specs
+  `docs/specs/31-product-variants.md`, `docs/specs/32-order-review.md`).
+  Variants: the shop went from **308 cards to 83**, 81 offering a choice,
+  grouped on brand, name, pack size and market with the importer's
+  `" — Variant"` suffix stripped; no migration. Proved by measurement — picking
+  Papaya moved the card's link and stored that product's id, not the default.
+  Two defects the browser found: card chips were 28px and scrolled inside the
+  card, so phones get a 44px select; and `singleGroup` was exported from a
+  `"use client"` module, which a server component may not call.
+  Review and send: `/checkout/review` and `/checkout/sent/[reference]`, the
+  cart stops sending, and `WebOrder.requestedDate` — a column that had existed
+  since Phase 16 and that nothing ever wrote — is asked for and stored as the
+  day picked (25 September, not the 24th). The client gets a receipt email,
+  sent even when there is no ops staff to tell. Guards proved: another buyer's
+  reference renders "Page not found" and leaks nothing.
 - 2026-09-14: Phase 30 — Shop cart speed — built, verified, merged and
   deployed (spec `docs/specs/30-shop-cart-speed.md`). Four causes, measured:
   every stepper tap sat on `useAwaitableRefresh`'s 8 s give-up (8198 ms

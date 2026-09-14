@@ -1,8 +1,9 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { redirect } from "next/navigation";
+import { CheckoutSteps } from "@/components/shop/checkout/CheckoutSteps";
 import { ReviewSendForm } from "@/components/shop/checkout/ReviewSendForm";
-import { todayISO } from "@/lib/dates";
+import { formatDate, todayISO } from "@/lib/dates";
 import { loadSupplierDetails } from "@/lib/org-settings";
 import { loadCart } from "@/lib/queries/cart";
 import { loadReviewBuyer } from "@/lib/queries/shop-checkout";
@@ -48,19 +49,24 @@ export default async function CheckoutReviewPage() {
         ← Back to cart
       </Link>
 
-      <h1 className="mt-sm font-display text-[length:var(--text-display-md)] font-[650] text-ink">
-        Review and send your order
+      <div className="mt-sm">
+        <CheckoutSteps current={2} />
+      </div>
+
+      <h1 className="mt-md font-display text-[length:var(--text-display-md)] font-[650] text-ink">
+        Review and confirm your order
       </h1>
       <p className="mt-xs max-w-[65ch] text-[length:var(--text-body-sm)] text-ink-tertiary">
-        We&rsquo;ll turn this into a purchase order, and our team will confirm it
-        before anything ships.
+        Read the purchase order below, then confirm. Our team reviews every
+        order and comes back to you before anything ships.
       </p>
 
       <ReviewSendForm
         cart={cart}
         buyer={buyer}
-        supplierEmail={supplier.email}
+        supplier={supplier}
         todayInKL={todayISO()}
+        orderDate={formatDate(new Date())}
       />
     </div>
   );

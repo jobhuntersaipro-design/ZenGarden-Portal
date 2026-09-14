@@ -24,6 +24,7 @@ describe("loadReviewBuyer", () => {
       address: "1 Jalan Satu",
       contactName: "Aisha",
       email: "aisha@acme.test",
+      paymentTerms: "30 days",
     });
 
     await loadReviewBuyer("b1");
@@ -36,6 +37,7 @@ describe("loadReviewBuyer", () => {
       address: true,
       contactName: true,
       email: true,
+      paymentTerms: true,
     });
   });
 

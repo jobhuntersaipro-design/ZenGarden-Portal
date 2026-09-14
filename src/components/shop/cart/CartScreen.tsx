@@ -1,6 +1,7 @@
 import Link from "next/link";
 import type { ReactNode } from "react";
 import { CartLines, cartCaptions, type SetCartonsResult } from "@/components/shop/cart/CartLines";
+import { CheckoutSteps } from "@/components/shop/checkout/CheckoutSteps";
 import { OrderSummary } from "@/components/shop/cart/OrderSummary";
 import type { CartLine } from "@/lib/queries/cart";
 import { shopHref } from "@/lib/shop-routes";
@@ -18,6 +19,7 @@ export function CartScreen({
   subtotal,
   cta,
   skeleton,
+  showSteps = false,
 }: {
   lines: CartLine[];
   onSetCartons: (productId: string, cartons: number) => Promise<SetCartonsResult>;
@@ -27,11 +29,20 @@ export function CartScreen({
   /** Rendered in place of the captions/grid while a caller is still waiting
    * on its own data (only `GuestCart`, before `priceCart` first answers). */
   skeleton?: ReactNode;
+  /** The four-step bar. A guest does not get it: their next step is signing
+   * in, not Review, and a bar promising otherwise would mislead. */
+  showSteps?: boolean;
 }) {
   const captions = cartCaptions(lines);
 
   return (
     <div className="pt-lg">
+      {showSteps && lines.length > 0 ? (
+        <div className="mb-md">
+          <CheckoutSteps current={1} />
+        </div>
+      ) : null}
+
       <h1 className="font-display text-[length:var(--text-display-md)] font-[650] text-ink">
         Your cart
       </h1>

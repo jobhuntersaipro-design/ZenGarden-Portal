@@ -16,6 +16,8 @@ export type ReviewBuyer = {
   address: string | null;
   contactName: string | null;
   email: string | null;
+  /** Printed on the purchase order. The buyer's own agreed terms. */
+  paymentTerms: string | null;
 };
 
 /** Where the order will go — shown on review so the client can check it. */
@@ -23,7 +25,13 @@ export async function loadReviewBuyer(buyerId: string): Promise<ReviewBuyer | nu
   const buyer = await prisma.buyer.findUnique({
     where: { id: buyerId },
     // Deliberately not `remark`: it is the ops team's private note.
-    select: { name: true, address: true, contactName: true, email: true },
+    select: {
+      name: true,
+      address: true,
+      contactName: true,
+      email: true,
+      paymentTerms: true,
+    },
   });
   return buyer ?? null;
 }

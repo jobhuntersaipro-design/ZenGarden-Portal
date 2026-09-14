@@ -172,6 +172,12 @@
      headers collided and Amount was clipped off the card (measured
      2026-09-07). */
   --spacing-line-items: 952px;
+  /* A4 at 96dpi, and the totals block on it. The purchase order preview is
+     fixed at these and scrolls inside its own container: a document that
+     reflows is not the document (Phase 33). On the spacing scale because
+     that is where `w-*` reads from, as `min-w-line-items` above does. */
+  --spacing-po-page: 794px;
+  --spacing-po-totals: 300px;
   /* The cart row's product thumbnail (Phase 17 §5.5) — 88px via ProductThumb,
      shared by CartLines, GuestCart's loading rows and the cart loading.tsx
      skeleton, so the three cannot drift. */
