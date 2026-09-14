@@ -2,11 +2,10 @@
 
 ## Status
 
-**Phase 27 — A product cannot exist without a picture — built and verified
-on `feature/product-images-required`, awaiting review before commit**
-(2026-09-14). 833/833 tests, typecheck, lint and build clean; browser-
-verified end to end, with the proof and the two defects it found recorded
-in the spec §4 and §6. Spec:
+**Phase 27 — A product cannot exist without a picture — complete and merged
+to `main` on 2026-09-14** from `feature/product-images-required`, and pushed.
+833/833 tests, typecheck, lint and build clean; browser-verified end to end,
+with the proof and the two defects it found recorded in the spec §4 and §6. Spec:
 `docs/specs/27-product-images-and-categories.md`. Asked for as: creating a
 new product must require the admin to upload product images, and let an
 admin or super admin create brand, market "or other" field values. Settled in
@@ -60,6 +59,62 @@ either.
   `SVPPPO26090009` order are still the customer's to settle.
 
 ## History
+- 2026-09-14: Phase 27 — a product cannot exist without a picture — built,
+  verified and merged from `feature/product-images-required` (spec
+  `docs/specs/27-product-images-and-categories.md`). `/products/new` stages
+  its images in the browser and **Create product** stays disabled until one
+  is staged; the submit writes the row, then uploads the staged files against
+  its new id, because presign hangs `ProductImage` rows on a `productId` that
+  does not exist until then. `updateProduct` refuses a product with zero
+  images — archive and the purchase-order intake path deliberately not gated.
+  Category became a growing label seeded by `PRODUCT_CATEGORIES`, with
+  `generateSku` falling back to the initials rule for one the table never had.
+  **Proved with measurements, not adjectives.** Four files in one batch: two
+  staged, `not-an-image.pdf` refused as "That file type isn't supported" and a
+  6.0 MB file as "That image is 6.0 MB — the limit is 5.0 MB", the button
+  moving from "Add at least one image" to "2 images ready". After Create: two
+  `ProductImage` rows at positions **0** and **1**, cover = the first tile,
+  both with a `thumbKey`, and the detail page's images decoding at **900×700**
+  and **700×700** from R2 (read from `naturalWidth`). A typed category "Pet
+  care" produced **`PC-0500-MY`**, then appeared in the catalog filter
+  ("1 product") and in the next create's picker after the seeded nine.
+  **The edit gate was read off the wire.** A disabled React button will not
+  dispatch a click however the DOM is poked, so the drawer's own guard was
+  removed for one run: the dev log shows `updateProduct(…)` reached and the
+  toast read **"Add at least one image before saving changes."**, with the
+  row's `updatedAt` unchanged across three attempts and Archive enabled
+  throughout. The new test was watched failing with the `_count.images === 0`
+  branch deleted. **The failure path was driven rather than argued**: with
+  presign forced to 500, the product was created and the page stayed put —
+  toast "Product created, but its images didn't upload", the tile carrying
+  "We couldn't reach the server", the header offering "Open the product" —
+  and that product then showed under the catalog's **Missing image** chip.
+  **Two defects the browser found that the build could not.**
+  `listLabels("category")` used `not: null` against a non-nullable column,
+  which is a Prisma **runtime** error ("Argument `not` must not be null") that
+  `tsc` and `npm run build` both passed while `/products/new` answered a
+  server error; and the category picker offered a "No category" row that
+  could not be honoured, since the schema refuses a blank — `GrowingListPicker`
+  takes a `required` flag now.
+  **Sweep:** `/products/new` (two tiles staged plus a rejected row),
+  `/products` and a product detail page at 390/768/1440 — nine combinations,
+  `scrollWidth === innerWidth` on all. Sub-44px at 390: only the accepted
+  classes (`SkipLink`, the `sr-only` file input, the shadcn `Switch` at
+  32×18). Console 0 errors, 0 warnings on a fresh load.
+  **Cleanup, counted both ends:** both test products deleted by id with their
+  four R2 objects, each key re-checked with `headObject` and answering
+  **NotFound**; `product.count()` **308**, `productImage.count()` **0**,
+  `productPrice.count()` **0**, `user.count()` **2**, the category list back
+  to the eight in use, and `aisha@lovinghandsportal.com` — promoted for the
+  pass — read back as **MEMBER**.
+  **Known cost, accepted on purpose:** all ~308 imported products have no
+  image, so each needs one before its next edit; and a synonym category
+  ("Haircare" beside "Hair care") now splits a share-chart slice, where
+  casing alone cannot.
+  **Not verified:** anything on production — the merge deploys there, but no
+  production database was read or written and no production journey was
+  driven; the purchase-order intake path that creates image-less products was
+  not re-driven (untouched by this phase's files).
 - 2026-09-14: Phase 26 — Buyer management — built and verified on
   `feature/buyer-management` (spec `docs/specs/26-buyer-management.md`).
   The admin tabs read **User management** and **Buyer management**;
