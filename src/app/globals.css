@@ -556,3 +556,54 @@
 @utility tabular-nums {
   font-variant-numeric: tabular-nums;
 }
+
+/**
+ * Printing a purchase order (Phase 35).
+ *
+ * A buyer reviewing an order can press Print and get the document alone —
+ * which is also "Save as PDF" in every desktop browser, and is the only way to
+ * keep a copy until Phase 19 generates a real file.
+ *
+ * `visibility` rather than `display: none` on the chrome: hiding the ancestors
+ * of the thing you want to keep is impossible with `display`, because hiding a
+ * parent takes its children with it however they are set. `visibility` is
+ * inherited but overridable, so the page can be hidden wholesale and the one
+ * region turned back on inside it.
+ *
+ * The scroller is neutralised because A4 is 794px and an `overflow-x-auto`
+ * container clips at the paper's edge, printing a document with its right-hand
+ * column cut off. The shadow goes because it is a screen affordance that
+ * renders as a grey smear on paper.
+ */
+@media print {
+  body * {
+    visibility: hidden;
+  }
+
+  [data-print-region],
+  [data-print-region] * {
+    visibility: visible;
+  }
+
+  [data-print-region] {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+  }
+
+  [data-po-scroller] {
+    overflow: visible !important;
+    border: 0 !important;
+    background: transparent !important;
+    padding: 0 !important;
+  }
+
+  [data-po-page] {
+    box-shadow: none !important;
+  }
+
+  @page {
+    margin: 12mm;
+  }
+}

@@ -58,6 +58,13 @@ export type PoDocumentData = {
   supplier: PoDocumentParty;
   lines: PoDocumentLine[];
   subtotal: string;
+  /**
+   * Printed as its own row only when there is some. A shop order has none —
+   * the cart quotes no tax — but a purchase order read off a customer's own
+   * document can, and omitting it would print a total its own rows do not
+   * reach.
+   */
+  tax: string | null;
   total: string;
   notes: string | null;
 };
@@ -130,8 +137,98 @@ export function buildPoDocument(input: {
     },
     lines,
     subtotal: summed,
+    // A cart quotes no tax. Delivery and any tax are settled when the team
+    // confirms, which the review screen says beside the button.
+    tax: null,
     total: summed,
     notes: input.notes?.trim() || null,
+  };
+}
+
+/**
+ * The same document, drawn from an order that already exists (Phase 35).
+ *
+ * The checkout builder above takes a cart; this one takes a stored order, so a
+ * buyer opening `/orders/{id}` months later reads the document their order
+ * actually is rather than a summary of it. Both return `PoDocumentData` and
+ * both are drawn by one `PurchaseOrderPreview`, which is the point: there is
+ * one purchase order, not a checkout version and a history version that can
+ * drift apart.
+ *
+ * Pure, like its sibling — the caller does the database read and the date
+ * formatting, and passes strings.
+ *
+ * **The total is still summed from the lines, not echoed from the order.** A
+ * confirmed purchase order carries its own `total`, and where the two disagree
+ * the caller finds out through `documentAgreesWithOrder` instead of the
+ * document quietly printing a figure its own rows contradict.
+ */
+export function buildPoDocumentFromOrder(input: {
+  order: {
+    reference: string;
+    buyerReference: string | null;
+    currency: string;
+    paymentTerms: string | null;
+    notes: string | null;
+    /** `"0.00"` and null both print nothing. */
+    tax: string | null;
+    buyer: PoDocumentParty;
+    lines: {
+      position: number;
+      sku: string;
+      description: string;
+      packCaption: string;
+      quantity: string;
+      unitPrice: string;
+      amount: string;
+    }[];
+  };
+  supplier: SupplierDetails;
+  /** Already formatted, so the page and the document agree on the day. */
+  orderDate: string;
+  requestedDate: string | null;
+}): PoDocumentData {
+  const { order } = input;
+  const lines = order.lines.map((line) => ({
+    position: line.position,
+    sku: line.sku,
+    description: line.description,
+    packCaption: line.packCaption,
+    cartons: Number(line.quantity),
+    unitPrice: line.unitPrice,
+    amount: line.amount,
+  }));
+
+  const summed = lines.reduce(
+    (total, line) => total.plus(new Prisma.Decimal(line.amount)),
+    new Prisma.Decimal(0),
+  );
+  // A zero tax is no tax: printing a "Tax 0.00" row on a document that never
+  // had any reads as a charge the buyer has to check.
+  const tax = order.tax === null ? null : new Prisma.Decimal(order.tax);
+  const taxed = tax === null || tax.isZero() ? null : tax;
+
+  return {
+    // `reference` on a confirmed order is already the PO number, which may be
+    // the buyer's own. Preferring `buyerReference` where there is one keeps the
+    // masthead reading the same number it did at checkout.
+    reference: order.buyerReference?.trim() || order.reference,
+    ourReference: order.reference,
+    orderDate: input.orderDate,
+    requestedDate: input.requestedDate,
+    paymentTerms: order.paymentTerms?.trim() || null,
+    currency: order.currency,
+    buyer: order.buyer,
+    supplier: {
+      name: input.supplier.name ?? "Zen Garden",
+      address: input.supplier.address ?? null,
+      contact: joinContact(input.supplier.email, input.supplier.phone),
+    },
+    lines,
+    subtotal: summed.toFixed(2),
+    tax: taxed?.toFixed(2) ?? null,
+    total: summed.plus(taxed ?? 0).toFixed(2),
+    notes: order.notes?.trim() || null,
   };
 }
 

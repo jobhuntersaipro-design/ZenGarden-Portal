@@ -1,9 +1,13 @@
 import { describe, expect, it } from "vitest";
 import {
   buildPoDocument,
+  buildPoDocumentFromOrder,
   documentAgreesWithOrder,
 } from "@/lib/purchase-order-document";
 import type { CartLine } from "@/lib/queries/cart";
+
+type StoredOrder = Parameters<typeof buildPoDocumentFromOrder>[0]["order"];
+type StoredLine = StoredOrder["lines"][number];
 
 const line = (over: Partial<CartLine> = {}): CartLine => ({
   productId: "p1",
@@ -122,5 +126,110 @@ describe("buildPoDocument", () => {
 
   it("keeps the currency at MYR unless told otherwise", () => {
     expect(build().currency).toBe("MYR");
+  });
+});
+
+describe("buildPoDocumentFromOrder", () => {
+  const storedLine = (over: Partial<StoredLine> = {}): StoredLine => ({
+    position: 1,
+    sku: "ZEN-SC-2100-GM",
+    description: "ZEN 2.1L — Goat's Milk",
+    packCaption: "6 per carton · 18 pieces",
+    quantity: "3",
+    unitPrice: "225.50",
+    amount: "676.50",
+    ...over,
+  });
+
+  const order = (over: Partial<StoredOrder> = {}): StoredOrder => ({
+    reference: "W-2609-00005",
+    buyerReference: null,
+    currency: "MYR",
+    paymentTerms: "30 days",
+    notes: null,
+    tax: null,
+    buyer: {
+      name: "Acme Industrial Sdn Bhd",
+      address: "12 Jalan Perindustrian 4",
+      contact: "Aisha Rahman · aisha@acme.test",
+    },
+    lines: [storedLine()],
+    ...over,
+  });
+
+  const fromOrder = (over: Partial<StoredOrder> = {}) =>
+    buildPoDocumentFromOrder({
+      order: order(over),
+      supplier,
+      orderDate: "15 Sep 2026",
+      requestedDate: null,
+    });
+
+  it("totals from its own lines rather than from anything handed to it", () => {
+    const doc = fromOrder({
+      lines: [
+        storedLine({ amount: "676.50" }),
+        storedLine({ position: 2, amount: "210.00" }),
+      ],
+    });
+    expect(doc.subtotal).toBe("886.50");
+    expect(doc.total).toBe("886.50");
+  });
+
+  /**
+   * The reason the checkout builder and this one both exist: a buyer opening an
+   * order months later must read the same masthead they confirmed, so their own
+   * PO number wins over our reference where they gave one — and our reference
+   * is still printed underneath either way.
+   */
+  it("prints the buyer's own number where they gave one, and ours regardless", () => {
+    expect(fromOrder({ buyerReference: "ACME-771" }).reference).toBe("ACME-771");
+    expect(fromOrder({ buyerReference: "ACME-771" }).ourReference).toBe(
+      "W-2609-00005",
+    );
+    expect(fromOrder().reference).toBe("W-2609-00005");
+  });
+
+  it("treats a blank buyer reference as none at all", () => {
+    expect(fromOrder({ buyerReference: "   " }).reference).toBe("W-2609-00005");
+  });
+
+  /**
+   * A shop order quotes no tax and a zero is not a tax: a "Tax 0.00" row reads
+   * as a charge the buyer has to check.
+   */
+  it("prints no tax row for an order with none", () => {
+    expect(fromOrder({ tax: null }).tax).toBeNull();
+    expect(fromOrder({ tax: "0.00" }).tax).toBeNull();
+    expect(fromOrder({ tax: "0.00" }).total).toBe("676.50");
+  });
+
+  /**
+   * A purchase order read off a customer's own document can carry tax, and the
+   * document has to add it — otherwise it prints a total the buyer does not owe
+   * and `documentAgreesWithOrder` refuses to draw a perfectly good order.
+   */
+  it("adds a real tax to the total and still agrees with the order", () => {
+    const doc = fromOrder({ tax: "40.59" });
+    expect(doc.subtotal).toBe("676.50");
+    expect(doc.tax).toBe("40.59");
+    expect(doc.total).toBe("717.09");
+    expect(documentAgreesWithOrder(doc, "717.09")).toBe(true);
+  });
+
+  it("refuses an order whose lines do not reach its own total", () => {
+    expect(documentAgreesWithOrder(fromOrder(), "999.00")).toBe(false);
+  });
+
+  it("keeps the order's own currency rather than assuming MYR", () => {
+    expect(fromOrder({ currency: "SGD" }).currency).toBe("SGD");
+  });
+
+  it("passes the buyer through exactly as the order holds them", () => {
+    expect(fromOrder().buyer).toEqual({
+      name: "Acme Industrial Sdn Bhd",
+      address: "12 Jalan Perindustrian 4",
+      contact: "Aisha Rahman · aisha@acme.test",
+    });
   });
 });

@@ -1,0 +1,19 @@
+import { stageLabel } from "@/lib/po-stages";
+import type { PoStage } from "@/generated/prisma/enums";
+
+/**
+ * What a buyer reads where the ops team reads a status and a stage.
+ *
+ * A plain module, deliberately not part of `BuyerOrdersTable`: that file is
+ * `"use client"`, and a Server Component may not call a function exported from
+ * one — the defect Phase 31 hit with `singleGroup`. The orders page is a
+ * server component and builds its rows with this.
+ */
+export function buyerOrderStatus(order: {
+  kind: "confirmed" | "submitted" | "declined";
+  stage: PoStage | null;
+}): string {
+  if (order.kind === "declined") return "Not accepted";
+  if (order.kind === "confirmed" && order.stage) return stageLabel(order.stage);
+  return "With the team";
+}

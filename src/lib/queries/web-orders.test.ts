@@ -34,6 +34,7 @@ const ALLOWED_LIST_KEYS = [
   "stage",
   "stageChangedAt",
   "total",
+  "buyerReference",
   "_count",
 ];
 
@@ -92,9 +93,17 @@ describe("loadBuyerOrder", () => {
     expect(Object.keys(args.select.lineItems.select).sort()).toEqual([
       "amount",
       "description",
+      "position",
+      "product",
       "quantity",
+      "sku",
       "unit",
       "unitPrice",
+    ]);
+    // The product is reached for its code and pack size and nothing else.
+    expect(Object.keys(args.select.lineItems.select.product.select).sort()).toEqual([
+      "packSize",
+      "sku",
     ]);
     // Stage dates are the client's own facts; the note and the person are not.
     expect(Object.keys(args.select.stageEvents.select).sort()).toEqual([
@@ -103,6 +112,43 @@ describe("loadBuyerOrder", () => {
     ]);
     // An EDIT event carries the totals-mismatch note written for the ops team.
     expect(args.select.stageEvents.where).toEqual({ kind: "STAGE" });
+  });
+
+  /**
+   * The detail now prints the buyer's own company on the purchase order, which
+   * means it reads a `Buyer` — the row that carries `remark`, the internal note
+   * ops keeps about this customer. Asserted by equality rather than by checking
+   * `remark` alone: the next column somebody adds to `Buyer` is unknown today,
+   * and a subset check would wave it through.
+   */
+  it("reads the buyer's own details and never the internal remark", async () => {
+    await loadBuyerOrder("b1", "po1");
+    const select = poFindFirst.mock.calls[0][0].select.buyer.select;
+    expect(Object.keys(select).sort()).toEqual([
+      "address",
+      "contactName",
+      "email",
+      "name",
+      "paymentTerms",
+    ]);
+    expect(select.remark).toBeUndefined();
+  });
+
+  /**
+   * `PurchaseOrder.notes` may have been typed or edited by an ops user, so it
+   * stays forbidden above. The note the document prints comes from the order
+   * the buyer placed themselves, through the `webOrder` relation — which is why
+   * "notes" appears here and must not appear at the top level.
+   */
+  it("takes the buyer's own words from their own order, not the ops remark", async () => {
+    await loadBuyerOrder("b1", "po1");
+    const args = poFindFirst.mock.calls[0][0];
+    expect(args.select.notes).toBeUndefined();
+    expect(Object.keys(args.select.webOrder.select).sort()).toEqual([
+      "buyerReference",
+      "notes",
+      "requestedDate",
+    ]);
   });
 });
 
@@ -129,5 +175,83 @@ describe("listBuyerOrders paging", () => {
     poFindMany.mockResolvedValue([po(1), po(5), po(3)]);
     const { orders } = await listBuyerOrders("b1", 2, 2);
     expect(orders.map((o) => o.reference)).toEqual(["PO-1"]);
+  });
+});
+
+describe("listBuyerOrders sorting", () => {
+  const po = (n: number, total: string, ref: string | null) => ({
+    id: `po${n}`,
+    poNumber: `PO-${n}`,
+    poDate: new Date(2026, 0, n),
+    stage: "DELIVERED",
+    stageChangedAt: new Date(2026, 0, n),
+    total: { toFixed: () => total },
+    buyerReference: ref,
+    _count: { lineItems: n },
+  });
+
+  /**
+   * Sorting runs before the slice. Asserted on page 2 on purpose: sorting the
+   * rows a page already holds would pass a page-1 test and still be wrong.
+   */
+  it("sorts the whole list, not the page", async () => {
+    poFindMany.mockResolvedValue([
+      po(1, "10.00", null),
+      po(2, "30.00", null),
+      po(3, "20.00", null),
+    ]);
+    const { orders } = await listBuyerOrders("b1", 2, 2, {
+      key: "total",
+      dir: "desc",
+    });
+    expect(orders.map((o) => o.total)).toEqual(["10.00"]);
+  });
+
+  it("sorts ascending when asked", async () => {
+    poFindMany.mockResolvedValue([
+      po(1, "10.00", null),
+      po(2, "30.00", null),
+      po(3, "20.00", null),
+    ]);
+    const { orders } = await listBuyerOrders("b1", 1, 10, {
+      key: "total",
+      dir: "asc",
+    });
+    expect(orders.map((o) => o.total)).toEqual(["10.00", "20.00", "30.00"]);
+  });
+
+  /**
+   * A blank is not a small value: it sinks in both directions, and the blanks
+   * keep their date order among themselves rather than shuffling on each load.
+   */
+  it("sinks rows with no value in the sorted column, in both directions", async () => {
+    const rows = [
+      po(1, "10.00", null),
+      po(2, "30.00", "ACME-2"),
+      po(3, "20.00", null),
+    ];
+    poFindMany.mockResolvedValue(rows);
+    const ascending = await listBuyerOrders("b1", 1, 10, {
+      key: "buyerReference",
+      dir: "asc",
+    });
+    expect(ascending.orders.map((o) => o.reference)).toEqual([
+      "PO-2",
+      "PO-3",
+      "PO-1",
+    ]);
+
+    poFindMany.mockResolvedValue(rows);
+    const descending = await listBuyerOrders("b1", 1, 10, {
+      key: "buyerReference",
+      dir: "desc",
+    });
+    // The one row with a value stays on top; only the blanks' position is at
+    // stake, and it does not move.
+    expect(descending.orders.map((o) => o.reference)).toEqual([
+      "PO-2",
+      "PO-3",
+      "PO-1",
+    ]);
   });
 });

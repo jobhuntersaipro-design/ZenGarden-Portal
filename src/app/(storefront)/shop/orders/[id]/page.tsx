@@ -1,15 +1,40 @@
+import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 import Link from "next/link";
 import { ArrowLeft } from "lucide-react";
 import { CheckoutSteps } from "@/components/shop/checkout/CheckoutSteps";
+import { PurchaseOrderPreview } from "@/components/shop/checkout/PurchaseOrderPreview";
+import { PrintOrderButton } from "@/components/shop/orders/PrintOrderButton";
 import { StageStepper } from "@/components/purchase-orders/StageStepper";
 import { requireClient } from "@/lib/auth-guards";
+import { buyerOrderStatus } from "@/lib/buyer-order-status";
 import { formatDate } from "@/lib/dates";
 import { formatMYR } from "@/lib/money";
+import { loadSupplierDetails } from "@/lib/org-settings";
+import {
+  buildPoDocumentFromOrder,
+  documentAgreesWithOrder,
+} from "@/lib/purchase-order-document";
 import { loadBuyerOrder } from "@/lib/queries/web-orders";
 import { shopHref } from "@/lib/shop-routes";
 
 export const dynamic = "force-dynamic";
+
+/**
+ * The order's own reference in the tab, so a buyer with three orders open can
+ * tell them apart. Scoped like the page itself — an id belonging to another
+ * buyer titles the tab "Order", never their reference.
+ */
+export async function generateMetadata({
+  params,
+}: {
+  params: Promise<{ id: string }>;
+}): Promise<Metadata> {
+  const { id } = await params;
+  const { buyerId } = await requireClient();
+  const order = await loadBuyerOrder(buyerId, id);
+  return { title: `${order?.reference ?? "Order"} · Zen Garden` };
+}
 
 export default async function OrderDetailPage({
   params,
@@ -23,6 +48,22 @@ export default async function OrderDetailPage({
   // Scoped to the caller's buyer, so another buyer's id is simply not found.
   if (!order) notFound();
 
+  // The same document the buyer read before confirming, drawn from the order
+  // as it now stands. One builder and one `PurchaseOrderPreview` serve both
+  // screens, so a checkout version and a history version cannot drift apart.
+  const supplier = await loadSupplierDetails();
+  const document = buildPoDocumentFromOrder({
+    order,
+    supplier,
+    orderDate: order.date ? formatDate(order.date) : "—",
+    requestedDate: order.requestedDate ? formatDate(order.requestedDate) : null,
+  });
+  // A confirmed purchase order carries its own total, and a scan-origin one can
+  // carry tax on top of its lines. Where the document's own arithmetic does not
+  // reach that figure, the buyer is told to ask rather than shown a document
+  // whose rows contradict the amount they owe.
+  const documentIsSound = documentAgreesWithOrder(document, order.total);
+
   return (
     <div className="pt-lg">
       <Link
@@ -33,12 +74,23 @@ export default async function OrderDetailPage({
         My orders
       </Link>
 
-      <h1 className="font-display text-[length:var(--text-heading-md)] text-ink">
-        {order.reference}
-      </h1>
-      <p className="text-[length:var(--text-body-sm)] text-ink-tertiary">
-        {order.date ? formatDate(order.date) : "Not yet dated"}
-      </p>
+      <div className="flex flex-wrap items-start justify-between gap-sm">
+        <div className="min-w-0">
+          <h1 className="font-display text-[length:var(--text-heading-md)] text-ink">
+            {order.reference}
+          </h1>
+          <p className="text-[length:var(--text-body-sm)] text-ink-tertiary">
+            {[
+              order.date ? formatDate(order.date) : "Not yet dated",
+              buyerOrderStatus(order),
+              order.buyerReference ? `Your ref ${order.buyerReference}` : null,
+            ]
+              .filter(Boolean)
+              .join(" · ")}
+          </p>
+        </div>
+        {documentIsSound ? <PrintOrderButton /> : null}
+      </div>
 
       {order.kind === "confirmed" && order.stage ? (
         <section className="mt-lg rounded-lg border border-hairline bg-canvas p-lg">
@@ -100,6 +152,43 @@ export default async function OrderDetailPage({
           <span className="text-[length:var(--text-heading-sm)] font-semibold tabular-nums text-ink">
             {formatMYR(Number(order.total))}
           </span>
+        </div>
+      </section>
+
+      {/* The lines above and the document below say the same thing on purpose.
+          A4 is 794px and scrolls inside its own container on a phone, which is
+          readable but not comfortable; the card is the quick read, the document
+          is the record — and it is the record the buyer asked to be able to
+          review. `data-print-region` is what Print keeps. */}
+      <section className="mt-lg min-w-0" data-print-region>
+        <div className="flex flex-wrap items-baseline justify-between gap-sm">
+          <h2 className="font-display text-[length:var(--text-heading-sm)] font-[650] text-ink">
+            Your purchase order
+          </h2>
+        </div>
+        <p className="mt-xxs text-[length:var(--text-body-sm)] text-ink-tertiary">
+          The document we hold against this order.
+        </p>
+        <div className="mt-md">
+          {documentIsSound ? (
+            <PurchaseOrderPreview
+              document={document}
+              footnote={
+                order.kind === "confirmed"
+                  ? "Confirmed by our team. This is the order we are fulfilling."
+                  : order.kind === "declined"
+                    ? "This order was not accepted. Nothing will be delivered against it."
+                    : "Sent to our team. They confirm the figures and come back to you."
+              }
+            />
+          ) : (
+            <p className="rounded-lg border border-accent-red p-md text-[length:var(--text-body-sm)] text-accent-red">
+              We couldn&rsquo;t draw the purchase order for this order. Its
+              lines come to {formatMYR(document.total)} against a total of{" "}
+              {formatMYR(Number(order.total))} — please ask our team before
+              working from either figure.
+            </p>
+          )}
         </div>
       </section>
     </div>
