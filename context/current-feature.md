@@ -34,11 +34,16 @@ No migration, no new dependency, no schema change.
 
 ## Notes
 
-- **`EMAIL_FROM` in production still carries the old display name.** The
-  repository's `.env.example` and `SETUP-CHECKLIST.md` now say
-  `Zen Garden Portal <portal@lovinghandsportal.com>`, but the live value is a
-  Vercel environment variable this branch cannot reach — until it is changed,
-  every email arrives from "Loving Hands Portal" however the body reads.
+- **`EMAIL_FROM` in production was already right, and this was recorded
+  wrongly first.** The note here said mail would keep arriving from "Loving
+  Hands Portal" until someone edited the Vercel variable. The user's own screen
+  shows it reading `Zen Garden <no-reply@kim-brothers.com>`, updated
+  2026-09-11 — four days before this rebrand. So no environment change is
+  owed. Two things follow that are worth not re-deriving: production's sender
+  domain is **kim-brothers.com**, not `lovinghandsportal.com`, and it sends as
+  "Zen Garden" rather than "Zen Garden Portal", so the repository's
+  `.env.example` and `SETUP-CHECKLIST.md` are illustrative here rather than a
+  copy of the live value.
 - **The docs and the canvas were swept in a second pass**, after the app
   merged: `CLAUDE.md`, `context/project-overview.md`,
   `context/design-system.md`, `docs/specs/00-master.md`, `02-auth.md`,
