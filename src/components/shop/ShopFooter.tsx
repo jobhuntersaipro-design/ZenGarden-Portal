@@ -88,7 +88,7 @@ export function ShopFooter({
 
       <div className="border-t border-hairline">
         <div className="mx-auto max-w-page px-md py-sm text-[length:var(--text-caption)] text-ink-tertiary sm:px-lg">
-          © 2026 Loving Hands. All prices in Malaysian Ringgit.
+          © 2026 Zen Garden. All prices in Malaysian Ringgit.
         </div>
       </div>
     </footer>

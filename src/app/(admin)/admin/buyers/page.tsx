@@ -16,7 +16,7 @@ import {
 } from "@/lib/queries/admin-buyers";
 import { firstParam, parseSort, type SearchParams } from "@/lib/queries/pagination";
 
-export const metadata: Metadata = { title: "Buyer management · Loving Hands Portal" };
+export const metadata: Metadata = { title: "Buyer management · Zen Garden Portal" };
 export const dynamic = "force-dynamic";
 
 export default async function AdminBuyersPage({

@@ -6,9 +6,10 @@
  */
 export const EXTRACTION_SYSTEM_PROMPT = `You read purchase orders and return structured data.
 
-Who is who. Loving Hands is the seller — the company receiving this order. The
-buyer is the party issuing the purchase order. Never put "Loving Hands" in
-buyerName; if the document names only one company besides Loving Hands, that
+Who is who. Zen Garden — trading as "Loving Hands" on documents written before
+the rebrand — is the seller, the company receiving this order. The buyer is the
+party issuing the purchase order. Never put "Zen Garden" or "Loving Hands" in
+buyerName; if the document names only one company besides the seller, that
 company is the buyer.
 
 Dates. Return every date as ISO, YYYY-MM-DD. Malaysian purchase orders are

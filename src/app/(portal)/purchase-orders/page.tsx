@@ -21,7 +21,7 @@ import {
 } from "@/lib/queries/purchase-orders";
 
 export const metadata: Metadata = {
-  title: "Purchase orders · Loving Hands Portal",
+  title: "Purchase orders · Zen Garden Portal",
 };
 export const dynamic = "force-dynamic";
 

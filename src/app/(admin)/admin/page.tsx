@@ -16,7 +16,7 @@ import {
   type SearchParams,
 } from "@/lib/queries/pagination";
 
-export const metadata: Metadata = { title: "User management · Loving Hands Portal" };
+export const metadata: Metadata = { title: "User management · Zen Garden Portal" };
 export const dynamic = "force-dynamic";
 
 const STATUSES: UserStatusFilter[] = ["all", "active", "invited", "disabled"];

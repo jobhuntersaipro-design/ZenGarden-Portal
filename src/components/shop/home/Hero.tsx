@@ -20,7 +20,7 @@ export function Hero() {
     <div className="overflow-hidden rounded-xxl bg-brand-gradient lg:grid lg:grid-cols-2 lg:items-center">
       <div className="p-lg lg:p-xxl">
         <p className="font-mono text-[length:var(--text-eyebrow)] uppercase text-canvas/80">
-          Loving Hands wholesale
+          Zen Garden wholesale
         </p>
         <h1 className="mt-sm font-display text-[length:var(--text-display-md)] leading-[1.2] font-[650] tracking-[-1.36px] text-canvas lg:mt-md lg:text-[length:var(--text-display-2xl)] lg:leading-[1.1] lg:tracking-[-2.1px]">
           Personal care,

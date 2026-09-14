@@ -39,7 +39,7 @@ export default async function AdminLayout({
                 dead control in the corner of every admin page. */}
             <Link
               href="/"
-              aria-label="Loving Hands — go to the dashboard"
+              aria-label="Zen Garden — go to the dashboard"
               className="flex min-h-control-md items-center rounded-xxs transition-opacity duration-[0.25s] hover:opacity-80 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-focus"
             >
               <Wordmark />

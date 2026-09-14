@@ -92,7 +92,11 @@ describe("extractPurchaseOrder", () => {
     expect(params.output_config.format).toBeDefined();
     expect(params.model).toBe("claude-sonnet-5");
     expect(params.max_tokens).toBe(4096);
-    expect(params.system).toContain("Loving Hands is the seller");
+    // Both names on purpose: documents filed before the rebrand print
+    // "Loving Hands", and either must be read as the seller, never the buyer.
+    expect(params.system).toContain("Zen Garden");
+    expect(params.system).toContain("Loving Hands");
+    expect(params.system).toContain("is the seller");
   });
 
   it("refuses a file type it cannot read", async () => {

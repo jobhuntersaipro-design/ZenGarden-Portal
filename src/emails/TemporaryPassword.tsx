@@ -15,7 +15,7 @@ export function TemporaryPassword({
 }: TemporaryPasswordProps) {
   return (
     <Layout>
-      <Heading>Your Loving Hands Portal account</Heading>
+      <Heading>Your Zen Garden Portal account</Heading>
       <Paragraph>
         {name}, an admin has created your account. Sign in with your email
         address and the temporary password below — you&rsquo;ll be asked to
@@ -37,6 +37,6 @@ export function TemporaryPassword({
 }
 
 export const temporaryPasswordSubject = () =>
-  "Your Loving Hands Portal account";
+  "Your Zen Garden Portal account";
 
 export default TemporaryPassword;

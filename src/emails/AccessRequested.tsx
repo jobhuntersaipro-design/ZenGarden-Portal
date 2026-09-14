@@ -13,7 +13,7 @@ export function AccessRequested({ name, email, adminUrl }: AccessRequestedProps)
     <Layout>
       <Heading>Someone is asking for access</Heading>
       <Paragraph>
-        {name} ({email}) tried to sign in to the Loving Hands Portal with
+        {name} ({email}) tried to sign in to the Zen Garden Portal with
         Google. They have no account yet, so nothing happened — approve them
         and they are in.
       </Paragraph>

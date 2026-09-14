@@ -49,7 +49,7 @@ export async function generateMetadata({
     where: { id },
     select: { name: true },
   });
-  return { title: `${buyer?.name ?? "Buyer"} · Loving Hands Portal` };
+  return { title: `${buyer?.name ?? "Buyer"} · Zen Garden Portal` };
 }
 
 /** Weekly and up: a buyer's own history is too sparse to read daily. */

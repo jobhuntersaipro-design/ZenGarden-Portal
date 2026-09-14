@@ -12,7 +12,7 @@ export function AccessApproved({ name, signInUrl }: AccessApprovedProps) {
     <Layout>
       <Heading>You&rsquo;re in</Heading>
       <Paragraph>
-        {name}, an admin has approved your access to the Loving Hands Portal.
+        {name}, an admin has approved your access to the Zen Garden Portal.
         Sign in with the same Google account you used to request it.
       </Paragraph>
       <ButtonLink href={signInUrl}>Sign in</ButtonLink>
@@ -21,6 +21,6 @@ export function AccessApproved({ name, signInUrl }: AccessApprovedProps) {
 }
 
 export const accessApprovedSubject = () =>
-  "You're in — Loving Hands Portal access approved";
+  "You're in — Zen Garden Portal access approved";
 
 export default AccessApproved;

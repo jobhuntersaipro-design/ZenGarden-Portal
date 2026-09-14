@@ -23,7 +23,7 @@ const line = (over: Partial<CartLine> = {}): CartLine => ({
 });
 
 const supplier = {
-  name: "Loving Hands",
+  name: "Zen Garden",
   address: "1 Jalan Satu",
   email: "orders@lovinghands.my",
   phone: "+60 3-0000 0000",
@@ -111,7 +111,7 @@ describe("buildPoDocument", () => {
 
   it("falls back to a supplier name when the org settings hold none", () => {
     const doc = build({ supplier: { ...supplier, name: null } });
-    expect(doc.supplier.name).toBe("Loving Hands");
+    expect(doc.supplier.name).toBe("Zen Garden");
   });
 
   it("treats blank notes and blank payment terms as absent", () => {

@@ -6,7 +6,7 @@ import { AuthCard } from "@/components/auth/AuthCard";
 import { ChangePasswordForm } from "@/components/auth/ChangePasswordForm";
 
 export const metadata: Metadata = {
-  title: "Change password · Loving Hands Portal",
+  title: "Change password · Zen Garden Portal",
 };
 
 export default async function ChangePasswordPage() {

@@ -8,7 +8,7 @@ import { getSessionUser } from "@/lib/auth-guards";
 import { listAllLabels } from "@/lib/queries/products";
 
 export const metadata: Metadata = {
-  title: "New product · Loving Hands Portal",
+  title: "New product · Zen Garden Portal",
 };
 export const dynamic = "force-dynamic";
 

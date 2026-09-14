@@ -15,7 +15,7 @@ import {
 import { prisma } from "@/lib/prisma";
 
 export const metadata: Metadata = {
-  title: "Settings · Loving Hands Portal",
+  title: "Settings · Zen Garden Portal",
 };
 
 /**

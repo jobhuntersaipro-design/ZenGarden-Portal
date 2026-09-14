@@ -11,7 +11,7 @@ export function AccessDeclined({ name }: AccessDeclinedProps) {
     <Layout>
       <Heading>Your access request was declined</Heading>
       <Paragraph>
-        {name}, your request to use the Loving Hands Portal was not approved.
+        {name}, your request to use the Zen Garden Portal was not approved.
         If you think that is a mistake, speak to your admin.
       </Paragraph>
     </Layout>
@@ -19,6 +19,6 @@ export function AccessDeclined({ name }: AccessDeclinedProps) {
 }
 
 export const accessDeclinedSubject = () =>
-  "Your Loving Hands Portal access request";
+  "Your Zen Garden Portal access request";
 
 export default AccessDeclined;

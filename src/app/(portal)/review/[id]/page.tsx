@@ -9,7 +9,7 @@ import { todayISO } from "@/lib/dates";
 import { prisma } from "@/lib/prisma";
 import type { PoDraft } from "@/lib/validation/purchase-orders";
 
-export const metadata: Metadata = { title: "Review · Loving Hands Portal" };
+export const metadata: Metadata = { title: "Review · Zen Garden Portal" };
 export const dynamic = "force-dynamic";
 
 /** An empty draft, so a FAILED extraction can still be filled in by hand. */

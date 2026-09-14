@@ -17,7 +17,7 @@ import { cartSummary } from "@/lib/queries/cart";
 import { listShopCategories } from "@/lib/queries/shop-catalogue";
 import { loadShopViewer } from "@/lib/shop-viewer";
 
-export const metadata: Metadata = { title: "Loving Hands" };
+export const metadata: Metadata = { title: "Zen Garden" };
 export const dynamic = "force-dynamic";
 
 /**

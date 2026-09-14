@@ -3,7 +3,7 @@ import { AuthCard } from "@/components/auth/AuthCard";
 import { ForgotPasswordForm } from "@/components/auth/ForgotPasswordForm";
 
 export const metadata: Metadata = {
-  title: "Forgot password · Loving Hands Portal",
+  title: "Forgot password · Zen Garden Portal",
 };
 
 export default function ForgotPasswordPage() {

@@ -37,7 +37,7 @@ export function Sidebar({
       {/* The wordmark is the way home: the dashboard lives at `/`. */}
       <Link
         href="/"
-        aria-label="Loving Hands — go to the dashboard"
+        aria-label="Zen Garden — go to the dashboard"
         className="block rounded-xxs px-xs transition-opacity duration-[0.25s] hover:opacity-80 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-focus"
       >
         <Wordmark />

@@ -52,7 +52,7 @@ export function Layout({ children }: { children: ReactNode }) {
                             color: "#292d34",
                           }}
                         >
-                          <span style={{ color: "#7612fa" }}>Loving</span> Hands
+                          <span style={{ color: "#7612fa" }}>Zen</span> Garden
                         </div>
                         <div
                           style={{

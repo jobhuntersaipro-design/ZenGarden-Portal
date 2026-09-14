@@ -6,7 +6,7 @@ import { ResetPasswordForm } from "@/components/auth/ResetPasswordForm";
 import { Button } from "@/components/ui/button";
 
 export const metadata: Metadata = {
-  title: "Reset password · Loving Hands Portal",
+  title: "Reset password · Zen Garden Portal",
 };
 
 export default async function ResetPasswordPage({
