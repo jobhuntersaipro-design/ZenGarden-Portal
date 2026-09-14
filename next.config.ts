@@ -44,6 +44,12 @@ const SHARP_ROUTES = [
 const nextConfig: NextConfig = {
   reactCompiler: true,
   devIndicators: false,
+  // The Neon serverless driver and its Prisma adapter are server-only packages
+  // that keep runtime state (`neonConfig`) on a module-level singleton. Bundling
+  // them would fork that singleton per chunk; keeping them external loads one
+  // copy from node_modules. This is Prisma's recommended setting and also lets
+  // local development point the driver at a WebSocket proxy (scripts/dev/*).
+  serverExternalPackages: ["@neondatabase/serverless", "@prisma/adapter-neon"],
   outputFileTracingIncludes: Object.fromEntries(
     SHARP_ROUTES.map((route) => [
       route,

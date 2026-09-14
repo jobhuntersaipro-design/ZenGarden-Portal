@@ -1,0 +1,12 @@
+{
+  "name": "Loving Hands Portal",
+  "install": "bash scripts/dev/cloud-agent-install.sh",
+  "start": "bash scripts/dev/cloud-agent-start.sh",
+  "terminals": [
+    {
+      "name": "dev",
+      "command": "npm run dev"
+    }
+  ],
+  "ports": [3000]
+}
