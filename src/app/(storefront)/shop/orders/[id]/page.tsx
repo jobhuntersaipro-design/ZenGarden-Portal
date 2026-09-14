@@ -1,6 +1,7 @@
 import { notFound } from "next/navigation";
 import Link from "next/link";
 import { ArrowLeft } from "lucide-react";
+import { CheckoutSteps } from "@/components/shop/checkout/CheckoutSteps";
 import { StageStepper } from "@/components/purchase-orders/StageStepper";
 import { requireClient } from "@/lib/auth-guards";
 import { formatDate } from "@/lib/dates";
@@ -44,11 +45,20 @@ export default async function OrderDetailPage({
           <p className="mb-sm font-mono text-[length:var(--text-eyebrow)] text-ink-tertiary">
             Progress
           </p>
-          <StageStepper current={order.stage} events={order.events} />
+          {/* All four checkout steps are behind a confirmed order, so the bar
+              is complete and the fulfilment stages below carry the story on
+              (Phase 33). */}
+          <CheckoutSteps current={4} complete />
+          <div className="mt-lg border-t border-hairline pt-lg">
+            <StageStepper current={order.stage} events={order.events} />
+          </div>
         </section>
       ) : (
         <section className="mt-lg rounded-lg border border-hairline bg-canvas p-lg">
-          <p className="text-[length:var(--text-body-md)] text-ink">
+          {/* A declined order never reaches the fourth step, so the bar stops
+              at Confirm rather than promising a call that is not coming. */}
+          <CheckoutSteps current={order.kind === "declined" ? 3 : 4} />
+          <p className="mt-lg text-[length:var(--text-body-md)] text-ink">
             {order.kind === "declined"
               ? "The team could not accept this order."
               : "The team has your order and will confirm it shortly."}

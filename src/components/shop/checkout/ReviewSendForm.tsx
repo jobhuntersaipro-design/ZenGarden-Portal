@@ -7,11 +7,15 @@ import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
+import { PurchaseOrderPreview } from "@/components/shop/checkout/PurchaseOrderPreview";
 import { submitWebOrder } from "@/actions/cart";
+import { formatDate } from "@/lib/dates";
 import { formatMYR } from "@/lib/money";
+import { buildPoDocument, documentAgreesWithOrder } from "@/lib/purchase-order-document";
 import { shopHref } from "@/lib/shop-routes";
 import type { Cart } from "@/lib/queries/cart";
 import type { ReviewBuyer } from "@/lib/queries/shop-checkout";
+import type { SupplierDetails } from "@/lib/org-settings";
 
 /**
  * Review and send (Phase 32, from the Phase 18 design).
@@ -27,15 +31,18 @@ import type { ReviewBuyer } from "@/lib/queries/shop-checkout";
 export function ReviewSendForm({
   cart,
   buyer,
-  supplierEmail,
+  supplier,
   todayInKL,
+  orderDate,
 }: {
   cart: Cart;
   buyer: ReviewBuyer | null;
-  /** For "Ask us to change this"; the row is omitted when unset. */
-  supplierEmail: string | null;
+  /** Printed on the purchase order, and behind "Ask us to change this". */
+  supplier: SupplierDetails;
   /** `yyyy-MM-dd` in Kuala Lumpur — the earliest date worth requesting. */
   todayInKL: string;
+  /** Today, already formatted, so the document and the server agree on it. */
+  orderDate: string;
 }) {
   const router = useRouter();
   const [pending, startTransition] = useTransition();
@@ -44,6 +51,25 @@ export function ReviewSendForm({
   const [notes, setNotes] = useState("");
 
   const cartonCount = cart.lines.reduce((sum, line) => sum + line.cartons, 0);
+  const supplierEmail = supplier.email;
+
+  // Rebuilt on every keystroke, which is the point: the document below is the
+  // one that will be filed, so the PO number, the date and the note appear on
+  // it as they are typed rather than after the order is already sent.
+  const document = buildPoDocument({
+    lines: cart.lines,
+    subtotal: cart.subtotal,
+    buyer,
+    supplier,
+    buyerReference: buyerReference || null,
+    ourReference: cart.reference,
+    requestedDate: requestedDate ? formatDocumentDate(requestedDate) : null,
+    notes: notes || null,
+    paymentTerms: buyer?.paymentTerms ?? null,
+    orderDate,
+  });
+  // Refuse to draw a document that contradicts the figure beside Confirm.
+  const documentIsSound = documentAgreesWithOrder(document, cart.subtotal);
 
   const send = () =>
     startTransition(async () => {
@@ -175,16 +201,56 @@ export function ReviewSendForm({
 
         <Button pending={pending} onClick={send} className="mt-md h-control-lg w-full gap-xs">
           <Send className="size-4 shrink-0" aria-hidden />
-          Send order
+          Confirm order
         </Button>
 
         <p className="mt-sm text-[length:var(--text-caption)] text-ink-tertiary">
-          Prices are fixed at the figures above the moment you send. Delivery is
-          quoted separately when our team confirms.
+          Prices are fixed at the figures above the moment you confirm. Delivery
+          is quoted separately when our team confirms.
         </p>
       </div>
+
+      {/* `min-w-0`: a grid item defaults to `min-width: auto`, so the A4
+          document inside stretched this column to its own 794px and pushed
+          the *page* sideways (measured 856 against 390). With it, the column
+          clamps and the document scrolls inside its own container, which is
+          this project's rule for wide content. */}
+      <section className="min-w-0 lg:col-span-2">
+        <h2 className="text-[length:var(--text-heading-sm)] font-[650] text-ink">
+          Your purchase order
+        </h2>
+        <p className="mt-xxs text-[length:var(--text-body-sm)] text-ink-tertiary">
+          This is the document we file against your order. It updates as you
+          fill in the fields above.
+        </p>
+        <div className="mt-md">
+          {documentIsSound ? (
+            <PurchaseOrderPreview document={document} />
+          ) : (
+            <p className="rounded-lg border border-accent-red p-md text-[length:var(--text-body-sm)] text-accent-red">
+              We couldn&rsquo;t draw your purchase order. Go back to the cart and
+              try again.
+            </p>
+          )}
+        </div>
+      </section>
     </div>
   );
+}
+
+/**
+ * `yyyy-MM-dd` from the date input, as the document prints it.
+ *
+ * Through the project's own `formatDate`, not a hand-rolled
+ * `toLocaleDateString`: en-GB renders September as "Sept", so the document
+ * printed "30 Sept 2026" beside an order date of "14 Sep 2026" — two formats
+ * on one page. `formatDate` is the canvas's `d MMM yyyy` everywhere.
+ *
+ * The value is read as UTC midnight and formatted in Kuala Lumpur, which is
+ * ahead of UTC, so the calendar day the buyer picked is the day printed.
+ */
+function formatDocumentDate(value: string): string {
+  return formatDate(new Date(`${value}T00:00:00.000Z`));
 }
 
 function Card({ title, children }: { title: string; children: React.ReactNode }) {

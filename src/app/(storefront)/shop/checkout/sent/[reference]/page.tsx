@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound, redirect } from "next/navigation";
 import { Check } from "lucide-react";
+import { CheckoutSteps } from "@/components/shop/checkout/CheckoutSteps";
 import { formatDate } from "@/lib/dates";
 import { formatMYR } from "@/lib/money";
 import { loadSentOrder } from "@/lib/queries/shop-checkout";
@@ -36,6 +37,10 @@ export default async function OrderSentPage({
 
   return (
     <div className="mx-auto max-w-panel-lg pt-xl pb-section">
+      <div className="mb-lg flex justify-center">
+        <CheckoutSteps current={4} />
+      </div>
+
       <div className="rounded-xl border border-hairline bg-canvas p-xxl text-center">
         <span
           aria-hidden

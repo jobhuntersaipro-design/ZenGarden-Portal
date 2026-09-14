@@ -44,6 +44,7 @@ export function ClientCart({ cart }: { cart: Cart }) {
 
   return (
     <CartScreen
+      showSteps
       lines={local.lines}
       subtotal={local.subtotal}
       onSetCartons={async (productId, cartons) => {
