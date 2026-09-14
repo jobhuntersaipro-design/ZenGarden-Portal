@@ -1,5 +1,5 @@
-# Loving Hands Portal
-Purchase-order intake portal for Loving Hands' ops team: upload a customer PO (PDF/image),
+# Zen Garden Portal
+Purchase-order intake portal for Zen Garden's ops team: upload a customer PO (PDF/image),
 Claude extracts the fields, a person reviews and confirms, the record lands in Neon with the
 original file in R2, and the dashboards read confirmed POs as sales and fulfillment trends.
 
