@@ -97,8 +97,8 @@ export async function updateBuyer(
 
     revalidatePath(`/buyers/${buyerId}`);
     revalidatePath("/buyers");
-    revalidatePath("/admin/customers");
-    revalidatePath(`/admin/customers/${buyerId}`);
+    revalidatePath("/admin/buyers");
+    revalidatePath(`/admin/buyers/${buyerId}`);
     return { success: true, data: undefined };
   } catch (cause) {
     if (

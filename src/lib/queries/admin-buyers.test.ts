@@ -8,13 +8,15 @@ vi.mock("@/lib/prisma", () => ({
 }));
 
 const {
-  listCustomers,
+  accessCounts,
+  listAdminBuyers,
   loginsLabel,
-  selectCustomers,
-} = await import("@/lib/queries/admin-customers");
-type CustomerRow = Awaited<ReturnType<typeof listCustomers>>[number];
+  selectAdminBuyers,
+  shopAccess,
+} = await import("@/lib/queries/admin-buyers");
+type AdminBuyerRow = Awaited<ReturnType<typeof listAdminBuyers>>[number];
 
-const row = (over: Partial<CustomerRow>): CustomerRow => ({
+const row = (over: Partial<AdminBuyerRow>): AdminBuyerRow => ({
   id: "b1",
   name: "Acme Industrial Sdn Bhd",
   contactName: "Raj",
@@ -41,7 +43,7 @@ describe("loginsLabel", () => {
   });
 });
 
-describe("selectCustomers", () => {
+describe("selectAdminBuyers", () => {
   const rows = [
     row({ id: "b1", name: "Acme Industrial Sdn Bhd", orders: 4 }),
     row({
@@ -67,15 +69,15 @@ describe("selectCustomers", () => {
   const sort = { key: "name", dir: "asc" } as const;
 
   it("matches the company name, case-insensitively", () => {
-    const found = selectCustomers(rows, { q: "kim", sort });
+    const found = selectAdminBuyers(rows, { q: "kim", sort });
     expect(found.map((r) => r.id)).toEqual(["b2"]);
   });
 
   // A super admin looking for a customer usually has the person's email, not
   // the company's registered name.
   it("matches a contact's name or email", () => {
-    expect(selectCustomers(rows, { q: "wei@northwind", sort }).map((r) => r.id)).toEqual(["b3"]);
-    expect(selectCustomers(rows, { q: "siti", sort }).map((r) => r.id)).toEqual(["b1"]);
+    expect(selectAdminBuyers(rows, { q: "wei@northwind", sort }).map((r) => r.id)).toEqual(["b3"]);
+    expect(selectAdminBuyers(rows, { q: "siti", sort }).map((r) => r.id)).toEqual(["b1"]);
   });
 
   // Spec §2: search matches the company's own `email`, not only a contact's.
@@ -85,35 +87,79 @@ describe("selectCustomers", () => {
       r.id === "b2" ? { ...r, email: "accounts@kimsmart.example" } : r,
     );
     expect(
-      selectCustomers(withCompanyEmail, { q: "accounts@kimsmart", sort }).map((r) => r.id),
+      selectAdminBuyers(withCompanyEmail, { q: "accounts@kimsmart", sort }).map((r) => r.id),
     ).toEqual(["b2"]);
   });
 
   it("does not choke on a customer with no email on file", () => {
     const withoutEmail = rows.map((r) => (r.id === "b2" ? { ...r, email: null } : r));
-    expect(selectCustomers(withoutEmail, { q: "kim", sort }).map((r) => r.id)).toEqual(["b2"]);
+    expect(selectAdminBuyers(withoutEmail, { q: "kim", sort }).map((r) => r.id)).toEqual(["b2"]);
   });
 
   it("sorts by orders descending", () => {
-    const sorted = selectCustomers(rows, { sort: { key: "orders", dir: "desc" } });
+    const sorted = selectAdminBuyers(rows, { sort: { key: "orders", dir: "desc" } });
     expect(sorted.map((r) => r.id)).toEqual(["b2", "b1", "b3"]);
   });
 
   // "Never" has to sort as older than any real timestamp, not as 1970 in the
   // middle of the list or as NaN at an arbitrary end.
   it("sorts a customer who has never signed in to the bottom of Last active, descending", () => {
-    const sorted = selectCustomers(rows, { sort: { key: "lastActiveAt", dir: "desc" } });
+    const sorted = selectAdminBuyers(rows, { sort: { key: "lastActiveAt", dir: "desc" } });
     expect(sorted.map((r) => r.id)).toEqual(["b3", "b1", "b2"]);
+  });
+
+  it("filters by shop access, and treats the filters as overlapping, not a partition", () => {
+    const mixed = [
+      row({ id: "a", active: 1, invited: 1, disabled: 0 }),
+      row({ id: "b", active: 0, invited: 1, disabled: 0 }),
+      row({ id: "c", active: 0, invited: 0, disabled: 2 }),
+      row({ id: "d", active: 0, invited: 0, disabled: 0 }),
+    ];
+    const ids = (access: "all" | "active" | "invited" | "none") =>
+      selectAdminBuyers(mixed, { access, sort }).map((r) => r.id);
+    expect(ids("all")).toEqual(["a", "b", "c", "d"]);
+    expect(ids("active")).toEqual(["a"]);
+    expect(ids("invited")).toEqual(["a", "b"]);
+    // Disabled-only is not "no login": someone chose to switch it off.
+    expect(ids("none")).toEqual(["d"]);
+  });
+
+  it("applies the access filter and the search together", () => {
+    expect(selectAdminBuyers(rows, { q: "kim", access: "active", sort })).toEqual([]);
+    // b1 alone: b3 is active too but its contact is Wei, not Siti.
+    expect(selectAdminBuyers(rows, { q: "siti", access: "active", sort }).map((r) => r.id)).toEqual(["b1"]);
   });
 
   it("leaves the input array alone", () => {
     const before = rows.map((r) => r.id);
-    selectCustomers(rows, { sort: { key: "orders", dir: "desc" } });
+    selectAdminBuyers(rows, { sort: { key: "orders", dir: "desc" } });
     expect(rows.map((r) => r.id)).toEqual(before);
   });
 });
 
-describe("listCustomers", () => {
+describe("shopAccess", () => {
+  it("reports the best state any contact is in", () => {
+    expect(shopAccess({ active: 1, invited: 2, disabled: 3 })).toBe("Active");
+    expect(shopAccess({ active: 0, invited: 1, disabled: 3 })).toBe("Invited");
+    expect(shopAccess({ active: 0, invited: 0, disabled: 3 })).toBe("Disabled");
+    expect(shopAccess({ active: 0, invited: 0, disabled: 0 })).toBe("None");
+  });
+});
+
+describe("accessCounts", () => {
+  it("counts each filter the way selectAdminBuyers applies it", () => {
+    expect(
+      accessCounts([
+        { active: 1, invited: 1, disabled: 0 },
+        { active: 0, invited: 1, disabled: 0 },
+        { active: 0, invited: 0, disabled: 2 },
+        { active: 0, invited: 0, disabled: 0 },
+      ]),
+    ).toEqual({ all: 4, active: 1, invited: 2, none: 1 });
+  });
+});
+
+describe("listAdminBuyers", () => {
   beforeEach(() => {
     vi.resetAllMocks();
     buyerFindMany.mockResolvedValue([]);
@@ -128,7 +174,7 @@ describe("listCustomers", () => {
   // test only sees the query Prisma was asked to run, not any row shape, so
   // it is the only thing in this file that can catch the filter going missing.
   it("excludes draft web orders from the Orders count", async () => {
-    await listCustomers();
+    await listAdminBuyers();
 
     expect(buyerFindMany).toHaveBeenCalledTimes(1);
     const call = buyerFindMany.mock.calls[0]?.[0];
@@ -137,12 +183,12 @@ describe("listCustomers", () => {
     });
   });
 
-  // Every other test in this file works on hand-built `CustomerRow`s, so
-  // none of them can see `listCustomers`'s own mapping from a Prisma buyer
+  // Every other test in this file works on hand-built `AdminBuyerRow`s, so
+  // none of them can see `listAdminBuyers`'s own mapping from a Prisma buyer
   // row to that shape. This is the one test that does: it stands in for
   // Prisma's actual return shape — `Date` objects, not strings, the way the
   // real client hands them back — and checks the derivation end to end.
-  it("maps buyer rows into CustomerRows", async () => {
+  it("maps buyer rows into AdminBuyerRows", async () => {
     buyerFindMany.mockResolvedValue([
       {
         id: "b1",
@@ -204,7 +250,7 @@ describe("listCustomers", () => {
       },
     ]);
 
-    const rows = await listCustomers();
+    const rows = await listAdminBuyers();
 
     expect(rows).toEqual([
       {

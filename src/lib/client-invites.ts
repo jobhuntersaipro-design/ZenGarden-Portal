@@ -104,6 +104,6 @@ export function uniqueMessage(meta: unknown): string {
 
   if (text.includes("username")) return "That username is taken.";
   if (text.includes("email")) return "That email address is already in use.";
-  if (text.includes("name")) return "Another customer already has that name.";
-  return "Something about that customer is already in use.";
+  if (text.includes("name")) return "Another buyer already has that name.";
+  return "Something about that buyer is already in use.";
 }

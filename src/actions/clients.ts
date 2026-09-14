@@ -38,10 +38,10 @@ async function guard() {
 
 function revalidateCustomer(buyerId: string | null): void {
   revalidatePath("/buyers");
-  revalidatePath("/admin/customers");
+  revalidatePath("/admin/buyers");
   if (!buyerId) return;
   revalidatePath(`/buyers/${buyerId}`);
-  revalidatePath(`/admin/customers/${buyerId}`);
+  revalidatePath(`/admin/buyers/${buyerId}`);
 }
 
 /**
@@ -123,21 +123,18 @@ export async function inviteBuyerContact(
 }
 
 /**
- * One implementation behind two names. A reset and a resent invite do exactly
- * the same thing to the row — a fresh temporary password, a forced change and
- * every session ended — and differ only in what the timeline should call it.
- * Two copies of this would drift, and the half that drifted would be the half
- * that leaves a session open.
+ * A fresh temporary password, a forced change and every session ended. One
+ * caller today (`resendClientInvite`); the `action` parameter is what the
+ * timeline calls it, kept so a second caller cannot copy the body and drift.
  */
 async function issueTemporaryPassword(
   contactId: string,
   actorId: string,
   action: "PASSWORD_RESET" | "INVITE_RESENT",
 ): Promise<ActionResult<{ sent: boolean }>> {
-  // Validated here, in the one body both `resetClientPassword` and
-  // `resendClientInvite` share, rather than in each wrapper — a check placed
-  // in only one of two callers over one implementation is exactly the kind
-  // of divergence that let removeBuyerContact's draft-cart bug happen.
+  // Validated here, in the shared body, rather than in a wrapper — a check
+  // placed in only one of two callers over one implementation is exactly the
+  // kind of divergence that let removeBuyerContact's draft-cart bug happen.
   if (!idSchema.safeParse(contactId).success) {
     return { success: false, error: "That contact is gone." };
   }
@@ -148,7 +145,7 @@ async function issueTemporaryPassword(
       select: { id: true, name: true, email: true, role: true, buyerId: true },
     });
     // A non-CLIENT is refused with the same words as a missing row: this must
-    // never become a way to take over an ops account from the customers screen.
+    // never become a way to take over an ops account from the buyers screen.
     if (!contact || contact.role !== Role.CLIENT) {
       return { success: false, error: "That contact is gone." };
     }
@@ -188,16 +185,15 @@ async function issueTemporaryPassword(
   }
 }
 
-/** A fresh temporary password for a customer who has lost theirs. */
-export async function resetClientPassword(
-  contactId: string,
-): Promise<ActionResult<{ sent: boolean }>> {
-  const { user, error } = await guard();
-  if (!user) return { success: false, error: error! };
-  return issueTemporaryPassword(contactId, user.id, "PASSWORD_RESET");
-}
-
-/** The same thing, for an invitation that was lost or expired. */
+/**
+ * A fresh temporary password for an invitation that was lost or expired.
+ *
+ * Phase 26 retired the temporary-password *reset* that used to sit beside
+ * this: a contact who has lost their password now gets a one-time reset link
+ * (`sendPasswordResetLink`, `src/actions/reset-links.ts`), the same thing a
+ * member gets. `PASSWORD_RESET` stays in `AuditAction` so the rows already
+ * written keep their sentence.
+ */
 export async function resendClientInvite(
   contactId: string,
 ): Promise<ActionResult<{ sent: boolean }>> {
@@ -364,7 +360,7 @@ export async function removeBuyerContact(contactId: string): Promise<ActionResul
       // contact whose only WebOrder is an abandoned cart passes it — but
       // WebOrder.placedById is ON DELETE RESTRICT, and `tx.user.delete` would
       // still throw P2003 unless that draft is cleared first. The same shape
-      // `deleteBuyer` (src/actions/customers.ts) already uses.
+      // `deleteBuyer` (src/actions/admin-buyers.ts) already uses.
       // WebOrderLine.webOrder cascades, so its lines go with it.
       await tx.webOrder.deleteMany({
         where: { placedById: contact.id, status: WebOrderStatus.DRAFT },

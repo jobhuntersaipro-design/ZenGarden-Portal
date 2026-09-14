@@ -44,6 +44,17 @@ const SHARP_ROUTES = [
 const nextConfig: NextConfig = {
   reactCompiler: true,
   devIndicators: false,
+  // Phase 26 renamed the admin room's second section. `:path*` matches zero
+  // segments too, so the bare /admin/customers is covered by the one rule.
+  async redirects() {
+    return [
+      {
+        source: "/admin/customers/:path*",
+        destination: "/admin/buyers/:path*",
+        permanent: true,
+      },
+    ];
+  },
   outputFileTracingIncludes: Object.fromEntries(
     SHARP_ROUTES.map((route) => [
       route,

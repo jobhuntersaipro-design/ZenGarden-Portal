@@ -1,6 +1,6 @@
 import { HeaderSkeleton, PageSkeleton, Shimmer } from "@/components/portal/Skeletons";
 
-export default function AdminCustomerLoading() {
+export default function AdminBuyerLoading() {
   return (
     <PageSkeleton>
       <HeaderSkeleton action={false} />

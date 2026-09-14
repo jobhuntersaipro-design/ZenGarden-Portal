@@ -1,16 +1,22 @@
 import { Role, WebOrderStatus } from "@/generated/prisma/enums";
 import { prisma } from "@/lib/prisma";
-import { loginsLabel } from "@/lib/queries/admin-customer-labels";
+import {
+  accessCounts,
+  loginsLabel,
+  matchesAccess,
+  shopAccess,
+  type AccessFilter,
+} from "@/lib/queries/admin-buyer-labels";
 
 // Re-exported rather than defined here: `loginsLabel` lives in
-// `admin-customer-labels.ts` because it must stay importable from a client
-// component (`CustomersTable`) without dragging `prisma` into the browser
+// `admin-buyer-labels.ts` because it must stay importable from a client
+// component (`BuyersTable`) without dragging `prisma` into the browser
 // bundle — see that file's doc comment. Re-exporting keeps this test's own
-// import path (`from "@/lib/queries/admin-customers"`) working unchanged, so
+// import path (`from "@/lib/queries/admin-buyers"`) working unchanged, so
 // there is still exactly one implementation and one place it is tested.
-export { loginsLabel };
+export { accessCounts, loginsLabel, matchesAccess, shopAccess };
 
-export type CustomerRow = {
+export type AdminBuyerRow = {
   id: string;
   name: string;
   contactName: string | null;
@@ -28,14 +34,14 @@ export type CustomerRow = {
   createdAt: string;
 };
 
-export const CUSTOMER_SORT_KEYS = [
+export const ADMIN_BUYER_SORT_KEYS = [
   "name",
   "lastActiveAt",
   "orders",
   "createdAt",
 ] as const;
 
-export type CustomerSortKey = (typeof CUSTOMER_SORT_KEYS)[number];
+export type AdminBuyerSortKey = (typeof ADMIN_BUYER_SORT_KEYS)[number];
 
 /**
  * Deliberately not `listBuyers` (`src/lib/queries/buyers.ts`): that one
@@ -43,7 +49,7 @@ export type CustomerSortKey = (typeof CUSTOMER_SORT_KEYS)[number];
  * before it was trimmed, and answers "who should we chase". This answers
  * "which account am I managing", which needs counts and a timestamp.
  */
-export async function listCustomers(): Promise<CustomerRow[]> {
+export async function listAdminBuyers(): Promise<AdminBuyerRow[]> {
   const buyers = await prisma.buyer.findMany({
     select: {
       id: true,
@@ -104,13 +110,22 @@ export async function listCustomers(): Promise<CustomerRow[]> {
 }
 
 /** Search and sort in memory: this is a roster of dozens, not a feed. */
-export function selectCustomers(
-  rows: CustomerRow[],
-  { q, sort }: { q?: string; sort: { key: CustomerSortKey; dir: "asc" | "desc" } },
-): CustomerRow[] {
+export function selectAdminBuyers(
+  rows: AdminBuyerRow[],
+  {
+    q,
+    access = "all",
+    sort,
+  }: {
+    q?: string;
+    access?: AccessFilter;
+    sort: { key: AdminBuyerSortKey; dir: "asc" | "desc" };
+  },
+): AdminBuyerRow[] {
   const needle = q?.trim().toLowerCase();
 
   const filtered = rows.filter((row) => {
+    if (!matchesAccess(row, access)) return false;
     if (!needle) return true;
     const haystack = [
       row.name,
@@ -122,7 +137,7 @@ export function selectCustomers(
     return haystack.some((value) => value.toLowerCase().includes(needle));
   });
 
-  const value = (row: CustomerRow): string | number => {
+  const value = (row: AdminBuyerRow): string | number => {
     switch (sort.key) {
       case "name":
         return row.name.toLowerCase();

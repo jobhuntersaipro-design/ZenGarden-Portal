@@ -8,7 +8,7 @@ const buyerFindUnique = vi.fn();
 const auditCreate = vi.fn();
 // A contact's abandoned cart is a DRAFT WebOrder (openCart, src/actions/cart.ts)
 // and has to be cleared before the user row can go — the same shape
-// deleteBuyer already uses in src/actions/customers.ts.
+// deleteBuyer already uses in src/actions/admin-buyers.ts.
 const webOrderDeleteMany = vi.fn();
 // The bare (non-transactional) client's own `auditEvent.create` — kept as a
 // distinct spy from the one handed into `$transaction` below, so a future
@@ -63,7 +63,6 @@ const {
   resendClientInvite,
   setClientAccess,
   updateBuyerContact,
-  resetClientPassword,
   removeBuyerContact,
 } = await import("@/actions/clients");
 
@@ -257,10 +256,33 @@ describe("resendClientInvite", () => {
     expect(userUpdate).not.toHaveBeenCalled();
   });
 
-  // The id check lives in issueTemporaryPassword, the one body both this and
-  // resetClientPassword share — proving it here is what makes sure the two
-  // wrappers cannot drift back apart the way resetClientPassword alone would
-  // have if the check had stayed a copy in just one of them.
+  it("records a resend as a resend, and never the password", async () => {
+    userFindUnique.mockResolvedValue({
+      id: "c1", name: "Siti", email: "siti@buyer.com", role: "CLIENT", buyerId: "buyer-1",
+    });
+    await resendClientInvite("c1");
+    const call = auditCreate.mock.calls[0][0];
+    expect(call.data.action).toBe("INVITE_RESENT");
+    expect(call.data.subjectUserId).toBe("c1");
+    expect(call.data.buyerId).toBe("buyer-1");
+    expect(JSON.stringify(call)).not.toContain(templateArgs.at(-1)!.password);
+    expect(looseAuditCreate).not.toHaveBeenCalled();
+  });
+
+  // sendEmail is documented "Never throws" — it reports failure as
+  // { sent: false }, and the screen believes this value.
+  it("reports a failed send honestly, and keeps the reset", async () => {
+    userFindUnique.mockResolvedValue({
+      id: "c1", name: "Siti", email: "siti@buyer.com", role: "CLIENT", buyerId: "buyer-1",
+    });
+    sendEmail.mockResolvedValue({ sent: false, error: "Domain not verified" });
+    const result = await resendClientInvite("c1");
+    expect(result).toEqual({ success: true, data: { sent: false } });
+    expect(userUpdate).toHaveBeenCalled();
+  });
+
+  // The id check lives in issueTemporaryPassword's shared body, not in the
+  // wrapper — proving it here keeps a second wrapper from drifting.
   it("refuses a non-string id before touching the database", async () => {
     const result = await resendClientInvite(42 as unknown as string);
     expect(result.success).toBe(false);
@@ -382,94 +404,6 @@ describe("updateBuyerContact", () => {
   });
 });
 
-describe("resetClientPassword", () => {
-  beforeEach(() => {
-    userFindUnique.mockResolvedValue({
-      id: "c1",
-      name: "Siti",
-      email: "siti@acme.com",
-      role: "CLIENT",
-      buyerId: "buyer-1",
-    });
-  });
-
-  it("refuses a member", async () => {
-    const { UnauthorizedError } = await import("@/lib/auth-guards");
-    requireSuperAdmin.mockRejectedValue(new UnauthorizedError("Super admin only."));
-    const result = await resetClientPassword("c1");
-    expect(result).toEqual({ success: false, error: "Super admin only." });
-    expect(userUpdate).not.toHaveBeenCalled();
-  });
-
-  it("refuses an ops user, so this cannot become a back door into staff accounts", async () => {
-    userFindUnique.mockResolvedValue({
-      id: "u1", name: "Aisha", email: "aisha@lovinghandsportal.com",
-      role: "SUPER_ADMIN", buyerId: null,
-    });
-    const result = await resetClientPassword("u1");
-    expect(result).toEqual({ success: false, error: "That contact is gone." });
-    expect(userUpdate).not.toHaveBeenCalled();
-  });
-
-  it("forces a change and ends every live session", async () => {
-    await resetClientPassword("c1");
-    const data = userUpdate.mock.calls[0][0].data;
-    expect(data.mustChangePassword).toBe(true);
-    expect(data.sessionVersion).toEqual({ increment: 1 });
-    expect(data.passwordHash).toMatch(/^\$2[aby]\$/);
-  });
-
-  it("emails the password it actually hashed", async () => {
-    const { compare } = await import("bcryptjs");
-    await resetClientPassword("c1");
-    const sent = templateArgs.at(-1)!.password;
-    expect(await compare(sent, userUpdate.mock.calls[0][0].data.passwordHash)).toBe(true);
-  });
-
-  // sendEmail is documented "Never throws" — it reports failure as
-  // { sent: false }. Returning a hard-coded true here is the exact defect
-  // Phase 23 found in sendInviteEmail, and the screen believes this value.
-  it("reports a failed send honestly, and keeps the reset", async () => {
-    sendEmail.mockResolvedValue({ sent: false, error: "Domain not verified" });
-    const result = await resetClientPassword("c1");
-    expect(result).toEqual({ success: true, data: { sent: false } });
-    expect(userUpdate).toHaveBeenCalled();
-  });
-
-  it("records PASSWORD_RESET, and never the password", async () => {
-    await resetClientPassword("c1");
-    const call = auditCreate.mock.calls[0][0];
-    expect(call.data.action).toBe("PASSWORD_RESET");
-    expect(call.data.subjectUserId).toBe("c1");
-    expect(call.data.buyerId).toBe("buyer-1");
-    expect(JSON.stringify(call)).not.toContain(templateArgs.at(-1)!.password);
-  });
-
-  it("records a resend as a resend, through the same code", async () => {
-    await resendClientInvite("c1");
-    expect(auditCreate.mock.calls[0][0].data.action).toBe("INVITE_RESENT");
-    expect(userUpdate.mock.calls[0][0].data.mustChangePassword).toBe(true);
-  });
-
-  it("writes the audit row through the transaction, not the bare client", async () => {
-    await resetClientPassword("c1");
-    expect(auditCreate).toHaveBeenCalledTimes(1);
-    expect(looseAuditCreate).not.toHaveBeenCalled();
-  });
-
-  it("refuses a non-string id before touching the database", async () => {
-    const result = await resetClientPassword(42 as unknown as string);
-    expect(result.success).toBe(false);
-    expect(userFindUnique).not.toHaveBeenCalled();
-  });
-
-  it("refuses an empty id before touching the database", async () => {
-    const result = await resetClientPassword("");
-    expect(result.success).toBe(false);
-    expect(userFindUnique).not.toHaveBeenCalled();
-  });
-});
-
 describe("removeBuyerContact", () => {
   it("refuses a contact who placed shop orders, and says how many", async () => {
     userFindUnique.mockResolvedValue({
@@ -530,7 +464,7 @@ describe("removeBuyerContact", () => {
   // (prisma/migrations/20260910090000_web_orders/migration.sql), so
   // tx.user.delete would still throw P2003 unless that draft is cleared
   // first, the same shape deleteBuyer already uses in
-  // src/actions/customers.ts.
+  // src/actions/admin-buyers.ts.
   it("deletes the contact's draft web orders before deleting the user, inside the transaction", async () => {
     userFindUnique.mockResolvedValue({
       id: "c1", name: "Siti", email: "siti@acme.com", role: "CLIENT",

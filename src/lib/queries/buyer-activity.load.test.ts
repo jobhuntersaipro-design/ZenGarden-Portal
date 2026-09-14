@@ -24,7 +24,7 @@ vi.mock("@/lib/prisma", () => ({
   },
 }));
 
-const { loadCustomerActivity } = await import("@/lib/queries/customer-activity");
+const { loadBuyerActivity } = await import("@/lib/queries/buyer-activity");
 
 beforeEach(() => {
   vi.resetAllMocks();
@@ -47,9 +47,9 @@ beforeEach(() => {
 // everyone who ever abandoned a cart. This test only sees the query Prisma
 // was asked to run, not any row shape, so it is the only thing that can
 // catch the exclusion going missing.
-describe("loadCustomerActivity never surfaces a draft web order", () => {
+describe("loadBuyerActivity never surfaces a draft web order", () => {
   it("excludes DRAFT from the WebOrder query", async () => {
-    await loadCustomerActivity("b1", { page: 1, kind: "all" });
+    await loadBuyerActivity("b1", { page: 1, kind: "all" });
 
     expect(webOrderFindMany).toHaveBeenCalledTimes(1);
     const call = webOrderFindMany.mock.calls[0]?.[0];
@@ -60,10 +60,10 @@ describe("loadCustomerActivity never surfaces a draft web order", () => {
 // Each of the five sources is read with `take: page * ACTIVITY_PAGE_SIZE`, so
 // `mergeActivity`'s own `all.length` is the size of a *truncated* union, not
 // the real row count — wrong the moment a customer's history exceeds one
-// page for any one source. `loadCustomerActivity` must compute the
+// page for any one source. `loadBuyerActivity` must compute the
 // authoritative total from `count()` queries, filtered exactly like the
 // reads, and use it instead.
-describe("loadCustomerActivity's total reflects real row counts, not the truncated reads", () => {
+describe("loadBuyerActivity's total reflects real row counts, not the truncated reads", () => {
   it("does not cap the total at what the take-bounded read fetched", async () => {
     // 100 confirmed purchase orders exist; the bounded read only returns the
     // first page's worth (20), the same as production would for a buyer
@@ -80,7 +80,7 @@ describe("loadCustomerActivity's total reflects real row counts, not the truncat
     );
     purchaseOrderCount.mockResolvedValue(100);
 
-    const result = await loadCustomerActivity("b1", { page: 1, kind: "purchase-order" });
+    const result = await loadBuyerActivity("b1", { page: 1, kind: "purchase-order" });
 
     expect(result.total).toBe(100);
   });
@@ -89,7 +89,7 @@ describe("loadCustomerActivity's total reflects real row counts, not the truncat
     purchaseOrderCount.mockResolvedValue(40);
     poStageEventCount.mockResolvedValue(65);
 
-    const result = await loadCustomerActivity("b1", { page: 1, kind: "purchase-order" });
+    const result = await loadBuyerActivity("b1", { page: 1, kind: "purchase-order" });
 
     expect(result.total).toBe(105);
   });
@@ -101,7 +101,7 @@ describe("loadCustomerActivity's total reflects real row counts, not the truncat
     userFindMany.mockResolvedValue([{ email: "siti@acme.com" }]);
     loginAttemptCount.mockResolvedValue(3);
 
-    const result = await loadCustomerActivity("b1", { page: 1, kind: "sign-in" });
+    const result = await loadBuyerActivity("b1", { page: 1, kind: "sign-in" });
 
     expect(result.total).toBe(15);
   });
@@ -116,7 +116,7 @@ describe("loadCustomerActivity's total reflects real row counts, not the truncat
     userFindMany.mockResolvedValue([{ email: "a@acme.com" }]);
     loginAttemptCount.mockResolvedValue(1);
 
-    const result = await loadCustomerActivity("b1", { page: 1, kind: "all" });
+    const result = await loadBuyerActivity("b1", { page: 1, kind: "all" });
 
     expect(result.total).toBe(2 + 3 + 4 + 5 + 6 + 1);
   });
@@ -124,7 +124,7 @@ describe("loadCustomerActivity's total reflects real row counts, not the truncat
   it("counts the failed-attempt window with the same filter the read uses", async () => {
     userFindMany.mockResolvedValue([{ email: "siti@acme.com" }, { email: "raj@acme.com" }]);
 
-    await loadCustomerActivity("b1", { page: 1, kind: "sign-in" });
+    await loadBuyerActivity("b1", { page: 1, kind: "sign-in" });
 
     expect(loginAttemptCount).toHaveBeenCalledTimes(1);
     const countArgs = loginAttemptCount.mock.calls[0]?.[0];
@@ -135,14 +135,14 @@ describe("loadCustomerActivity's total reflects real row counts, not the truncat
   it("counts zero failed attempts, and never calls count, when the buyer has no contacts", async () => {
     userFindMany.mockResolvedValue([]);
 
-    const result = await loadCustomerActivity("b1", { page: 1, kind: "sign-in" });
+    const result = await loadBuyerActivity("b1", { page: 1, kind: "sign-in" });
 
     expect(loginAttemptCount).not.toHaveBeenCalled();
     expect(result.total).toBe(0);
   });
 
   it("filters the WebOrder count exactly like the read: no DRAFT", async () => {
-    await loadCustomerActivity("b1", { page: 1, kind: "shop-order" });
+    await loadBuyerActivity("b1", { page: 1, kind: "shop-order" });
 
     expect(webOrderCount).toHaveBeenCalledTimes(1);
     const call = webOrderCount.mock.calls[0]?.[0];

@@ -1,6 +1,6 @@
 import { HeaderSkeleton, PageSkeleton, Shimmer } from "@/components/portal/Skeletons";
 
-export default function NewCustomerLoading() {
+export default function NewBuyerLoading() {
   return (
     <PageSkeleton>
       <Shimmer className="mb-xs h-4 w-20" />

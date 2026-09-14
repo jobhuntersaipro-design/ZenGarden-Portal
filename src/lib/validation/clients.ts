@@ -1,6 +1,6 @@
 import { z } from "zod";
 import { emailSchema } from "@/lib/validation/auth";
-import { optionalEmail, optionalText } from "@/lib/validation/common";
+import { optionalText } from "@/lib/validation/common";
 
 /**
  * A display handle. Lower-cased and trimmed before validation, exactly as
@@ -48,19 +48,24 @@ export const contactPatchSchema = inviteContactSchema.pick({
 
 export type ContactPatch = z.input<typeof contactPatchSchema>;
 
-export const createCustomerSchema = z.object({
-  company: z.object({
-    name: z.string().min(1, "A customer needs a name").max(200),
-    address: optionalText(500),
-    paymentTerms: optionalText(120),
-    remark: optionalText(2000),
-    contactName: optionalText(120),
-    email: optionalEmail,
+/**
+ * A new buyer is a company and the person who signs in for it
+ * (docs/specs/26-buyer-management.md §3). The contact always becomes the
+ * shop login — there is no switch and no separate login block — and their
+ * handle is derived from the email (`src/lib/username.ts`), so it is not
+ * asked for here. Address, payment terms and remark sit behind a disclosure
+ * on the form and are optional.
+ */
+export const createBuyerSchema = z.object({
+  name: z.string().min(1, "A buyer needs a name").max(200),
+  contact: z.object({
+    name: z.string().min(1, "A contact name is required").max(120),
+    email: emailSchema,
     phone: phoneSchema,
   }),
-  /** Omitted when the reader did not open "Give them a shop login". */
-  contact: inviteContactSchema.omit({ buyerId: true }).optional(),
-  sendInvite: z.boolean().default(true),
+  address: optionalText(500),
+  paymentTerms: optionalText(120),
+  remark: optionalText(2000),
 });
 
-export type CreateCustomerInput = z.input<typeof createCustomerSchema>;
+export type CreateBuyerInput = z.input<typeof createBuyerSchema>;

@@ -19,7 +19,7 @@ describe("uniqueMessage", () => {
     it.each([
       [["username"], "That username is taken."],
       [["email"], "That email address is already in use."],
-      [["name"], "Another customer already has that name."],
+      [["name"], "Another buyer already has that name."],
     ])("maps target %s", (target, message) => {
       expect(uniqueMessage({ target })).toBe(message);
     });
@@ -36,7 +36,7 @@ describe("uniqueMessage", () => {
     it.each([
       ["username", "That username is taken."],
       ["email", "That email address is already in use."],
-      ["name", "Another customer already has that name."],
+      ["name", "Another buyer already has that name."],
     ])("maps driverAdapterError.cause.constraint.fields containing %s", (field, message) => {
       const meta = { driverAdapterError: { cause: { constraint: { fields: [field] } } } };
       expect(uniqueMessage(meta)).toBe(message);
@@ -77,6 +77,6 @@ describe("uniqueMessage", () => {
     ["a non-object meta (string)", "not an object"],
     ["a non-object meta (number)", 42],
   ])("falls back to the generic message for %s", (_label, meta) => {
-    expect(uniqueMessage(meta)).toBe("Something about that customer is already in use.");
+    expect(uniqueMessage(meta)).toBe("Something about that buyer is already in use.");
   });
 });

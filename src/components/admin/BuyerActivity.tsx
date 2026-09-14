@@ -12,17 +12,17 @@ import {
   ACTIVITY_PAGE_SIZE,
   type ActivityEntry,
   type ActivityKind,
-} from "@/lib/queries/customer-activity-entries";
+} from "@/lib/queries/buyer-activity-entries";
 
 const FILTERS: { value: ActivityKind | "all"; label: string; empty: string }[] = [
   { value: "all", label: "All", empty: "Nothing has happened on this account yet." },
-  { value: "sign-in", label: "Sign-ins", empty: "Nobody from this customer has signed in yet." },
+  { value: "sign-in", label: "Sign-ins", empty: "Nobody from this buyer has signed in yet." },
   { value: "shop-order", label: "Shop orders", empty: "They have not ordered on the shop." },
   { value: "purchase-order", label: "Purchase orders", empty: "No purchase orders yet." },
   { value: "change", label: "Changes", empty: "Nobody has changed this account yet." },
 ];
 
-export function CustomerActivity({
+export function BuyerActivity({
   entries,
   total,
   kind,

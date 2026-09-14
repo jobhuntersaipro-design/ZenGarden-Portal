@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import {
-  createCustomerSchema,
+  createBuyerSchema,
   contactPatchSchema,
   inviteContactSchema,
   phoneSchema,
@@ -70,37 +70,41 @@ describe("contactPatchSchema", () => {
   });
 });
 
-describe("createCustomerSchema", () => {
-  const company = {
+describe("createBuyerSchema", () => {
+  const input = {
     name: "Acme Industrial Sdn Bhd",
-    address: null,
-    paymentTerms: null,
-    remark: null,
-    contactName: null,
-    email: null,
-    phone: null,
+    contact: { name: "Siti", email: "Siti@Acme.com", phone: " +60 12-345 6789 " },
   };
 
-  it("accepts a company with no shop login at all", () => {
-    const parsed = createCustomerSchema.parse({ company });
-    expect(parsed.contact).toBeUndefined();
-    expect(parsed.sendInvite).toBe(true);
+  it("accepts a company and a contact with nothing folded away", () => {
+    const parsed = createBuyerSchema.parse(input);
+    expect(parsed.address).toBeNull();
+    expect(parsed.paymentTerms).toBeNull();
+    expect(parsed.remark).toBeNull();
   });
 
-  it("lets the company email be blank but not malformed", () => {
-    expect(createCustomerSchema.safeParse({ company: { ...company, email: "" } }).success).toBe(true);
-    expect(createCustomerSchema.safeParse({ company: { ...company, email: "nope" } }).success).toBe(false);
+  it("normalises the contact's email and trims the phone", () => {
+    const parsed = createBuyerSchema.parse(input);
+    expect(parsed.contact.email).toBe("siti@acme.com");
+    expect(parsed.contact.phone).toBe("+60 12-345 6789");
   });
 
-  it("rejects a contact missing a username", () => {
-    const result = createCustomerSchema.safeParse({
-      company,
-      contact: { name: "Siti", email: "siti@buyer.com", phone: null },
-    });
-    expect(result.success).toBe(false);
+  it("does not ask for a username — that is derived from the email", () => {
+    expect(createBuyerSchema.parse(input).contact).not.toHaveProperty("username");
+  });
+
+  it("requires the contact's name and a real email", () => {
+    expect(createBuyerSchema.safeParse({ ...input, contact: { ...input.contact, name: "" } }).success).toBe(false);
+    expect(createBuyerSchema.safeParse({ ...input, contact: { ...input.contact, email: "nope" } }).success).toBe(false);
   });
 
   it("requires a company name", () => {
-    expect(createCustomerSchema.safeParse({ company: { ...company, name: "" } }).success).toBe(false);
+    expect(createBuyerSchema.safeParse({ ...input, name: "" }).success).toBe(false);
+  });
+
+  it("turns a blank folded field into null, so an untouched disclosure writes nothing", () => {
+    const parsed = createBuyerSchema.parse({ ...input, address: "  ", remark: "" });
+    expect(parsed.address).toBeNull();
+    expect(parsed.remark).toBeNull();
   });
 });

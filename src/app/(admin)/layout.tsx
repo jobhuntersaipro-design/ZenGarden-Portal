@@ -35,12 +35,14 @@ export default async function AdminLayout({
         <div className="min-h-dvh bg-canvas">
           <header className="flex h-topbar items-center gap-md border-b border-hairline px-lg">
             <Wordmark />
-            <span className="font-mono text-[length:var(--text-eyebrow)] text-ink-tertiary">
+            {/* Hidden below `sm`: with "Back to portal" kept on one line, the
+                eyebrow is what pushed the header 26px past a 390px viewport. */}
+            <span className="hidden font-mono text-[length:var(--text-eyebrow)] text-ink-tertiary sm:inline">
               Admin
             </span>
             <Link
               href="/"
-              className="ml-auto text-[length:var(--text-body-sm)] text-brand-link underline-offset-2 hover:underline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-focus"
+              className="ml-auto text-[length:var(--text-body-sm)] whitespace-nowrap text-brand-link underline-offset-2 hover:underline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-focus"
             >
               ‹ Back to portal
             </Link>

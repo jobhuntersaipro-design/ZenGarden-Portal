@@ -3,7 +3,8 @@
 import { useState } from "react";
 import { usePathname, useSearchParams } from "next/navigation";
 import { toast } from "sonner";
-import { requestPasswordReset } from "@/actions/auth";
+import { KeyRound } from "lucide-react";
+import { sendPasswordResetLink } from "@/actions/reset-links";
 import { UserStatusBadge } from "@/components/admin/RingBadge";
 import { UserDrawer } from "@/components/admin/UserDrawer";
 import { DataTable, type Column } from "@/components/portal/DataTable";
@@ -34,6 +35,9 @@ const STATUSES: { value: UserStatusFilter; label: string }[] = [
 const GOOGLE_ONLY_TITLE =
   "This user signs in with Google; there is no password to reset. Set one in the drawer if they need email sign-in.";
 
+const ACTION_PILL =
+  "h-control-md gap-xxs px-sm text-[length:var(--text-caption)] sm:h-control-sm";
+
 export function UsersTable({
   users,
   sort,
@@ -50,6 +54,7 @@ export function UsersTable({
   const pathname = usePathname();
   const searchParams = useSearchParams();
   const [resetting, setResetting] = useState<AdminUserRow | null>(null);
+  const [sending, setSending] = useState(false);
   const [query, setQuery] = useState(searchParams.get("q") ?? "");
 
   const write = (next: Record<string, string | null>) => {
@@ -110,40 +115,37 @@ export function UsersTable({
         ),
     },
     {
-      key: "password",
-      header: "Password",
+      key: "actions",
+      header: "Actions",
       sortable: false,
-      cell: (row) =>
-        row.hasPassword ? (
-          <button
-            type="button"
-            onClick={() => setResetting(row)}
-            className="text-[length:var(--text-caption)] text-brand-link underline-offset-2 hover:underline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-focus"
-          >
-            Reset password
-          </button>
-        ) : (
-          // No dead link: there is nothing to reset, and the title says why.
-          <span
-            title={GOOGLE_ONLY_TITLE}
-            className="text-[length:var(--text-caption)] text-ink-tertiary"
-          >
-            Password managed by Google
-          </span>
-        ),
-    },
-    {
-      key: "edit",
-      header: "",
-      sortable: false,
+      align: "right",
+      // Two real buttons, not caption links: sending someone a reset link is
+      // the thing a super admin is most often here to do, and Phase 09 had it
+      // as caption-sized text a reader could miss (docs/specs/26 §2).
       cell: (row) => (
-        <button
-          type="button"
-          onClick={() => openDrawer(row.id)}
-          className="text-[length:var(--text-caption)] text-brand-link underline-offset-2 hover:underline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-focus"
-        >
-          Edit
-        </button>
+        <span className="flex items-center justify-end gap-xxs">
+          {row.status === "Disabled" ? null : (
+            <Button
+              variant="secondary"
+              className={ACTION_PILL}
+              disabled={!row.hasPassword}
+              title={row.hasPassword ? undefined : GOOGLE_ONLY_TITLE}
+              aria-label={`Send ${row.name} a reset link`}
+              onClick={() => setResetting(row)}
+            >
+              <KeyRound aria-hidden className="size-3.5" />
+              Send reset link
+            </Button>
+          )}
+          <Button
+            variant="secondary"
+            className={ACTION_PILL}
+            aria-label={`Edit ${row.name}`}
+            onClick={() => openDrawer(row.id)}
+          >
+            Edit
+          </Button>
+        </span>
       ),
     },
   ];
@@ -198,6 +200,7 @@ export function UsersTable({
         sort={sort}
         onSortChange={onSortChange}
         emptyText="No users match."
+        entrance
       />
 
       <UserDrawer
@@ -207,28 +210,49 @@ export function UsersTable({
         onClose={closeDrawer}
       />
 
-      <Dialog open={resetting !== null} onOpenChange={() => setResetting(null)}>
+      <Dialog
+        open={resetting !== null}
+        onOpenChange={(open) => {
+          if (!open && !sending) setResetting(null);
+        }}
+      >
         <DialogContent>
           <DialogHeader>
             <DialogTitle>Email a reset link to {resetting?.email}?</DialogTitle>
             <DialogDescription>
-              The link lasts 30 minutes and works once.
+              The link lasts 30 minutes and works once. Their current password keeps
+              working until they use it.
             </DialogDescription>
           </DialogHeader>
           <DialogFooter>
-            <Button variant="secondary" onClick={() => setResetting(null)}>
+            <Button variant="secondary" disabled={sending} onClick={() => setResetting(null)}>
               Cancel
             </Button>
             <Button
-              variant="secondary"
-              className="bg-ink text-canvas hover:bg-ink-deep"
+              pending={sending}
               onClick={async () => {
                 const target = resetting;
-                setResetting(null);
                 if (!target) return;
-                const result = await requestPasswordReset(target.email);
-                if (result.success) toast.success("Reset link sent");
-                else toast.error(result.error);
+                setSending(true);
+                try {
+                  const result = await sendPasswordResetLink(target.id);
+                  if (!result.success) {
+                    toast.error(result.error);
+                    return;
+                  }
+                  setResetting(null);
+                  // Honest, not hopeful: the action awaited the send, so the
+                  // toast can say whether the email actually left.
+                  toast[result.data.sent ? "success" : "warning"](
+                    result.data.sent
+                      ? `Reset link sent to ${target.email}`
+                      : "The email didn't send. Try again.",
+                  );
+                } catch {
+                  toast.error("We couldn't reach the server. Try again.");
+                } finally {
+                  setSending(false);
+                }
               }}
             >
               Send link

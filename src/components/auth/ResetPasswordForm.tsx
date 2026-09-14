@@ -35,7 +35,14 @@ export function ResetPasswordForm({ token }: { token: string }) {
         // this browser's, if the link was opened while still signed in. Signing
         // out here is what makes the redirect land rather than be bounced back
         // into the portal by a cookie that has not been re-checked yet.
-        await signOut({ redirectTo: "/signin?reset=1" });
+        //
+        // `redirect: false` and a plain assignment, not `redirectTo`: Auth.js
+        // resolves `redirectTo` against its configured base URL, so a buyer
+        // contact who opened the link on the shop host was sent to the
+        // *portal's* sign-in (measured 2026-09-14 — shop.localhost → localhost).
+        // Assigning a relative path keeps whichever host they are on.
+        await signOut({ redirect: false });
+        window.location.assign("/signin?reset=1");
       }}
     >
       {error ? <Notice>{error}</Notice> : null}

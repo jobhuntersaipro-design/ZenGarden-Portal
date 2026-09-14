@@ -2,13 +2,13 @@
  * The activity timeline's pure functions alone, with **no** `prisma` import.
  *
  * This split is load-bearing, not tidiness — the same shape as
- * `admin-customer-labels.ts`. `customer-activity.ts` imports `prisma` (via
+ * `admin-buyer-labels.ts`. `buyer-activity.ts` imports `prisma` (via
  * `@/lib/prisma`, which imports `@prisma/adapter-neon`); a client component
  * that needs only `ACTIVITY_PAGE_SIZE` as a value would drag that whole graph
  * into the browser bundle, and Turbopack cannot chunk the adapter's
  * `node:module` use for the client at all — the production build fails
  * outright rather than merely bloating ("the chunking context (unknown) does
- * not support external modules"). `customer-activity.ts` imports these back
+ * not support external modules"). `buyer-activity.ts` imports these back
  * and re-exports them, so its own callers keep one canonical implementation
  * and one import path. Anything added to this file must stay free of
  * `prisma` imports — a **type-only** import of a Prisma enum (erased at
@@ -75,11 +75,11 @@ export function auditText(event: {
     case "SIGNED_IN":
       return `${actor} signed in`;
     case "CUSTOMER_CREATED":
-      return `${actor} created this customer`;
+      return `${actor} created this buyer`;
     case "CUSTOMER_UPDATED":
-      return list ? `${actor} edited ${list}` : `${actor} edited this customer`;
+      return list ? `${actor} edited ${list}` : `${actor} edited this buyer`;
     case "CUSTOMER_DELETED":
-      return `${actor} deleted ${name ?? "this customer"}`;
+      return `${actor} deleted ${name ?? "this buyer"}`;
     case "CONTACT_INVITED":
       return `${actor} invited ${subject}`;
     case "CONTACT_UPDATED":
@@ -94,6 +94,8 @@ export function auditText(event: {
       return `${actor} reset ${subject}'s password`;
     case "INVITE_RESENT":
       return `${actor} resent ${subject}'s invitation`;
+    case "RESET_LINK_SENT":
+      return `${actor} sent ${subject} a password-reset link`;
   }
 }
 
@@ -125,7 +127,7 @@ export function mergeActivity(
   // row count fits inside that bound, silently wrong the moment it doesn't.
   // An optional parameter whose fallback is the wrong answer is a trap a
   // future caller could fall into with no type error and no test failure —
-  // the caller (`loadCustomerActivity`) always has the real counts from its
+  // the caller (`loadBuyerActivity`) always has the real counts from its
   // own `count()` queries, so it always has a real number to pass.
   return { entries: all.slice((page - 1) * size, page * size), total };
 }

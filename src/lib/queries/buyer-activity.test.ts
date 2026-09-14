@@ -4,7 +4,7 @@ import {
   mergeActivity,
   readDetail,
   type ActivityEntry,
-} from "@/lib/queries/customer-activity-entries";
+} from "@/lib/queries/buyer-activity-entries";
 
 const entry = (over: Partial<ActivityEntry>): ActivityEntry => ({
   id: "audit:1",
@@ -54,6 +54,9 @@ describe("auditText", () => {
       "Chris Lam resent Siti's invitation",
     );
     expect(auditText({ ...base, action: "CONTACT_INVITED" })).toBe("Chris Lam invited Siti");
+    expect(auditText({ ...base, action: "RESET_LINK_SENT" })).toBe(
+      "Chris Lam sent Siti a password-reset link",
+    );
   });
 
   it("reads plainly, with field names rather than column names", () => {
@@ -91,13 +94,13 @@ describe("auditText", () => {
 
   it("says something sensible for an edit that recorded no fields", () => {
     expect(auditText({ ...base, action: "CUSTOMER_UPDATED", detail: {} })).toBe(
-      "Chris Lam edited this customer",
+      "Chris Lam edited this buyer",
     );
   });
 
   it("says who created the customer", () => {
     expect(auditText({ ...base, action: "CUSTOMER_CREATED" })).toBe(
-      "Chris Lam created this customer",
+      "Chris Lam created this buyer",
     );
   });
 
@@ -180,7 +183,7 @@ describe("mergeActivity", () => {
   // truncated union's own length is never the real row count once a
   // customer has more history than one page's worth. `total` is required,
   // not defaulted from that length, precisely so a caller cannot forget to
-  // supply the real one — `loadCustomerActivity` computes it from `count()`
+  // supply the real one — `loadBuyerActivity` computes it from `count()`
   // queries; a customer with 200+ real entries must not be told "4".
   it("returns the total it was given, not the length of what it was handed", () => {
     const { entries, total } = mergeActivity(lists, {

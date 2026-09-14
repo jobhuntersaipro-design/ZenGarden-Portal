@@ -6,6 +6,7 @@ const buyerCreate = vi.fn();
 const buyerFindUnique = vi.fn();
 const buyerDelete = vi.fn();
 const userCreate = vi.fn();
+const userFindMany = vi.fn();
 const userDeleteMany = vi.fn();
 const webOrderDeleteMany = vi.fn();
 const auditCreate = vi.fn();
@@ -17,7 +18,7 @@ const requireSuperAdmin = vi.fn();
 const transaction = vi.fn(async (fn: (tx: unknown) => unknown) =>
   fn({
     buyer: { create: buyerCreate, delete: buyerDelete },
-    user: { create: userCreate, deleteMany: userDeleteMany },
+    user: { create: userCreate, findMany: userFindMany, deleteMany: userDeleteMany },
     webOrder: { deleteMany: webOrderDeleteMany },
     auditEvent: { create: auditCreate },
   }),
@@ -48,22 +49,15 @@ vi.mock("@/emails/TemporaryPassword", () => ({
   temporaryPasswordSubject: () => "Your temporary password",
 }));
 
-const { createCustomer, deleteBuyer } = await import("@/actions/customers");
+const { createBuyer, deleteBuyer } = await import("@/actions/admin-buyers");
 
-const company = {
+const contact = { name: "Siti", email: "Siti@Acme.com", phone: "+60 12-345 6789" };
+const input = {
   name: "Acme Industrial Sdn Bhd",
+  contact,
   address: "12 Jalan Satu",
   paymentTerms: "30 days",
   remark: "Pays late. Chase on day 25.",
-  contactName: "Raj",
-  email: "accounts@acme.com",
-  phone: "+60 3-1234 5678",
-};
-const contact = {
-  name: "Siti",
-  email: "siti@acme.com",
-  username: "siti",
-  phone: "+60 12-345 6789",
 };
 
 beforeEach(() => {
@@ -73,39 +67,55 @@ beforeEach(() => {
   transaction.mockImplementation(async (fn: (tx: unknown) => unknown) =>
     fn({
       buyer: { create: buyerCreate, delete: buyerDelete },
-      user: { create: userCreate, deleteMany: userDeleteMany },
+      user: { create: userCreate, findMany: userFindMany, deleteMany: userDeleteMany },
       webOrder: { deleteMany: webOrderDeleteMany },
       auditEvent: { create: auditCreate },
     }),
   );
   buyerCreate.mockResolvedValue({ id: "buyer-1" });
+  userFindMany.mockResolvedValue([]);
   userCreate.mockResolvedValue({ id: "c1", name: "Siti", email: "siti@acme.com" });
   auditCreate.mockResolvedValue({ id: "evt-1" });
   sendEmail.mockResolvedValue({ sent: true });
 });
 
-describe("createCustomer", () => {
+describe("createBuyer", () => {
   it("refuses a member", async () => {
     const { UnauthorizedError } = await import("@/lib/auth-guards");
     requireSuperAdmin.mockRejectedValue(new UnauthorizedError("Super admin only."));
-    const result = await createCustomer({ company });
+    const result = await createBuyer(input);
     expect(result).toEqual({ success: false, error: "Super admin only." });
     expect(transaction).not.toHaveBeenCalled();
   });
 
-  it("creates the company alone when no login was asked for", async () => {
-    const result = await createCustomer({ company });
-    expect(result).toEqual({ success: true, data: { buyerId: "buyer-1", invite: "skipped" } });
-    expect(userCreate).not.toHaveBeenCalled();
-    expect(sendEmail).not.toHaveBeenCalled();
-    expect(buyerCreate.mock.calls[0][0].data.remark).toBe("Pays late. Chase on day 25.");
+  it("writes the company with the point of contact as its contact details", async () => {
+    await createBuyer(input);
+    const data = buyerCreate.mock.calls[0][0].data;
+    expect(data).toEqual({
+      name: "Acme Industrial Sdn Bhd",
+      address: "12 Jalan Satu",
+      paymentTerms: "30 days",
+      remark: "Pays late. Chase on day 25.",
+      contactName: "Siti",
+      email: "siti@acme.com",
+      phone: "+60 12-345 6789",
+    });
   });
 
-  it("creates the contact as a CLIENT of that buyer, with the handle", async () => {
-    await createCustomer({ company, contact });
+  it("writes null for the folded fields when the disclosure was never opened", async () => {
+    await createBuyer({ name: input.name, contact });
+    const data = buyerCreate.mock.calls[0][0].data;
+    expect(data.address).toBeNull();
+    expect(data.paymentTerms).toBeNull();
+    expect(data.remark).toBeNull();
+  });
+
+  it("always creates the contact as a CLIENT of that buyer, with a handle from their email", async () => {
+    await createBuyer(input);
     const data = userCreate.mock.calls[0][0].data;
     expect(data.role).toBe("CLIENT");
     expect(data.buyerId).toBe("buyer-1");
+    expect(data.email).toBe("siti@acme.com");
     expect(data.username).toBe("siti");
     expect(data.phone).toBe("+60 12-345 6789");
     expect(data.mustChangePassword).toBe(true);
@@ -113,28 +123,33 @@ describe("createCustomer", () => {
     expect(data).not.toHaveProperty("password");
   });
 
+  it("steps past a handle that is already taken, reading the set inside the transaction", async () => {
+    userFindMany.mockResolvedValue([{ username: "siti" }, { username: "siti-2" }]);
+    await createBuyer(input);
+    expect(userFindMany.mock.calls[0][0].where).toEqual({ username: { startsWith: "siti" } });
+    expect(userCreate.mock.calls[0][0].data.username).toBe("siti-3");
+  });
+
   it("emails the shop sign-in URL, and the password it actually hashed", async () => {
     const { compare } = await import("bcryptjs");
-    await createCustomer({ company, contact });
+    await createBuyer(input);
     expect(templateArgs.at(-1)?.signInUrl).toBe("https://shop.example.com/signin");
     const sent = templateArgs.at(-1)!.password;
     expect(await compare(sent, userCreate.mock.calls[0][0].data.passwordHash)).toBe(true);
   });
 
-  it("sends nothing when the invitation box was unchecked", async () => {
-    const result = await createCustomer({ company, contact, sendInvite: false });
-    expect(result).toEqual({ success: true, data: { buyerId: "buyer-1", invite: "skipped" } });
-    expect(userCreate).toHaveBeenCalled();
-    expect(sendEmail).not.toHaveBeenCalled();
+  it("reports the invitation as sent when it was", async () => {
+    const result = await createBuyer(input);
+    expect(result).toEqual({ success: true, data: { buyerId: "buyer-1", invite: "sent" } });
   });
 
   // sendEmail is documented "Never throws" (src/lib/email.ts) — it reports a
   // failed send as { sent: false }, not a rejection. This is the case that
   // actually happens (a Resend API error, an invalid recipient, the
   // placeholder-key case local runs hit) and the one that matters.
-  it("keeps the customer when the email fails — a Resend outage must not lose typing", async () => {
+  it("keeps the buyer when the email fails — a Resend outage must not lose typing", async () => {
     sendEmail.mockResolvedValue({ sent: false, error: "Domain not verified" });
-    const result = await createCustomer({ company, contact });
+    const result = await createBuyer(input);
     expect(result).toEqual({ success: true, data: { buyerId: "buyer-1", invite: "failed" } });
     expect(buyerCreate).toHaveBeenCalled();
     expect(userCreate).toHaveBeenCalled();
@@ -143,9 +158,9 @@ describe("createCustomer", () => {
   // sendEmail's own contract says it cannot reject, but sendInviteEmail's
   // try/catch is a backstop for if that promise is ever broken — this proves
   // the backstop itself, separately from the realistic case above.
-  it("keeps the customer even if sendEmail broke its own contract and threw", async () => {
+  it("keeps the buyer even if sendEmail broke its own contract and threw", async () => {
     sendEmail.mockRejectedValue(new Error("resend is down"));
-    const result = await createCustomer({ company, contact });
+    const result = await createBuyer(input);
     expect(result).toEqual({ success: true, data: { buyerId: "buyer-1", invite: "failed" } });
     expect(buyerCreate).toHaveBeenCalled();
     expect(userCreate).toHaveBeenCalled();
@@ -156,7 +171,7 @@ describe("createCustomer", () => {
     transaction.mockImplementation(async (fn: (tx: unknown) => unknown) => {
       const value = await fn({
         buyer: { create: buyerCreate },
-        user: { create: userCreate },
+        user: { create: userCreate, findMany: userFindMany },
         auditEvent: { create: auditCreate },
       });
       order.push("commit");
@@ -166,14 +181,14 @@ describe("createCustomer", () => {
       order.push("email");
       return { sent: true };
     });
-    await createCustomer({ company, contact });
+    await createBuyer(input);
     expect(order).toEqual(["commit", "email"]);
   });
 
   it.each([
     [["username"], "That username is taken."],
     [["email"], "That email address is already in use."],
-    [["name"], "Another customer already has that name."],
+    [["name"], "Another buyer already has that name."],
   ])("names the field behind a P2002 on %s", async (target, message) => {
     transaction.mockRejectedValue(
       new Prisma.PrismaClientKnownRequestError("unique", {
@@ -182,7 +197,7 @@ describe("createCustomer", () => {
         meta: { target },
       }),
     );
-    expect(await createCustomer({ company, contact })).toEqual({ success: false, error: message });
+    expect(await createBuyer(input)).toEqual({ success: false, error: message });
   });
 
   it("reads a constraint name too, and username wins over the 'name' it contains", async () => {
@@ -193,17 +208,17 @@ describe("createCustomer", () => {
         meta: { target: "User_username_key" },
       }),
     );
-    const result = await createCustomer({ company, contact });
+    const result = await createBuyer(input);
     expect(result).toEqual({ success: false, error: "That username is taken." });
   });
 
   // Prisma 7's driver adapter does not emit the flat `{ target }` shape at
   // all — this is the actual, observed shape (2026-09-11) — so this proves
-  // `createCustomer` reads a real P2002, not the hand-built mock above.
+  // `createBuyer` reads a real P2002, not the hand-built mock above.
   it.each([
     [["username"], "That username is taken."],
     [["email"], "That email address is already in use."],
-    [["name"], "Another customer already has that name."],
+    [["name"], "Another buyer already has that name."],
   ])("names the field behind the real driver-adapter P2002 shape on %s", async (fields, message) => {
     transaction.mockRejectedValue(
       new Prisma.PrismaClientKnownRequestError("unique", {
@@ -212,26 +227,29 @@ describe("createCustomer", () => {
         meta: { driverAdapterError: { cause: { constraint: { fields } } } },
       }),
     );
-    expect(await createCustomer({ company, contact })).toEqual({ success: false, error: message });
+    expect(await createBuyer(input)).toEqual({ success: false, error: message });
   });
 
   it("rejects a bad input before touching the database", async () => {
-    const result = await createCustomer({ company: { ...company, name: "" } });
+    const result = await createBuyer({ ...input, name: "" });
     expect(result.success).toBe(false);
     expect(transaction).not.toHaveBeenCalled();
+    expect(sendEmail).not.toHaveBeenCalled();
   });
 
-  it("records the creation against the new buyer, inside the transaction", async () => {
-    await createCustomer({ company, contact });
+  it("records the creation against the new buyer and its contact, inside the transaction", async () => {
+    await createBuyer(input);
     expect(auditCreate).toHaveBeenCalledTimes(1);
     const data = auditCreate.mock.calls[0][0].data;
     expect(data.action).toBe("CUSTOMER_CREATED");
     expect(data.buyerId).toBe("buyer-1");
+    expect(data.subjectUserId).toBe("c1");
     expect(data.actorId).toBe("admin");
     expect(data.detail).toEqual({ withContact: true, name: "Acme Industrial Sdn Bhd" });
     // Never the remark: it is internal, and an audit row is read by more
     // screens than the buyer page is.
     expect(JSON.stringify(data)).not.toContain("Pays late");
+    expect(JSON.stringify(data)).not.toContain(templateArgs.at(-1)!.password);
   });
 
   it("writes no audit row when the write it describes rolled back", async () => {
@@ -242,9 +260,10 @@ describe("createCustomer", () => {
         meta: { driverAdapterError: { cause: { constraint: { fields: ["name"] } } } },
       }),
     );
-    const result = await createCustomer({ company });
+    const result = await createBuyer(input);
     expect(result.success).toBe(false);
     expect(auditCreate).not.toHaveBeenCalled();
+    expect(sendEmail).not.toHaveBeenCalled();
   });
 });
 
@@ -271,7 +290,7 @@ describe("deleteBuyer", () => {
     const result = await deleteBuyer("buyer-1", "Kims Mart");
     expect(result).toEqual({
       success: false,
-      error: "That name doesn't match. Type the customer's name exactly to delete them.",
+      error: "That name doesn't match. Type the buyer's name exactly to delete it.",
     });
     expect(transaction).not.toHaveBeenCalled();
   });
@@ -281,7 +300,7 @@ describe("deleteBuyer", () => {
     expect(result.success).toBe(true);
   });
 
-  it("refuses a customer with purchase orders, naming both counts", async () => {
+  it("refuses a buyer with purchase orders, naming both counts", async () => {
     buyerFindUnique.mockResolvedValue({
       ...clean,
       _count: { purchaseOrders: 14, webOrders: 2, contacts: 2 },
@@ -290,7 +309,7 @@ describe("deleteBuyer", () => {
     expect(result).toEqual({
       success: false,
       error:
-        "14 purchase orders and 2 shop orders reference this customer, so it can't be deleted. Disable their shop contacts instead.",
+        "14 purchase orders and 2 shop orders reference this buyer, so it can't be deleted. Disable their shop contacts instead.",
     });
     expect(transaction).not.toHaveBeenCalled();
   });
@@ -306,7 +325,7 @@ describe("deleteBuyer", () => {
 
   // The count must exclude DRAFT: `openCart` creates one at that status the
   // moment a signed-in client adds their first item, so an unfiltered count
-  // would make a customer who only ever abandoned a cart undeletable — the
+  // would make a buyer who only ever abandoned a cart undeletable — the
   // same bug already found and fixed in `removeBuyerContact` (Task 3).
   it("does not count an abandoned cart as a reason to refuse", async () => {
     await deleteBuyer("buyer-1", "Kim's Mart");
@@ -355,7 +374,7 @@ describe("deleteBuyer", () => {
   // The CHECK constraint enforces CLIENT ⇒ buyerId, not the converse, so
   // nothing in the schema stops a MEMBER row from carrying a buyerId. An
   // unfiltered deleteMany would hard-delete an ops account from the
-  // customers screen if one ever did — the one thing this phase's
+  // buyers screen if one ever did — the one thing this phase's
   // authorization rule says must never happen.
   it("only ever deletes CLIENT rows, never an ops account that happened to carry this buyerId", async () => {
     await deleteBuyer("buyer-1", "Kim's Mart");

@@ -5,7 +5,7 @@ import {
   TableSkeleton,
 } from "@/components/portal/Skeletons";
 
-export default function AdminCustomersLoading() {
+export default function AdminBuyersLoading() {
   return (
     <PageSkeleton>
       <HeaderSkeleton />
