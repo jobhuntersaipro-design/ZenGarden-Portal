@@ -27,6 +27,12 @@ export type Cart = {
   lines: CartLine[];
   subtotal: string;
   cartonCount: number;
+  /**
+   * The draft's own `W-…` reference, minted when the cart was opened. The
+   * review screen offers it as what the purchase order will carry when the
+   * client has no PO number of their own (Phase 32).
+   */
+  reference: string | null;
 };
 
 export const EMPTY_CART: Cart = {
@@ -34,6 +40,7 @@ export const EMPTY_CART: Cart = {
   lines: [],
   subtotal: "0.00",
   cartonCount: 0,
+  reference: null,
 };
 
 export type CartSummary = {
@@ -194,6 +201,7 @@ export async function loadCart(placedById: string): Promise<Cart> {
     where: { placedById, status: WebOrderStatus.DRAFT },
     select: {
       id: true,
+      reference: true,
       lines: {
         select: {
           productId: true,
@@ -206,7 +214,7 @@ export async function loadCart(placedById: string): Promise<Cart> {
   if (!order) return EMPTY_CART;
 
   const { lines, subtotal, cartonCount } = await priceProductLines(order.lines);
-  return { id: order.id, lines, subtotal, cartonCount };
+  return { id: order.id, lines, subtotal, cartonCount, reference: order.reference };
 }
 
 /**

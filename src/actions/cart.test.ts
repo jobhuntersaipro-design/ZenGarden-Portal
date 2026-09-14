@@ -11,6 +11,8 @@ const lineUpdateMany = vi.fn();
 const lineDeleteMany = vi.fn();
 const lineUpdate = vi.fn();
 const requireClient = vi.fn();
+const prismaWebOrderFindUnique = vi.fn();
+const userFindMany = vi.fn();
 
 const tx = {
   webOrder: { findFirst: webOrderFindFirst, update: webOrderUpdate },
@@ -21,9 +23,9 @@ vi.mock("@/lib/prisma", () => ({
   prisma: {
     $transaction: (fn: (client: typeof tx) => unknown) => fn(tx),
     product: { findUnique: productFindUnique, findMany: productFindMany },
-    user: { findMany: vi.fn().mockResolvedValue([]) },
+    user: { findMany: userFindMany },
     webOrder: {
-      findUnique: vi.fn().mockResolvedValue(null),
+      findUnique: prismaWebOrderFindUnique,
       findFirst: webOrderFindFirst,
       create: webOrderCreate,
       update: webOrderUpdate,
@@ -44,10 +46,23 @@ vi.mock("next/cache", () => ({ revalidatePath: vi.fn() }));
 const loadCart = vi.fn();
 vi.mock("@/lib/queries/cart", () => ({ loadCart }));
 vi.mock("@/lib/env", () => ({ env: { APP_URL: "https://www.example.com" } }));
-vi.mock("@/lib/email", () => ({ sendEmail: vi.fn().mockResolvedValue({ sent: true }) }));
-// `after` runs the ops notification once the response is out. Invoked inline
-// here so its failure modes are still exercised rather than silently skipped.
-vi.mock("next/server", () => ({ after: (fn: () => unknown) => fn() }));
+const sendEmail = vi.fn().mockResolvedValue({ sent: true });
+vi.mock("@/lib/email", () => ({ sendEmail }));
+// `after` runs the notifications once the response is out. Invoked inline
+// here so their failure modes are still exercised rather than silently
+// skipped — and the returned promise is *kept*, because `submitWebOrder`
+// does not await it: without `flushAfter()` a test asserting on an email
+// would race the send and read zero calls.
+const afterTasks: Promise<unknown>[] = [];
+vi.mock("next/server", () => ({
+  after: (fn: () => unknown) => {
+    afterTasks.push(Promise.resolve(fn()));
+  },
+}));
+const flushAfter = async () => {
+  await Promise.all(afterTasks);
+  afterTasks.length = 0;
+};
 
 const { addToCart, setCartons, removeFromCart, submitWebOrder, mergeGuestCart } =
   await import("@/actions/cart");
@@ -73,6 +88,10 @@ beforeEach(() => {
   lineUpdateMany.mockResolvedValue({ count: 1 });
   lineUpdate.mockResolvedValue({});
   webOrderUpdate.mockResolvedValue({});
+  prismaWebOrderFindUnique.mockResolvedValue(null);
+  userFindMany.mockResolvedValue([]);
+  sendEmail.mockResolvedValue({ sent: true });
+  afterTasks.length = 0;
 });
 
 describe("addToCart", () => {
@@ -199,6 +218,70 @@ describe("submitWebOrder", () => {
     const result = await submitWebOrder();
     expect(result.success).toBe(false);
     expect(webOrderUpdate).not.toHaveBeenCalled();
+  });
+
+  it("stores the requested date as the calendar day the client picked", async () => {
+    webOrderFindFirst.mockResolvedValue(cartWith([line()]));
+    await submitWebOrder({ requestedDate: "2026-09-20" });
+
+    const update = webOrderUpdate.mock.calls.at(-1)![0].data;
+    // UTC midnight, so a `@db.Date` column stores the 20th and not the 19th:
+    // a timestamp compared against a date column is truncated in UTC.
+    expect(update.requestedDate.toISOString()).toBe("2026-09-20T00:00:00.000Z");
+  });
+
+  it("stores no requested date when the client did not pick one", async () => {
+    webOrderFindFirst.mockResolvedValue(cartWith([line()]));
+    await submitWebOrder({});
+    expect(webOrderUpdate.mock.calls.at(-1)![0].data.requestedDate).toBeNull();
+  });
+
+  it("refuses a requested date that is not a calendar day", async () => {
+    const result = await submitWebOrder({ requestedDate: "next tuesday" });
+    expect(result.success).toBe(false);
+    expect(webOrderUpdate).not.toHaveBeenCalled();
+  });
+
+  it("sends the client their own receipt, not just the ops notification", async () => {
+    webOrderFindFirst.mockResolvedValue(cartWith([line()]));
+    prismaWebOrderFindUnique.mockResolvedValue({
+      id: "w1",
+      reference: "W-2609-00001",
+      buyerReference: null,
+      subtotal: dec("2268.00"),
+      buyer: { name: "Acme" },
+      placedBy: { name: "Aisha", email: "aisha@acme.test" },
+      _count: { lines: 1 },
+    });
+    userFindMany.mockResolvedValue([{ email: "ops@lovinghands.test" }]);
+
+    await submitWebOrder();
+    await flushAfter();
+
+    const recipients = sendEmail.mock.calls.map((call) => call[0].to);
+    expect(recipients).toContainEqual(["aisha@acme.test"]);
+    expect(recipients).toContainEqual(["ops@lovinghands.test"]);
+  });
+
+  it("still sends the client their receipt when there is no ops staff to tell", async () => {
+    webOrderFindFirst.mockResolvedValue(cartWith([line()]));
+    prismaWebOrderFindUnique.mockResolvedValue({
+      id: "w1",
+      reference: "W-2609-00001",
+      buyerReference: null,
+      subtotal: dec("2268.00"),
+      buyer: { name: "Acme" },
+      placedBy: { name: "Aisha", email: "aisha@acme.test" },
+      _count: { lines: 1 },
+    });
+    userFindMany.mockResolvedValue([]);
+
+    await submitWebOrder();
+    await flushAfter();
+
+    expect(sendEmail.mock.calls.map((call) => call[0].to)).toEqual([
+      ["aisha@acme.test"],
+    ]);
   });
 
   it("caps how many orders a buyer can leave waiting on the ops team", async () => {

@@ -15,6 +15,7 @@ vi.mock("@/lib/r2", () => ({ presignGet }));
 // cleanly.
 const { priceCart } = await import("@/actions/shop-public");
 const { Prisma } = await import("@/generated/prisma/client");
+const { EMPTY_CART } = await import("@/lib/queries/cart");
 
 const dec = (v: string) => new Prisma.Decimal(v);
 
@@ -41,10 +42,9 @@ beforeEach(() => {
 describe("priceCart", () => {
   it("returns EMPTY_CART for an empty line list, without querying the catalogue", async () => {
     const result = await priceCart([]);
-    expect(result).toEqual({
-      success: true,
-      data: { id: null, lines: [], subtotal: "0.00", cartonCount: 0 },
-    });
+    // Against the exported constant, not a hand-built copy of its shape:
+    // a field added to `Cart` should not fail this test for the wrong reason.
+    expect(result).toEqual({ success: true, data: EMPTY_CART });
     expect(productFindMany).not.toHaveBeenCalled();
   });
 

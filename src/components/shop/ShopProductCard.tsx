@@ -1,34 +1,63 @@
+"use client";
+
+import { useState } from "react";
 import Link from "next/link";
 import { AddToCart } from "@/components/shop/AddToCart";
 import { ProductThumb } from "@/components/products/ProductThumb";
 import { unitLabel } from "@/lib/cartons";
 import { formatMYR } from "@/lib/money";
+import { variantLabels } from "@/lib/product-groups";
 import { shopHref } from "@/lib/shop-routes";
-import type { ShopProduct } from "@/lib/queries/shop-catalogue";
+import type { ShopProduct, ShopProductGroup } from "@/lib/queries/shop-catalogue";
 
+/**
+ * One card in the catalogue.
+ *
+ * Phase 31: a card is a *group* — one product and every flavour of it. Picking
+ * a flavour switches the card's picture, price, link and Add to cart button
+ * without leaving the page, because each flavour is its own product row with
+ * its own SKU and price. A group of one renders exactly the card it always
+ * did: no picker, nothing else changed.
+ *
+ * A client component only for `useState` on the chosen flavour. Everything it
+ * shows is data the server already loaded; nothing is fetched here.
+ */
 export function ShopProductCard({
-  product,
+  group,
   badge,
 }: {
-  product: ShopProduct;
+  group: ShopProductGroup;
   /** e.g. "Best seller" — a pill over the top-left of the image well. */
   badge?: string;
 }) {
-  const subtitle = [product.brand, product.variant].filter(Boolean).join(" · ");
-  // "12 per carton · Malaysia" — the pack half is always there; the market
-  // half only when the catalogue actually names one.
-  const packCaption = [unitLabel(product.packSize, product.unit), product.market]
+  const [selectedId, setSelectedId] = useState(group.variants[0]?.id);
+  const selected =
+    group.variants.find((variant) => variant.id === selectedId) ?? group.variants[0];
+  const labels = variantLabels(group.variants);
+  const hasChoice = group.variants.length > 1;
+
+  if (!selected) return null;
+
+  const subtitle = [group.brand, hasChoice ? null : selected.variant]
     .filter(Boolean)
     .join(" · ");
+  // "12 per carton · Malaysia" — the pack half is always there; the market
+  // half only when the catalogue actually names one.
+  const packCaption = [unitLabel(group.packSize, group.unit), group.market]
+    .filter(Boolean)
+    .join(" · ");
+  // Identical prices across flavours is the catalogue's own reality today, so
+  // the card shows one figure. It says "from" only when they really differ.
+  const spread = group.priceFrom !== group.priceTo;
 
   return (
     <li className="flex flex-col rounded-lg border border-hairline bg-canvas p-md transition-colors hover:border-hairline-strong hover:shadow-sm">
       <Link
-        href={shopHref.product(product.id)}
+        href={shopHref.product(selected.id)}
         className="rounded-md focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-focus"
       >
         <div className="relative aspect-square overflow-hidden rounded-md bg-surface-soft">
-          <ProductThumb name={product.name} url={product.imageUrl} />
+          <ProductThumb name={selected.name} url={selected.imageUrl} />
           {badge ? (
             <span className="absolute top-xs left-xs rounded-pill bg-ink px-xs py-xxs text-[length:var(--text-caption)] font-semibold text-canvas">
               {badge}
@@ -37,9 +66,9 @@ export function ShopProductCard({
         </div>
         <h3
           className="mt-xs text-[length:var(--text-body-sm)] font-semibold text-ink"
-          title={product.name}
+          title={group.name}
         >
-          {product.name}
+          {group.name}
         </h3>
       </Link>
       {subtitle ? (
@@ -50,21 +79,109 @@ export function ShopProductCard({
       <p className="mt-xxs text-[length:var(--text-caption)] text-ink-tertiary">
         {packCaption}
       </p>
+
+      {hasChoice ? (
+        <VariantChips
+          group={group}
+          labels={labels}
+          selectedId={selected.id}
+          onSelect={setSelectedId}
+        />
+      ) : null}
+
       <p className="mt-xs text-[length:var(--text-body-md)] font-semibold tabular-nums text-ink">
-        {formatMYR(Number(product.listPrice))}
+        {spread ? (
+          <span className="mr-xxs text-[length:var(--text-caption)] font-normal text-ink-tertiary">
+            from
+          </span>
+        ) : null}
+        {formatMYR(Number(spread ? group.priceFrom : selected.listPrice))}
         <span className="ml-xxs text-[length:var(--text-caption)] font-normal text-ink-tertiary">
-          {`per ${product.unit}`}
+          {`per ${group.unit}`}
         </span>
       </p>
+
       <div className="mt-auto pt-sm">
         <AddToCart
-          productId={product.id}
-          name={product.name}
-          packSize={product.packSize}
-          unit={product.unit}
+          key={selected.id}
+          productId={selected.id}
+          name={selected.name}
+          packSize={selected.packSize}
+          unit={selected.unit}
           variant="card"
         />
       </div>
     </li>
+  );
+}
+
+/**
+ * The flavour picker inside a card — two controls, one choice.
+ *
+ * **A select on a phone, chips above `sm`.** Chips alone were measured at
+ * 28px tall at 390px, against this project's 44px floor, and eight of them
+ * scrolled *inside* the card (80px of row holding 252px of chips) so a buyer
+ * had to scroll within a card to find a flavour. A native select is one
+ * 44px control whatever the flavour count, and it is what a phone already
+ * knows how to present.
+ *
+ * Above `sm` the chips are a radio group rather than plain buttons: this is
+ * one choice among several, which is what a screen reader should hear, and
+ * arrow keys then move between flavours for free. The row no longer clips —
+ * grid items stretch, so the cards in a row stay the same height anyway.
+ */
+function VariantChips({
+  group,
+  labels,
+  selectedId,
+  onSelect,
+}: {
+  group: ShopProductGroup;
+  labels: Map<string, string>;
+  selectedId: string;
+  onSelect: (id: string) => void;
+}) {
+  return (
+    <>
+      <select
+        aria-label={`Variant — ${group.name}`}
+        value={selectedId}
+        onChange={(event) => onSelect(event.target.value)}
+        className="mt-xs h-11 w-full rounded-sm border border-hairline-strong bg-canvas px-xs text-[length:var(--text-caption)] text-ink focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-focus sm:hidden"
+      >
+        {group.variants.map((variant: ShopProduct) => (
+          <option key={variant.id} value={variant.id}>
+            {labels.get(variant.id)}
+          </option>
+        ))}
+      </select>
+
+      <div
+        role="radiogroup"
+        aria-label={`Variant — ${group.name}`}
+        className="mt-xs hidden flex-wrap gap-xxs sm:flex"
+      >
+        {group.variants.map((variant: ShopProduct) => {
+          const isSelected = variant.id === selectedId;
+          return (
+            <button
+              key={variant.id}
+              type="button"
+              role="radio"
+              aria-checked={isSelected}
+              onClick={() => onSelect(variant.id)}
+              title={labels.get(variant.id)}
+              className={`max-w-full truncate rounded-pill border px-xs py-xxs text-[length:var(--text-caption)] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-focus ${
+                isSelected
+                  ? "border-ink bg-ink font-semibold text-canvas"
+                  : "border-hairline-strong text-ink-secondary hover:border-ink hover:text-ink"
+              }`}
+            >
+              {labels.get(variant.id)}
+            </button>
+          );
+        })}
+      </div>
+    </>
   );
 }

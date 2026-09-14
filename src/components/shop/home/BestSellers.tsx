@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { ShopProductCard } from "@/components/shop/ShopProductCard";
+import { singleGroup } from "@/lib/queries/shop-catalogue";
 import { shopHref } from "@/lib/shop-routes";
 import type { ShopProduct } from "@/lib/queries/shop-catalogue";
 
@@ -36,7 +37,7 @@ export function BestSellers({
         {products.map((product, index) => (
           <ShopProductCard
             key={product.id}
-            product={product}
+            group={singleGroup(product)}
             badge={!isFallback && index === 0 ? "Best seller" : undefined}
           />
         ))}

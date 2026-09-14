@@ -8,6 +8,7 @@ import { UnauthorizedError, requireClient } from "@/lib/auth-guards";
 import { lineTotal } from "@/lib/cartons";
 import { Role } from "@/generated/prisma/enums";
 import { WebOrderPlaced, webOrderPlacedSubject } from "@/emails/WebOrderPlaced";
+import { WebOrderReceipt, webOrderReceiptSubject } from "@/emails/WebOrderReceipt";
 import { sendEmail } from "@/lib/email";
 import { env } from "@/lib/env";
 import { formatMYR } from "@/lib/money";
@@ -403,6 +404,13 @@ export async function submitWebOrder(
           submittedAt: new Date(),
           subtotal,
           buyerReference: parsed.data.buyerReference?.trim() || null,
+          // UTC midnight of the calendar day the client picked, the same
+          // trick `dateColumnRange` uses: a timestamp compared against a
+          // `@db.Date` column is truncated in UTC, so building the date from
+          // local midnight would store the day before (2026-09-06).
+          requestedDate: parsed.data.requestedDate
+            ? new Date(`${parsed.data.requestedDate}T00:00:00.000Z`)
+            : null,
           notes: parsed.data.notes?.trim() || null,
         },
       });
@@ -419,7 +427,7 @@ export async function submitWebOrder(
     // through sendEmail, which never throws — a failed notification must not
     // undo an order that is already saved.
     after(async () => {
-      await notifyOps(reference);
+      await notify(reference);
     });
 
     return { success: true, data: { reference } };
@@ -440,25 +448,33 @@ export async function submitWebOrder(
 }
 
 /**
- * Tell the ops team an order is waiting.
+ * Tell the ops team an order is waiting, and the client that we have it.
  *
- * Wider than `queueAccessRequest`, which mails super admins only: an order is
- * work for whoever is on the queue, not a decision for an administrator.
+ * The ops list is wider than `queueAccessRequest`'s, which mails super admins
+ * only: an order is work for whoever is on the queue, not a decision for an
+ * administrator. The client's own copy is Phase 32 — the sent screen promises
+ * it by name, so it is sent from the same place and on the same read.
+ *
+ * Both go through `sendEmail`, which never throws, inside `after()`. A failed
+ * notification is a missing nudge, not a lost order.
  */
-async function notifyOps(reference: string): Promise<void> {
+async function notify(reference: string): Promise<void> {
   try {
     const order = await prisma.webOrder.findUnique({
       where: { reference },
       select: {
         reference: true,
+        buyerReference: true,
         subtotal: true,
         buyer: { select: { name: true } },
-        placedBy: { select: { name: true } },
+        placedBy: { select: { name: true, email: true } },
         _count: { select: { lines: true } },
         id: true,
       },
     });
     if (!order) return;
+
+    const total = formatMYR(order.subtotal.toNumber());
 
     const staff = await prisma.user.findMany({
       where: {
@@ -467,23 +483,36 @@ async function notifyOps(reference: string): Promise<void> {
       },
       select: { email: true },
     });
-    if (staff.length === 0) return;
 
+    if (staff.length > 0) {
+      await sendEmail({
+        to: staff.map((person) => person.email),
+        subject: webOrderPlacedSubject(order.buyer.name),
+        react: WebOrderPlaced({
+          reference: order.reference,
+          buyerName: order.buyer.name,
+          placedByName: order.placedBy.name,
+          lineCount: order._count.lines,
+          total,
+          reviewUrl: `${env.APP_URL}/web-orders/${order.id}`,
+        }),
+      });
+    }
+
+    // The client's copy links to the shop host, not the portal: that is the
+    // only host their session exists on (Phase 15 — the cookie is host-only).
     await sendEmail({
-      to: staff.map((person) => person.email),
-      subject: webOrderPlacedSubject(order.buyer.name),
-      react: WebOrderPlaced({
+      to: [order.placedBy.email],
+      subject: webOrderReceiptSubject(order.reference),
+      react: WebOrderReceipt({
         reference: order.reference,
-        buyerName: order.buyer.name,
-        placedByName: order.placedBy.name,
+        buyerReference: order.buyerReference,
         lineCount: order._count.lines,
-        total: formatMYR(order.subtotal.toNumber()),
-        reviewUrl: `${env.APP_URL}/web-orders/${order.id}`,
+        total,
+        orderUrl: `${env.SHOP_URL ?? env.APP_URL}/orders/${order.id}`,
       }),
     });
   } catch (cause) {
-    // Never surfaced: the order is already saved and the queue entry already
-    // shows it. A failed email is a missing nudge, not a lost order.
-    console.error("[cart] notifyOps", cause);
+    console.error("[cart] notify", cause);
   }
 }

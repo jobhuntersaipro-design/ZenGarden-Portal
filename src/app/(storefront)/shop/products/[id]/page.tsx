@@ -7,7 +7,13 @@ import { ProductSpecs } from "@/components/shop/ProductSpecs";
 import { ShopProductCard } from "@/components/shop/ShopProductCard";
 import { unitLabel } from "@/lib/cartons";
 import { formatMYR } from "@/lib/money";
-import { loadShopProduct, relatedShopProducts } from "@/lib/queries/shop-catalogue";
+import { VariantPicker } from "@/components/shop/VariantPicker";
+import {
+  loadShopProduct,
+  relatedShopProducts,
+  singleGroup,
+  variantsOfProduct,
+} from "@/lib/queries/shop-catalogue";
 import { shopHref } from "@/lib/shop-routes";
 
 export const dynamic = "force-dynamic";
@@ -25,7 +31,13 @@ export default async function ShopProductPage({
   // price nobody can order at.
   if (!product) notFound();
 
-  const related = await relatedShopProducts(product);
+  // The flavours first: "More from {brand}" must not offer a sibling the
+  // picker is already showing on this page.
+  const variants = await variantsOfProduct(product);
+  const related = await relatedShopProducts(
+    product,
+    variants.map((sibling) => sibling.id),
+  );
 
   const perPieceLabel =
     product.packSize === null
@@ -91,6 +103,12 @@ export default async function ShopProductPage({
             ) : null}
           </div>
 
+          {variants.length > 1 ? (
+            <div className="mt-lg">
+              <VariantPicker variants={variants} selectedId={product.id} />
+            </div>
+          ) : null}
+
           <div className="mt-lg">
             <BuyBox
               productId={product.id}
@@ -126,7 +144,10 @@ export default async function ShopProductPage({
           </h2>
           <ul className="mt-md grid grid-cols-2 gap-md lg:grid-cols-4">
             {related.map((relatedProduct) => (
-              <ShopProductCard key={relatedProduct.id} product={relatedProduct} />
+              <ShopProductCard
+                key={relatedProduct.id}
+                group={singleGroup(relatedProduct)}
+              />
             ))}
           </ul>
         </div>

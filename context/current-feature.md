@@ -1,52 +1,83 @@
-# Current Feature: Shop cart speed
+# Current Feature: Variants and order review
 
 ## Status
 
-**Phase 30 — Shop cart speed — built, verified, merged and deployed**
-(2026-09-14). Spec `docs/specs/30-shop-cart-speed.md`.
-Reported as: adding to the cart and stepping cartons on
-`shop.lovinghandsportal.com` take very long. Four causes, measured: every
-stepper tap and every remove sat on `useAwaitableRefresh`'s 8 s give-up
-(8198 ms locally against a 0.6 s wire) because the refresh transition was
-entangled with the stepper's own pending action; every mutation rendered
-the route twice, since `revalidatePath` inside the action already renders
-it into the response; production functions ran in `iad1` (read off
-`x-vercel-id: sin1::iad1::…`) while Neon is in `ap-southeast-1`; and the
-viewer was read twice per render. After: one request and 17 queries per
-tap instead of two and 28, stepper unlocked at 280 ms instead of 8198 ms,
-Add to cart and Remove each one `POST`, `vercel.json` pinned to `sin1`.
-**Confirmed on production after the deploy**: `x-vercel-id` moved from
-`sin1::iad1::…` to `sin1::sin1::…`, and guest page times roughly halved —
-`/` 0.57–0.65 s → 0.39–0.48 s, `/products` 0.57–0.65 s → 0.13–0.27 s,
-`/cart` 0.57–0.65 s → 0.15–0.39 s (three reads each, warm).
-Not verified: a timed signed-in tap on production, which needs a client
-login this work does not have there; the 8 s deadlock fix is the same
-client code measured locally, and it is what the buyer was actually
-waiting on.
+**Phase 31 — Product variants — and Phase 32 — Review and send — both built
+and verified on `feature/product-variants`** (2026-09-14). Specs
+`docs/specs/31-product-variants.md` and `docs/specs/32-order-review.md`.
 
-Two follow-on phases were agreed in the same round and are queued behind
-this one: **Phase 31 — product variants** (group products sharing brand,
-name, pack size and market into one shop card with a variant picker; no
-schema change) and **Phase 32 — order review** (a full review step, buyer,
-contact, address, lines and totals, before Send order).
+Phase 31 was asked for as: a product should show its variants to the buyer,
+GOAT'S MILK/PAPAYA rather than separate products. The group is derived from
+brand, name, pack size and market, tolerating the importer's
+`"NAME — Variant"` format, with no migration and no ops screen. The shop went
+from **308 cards to 83**, 81 of them offering a choice; the user's own example
+is one card, `ZEN 2.1L NORMAL/DIY`, with eight flavours.
+
+Phase 32 was asked for as: a PO preview before the buyer confirms. It builds
+the review half of the never-built Phase 18 design — `/checkout/review` and
+`/checkout/sent/[reference]` — and the cart stops sending. `requestedDate`,
+a column that has existed since Phase 16 and that nothing had ever written,
+is finally asked for and stored as the day the client picked. The client now
+gets a receipt email naming their reference. The `/checkout` sign-in gate and
+the new-customer access request from that same spec stay unbuilt on purpose.
 
 ## Goals
 
-- `vercel.json` pins functions to `sin1`.
-- `loadShopViewer` is read once per request (React `cache()`), not once by
-  the layout and again by the page.
-- `setCartons` and `removeFromCart` return the re-priced cart, and
-  `ClientCart` renders it at once; the route refresh runs un-awaited so the
-  header badge and mobile bar catch up in the background.
+- `src/lib/product-groups.ts`, pure and unit-tested, deriving the group.
+- One card per group in the catalogue, with a flavour picker that retargets
+  the card's link, price and Add to cart.
+- A picker on the product page, built from links so each flavour stays
+  shareable.
+- Counts and facets count cards, because that is what the reader sees.
+- `/checkout/review` collecting the PO number, requested date and notes, with
+  narrow buyer and order projections asserted by equality.
+- `/checkout/sent/[reference]`, scoped to the caller's own buyer.
+- `notify()` sending the ops nudge and the client's receipt from one read.
 
 ## Notes
 
-- A signed-in click on production could not be timed before the fix: there
-  is no client login available to this work on production. The per-click
-  figure is derived from the query chain and the measured guest baseline
-  (0.57–0.65 s warm, 1.3–1.4 s cold for a page with one query batch).
+- Production holds **one** active product, so the variant grouping cannot be
+  seen there yet; it was built against the development catalogue's 308.
+- **Production's `DIRECT_URL` is still wrong** and will fail the next deploy
+  that has to run a migration. It points at the pooled Neon endpoint; it must
+  drop `-pooler`. `.env.local` line 37 has the same inversion. See the Phase
+  30 entry below for why this is not transient.
+- Still unbuilt from the Phase 18 design: the `/checkout` gate, the
+  new-customer access request and its admin approval.
 
 ## History
+- 2026-09-14: Phase 30 — Shop cart speed — built, verified, merged and
+  deployed (spec `docs/specs/30-shop-cart-speed.md`). Four causes, measured:
+  every stepper tap sat on `useAwaitableRefresh`'s 8 s give-up (8198 ms
+  locally against a 0.6 s wire) because the refresh transition was entangled
+  with the stepper's own pending action; every mutation rendered the route
+  twice, since `revalidatePath` inside the action already renders it into the
+  response; production functions ran in `iad1` while Neon is in
+  `ap-southeast-1`; and the viewer was read twice per render. After: one
+  request and 17 queries per tap instead of two and 28, stepper unlocked at
+  280 ms, `vercel.json` pinned to `sin1`. Confirmed on production:
+  `x-vercel-id` moved from `sin1::iad1::…` to `sin1::sin1::…` and guest page
+  times roughly halved.
+  **A deploy then failed with Prisma P1002**, and it was not transient.
+  Production's `DIRECT_URL` points at the **pooled** Neon endpoint, so
+  `prisma migrate deploy` takes its advisory lock through PgBouncer in
+  transaction mode and the matching unlock is routed elsewhere — the lock is
+  left held by a live pooled backend (seen: lock `72707369`, granted, pid
+  idle, its last statement one of the shop's own queries) and every later
+  build times out waiting for it. It clears when the backend recycles, which
+  is why 2026-09-09 recorded it as transient. **Reproduced**: the retry
+  succeeded and promptly orphaned a fresh lock. The permanent fix is to point
+  `DIRECT_URL` at the non-pooled host, `ep-polished-wildflower-b3zeyn4i`
+  without `-pooler`; the permission classifier blocked that change, so it is
+  still outstanding. `.env.local` line 37 has the same inversion for
+  development.
+  **A mistake worth recording:** `vercel redeploy` on what looked like the
+  newest deployment rebuilt one from three days earlier and Vercel aliased it
+  to production, rolling the live site back past Phase 30 and dropping the
+  region pin. Caught on the next header read and corrected with
+  `vercel promote` on the right build. Use `vercel ls --prod` and read the
+  Age column before redeploying anything.
+
 - 2026-09-14: Phase 29 — Cartons per pallet — built, verified and merged
   from `feature/cartons-per-pallet` (spec `docs/specs/29-cartons-per-pallet.md`).
   `Product.cartonsPerPallet`, nullable, whole number above zero, one

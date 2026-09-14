@@ -27,6 +27,11 @@ export const shopHref = {
   },
   product: (id: string) => `/products/${id}`,
   cart: () => "/cart",
+  /** Review and send — where an order is actually placed from (Phase 32). */
+  checkoutReview: () => "/checkout/review",
+  /** Keyed by the order's own reference, not its id: it is what the client
+   * was just shown, and it is what they will quote on the phone. */
+  orderSent: (reference: string) => `/checkout/sent/${encodeURIComponent(reference)}`,
   orders: () => "/orders",
   order: (id: string) => `/orders/${id}`,
   /** The shared sign-in card; `next` is a browser-relative path. */
@@ -40,16 +45,20 @@ export const shopPath = {
   catalogue: () => `${SHOP_ROUTE_PREFIX}/products`,
   product: (id: string) => `${SHOP_ROUTE_PREFIX}/products/${id}`,
   cart: () => `${SHOP_ROUTE_PREFIX}/cart`,
+  checkoutReview: () => `${SHOP_ROUTE_PREFIX}/checkout/review`,
   orders: () => `${SHOP_ROUTE_PREFIX}/orders`,
   order: (id: string) => `${SHOP_ROUTE_PREFIX}/orders/${id}`,
 } as const;
 
 /**
  * Shop-host paths that need a client session. Everything else on the shop
- * host is public. Later phases append here (18: /checkout/review,
- * /checkout/sent; 19: /purchase-orders; 21: /settings) and nowhere else.
+ * host is public. `/checkout` covers both `/checkout/review` and
+ * `/checkout/sent/…`: neither means anything without a cart and a buyer, and
+ * the gate at `/checkout` itself is not built (that half of the Phase 18
+ * spec is deliberately out of Phase 32's scope). Later phases append here
+ * (19: /purchase-orders; 21: /settings) and nowhere else.
  */
-export const SHOP_PRIVATE_PATHS = ["/orders"] as const;
+export const SHOP_PRIVATE_PATHS = ["/orders", "/checkout"] as const;
 
 export const isShopPrivatePath = (pathname: string) =>
   SHOP_PRIVATE_PATHS.some(

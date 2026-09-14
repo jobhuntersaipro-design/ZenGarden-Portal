@@ -64,7 +64,12 @@ export async function priceCart(lines: GuestCartLine[]): Promise<ActionResult<Ca
       return product ? [{ productId: line.productId, cartons: line.cartons, product }] : [];
     });
 
-    return { success: true, data: { id: null, ...(await priceProductLines(rows)) } };
+    // A guest has no WebOrder, so neither an id nor a reference: their cart
+    // is priced live from localStorage and exists nowhere else.
+    return {
+      success: true,
+      data: { id: null, reference: null, ...(await priceProductLines(rows)) },
+    };
   } catch (cause) {
     console.error("[shop-public] priceCart", cause);
     return { success: false, error: "We couldn't price your cart." };
