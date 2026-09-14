@@ -2,8 +2,8 @@
 
 ## Status
 
-**Phase 30 — Shop cart speed — built and verified on `fix/shop-cart-speed`,
-awaiting commit** (2026-09-14). Spec `docs/specs/30-shop-cart-speed.md`.
+**Phase 30 — Shop cart speed — built, verified, merged and deployed**
+(2026-09-14). Spec `docs/specs/30-shop-cart-speed.md`.
 Reported as: adding to the cart and stepping cartons on
 `shop.lovinghandsportal.com` take very long. Four causes, measured: every
 stepper tap and every remove sat on `useAwaitableRefresh`'s 8 s give-up
@@ -15,8 +15,14 @@ it into the response; production functions ran in `iad1` (read off
 viewer was read twice per render. After: one request and 17 queries per
 tap instead of two and 28, stepper unlocked at 280 ms instead of 8198 ms,
 Add to cart and Remove each one `POST`, `vercel.json` pinned to `sin1`.
-Not verified: the production region after deploy (read `x-vercel-id` once
-it lands) and a timed signed-in tap on production.
+**Confirmed on production after the deploy**: `x-vercel-id` moved from
+`sin1::iad1::…` to `sin1::sin1::…`, and guest page times roughly halved —
+`/` 0.57–0.65 s → 0.39–0.48 s, `/products` 0.57–0.65 s → 0.13–0.27 s,
+`/cart` 0.57–0.65 s → 0.15–0.39 s (three reads each, warm).
+Not verified: a timed signed-in tap on production, which needs a client
+login this work does not have there; the 8 s deadlock fix is the same
+client code measured locally, and it is what the buyer was actually
+waiting on.
 
 Two follow-on phases were agreed in the same round and are queued behind
 this one: **Phase 31 — product variants** (group products sharing brand,

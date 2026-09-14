@@ -65,7 +65,15 @@ database.
 - `src/actions/cart.test.ts`: `setCartons` and `removeFromCart` return the
   re-priced cart from `loadCart`, scoped to the caller.
 - Existing `shop-viewer.test.ts` passes unchanged under `cache()`.
-- Production after deploy: `x-vercel-id` reads `sin1::sin1::…`.
+- Production after deploy: `x-vercel-id` reads `sin1::sin1::…` —
+  **confirmed 2026-09-14**, having read `sin1::iad1::…` before. Guest page
+  times on the same three routes, three reads each, warm:
+
+  | Route | Before | After |
+  | --- | --- | --- |
+  | `/` | 0.57–0.65 s | 0.39–0.48 s |
+  | `/products` | 0.57–0.65 s | 0.13–0.27 s |
+  | `/cart` | 0.57–0.65 s | 0.15–0.39 s |
 
 ## 3. Not in scope
 
