@@ -144,7 +144,7 @@ export default async function ProductPage({
                   id: data.product.id,
                   name: data.product.name,
                   sku: data.product.sku,
-                  category: data.product.category as never,
+                  category: data.product.category,
                   unit: data.product.unit,
                   brand: data.product.brand,
                   variant: data.product.variant,
@@ -155,6 +155,7 @@ export default async function ProductPage({
                   active: data.product.active,
                   needsReview: data.product.needsReview,
                 }}
+                imageCount={data.images.length}
                 labels={labels}
                 trigger={<Button>Edit product</Button>}
               />

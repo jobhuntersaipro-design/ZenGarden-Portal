@@ -5,6 +5,7 @@ import { Prisma } from "@/generated/prisma/client";
 import { UnauthorizedError, requireSuperAdmin } from "@/lib/auth-guards";
 import { prisma } from "@/lib/prisma";
 import { deleteObject } from "@/lib/r2";
+import { NEEDS_AN_IMAGE } from "@/lib/validation/product-images";
 import { productSchema, type ProductInput } from "@/lib/validation/products";
 
 export type ActionResult<T = undefined> =
@@ -111,9 +112,19 @@ export async function updateProduct(
   try {
     const existing = await prisma.product.findUnique({
       where: { id: productId },
-      select: { listPrice: true },
+      select: { listPrice: true, _count: { select: { images: true } } },
     });
     if (!existing) return { success: false, error: "That product is gone." };
+
+    // Phase 27: a product carries at least one picture. This is the
+    // enforcement — `ProductSheet`'s disabled button is presentation, and the
+    // create form cannot be checked here at all, since its row has to exist
+    // before an image can reference it. Archiving is deliberately *not*
+    // gated: archiving is a reasonable answer to a product nobody has a
+    // photograph of, and the catalogue's ~308 imported rows have none.
+    if (existing._count.images === 0) {
+      return { success: false, error: NEEDS_AN_IMAGE };
+    }
 
     const nextPrice = new Prisma.Decimal(data.listPrice);
     const priceChanged = !existing.listPrice.equals(nextPrice);

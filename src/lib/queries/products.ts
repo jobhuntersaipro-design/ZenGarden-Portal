@@ -1,6 +1,7 @@
 import { dateColumnRange } from "@/lib/dates";
 import { Prisma } from "@/generated/prisma/client";
 import { prisma } from "@/lib/prisma";
+import { categoryOptions } from "@/lib/product-categories";
 import {
   needsAttention,
   productStats,
@@ -188,8 +189,12 @@ export async function listProducts(
   };
 }
 
-/** The three labels that grow by typing rather than living in a fixed list. */
-export type GrowingLabel = "brand" | "variant" | "market";
+/**
+ * The labels that grow by typing rather than living in a fixed list. Category
+ * joined them in Phase 27; it differs from the other three in being
+ * non-nullable and in being seeded — see `categoryOptions`.
+ */
+export type GrowingLabel = "brand" | "variant" | "market" | "category";
 
 /**
  * The values already used on a product for one label, which is the whole of
@@ -200,7 +205,11 @@ export type GrowingLabel = "brand" | "variant" | "market";
  */
 export async function listLabels(field: GrowingLabel): Promise<string[]> {
   const rows = await prisma.product.findMany({
-    where: { [field]: { not: null } },
+    // `category` is the one label that cannot be null, and Prisma rejects
+    // `not: null` against a non-nullable column at *runtime* — the computed
+    // key hides the mismatch from the type checker, so this cost a page that
+    // would not render rather than a failed build (2026-09-14).
+    where: field === "category" ? {} : { [field]: { not: null } },
     distinct: [field],
     select: { [field]: true },
     orderBy: { [field]: "asc" },
@@ -212,14 +221,17 @@ export async function listLabels(field: GrowingLabel): Promise<string[]> {
     .filter((value): value is string => Boolean(value));
 }
 
-/** Everything the pickers need, in one round trip of three queries. */
+/** Everything the pickers need, in one round trip of four queries. */
 export async function listAllLabels(): Promise<Record<GrowingLabel, string[]>> {
-  const [brand, variant, market] = await Promise.all([
+  const [brand, variant, market, inUse] = await Promise.all([
     listLabels("brand"),
     listLabels("variant"),
     listLabels("market"),
+    listLabels("category"),
   ]);
-  return { brand, variant, market };
+  // The seeds are unioned in here rather than at each call site, so every
+  // picker and every filter in the app offers the same list.
+  return { brand, variant, market, category: categoryOptions(inUse) };
 }
 
 /** Filtering, searching and sorting happen after the stats exist. */

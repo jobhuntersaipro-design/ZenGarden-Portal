@@ -1,18 +1,21 @@
 "use client";
 
-import { useState } from "react";
-import { ImageOff } from "lucide-react";
+import { useEffect, useRef, useState } from "react";
+import Link from "next/link";
 import { toast } from "sonner";
 import { createProduct } from "@/actions/products";
 import { GrowingListPicker } from "@/components/products/GrowingListPicker";
+import { StagedImages, type StagedImage } from "@/components/products/StagedImages";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Switch } from "@/components/ui/switch";
 import { Textarea } from "@/components/ui/textarea";
+import { useImageUploadQueue } from "@/hooks/useImageUploadQueue";
 import { useUrlNavigation } from "@/hooks/useUrlNavigation";
 import { PRODUCT_CATEGORIES } from "@/lib/product-categories";
 import type { GrowingLabel } from "@/lib/queries/products";
 import { generateSku } from "@/lib/sku";
+import { rejectionReason } from "@/lib/validation/product-images";
 import type { ProductInput } from "@/lib/validation/products";
 
 /**
@@ -39,9 +42,6 @@ const SIZE_IN_NAME = /(\d+(?:\.\d+)?\s?(?:ML|L|KG|G))\b/i;
 
 const label = "font-mono text-[length:var(--text-eyebrow)] text-ink-tertiary";
 
-const select =
-  "h-control-md rounded-sm border border-hairline-strong bg-transparent px-xs text-[length:var(--text-body-sm)] text-ink focus-visible:border-focus focus-visible:outline-2 focus-visible:outline-focus";
-
 /**
  * Creating a product, shaped like the product it will become.
  *
@@ -59,6 +59,15 @@ const select =
  * the field is theirs — the customer's own list has no codes, so a generated
  * one is the common case and a hand-typed one the exception.
  *
+ * Since Phase 27 a product cannot be created without a picture. The files are
+ * staged in the browser and uploaded immediately after the row is written,
+ * because presign needs a `productId` that does not exist until then. That
+ * order has one consequence worth knowing: if the row is written and the
+ * uploads then fail, the product exists. It is not deleted — a rollback could
+ * not cover a browser closed mid-upload either — so the form says what
+ * happened and links to the product, where `ProductImageManager` finishes the
+ * job.
+ *
  * Editing stays in `ProductSheet`. A drawer is right for changing one field on
  * a product you are already looking at; a page is right for entering eleven.
  */
@@ -71,6 +80,64 @@ export function ProductForm({
   const [form, setForm] = useState<ProductInput>(BLANK);
   const [skuTouched, setSkuTouched] = useState(false);
   const [saving, setSaving] = useState(false);
+  const [staged, setStaged] = useState<(StagedImage & { file: File })[]>([]);
+  const [rejected, setRejected] = useState<{ name: string; reason: string }[]>([]);
+  /** Set once the row exists. Non-null while still on this page means the
+      product was created and its images were not — the one state this form
+      cannot resolve itself. */
+  const [created, setCreated] = useState<string | null>(null);
+  const { rows, add } = useImageUploadQueue(() => {});
+
+  // Object URLs are revoked on removal and again on unmount, through a ref so
+  // the cleanup does not re-run on every staged change and revoke live ones.
+  const stagedRef = useRef(staged);
+  useEffect(() => {
+    stagedRef.current = staged;
+  }, [staged]);
+  useEffect(
+    () => () => {
+      for (const image of stagedRef.current) URL.revokeObjectURL(image.url);
+    },
+    [],
+  );
+
+  const addFiles = (files: File[]) => {
+    const accepted: (StagedImage & { file: File })[] = [];
+    const refused: { name: string; reason: string }[] = [];
+    for (const file of files) {
+      // Counted against what is already staged plus what this batch has taken,
+      // which is the same arithmetic the server applies to existing rows.
+      const reason = rejectionReason(file, staged.length + accepted.length);
+      if (reason) {
+        refused.push({ name: file.name, reason });
+        continue;
+      }
+      accepted.push({
+        id: crypto.randomUUID(),
+        name: file.name,
+        url: URL.createObjectURL(file),
+        file,
+      });
+    }
+    if (accepted.length > 0) setStaged((current) => [...current, ...accepted]);
+    setRejected(refused);
+  };
+
+  const moveImage = (index: number, delta: number) =>
+    setStaged((current) => {
+      const next = [...current];
+      const to = index + delta;
+      if (to < 0 || to >= next.length) return current;
+      [next[index], next[to]] = [next[to], next[index]];
+      return next;
+    });
+
+  const removeImage = (index: number) =>
+    setStaged((current) => {
+      const going = current[index];
+      if (going) URL.revokeObjectURL(going.url);
+      return current.filter((_, at) => at !== index);
+    });
 
   const set = <K extends keyof ProductInput>(key: K, value: ProductInput[K]) =>
     setForm((current) => ({ ...current, [key]: value }));
@@ -108,8 +175,28 @@ export function ProductForm({
       toast.error(result.error);
       return;
     }
+    const productId = result.data.id;
+
+    // `0` existing images: the row was created one statement ago and nothing
+    // else can have added any.
+    const outcome = await add(
+      productId,
+      staged.map((image) => image.file),
+      0,
+    );
+    if (outcome.failed > 0) {
+      setSaving(false);
+      setCreated(productId);
+      toast.error(
+        outcome.uploaded > 0
+          ? `Product created — ${outcome.failed} of ${staged.length} images didn't upload`
+          : "Product created, but its images didn't upload",
+      );
+      return;
+    }
+
     toast.success("Product created");
-    push(`/products/${result.data.id}`);
+    push(`/products/${productId}`);
   };
 
   return (
@@ -130,28 +217,51 @@ export function ProductForm({
             className="h-auto rounded-none border-0 border-b border-hairline-strong px-0 py-xxs font-display text-[length:var(--text-heading-md)] leading-[1.2] font-[650] tracking-[-0.91px] text-ink placeholder:text-ink-disabled focus-visible:border-focus focus-visible:ring-0 sm:text-[length:var(--text-display-md)] sm:tracking-[-1.36px] md:text-[length:var(--text-display-md)]"
           />
         </div>
-        <Button pending={busy} onClick={submit} className="self-start sm:shrink-0">
-          {busy ? "Creating…" : "Create product"}
-        </Button>
+        <div className="flex flex-col items-stretch gap-xxs sm:shrink-0 sm:items-end">
+          {created ? (
+            // The row exists and its images do not. Creating again would make a
+            // second product, so the only move offered is the one that fixes
+            // the first.
+            <Button asChild>
+              <Link href={`/products/${created}`}>Open the product</Link>
+            </Button>
+          ) : (
+            <Button
+              pending={busy}
+              disabled={staged.length === 0}
+              onClick={submit}
+              className="self-start sm:self-auto"
+            >
+              {busy ? "Creating…" : "Create product"}
+            </Button>
+          )}
+          <p className="text-[length:var(--text-caption)] text-ink-tertiary">
+            {created
+              ? "Finish adding its images there"
+              : staged.length === 0
+                ? "Add at least one image"
+                : `${staged.length} ${staged.length === 1 ? "image" : "images"} ready`}
+          </p>
+        </div>
       </header>
 
       <div className="grid gap-lg lg:grid-cols-[5fr_7fr]">
-        {/* The gallery's slot, holding the reason it is empty. Not
-            `ProductGallery` with no images: its empty state offers "Add
-            images", and there is nothing here to add them to yet. */}
-        {/* `self-start`, or the grid stretches this to the card's height and
-            the aspect ratio then sets the *width* from it — with eleven fields
-            in the card that came out at 1470px and pushed the card off the
-            screen (2026-09-09). */}
-        <section className="flex h-32 flex-col items-center justify-center gap-xs self-start rounded-lg border border-dashed border-hairline-strong bg-surface p-lg text-center sm:aspect-4/3 sm:h-auto">
-          <ImageOff className="size-8 text-ink-disabled" strokeWidth={1.5} aria-hidden />
-          <p className="text-[length:var(--text-body-sm)] text-ink-secondary">
-            No images yet
-          </p>
-          <p className="text-[length:var(--text-caption)] text-ink-tertiary">
-            Images are added once storage is configured
-          </p>
-        </section>
+        {/* The gallery's slot, holding the pictures the product will have.
+            `self-start` (inside `StagedImages`), or the grid stretches it to
+            the card's height — the blow-out of 2026-09-09. It carries no
+            aspect ratio of its own for the same reason: its height is however
+            many tiles are staged. */}
+        <div className="min-w-0">
+          <StagedImages
+            staged={staged}
+            rows={rows}
+            rejected={rejected}
+            busy={busy}
+            onFiles={addFiles}
+            onMove={moveImage}
+            onRemove={removeImage}
+          />
+        </div>
 
         <section className="rounded-lg border border-hairline bg-canvas p-lg">
           <div className="flex flex-col gap-xxs">
@@ -214,23 +324,20 @@ export function ProductForm({
             </div>
 
             <div className="flex flex-col gap-xxs">
-              <label htmlFor="product-category" className={label}>
-                Category
-              </label>
-              <select
-                id="product-category"
+              <span className={label}>Category</span>
+              <GrowingListPicker
+                label="Category"
                 value={form.category}
-                onChange={(event) =>
-                  set("category", event.target.value as ProductInput["category"])
-                }
-                className={select}
-              >
-                {PRODUCT_CATEGORIES.map((category) => (
-                  <option key={category} value={category}>
-                    {category}
-                  </option>
-                ))}
-              </select>
+                known={labels.category}
+                required
+                // Required, unlike its three siblings: clearing it back to
+                // "No category" would fail the schema, so the picker keeps
+                // whatever was chosen last.
+                onChange={(category) => set("category", category ?? form.category)}
+              />
+              <p className="text-[length:var(--text-caption)] text-ink-tertiary">
+                What kind of product it is — type to add one
+              </p>
             </div>
 
             <div className="flex flex-col gap-xxs">

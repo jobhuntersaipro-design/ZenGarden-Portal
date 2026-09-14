@@ -29,6 +29,7 @@ vi.mock("@/lib/r2", () => ({ deleteObject: vi.fn() }));
 const { archiveProduct, createProduct, updateProduct } = await import(
   "@/actions/products"
 );
+const { NEEDS_AN_IMAGE } = await import("@/lib/validation/product-images");
 
 const admin = {
   id: "user-1",
@@ -61,6 +62,9 @@ beforeEach(() => {
   priceCreate.mockResolvedValue({});
   productFindUnique.mockResolvedValue({
     listPrice: { equals: (other: { toString(): string }) => other.toString() === "42.5" },
+    // One picture, which every product has carried since Phase 27. The gate
+    // that depends on this has its own describe block below.
+    _count: { images: 1 },
   });
 });
 
@@ -136,6 +140,47 @@ describe("createProduct", () => {
   it("stores a blank market as null, so the picker never offers an empty row", async () => {
     await createProduct({ ...input, market: "  " });
     expect(productCreate.mock.calls[0][0].data.market).toBeNull();
+  });
+});
+
+describe("updateProduct — a product carries at least one picture", () => {
+  it("refuses to save a product with no images", async () => {
+    productFindUnique.mockResolvedValue({
+      listPrice: { equals: () => true },
+      _count: { images: 0 },
+    });
+
+    expect(await updateProduct("prod-1", input)).toEqual({
+      success: false,
+      error: NEEDS_AN_IMAGE,
+    });
+    // Refused before the write, not rolled back after it.
+    expect(productUpdate).not.toHaveBeenCalled();
+    expect(priceCreate).not.toHaveBeenCalled();
+  });
+
+  it("saves a product that has one", async () => {
+    const result = await updateProduct("prod-1", input);
+
+    expect(result.success).toBe(true);
+    expect(productUpdate).toHaveBeenCalled();
+  });
+
+  it("still archives a product with no images", async () => {
+    // Archiving is the reasonable answer to a product nobody photographed;
+    // gating it would leave the imported catalogue with no move at all.
+    productFindUnique.mockResolvedValue({
+      listPrice: { equals: () => true },
+      _count: { images: 0 },
+    });
+
+    const result = await archiveProduct("prod-1");
+
+    expect(result.success).toBe(true);
+    expect(productUpdate).toHaveBeenCalledWith({
+      where: { id: "prod-1" },
+      data: { active: false },
+    });
   });
 });
 

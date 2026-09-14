@@ -1,50 +1,58 @@
-# Current Feature: Buyer management revamp
+# Current Feature: Product images required, categories that grow
 
 ## Status
 
-**Phase 26 — Buyer management — complete and merged to `main` on
-2026-09-14** from `feature/buyer-management`. Build, lint, typecheck and
-824/824 tests clean; browser-verified as recorded in History. Spec: `docs/specs/26-buyer-management.md`. Asked for as: revamp
-the customer side of the admin room (beautify, more animation, more
-user-friendly), rename Customers → Buyer management and Users → User
-management, a button for a super admin to send a user or buyer a
-password-reset link by email, and a simpler new-buyer form (company name,
-POC, always shop access). Decided in one round of questions: labels and admin
-routes renamed (portal `/buyers` keeps its wording); one reset-link button for
-users and buyer contacts alike, the temporary-password reset retired but the
-temporary-password invitation kept; company + POC form with address, terms
-and remark folded into a disclosure; CSS-only motion via `tw-animate-css`.
+**Phase 27 — A product cannot exist without a picture — built and verified
+on `feature/product-images-required`, awaiting review before commit**
+(2026-09-14). 833/833 tests, typecheck, lint and build clean; browser-
+verified end to end, with the proof and the two defects it found recorded
+in the spec §4 and §6. Spec:
+`docs/specs/27-product-images-and-categories.md`. Asked for as: creating a
+new product must require the admin to upload product images, and let an
+admin or super admin create brand, market "or other" field values. Settled in
+one round of questions: brand, variant and market already grow by typing, so
+the field that changes is **category**; at least one image, with Create
+blocked until one is staged; and an image-less product cannot be edited
+either.
 
 ## Goals
 
-- The admin tabs read **User management** (`/admin`) and **Buyer management**
-  (`/admin/buyers`); `/admin/customers/*` redirects permanently; no visible
-  "customer" remains in the admin room. Database enum values keep `CUSTOMER_*`.
-- A visible **Send reset link** button on each user row and each buyer
-  contact row emails a one-time, 30-minute link — to the shop host for a
-  CLIENT, the portal host for staff — and the toast reports the real send
-  result. Google-only and disabled accounts are refused with a reason. Each
-  send is a `RESET_LINK_SENT` audit row in the buyer's timeline.
-- `/admin/buyers/new` asks for company name, POC name, email and phone, with
-  address, payment terms and remark folded away; the POC always becomes the
-  shop login with a username derived from their email, and the invitation
-  goes out on create.
-- Buyer list with filter chips and counts, monograms, shop-access status
-  pills, hover chevron; a hero header on the buyer page; staggered
-  entrances, an expanding tab indicator and an animated disclosure, all CSS,
-  all inert under `prefers-reduced-motion`. No count-ups.
-- `@react-email/render` becomes a real dependency so a fresh clone can send
-  the emails this phase is about.
-- Tests for the new action, username derivation, the rebuilt create action
-  and the list filter; browser proof of a reset link end to end on the shop
-  host; overflow sweep at 390/768/1440.
+- `/products/new` stages images in the browser — drop or browse, previews,
+  cover first, arrows and a bin — and **Create product** stays disabled until
+  at least one valid file is staged. On submit the product is written, the
+  staged files upload against its new id, and the reader lands on the detail
+  page with the pictures already there.
+- A failed upload after the row is written does not delete the product: the
+  page says so, links to it, and the existing `missing-image` attention flag
+  carries it as a worklist item.
+- `updateProduct` refuses a product with zero images —
+  "Add at least one image before saving changes." — and `ProductSheet` shows
+  the same sentence above a disabled Save. Archive is not gated, and neither
+  is the purchase-order intake path that creates products from printed codes.
+- **Category** becomes a `GrowingListPicker` like brand, variant and market:
+  `PRODUCT_CATEGORIES` becomes a seed list unioned with every category in
+  use, `generateSku` falls back to the initials rule for a category it has no
+  table entry for, and the catalog's category filter lists the union.
+- Tests for the update gate, the free-text category schema and the SKU
+  fallback; browser proof of a create with two images end to end; overflow
+  sweep at 390/768/1440.
 
 ## Notes
 
-- The design canvas has no admin artboards; these screens derive from the
-  portal's own conventions. Recorded as a deviation in the spec.
-- The reset page must render on the shop host whether the contact is signed
-  in or out — check the proxy's signed-in shop rewrite on the wire.
+- No migration: `Product.category` is already a `String` column.
+- The create page cannot enforce the image rule on the server — presign needs
+  a `productId`, so the row exists before any image can reference it. The
+  gate there is the disabled button; the server gate is on edit.
+- Accepted cost: every one of the ~308 existing products has no image, so
+  each needs one before its next edit.
+- Two defects the browser found and this phase fixed: `listLabels`'s
+  `not: null` is a Prisma *runtime* error on the non-nullable `category`
+  column (the create page would not render, and `tsc` and `build` both
+  passed), and the category picker offered a "No category" row that could
+  not be honoured.
+- Accepted risk: a category is what every share chart groups by, and a
+  synonym ("Haircare" beside "Hair care") now splits a slice. Casing alone
+  cannot fork it — `Combobox` matches case-insensitively.
 - Still outstanding elsewhere: Phase 18 (`docs/specs/design/shop/18-checkout-and-sending.md`)
   is next in the storefront sequence; the shop still shows only priced
   products and production holds 309 at RM 0.00; the 5 nested-sub-table

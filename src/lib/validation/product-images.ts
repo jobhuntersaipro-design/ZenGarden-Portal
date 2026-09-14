@@ -43,6 +43,12 @@ export const IMAGE_TOO_LARGE = (bytes: number) =>
   `That image is ${formatBytes(bytes)} — the limit is ${formatBytes(MAX_IMAGE_BYTES)}`;
 export const IMAGE_NAME_TOO_LONG = `That filename is too long — ${MAX_NAME_LENGTH} characters at most`;
 export const TOO_MANY_IMAGES = `This product already has ${MAX_IMAGES_PER_PRODUCT} images`;
+/**
+ * Said the same way by `updateProduct` and by the drawer that calls it. A
+ * product carries at least one picture from Phase 27 on; the ~308 rows
+ * imported before it do not, so each meets this sentence once.
+ */
+export const NEEDS_AN_IMAGE = "Add at least one image before saving changes.";
 
 export const productImageFileSchema = z.object({
   name: z.string().min(1).max(MAX_NAME_LENGTH, IMAGE_NAME_TOO_LONG),

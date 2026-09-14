@@ -71,6 +71,14 @@ export default async function ProductsPage({
     ...new Set(products.map((product) => product.brand).filter(Boolean)),
   ].sort() as string[];
 
+  // Categories the same way, and for the same reason. They were the fixed nine
+  // until Phase 27 made the list grow by typing; reading them back from the
+  // rows keeps the filter honest in both directions — a category somebody
+  // added shows up, and one nothing uses does not.
+  const categories = [
+    ...new Set(products.map((product) => product.category)),
+  ].sort();
+
   const viewParam = firstParam(params, "view");
   // URL first; the stored preference is applied client-side when absent.
   const view: ProductView = viewParam === "list" ? "list" : "grid";
@@ -207,6 +215,7 @@ export default async function ProductsPage({
         sortKey={sort.key as ProductSortKey}
         summary={`${shown.count} ${shown.count === 1 ? "product" : "products"} · ${formatMYR(shown.revenue.toFixed(2))} in 12 months`}
         brands={brands}
+        categories={categories}
       />
 
       {view === "grid" ? (

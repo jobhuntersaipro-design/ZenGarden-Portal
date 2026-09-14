@@ -51,13 +51,29 @@ describe("productSchema", () => {
     expect(productSchema.safeParse(valid).success).toBe(true);
   });
 
-  it("refuses a category outside the catalogue", () => {
-    // "Stone" was a category until 2026-09-08; the list is personal care now.
-    for (const bad of ["Gadgets", "Stone"]) {
+  it("accepts a category outside the seeded list", () => {
+    // A closed enum until Phase 27. It is a growing label now: a super admin
+    // types a kind of product the seed list never had and it saves.
+    const parsed = productSchema.safeParse({ ...valid, category: "Pet care" });
+    expect(parsed.success).toBe(true);
+    if (parsed.success) expect(parsed.data.category).toBe("Pet care");
+  });
+
+  it("trims a category and refuses a blank one", () => {
+    const parsed = productSchema.safeParse({ ...valid, category: "  Bleach  " });
+    expect(parsed.success).toBe(true);
+    if (parsed.success) expect(parsed.data.category).toBe("Bleach");
+
+    // Blank, or nothing but spaces: every product is some kind of thing, and
+    // the share charts group by this.
+    for (const bad of ["", "   "]) {
       expect(productSchema.safeParse({ ...valid, category: bad }).success).toBe(
         false,
       );
     }
+    expect(
+      productSchema.safeParse({ ...valid, category: "x".repeat(57) }).success,
+    ).toBe(false);
   });
 
   it("refuses a list price of zero or below", () => {

@@ -17,7 +17,7 @@ import {
 } from "@/components/ui/sheet";
 import { Switch } from "@/components/ui/switch";
 import { Textarea } from "@/components/ui/textarea";
-import { PRODUCT_CATEGORIES } from "@/lib/product-categories";
+import { NEEDS_AN_IMAGE } from "@/lib/validation/product-images";
 import type { GrowingLabel } from "@/lib/queries/products";
 import type { ProductInput } from "@/lib/validation/products";
 
@@ -26,16 +26,21 @@ import type { ProductInput } from "@/lib/validation/products";
  * drawer, because entering eight empty fields is a task of its own, while
  * changing one field on the product you are already reading is not.
  *
- * Images are not here yet — the upload path needs R2, which is not configured,
- * and shipping an editor nobody can run would be worse than saying so (see
- * context/current-feature.md).
+ * Images are managed beside the gallery on the page behind this drawer, not in
+ * it. Since Phase 27 they are also a precondition: `updateProduct` refuses a
+ * product that has none, and the drawer says so and disables Save rather than
+ * letting the reader fill in a form the server will reject. The panel that
+ * fixes it is on the same screen, a drawer-width away.
  */
 export function ProductSheet({
   product,
+  imageCount,
   labels,
   trigger,
 }: {
   product: ProductInput & { id: string; needsReview?: boolean };
+  /** Zero means every field here is unsaveable until a picture is added. */
+  imageCount: number;
   labels: Record<GrowingLabel, string[]>;
   trigger: React.ReactNode;
 }) {
@@ -58,11 +63,17 @@ export function ProductSheet({
         <SheetHeader>
           <SheetTitle>Edit product</SheetTitle>
           <SheetDescription>
-            Images are added once storage is configured.
+            Its pictures are managed in the Images panel on the page behind
+            this drawer.
           </SheetDescription>
         </SheetHeader>
 
         <div className="flex flex-col gap-md p-md">
+          {imageCount === 0 ? (
+            <p className="rounded-sm bg-surface-soft p-sm text-[length:var(--text-caption)] text-accent-red">
+              {NEEDS_AN_IMAGE} Close this and add one in the Images panel.
+            </p>
+          ) : null}
           {/* Its category and price were taken from the line that created it,
               so they are guesses until someone says otherwise. Saving clears
               the flag: a person has now looked. */}
@@ -103,26 +114,16 @@ export function ProductSheet({
             </div>
 
             <div className="flex flex-col gap-xxs">
-              <label htmlFor="product-category" className={label}>
-                Category
-              </label>
-              <select
-                id="product-category"
+              <span className={label}>Category</span>
+              <GrowingListPicker
+                label="Category"
                 value={form.category}
-                onChange={(event) =>
-                  set(
-                    "category",
-                    event.target.value as ProductInput["category"],
-                  )
-                }
-                className="h-control-md rounded-sm border border-hairline-strong bg-transparent px-xs text-[length:var(--text-body-sm)] text-ink focus-visible:border-focus focus-visible:outline-2 focus-visible:outline-focus"
-              >
-                {PRODUCT_CATEGORIES.map((category) => (
-                  <option key={category} value={category}>
-                    {category}
-                  </option>
-                ))}
-              </select>
+                known={labels.category}
+                required
+                // Required, unlike its three siblings: "No category" would
+                // fail the schema, so clearing it keeps what was there.
+                onChange={(category) => set("category", category ?? form.category)}
+              />
             </div>
 
             <div className="flex flex-col gap-xxs">
@@ -228,7 +229,7 @@ export function ProductSheet({
 
           <div className="flex flex-wrap items-center gap-sm">
             <Button
-              disabled={archiving}
+              disabled={archiving || imageCount === 0}
               pending={pending}
               onClick={async () => {
                 setPending(true);
