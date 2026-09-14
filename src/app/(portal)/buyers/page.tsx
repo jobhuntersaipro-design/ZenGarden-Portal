@@ -70,7 +70,7 @@ export default async function BuyersPage({
                 <Button asChild>
                   <Link href="/buyers/new">
                     <LinkSpinner />
-                    New customer
+                    New buyer
                   </Link>
                 </Button>
                 {/* Two primaries would be no primary. A member sees Upload PO

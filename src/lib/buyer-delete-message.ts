@@ -2,14 +2,14 @@
  * The delete-blocked sentence, alone, with no `prisma` or `"use server"`
  * import.
  *
- * `deleteBuyer` (`src/actions/customers.ts`) computes this to decide whether
- * a delete is refused; `DeleteCustomer` (`src/components/admin/DeleteCustomer.tsx`)
+ * `deleteBuyer` (`src/actions/admin-buyers.ts`) computes this to decide whether
+ * a delete is refused; `DeleteBuyer` (`src/components/admin/DeleteBuyer.tsx`)
  * needs the identical sentence to show *before* the button is pressed, so the
  * reader is never told something different from what the server would say
- * about the same customer. `customers.ts` is `"use server"`, which can only
+ * about the same buyer. `admin-buyers.ts` is `"use server"`, which can only
  * export async functions — this is exactly why the shared sentence lives
- * here instead, the same shape as `admin-customer-labels.ts` and
- * `customer-activity-entries.ts`. Both sides import this one function; there
+ * here instead, the same shape as `admin-buyer-labels.ts` and
+ * `buyer-activity-entries.ts`. Both sides import this one function; there
  * is no second copy to drift.
  */
 export function blockedMessage(purchaseOrders: number, webOrders: number): string {
@@ -22,5 +22,5 @@ export function blockedMessage(purchaseOrders: number, webOrders: number): strin
   }
   const subject = parts.join(" and ");
   const verb = purchaseOrders + webOrders === 1 ? "references" : "reference";
-  return `${subject} ${verb} this customer, so it can't be deleted. Disable their shop contacts instead.`;
+  return `${subject} ${verb} this buyer, so it can't be deleted. Disable their shop contacts instead.`;
 }

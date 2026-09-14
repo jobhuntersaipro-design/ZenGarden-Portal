@@ -4,6 +4,7 @@ import { Fragment, useState, type MouseEvent, type ReactNode } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useIsUpdating } from "@/components/portal/NavProgress";
+import { staggerClass } from "@/components/portal/Rise";
 import { Spinner } from "@/components/portal/Spinner";
 import { useEdgeFades } from "@/hooks/useEdgeFades";
 import type { SortDirection } from "@/lib/queries/pagination";
@@ -48,6 +49,7 @@ export function DataTable<Row extends { id: string }>({
   onSortChange,
   emptyText,
   rowHref,
+  entrance = false,
 }: {
   columns: Column<Row>[];
   rows: Row[];
@@ -56,6 +58,12 @@ export function DataTable<Row extends { id: string }>({
   onSortChange: (key: string, dir: SortDirection) => void;
   emptyText: string;
   rowHref?: (row: Row) => string;
+  /**
+   * Rows arrive with a short staggered rise (Phase 26, the admin room).
+   * Opt-in: a 400-row purchase-order list is read, not watched, and every
+   * row keyed by id re-runs it only when it mounts.
+   */
+  entrance?: boolean;
 }) {
   const router = useRouter();
   const updating = useIsUpdating();
@@ -189,15 +197,15 @@ export function DataTable<Row extends { id: string }>({
             aria-busy={updating || undefined}
             className={`flex flex-col gap-sm transition-opacity ${updating ? "opacity-60" : ""}`}
           >
-            {rows.map((row) => {
+            {rows.map((row, rowIndex) => {
               const href = rowHref?.(row);
               return (
                 <li
                   key={row.id}
                   onClick={href ? (event) => openRow(event, href) : undefined}
-                  className={`rounded-lg border border-hairline bg-canvas p-md ${
-                    href ? "cursor-pointer" : ""
-                  }`}
+                  className={`rounded-lg border border-hairline bg-canvas p-md transition-shadow ${
+                    href ? "cursor-pointer hover:shadow-xs" : ""
+                  } ${entrance ? `animate-rise ${staggerClass(rowIndex)}` : ""}`}
                 >
                   <div className="text-[length:var(--text-body-md)] font-medium text-ink">
                     {href ? (
@@ -321,7 +329,9 @@ export function DataTable<Row extends { id: string }>({
                       onClick={
                         href ? (event) => openRow(event, href) : undefined
                       }
-                      className={`group ${href ? "cursor-pointer" : ""}`}
+                      className={`group ${href ? "cursor-pointer" : ""} ${
+                        entrance ? `animate-rise ${staggerClass(rowIndex)}` : ""
+                      }`}
                     >
                       {columns.map((column, index) => (
                         <td

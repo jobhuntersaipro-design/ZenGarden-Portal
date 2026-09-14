@@ -247,6 +247,12 @@
   --container-panel-lg: 32rem; /* Tailwind max-w-lg — the record drawers */
 
   --animate-fade-in-up: fade-in-up 1s ease-out both;
+  /* Rows and cards arriving (Phase 26): a short fade and an 8px rise.
+     `backwards` holds the `from` state through a stagger delay so a delayed
+     row never flashes in first, and leaves nothing applied once it ends — a
+     lingering transform would make a table row the containing block for its
+     sticky first cell. Pair with `stagger-N` for the delay. */
+  --animate-rise: rise 320ms cubic-bezier(0.2, 0.7, 0.2, 1) backwards;
   /* The ring inside a control that is waiting (`Spinner`). */
   --animate-spinner: spinner 0.8s linear infinite;
   /* The indeterminate extraction bar: a short fill sliding across its track.
@@ -411,6 +417,47 @@
 @media (prefers-reduced-motion: reduce) {
   .animate-spinner {
     animation-duration: 1.6s;
+  }
+}
+
+@keyframes rise {
+  from {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+/*
+ * A folding section (the new-buyer form's "More details"): the grid's one
+ * row goes from nothing to its content's height, which `height: auto`
+ * cannot transition and this can. The child needs `min-h-0 overflow-hidden`.
+ */
+@utility disclosure-closed {
+  grid-template-rows: 0fr;
+}
+@utility disclosure-open {
+  grid-template-rows: 1fr;
+}
+
+/*
+ * A per-child delay for `animate-rise`: `stagger-3` waits three steps of
+ * 30ms. A functional utility rather than an inline `animationDelay`, so a
+ * component never carries a style attribute and the step lives in one place.
+ * Capped by the caller (twelve steps), or a long table would take a second
+ * to finish arriving.
+ */
+@utility stagger-* {
+  animation-delay: calc(--value(integer) * 30ms);
+}
+
+/* An arrival is decoration; under reduced motion the row is simply there. */
+@media (prefers-reduced-motion: reduce) {
+  .animate-rise {
+    animation: none;
   }
 }
 

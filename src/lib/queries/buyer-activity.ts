@@ -10,14 +10,14 @@ import {
   readDetail,
   type ActivityEntry,
   type ActivityKind,
-} from "@/lib/queries/customer-activity-entries";
+} from "@/lib/queries/buyer-activity-entries";
 import { ATTEMPT_RETENTION_HOURS } from "@/lib/rate-limit";
 
 // Re-exported rather than defined here: these live in
-// `customer-activity-entries.ts` because they must stay importable from a
+// `buyer-activity-entries.ts` because they must stay importable from a
 // client component without dragging `prisma` into the browser bundle — see
 // that file's doc comment. Re-exporting keeps every existing import path
-// (`from "@/lib/queries/customer-activity"`) working unchanged.
+// (`from "@/lib/queries/buyer-activity"`) working unchanged.
 export { ACTIVITY_KINDS, ACTIVITY_PAGE_SIZE, auditText, mergeActivity, readDetail };
 export type { ActivityEntry, ActivityKind };
 
@@ -28,7 +28,7 @@ const WEB_ORDER_STATUS: Record<WebOrderStatus, string> = {
   DECLINED: "Declined",
 };
 
-export async function loadCustomerActivity(
+export async function loadBuyerActivity(
   buyerId: string,
   { page, kind }: { page: number; kind: ActivityKind | "all" },
 ): Promise<{ entries: ActivityEntry[]; total: number; failedWindowHours: number }> {

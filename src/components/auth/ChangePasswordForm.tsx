@@ -44,7 +44,11 @@ export function ChangePasswordForm({ forced }: { forced: boolean }) {
           router.push("/");
           router.refresh();
         } else {
-          await signOut({ redirectTo: "/signin?reset=1" });
+          // Relative on purpose, and not via `redirectTo` — see
+          // ResetPasswordForm: Auth.js would send a shop-host client to the
+          // portal's sign-in instead of their own.
+          await signOut({ redirect: false });
+          window.location.assign("/signin?reset=1");
         }
       }}
     >

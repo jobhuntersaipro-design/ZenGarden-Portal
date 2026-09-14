@@ -1,121 +1,126 @@
-# Current Feature
+# Current Feature: Buyer management revamp
 
 ## Status
 
-**Phase 25 — Admin › Customers — landed, all thirteen tasks done**
-(`feature/admin-customers`, spec `docs/specs/25-admin-customers.md`, branched
-from `feature/org-settings` on 2026-09-13). Asked for as: the *New customer*
-button is too hidden and hard to manage; a super admin should be able to
-create/edit/delete a buyer, reset a contact's password and see their activity.
-Decided in one round of questions: a **Customers** section in the `(admin)`
-shell beside Users (table → detail page, reusing `BuyerDetailsCard` and
-`BuyerContactsCard`); delete **refused** when any order references the row,
-never archived; reset password = the existing resend mechanics under an honest
-name; activity = sign-ins, shop orders, purchase orders and admin changes,
-which needs a new `AuditEvent` table. Finding that shaped it: `LoginAttempt`
-is swept after 24 h, so successful client sign-ins are written durably as
-`SIGNED_IN` audit events. See History for what was measured. **Not yet merged
-to `main`** — `feature/org-settings`, this branch's own parent, is not on
-`main` either, so the branch is intact pending the user's own decision.
+**Phase 26 — Buyer management — complete and merged to `main` on
+2026-09-14** from `feature/buyer-management`. Build, lint, typecheck and
+824/824 tests clean; browser-verified as recorded in History. Spec: `docs/specs/26-buyer-management.md`. Asked for as: revamp
+the customer side of the admin room (beautify, more animation, more
+user-friendly), rename Customers → Buyer management and Users → User
+management, a button for a super admin to send a user or buyer a
+password-reset link by email, and a simpler new-buyer form (company name,
+POC, always shop access). Decided in one round of questions: labels and admin
+routes renamed (portal `/buyers` keeps its wording); one reset-link button for
+users and buyer contacts alike, the temporary-password reset retired but the
+temporary-password invitation kept; company + POC form with address, terms
+and remark folded into a disclosure; CSS-only motion via `tw-animate-css`.
 
-**Phase 24 — organisation settings — landed, all four tasks done**
-(`feature/org-settings`, spec `docs/specs/24-org-settings.md`, plan
-`docs/specs/plans/2026-09-11-org-settings.md`). Built on top of Phase 23's
-merge into `main`. A super admin now edits the shop's supplier name, email,
-phone and address from a **Contact details** card on `/admin`, and the change
-reaches the public shop footer and account menu with no redeploy — the four
-`SUPPLIER_*` env vars become a per-field fallback rather than the only source.
-See History for what was measured. **Not yet merged to `main`** — the branch
-is intact pending the user's own decision to merge and delete it.
+## Goals
 
-**Phase 17 — shop shell and guest browsing — landed** (`feature/shop-shell`).
-Plan: `docs/specs/design/shop/17-shop-shell.md`; the six-phase storefront plan
-(17–22) and its decisions are indexed in `docs/specs/design/shop/00-overview.md`,
-written 2026-09-10 from the storefront canvas. Phases 12, 14, 15, 16 and now 17
-have landed — see History. Next up: Phase 18,
-`docs/specs/design/shop/18-checkout-and-sending.md`. The shop still shows only
-`active && !needsReview && listPrice > 0`, and production still holds 309
-products at RM 0.00 — pricing the catalogue is the customer's and remains the
-blocker for anything to sell there. Development's own catalogue was a
-different story and got repaired this phase — see History — so it now has 308
-sellable products for Phases 18–22 to build against.
-
-Also outstanding from the catalog import: enter the 5 nested-sub-table blocks
-by hand, clear the 2 drafts in the review queue, and delete one of the duplicate
-`SVPPPO26090009` orders once the right buyer name is settled.
-
-**Phase 23 — customer profiles — landed** (`feature/customer-profiles`,
-6 tasks, spec `docs/specs/23-customer-profiles.md`, plan
-`docs/specs/plans/2026-09-11-customer-profiles.md`). Independent of the 18–22
-storefront sequence above — it depends on Phase 15 (the CLIENT role) and
-Phase 07 (buyer detail), not on the shop phases. Ops can now create a customer
-— company, contact, an internal remark, and an optional shop login — from
-`/buyers/new` in one screen, edit that remark and its contacts afterward, and a
-customer can change their shop password more than once. See History for what
-was measured. **Not yet merged to `main`** — the branch is intact pending the
-user's own decision to merge and delete it.
-
-## Goals — storefront
-
-- A buyer's own staff sign in on their own host and see only their own company,
-  **without any of the existing ops queries learning what a tenant is**. The
-  portal has no multi-tenancy today: `User` is ops-only, `Buyer` has no login
-  link, and every query is unscoped by design.
-- A web order lands as a `WebOrder` and becomes a `PurchaseOrder` only when a
-  person confirms it — through the same writer, the same totals gate and the
-  same duplicate check as a scanned PO. The bar does not drop because the
-  intake changed.
-- `PurchaseOrder.documentId` becomes nullable rather than synthesising a
-  `Document` that names an R2 object nobody uploaded. **The inner joins in
-  `src/lib/queries/po-list.sql.ts:208-209` must become `LEFT JOIN` in the same
-  commit**, or every web-order PO silently vanishes from the list, its money
-  summary, the needs-review count and the buyer page — with no error and no type
-  failure.
-- The cart stores product ids and cartons and **never a price**, so the price on
-  screen is always today's; the snapshot happens inside `submitWebOrder`'s
-  transaction. A stale price is not unlikely, it is unrepresentable.
-- Cartons need no conversion: `unit` is already `"carton"` and `listPrice` is
-  already per carton, so the client's cartons *are* `LineItem.quantity`.
-- Nothing internal reaches the shop. `PurchaseOrder.notes`, `PoStageEvent.note`
-  and the ops names and avatars are all invisible there, enforced by an explicit
-  narrow `select` rather than by remembering.
-
-## Goals — catalog (delivered)
-
-- A product carries its brand (ZEN GARDEN, MR. KING, L.HANDS…), its variant
-  (Goat's Milk, Lavender, Lemon…) and its pack size (pieces per carton), so
-  the name no longer has to carry all three and the catalog can filter by
-  brand.
-- The category list becomes the nine the customer's goods actually fall into:
-  Shower cream & gel · Hand wash & soap · Hair care · Body care · Hand
-  sanitizer · Dishwash & cleanser · Laundry detergent · Fragrance ·
-  Uncategorised.
-- SKUs follow `{BRAND}-{TYPE}-{SIZE}-{VARIANT}-{MARKET}` (`ZEN-SC-2100-GM-VN`),
-  generated from those fields by `src/lib/sku.ts` and editable afterwards.
-- `scripts/import-catalog.ts` reads the XLSX — merged cells carry brand and
-  market — into one Product per variant × market with `needsReview: true`, so
-  every import lands in the existing *Needs review* chip until its price is
-  confirmed. On production it first deletes the landscaping demo data.
-- The seed describes the real business: a ZEN-shaped catalog replaces the
-  twelve landscaping products, keeping the array shape the PO generator reads.
+- The admin tabs read **User management** (`/admin`) and **Buyer management**
+  (`/admin/buyers`); `/admin/customers/*` redirects permanently; no visible
+  "customer" remains in the admin room. Database enum values keep `CUSTOMER_*`.
+- A visible **Send reset link** button on each user row and each buyer
+  contact row emails a one-time, 30-minute link — to the shop host for a
+  CLIENT, the portal host for staff — and the toast reports the real send
+  result. Google-only and disabled accounts are refused with a reason. Each
+  send is a `RESET_LINK_SENT` audit row in the buyer's timeline.
+- `/admin/buyers/new` asks for company name, POC name, email and phone, with
+  address, payment terms and remark folded away; the POC always becomes the
+  shop login with a username derived from their email, and the invitation
+  goes out on create.
+- Buyer list with filter chips and counts, monograms, shop-access status
+  pills, hover chevron; a hero header on the buyer page; staggered
+  entrances, an expanding tab indicator and an animated disclosure, all CSS,
+  all inert under `prefers-reduced-motion`. No count-ups.
+- `@react-email/render` becomes a real dependency so a fresh clone can send
+  the emails this phase is about.
+- Tests for the new action, username derivation, the rebuilt create action
+  and the list filter; browser proof of a reset link end to end on the shop
+  host; overflow sweep at 390/768/1440.
 
 ## Notes
 
-- Decisions taken 2026-09-08 from the sheet review: one Product per variant ×
-  market (~150–250 rows), categories as above, SKUs generated, prices entered
-  later behind `needsReview`, production demo data deleted by the import.
-- Brand and variant use the same grow-by-typing picker as market, so
-  `MarketPicker` generalises into one `GrowingListPicker` rather than three
-  copies.
-- `listPrice` is required, so an unpriced import lands at `0.00`.
-  `productStats` already returns `vsListPercent: 0` for a zero list price; the
-  detail page must not then print "0.0% above list on average" for a product
-  that simply has no price yet.
-- Customers' POs name products by description, not by our generated SKU, so
-  exact-SKU matching will miss most lines until the extraction prompt learns
-  the brand/size/variant shape. Separate work, raised after the import.
+- The design canvas has no admin artboards; these screens derive from the
+  portal's own conventions. Recorded as a deviation in the spec.
+- The reset page must render on the shop host whether the contact is signed
+  in or out — check the proxy's signed-in shop rewrite on the wire.
+- Still outstanding elsewhere: Phase 18 (`docs/specs/design/shop/18-checkout-and-sending.md`)
+  is next in the storefront sequence; the shop still shows only priced
+  products and production holds 309 at RM 0.00; the 5 nested-sub-table
+  catalog blocks, the 2 review-queue drafts and the duplicate
+  `SVPPPO26090009` order are still the customer's to settle.
 
 ## History
+- 2026-09-14: Phase 26 — Buyer management — built and verified on
+  `feature/buyer-management` (spec `docs/specs/26-buyer-management.md`).
+  The admin tabs read **User management** and **Buyer management**;
+  `/admin/customers/*` answers **308** to `/admin/buyers/*` (both the bare
+  path and a deep path, read with `curl`). Every "customer" in the admin
+  room became "buyer" — components, queries, actions and tests renamed to
+  match; the `CUSTOMER_*` enum values kept their database names on purpose.
+  **`sendPasswordResetLink`** (`src/actions/reset-links.ts`) puts a one-time,
+  30-minute link in a member's or a buyer contact's inbox from a visible
+  pill on the user row and on the contact row; it awaits the send so the
+  toast is honest, refuses Google-only and disabled accounts with a reason,
+  and writes `RESET_LINK_SENT` (one additive migration,
+  `20260914090000_reset_link_sent`). The new-buyer form asks for company
+  name and the point of contact — name, email, optional phone — with
+  address, terms and remark folded into an animated disclosure; the contact
+  always becomes the CLIENT login with a handle derived from their email
+  (`src/lib/username.ts`, suffixed past collisions inside the transaction).
+  Motion is CSS only: `--animate-rise` plus a `stagger-N` utility, an
+  expanding tab underline, a `grid-template-rows` disclosure — all inert
+  under `prefers-reduced-motion` (`animationName: none`, measured).
+  `@react-email/render` is now a real dependency.
+  **Proved on the wire, as the shop contact.** A buyer created from
+  `/admin/buyers/new` (contact `delivered@resend.dev`, Resend's own test
+  inbox) got its invitation; the admin's reset link toasted "Reset link sent
+  to delivered@resend.dev", opened on `shop.localhost` to "Set a new
+  password", set one, then the same link answered "This link has expired";
+  the new password signed in on the shop host with `role: CLIENT` and
+  `mustChangePassword: false`. A second link was opened while the contact
+  held a live shop session — the reset page rendered (200), not a `/shop`
+  404 — and afterwards `POST /api/auth/callback/credentials` with the
+  superseded password left no session while the new one produced
+  `role: CLIENT`. A member's link was built on the portal host, a
+  Google-only user's button was disabled carrying its reason, and the
+  timeline read "Aisha Rahman sent Nadia Test a password-reset link".
+  **Three defects found by the browser and fixed** (details in the spec §7):
+  the post-reset redirect left the shop host for the portal, because
+  Auth.js resolves `redirectTo` against its base URL — both password forms
+  now assign a relative path themselves; the create form's title input was
+  14px because the `Input` primitive's `md:text-sm` outranked the form's
+  `sm:` size (inherited from Phase 23); and at 390px the new hero broke the
+  buyer's name one letter per line while the contact row squeezed the name
+  to "del…" — both stack below `sm` now, and the admin header hides its
+  "Admin" eyebrow there so "Back to portal" fits on one line. The rise
+  animation was switched from `both` to `backwards` fill after a row was
+  seen holding an identity transform, which would make it the containing
+  block for its sticky first cell (`transform: none`, `position: sticky`
+  read back after).
+  **Sweep:** `/admin`, `/admin/buyers`, `/admin/buyers/new` and a buyer page
+  at 390/768/1440 — twelve combinations, `scrollWidth === innerWidth` on
+  all after the fixes. Sub-44px at 390: card-mode title links (accepted
+  class) and the activity strip's "All" segment at 39px wide — the compact
+  segment look shared with every other strip — recorded, not fixed.
+  **Cleanup, read back:** the test buyer was deleted through the danger
+  zone itself (name typed case-insensitively, `buyer.count()` 12 → 11,
+  `findUnique` null for both the buyer and the contact); this task's 8
+  `AuditEvent` rows, 1 reset token and 5 `LoginAttempt` rows were deleted
+  **by id**; counts returned to the baseline exactly — buyers 11, users 2,
+  CLIENT 0, audits 0, tokens 0, attempts 60 — and `aisha@lovinghandsportal.com`
+  was read back as `MEMBER` (promoted for the checks; its password is the
+  seed default again). Two temporary scripts under `scripts/` and a
+  temporary URL log line in the action were removed.
+  **Two environment gotchas:** the dev server hit a Turbopack panic after
+  the directory rename and, later, served stale server-component HTML while
+  the client bundle had updated (a hydration-mismatch overlay was the
+  symptom, as on 2026-09-08) — `rm -rf .next` and a restart cleared both.
+  **Not verified:** anything on production; the temporary-password
+  invitation email's delivery (Resend accepted it; the inbox is Resend's);
+  the public forgot-password form's own post-reset redirect on the shop
+  host, which the same fix should now cover but was not driven.
 - 2026-09-13: Phase 25 — Admin › Customers — built across twelve tasks and
   verified end to end by Task 13 on `feature/admin-customers` (spec
   `docs/specs/25-admin-customers.md`). A super admin now creates, edits and

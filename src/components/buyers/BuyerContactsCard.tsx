@@ -2,7 +2,7 @@
 
 import { useRef, useState, useTransition } from "react";
 import { toast } from "sonner";
-import { MoreHorizontal } from "lucide-react";
+import { KeyRound, MoreHorizontal } from "lucide-react";
 import { PersonChip } from "@/components/ui/person";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -26,10 +26,10 @@ import {
   inviteBuyerContact,
   removeBuyerContact,
   resendClientInvite,
-  resetClientPassword,
   setClientAccess,
   updateBuyerContact,
 } from "@/actions/clients";
+import { sendPasswordResetLink } from "@/actions/reset-links";
 import type { BuyerContact } from "@/lib/queries/clients";
 
 /**
@@ -38,6 +38,12 @@ import type { BuyerContact } from "@/lib/queries/clients";
  *
  * Status wording follows Phase 09 — Invited and Disabled are neutral text, not
  * a coloured fill, and colour never carries the meaning alone.
+ *
+ * "Send reset link" is a visible button on the row, not a menu item: it is
+ * the thing a super admin is most often here to do for a buyer who rang, and
+ * Phase 25 buried it under `⋯` as "Reset password" — a temporary-password
+ * mechanic that Phase 26 retired in favour of the same one-time link a member
+ * gets (`sendPasswordResetLink`).
  */
 export function BuyerContactsCard({
   buyerId,
@@ -159,7 +165,9 @@ export function BuyerContactsCard({
                   />
                 </div>
               ) : (
-                <div className="min-w-0 flex-1">
+                // Full width below `sm`, so the reset pill and the menu wrap
+                // under the name instead of squeezing it to a chip and "del…".
+                <div className="min-w-0 basis-full sm:flex-1 sm:basis-0">
                   <PersonChip name={contact.name} image={contact.image} />
                   <p
                     className="truncate text-[length:var(--text-caption)] text-ink-tertiary"
@@ -205,6 +213,16 @@ export function BuyerContactsCard({
                         ? "Invited"
                         : "Active"}
                   </span>
+                  {canManage && !contact.disabledAt ? (
+                    <Button
+                      variant="secondary"
+                      className="h-control-md gap-xxs px-sm text-[length:var(--text-caption)] sm:h-control-sm"
+                      onClick={() => openReset(contact)}
+                    >
+                      <KeyRound aria-hidden className="size-3.5" />
+                      Send reset link
+                    </Button>
+                  ) : null}
                   {canManage ? (
                     <DropdownMenu>
                       <DropdownMenuTrigger asChild>
@@ -228,9 +246,6 @@ export function BuyerContactsCard({
                           }}
                         >
                           Edit
-                        </DropdownMenuItem>
-                        <DropdownMenuItem onSelect={() => openReset(contact)}>
-                          Reset password
                         </DropdownMenuItem>
                         {/* Only while the invitation is still the way in. */}
                         {contact.invited && !contact.disabledAt ? (
@@ -345,10 +360,10 @@ export function BuyerContactsCard({
       <Dialog open={resetting !== null} onOpenChange={() => closeReset()}>
         <DialogContent>
           <DialogHeader>
-            <DialogTitle>Email a temporary password to {resetting?.email}?</DialogTitle>
+            <DialogTitle>Email a reset link to {resetting?.email}?</DialogTitle>
             <DialogDescription>
-              They will have to choose a new one the next time they sign in, and every
-              device they are signed in on will be signed out.
+              The link lasts 30 minutes and works once. Their current password keeps
+              working until they use it.
             </DialogDescription>
           </DialogHeader>
           <DialogFooter>
@@ -365,14 +380,12 @@ export function BuyerContactsCard({
                 const target = resetting;
                 if (!target) return;
                 void run(`reset-${target.id}`, async () => {
-                  const result = await resetClientPassword(target.id);
+                  const result = await sendPasswordResetLink(target.id);
                   if (result.success) {
                     // The dialog can be cancelled and reopened for a
                     // different contact while this request is still in
                     // flight — close it only if it is still showing the
-                    // contact this request was for, or Alice's request
-                    // resolving would force-close whichever dialog Bob has
-                    // open by then.
+                    // contact this request was for.
                     if (resettingRef.current?.id === target.id) closeReset();
                     // The toast says what happened, not what we hoped: a
                     // Resend failure resolves { sent: false }, and telling
@@ -380,15 +393,15 @@ export function BuyerContactsCard({
                     // defect Phase 23 found in exactly this flow.
                     toast[result.data.sent ? "success" : "warning"](
                       result.data.sent
-                        ? `Temporary password emailed to ${target.email}`
-                        : "Password was reset, but the email didn't send. Try Reset password again.",
+                        ? `Reset link sent to ${target.email}`
+                        : "The email didn't send. Try again.",
                     );
                   }
                   return result;
                 });
               }}
             >
-              Reset password
+              Send link
             </Button>
           </DialogFooter>
         </DialogContent>

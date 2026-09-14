@@ -130,7 +130,7 @@ export default async function BuyerPage({
           <div className="flex flex-wrap items-center gap-xs">
             {user?.role === Role.SUPER_ADMIN ? (
               <Link
-                href={`/admin/customers/${id}`}
+                href={`/admin/buyers/${id}`}
                 className="inline-flex min-h-control-md items-center rounded-xxs text-[length:var(--text-body-sm)] text-brand-link underline-offset-2 hover:underline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-focus sm:min-h-0"
               >
                 Manage in Admin ›

@@ -3,18 +3,18 @@ import Link from "next/link";
 import { redirect } from "next/navigation";
 import { Role } from "@/generated/prisma/enums";
 import { BackLink } from "@/components/portal/BackLink";
-import { CustomerForm } from "@/components/buyers/CustomerForm";
+import { BuyerForm } from "@/components/buyers/BuyerForm";
 import { getSessionUser } from "@/lib/auth-guards";
 
 export const metadata: Metadata = {
-  title: "New customer · Loving Hands Portal",
+  title: "New buyer · Loving Hands Portal",
 };
 export const dynamic = "force-dynamic";
 
-export default async function NewCustomerPage() {
+export default async function NewBuyerPage() {
   const user = await getSessionUser();
   // The directory only offers this link to a super admin, but the link is a
-  // URL and anyone can type it. `createCustomer` refuses either way; this is
+  // URL and anyone can type it. `createBuyer` refuses either way; this is
   // so a member sees the directory rather than a form that can never save.
   if (user?.role !== Role.SUPER_ADMIN) redirect("/buyers");
 
@@ -30,11 +30,11 @@ export default async function NewCustomerPage() {
         </Link>
         <span className="text-[length:var(--text-body-sm)] text-ink-tertiary">
           {" / "}
-          New customer
+          New buyer
         </span>
       </nav>
 
-      <CustomerForm afterCreate="/buyers" />
+      <BuyerForm afterCreate="/buyers" />
     </>
   );
 }

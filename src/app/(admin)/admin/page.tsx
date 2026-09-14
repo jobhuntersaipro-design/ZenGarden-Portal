@@ -16,7 +16,7 @@ import {
   type SearchParams,
 } from "@/lib/queries/pagination";
 
-export const metadata: Metadata = { title: "Admin · Loving Hands Portal" };
+export const metadata: Metadata = { title: "User management · Loving Hands Portal" };
 export const dynamic = "force-dynamic";
 
 const STATUSES: UserStatusFilter[] = ["all", "active", "invited", "disabled"];
@@ -47,7 +47,7 @@ export default async function AdminPage({
         Access
       </p>
       <h1 className="mb-lg font-display text-[length:var(--text-display-md)] font-[650] tracking-[-1.36px] text-ink">
-        Users
+        User management
       </h1>
 
       <PendingRequests requests={requests} />

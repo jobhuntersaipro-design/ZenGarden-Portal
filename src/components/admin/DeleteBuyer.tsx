@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import { toast } from "sonner";
-import { deleteBuyer } from "@/actions/customers";
+import { deleteBuyer } from "@/actions/admin-buyers";
 import { Button } from "@/components/ui/button";
 import {
   Dialog,
@@ -14,14 +14,14 @@ import {
 } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { useUrlNavigation } from "@/hooks/useUrlNavigation";
-import { blockedMessage } from "@/lib/customer-delete-message";
+import { blockedMessage } from "@/lib/buyer-delete-message";
 
 /**
  * The button is disabled with its reason beside it rather than failing on
  * click: the counts are already on the page, so a reader can know it will be
  * refused before they press it.
  */
-export function DeleteCustomer({
+export function DeleteBuyer({
   buyerId,
   name,
   contacts,
@@ -80,7 +80,7 @@ export function DeleteCustomer({
           className={blocked ? undefined : "bg-destructive text-canvas hover:bg-destructive/90"}
           onClick={() => setOpen(true)}
         >
-          Delete customer
+          Delete buyer
         </Button>
       </div>
 
@@ -95,11 +95,11 @@ export function DeleteCustomer({
           <DialogHeader>
             <DialogTitle>Delete {name}?</DialogTitle>
             <DialogDescription>
-              Type the customer&apos;s name to confirm. This cannot be undone.
+              Type the buyer&apos;s name to confirm. This cannot be undone.
             </DialogDescription>
           </DialogHeader>
           <Input
-            aria-label="Type the customer's name to confirm"
+            aria-label="Type the buyer's name to confirm"
             placeholder={name}
             value={typed}
             onChange={(event) => setTyped(event.target.value)}
@@ -121,7 +121,7 @@ export function DeleteCustomer({
                   }
                   close();
                   toast.success(`${name} deleted.`);
-                  push("/admin/customers");
+                  push("/admin/buyers");
                 } catch {
                   // An unguarded await here is what left the avatar picker
                   // permanently disabled on 2026-09-08 — the same trap,

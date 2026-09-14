@@ -34,3 +34,19 @@ export function UserStatusBadge({
     </span>
   );
 }
+
+/**
+ * A whole company's shop access, on the Buyer management table. "None" is
+ * plain tertiary text rather than a pill: a badge for the absence of a thing
+ * reads as a state someone set, and nobody set it.
+ */
+export function ShopAccessBadge({
+  access,
+}: {
+  access: "Active" | "Invited" | "Disabled" | "None";
+}) {
+  if (access === "None") {
+    return <span className="text-[length:var(--text-caption)] text-ink-tertiary">No login</span>;
+  }
+  return <UserStatusBadge status={access} />;
+}
