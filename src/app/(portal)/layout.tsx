@@ -58,7 +58,7 @@ export default async function PortalLayout({
           <div className="flex min-h-dvh bg-canvas">
             <Sidebar
               userName={displayName}
-              userEmail={user.email}
+              userIsSuperAdmin={user.role === Role.SUPER_ADMIN}
               userImage={displayImage}
             />
             {/* `min-w-0` on the column, not just the main: a flex child defaults
@@ -67,7 +67,7 @@ export default async function PortalLayout({
             <div className="flex min-w-0 flex-1 flex-col">
               <MobileTopBar
                 userName={displayName}
-                userEmail={user.email}
+                userIsSuperAdmin={user.role === Role.SUPER_ADMIN}
                 userImage={displayImage}
               />
               {/* Padding steps with the viewport. A flat `p-xl` spent 80px of a

@@ -18,11 +18,11 @@ import { NAV, isActive } from "@/components/portal/nav";
  */
 export function Sidebar({
   userName,
-  userEmail,
+  userIsSuperAdmin,
   userImage = null,
 }: {
   userName: string;
-  userEmail: string;
+  userIsSuperAdmin: boolean;
   userImage?: string | null;
 }) {
   const pathname = usePathname();
@@ -74,7 +74,11 @@ export function Sidebar({
         })}
       </nav>
 
-      <UserMenu name={userName} email={userEmail} image={userImage} />
+      <UserMenu
+        name={userName}
+        isSuperAdmin={userIsSuperAdmin}
+        image={userImage}
+      />
     </aside>
   );
 }

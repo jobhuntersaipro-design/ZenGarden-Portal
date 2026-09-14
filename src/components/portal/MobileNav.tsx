@@ -18,11 +18,11 @@ import { NAV, isActive } from "@/components/portal/nav";
 /** Wordmark and account, sticky so the way home survives a 5,000px page. */
 export function MobileTopBar({
   userName,
-  userEmail,
+  userIsSuperAdmin,
   userImage = null,
 }: {
   userName: string;
-  userEmail: string;
+  userIsSuperAdmin: boolean;
   userImage?: string | null;
 }) {
   return (
@@ -39,12 +39,12 @@ export function MobileTopBar({
       >
         <Wordmark />
       </Link>
-      {/* `collapsed` drops the name and address: the avatar alone is the whole
-          control here, and the menu behind it carries Sign out. */}
+      {/* `collapsed` drops the name: the avatar alone is the whole control
+          here, and the menu behind it carries Sign out. */}
       <div className="shrink-0">
         <UserMenu
           name={userName}
-          email={userEmail}
+          isSuperAdmin={userIsSuperAdmin}
           image={userImage}
           collapsed
         />

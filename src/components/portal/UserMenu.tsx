@@ -15,14 +15,18 @@ import { PersonAvatar } from "@/components/ui/person";
 
 export type UserMenuProps = {
   name: string;
-  email: string;
+  /**
+   * Required rather than defaulted: a call site that forgets it should fail
+   * the build, not quietly hide the one way into the admin room.
+   */
+  isSuperAdmin: boolean;
   image?: string | null;
   collapsed?: boolean;
 };
 
 export function UserMenu({
   name,
-  email,
+  isSuperAdmin,
   image = null,
   collapsed = false,
 }: UserMenuProps) {
@@ -45,20 +49,14 @@ export function UserMenu({
           ) : null}
         </span>
         {collapsed ? null : (
-          <span className="min-w-0 flex-1">
-            <span className="block truncate text-[length:var(--text-body-sm)] font-medium text-ink">
-              {name}
-            </span>
-            {/* Wraps to two lines rather than ellipsising (brief G3): the
-                sidebar is 240px and "aisha@lovinghandsportal.com" does not
-                fit on one, so a single clipped line was a dead end. `title`
-                stays for the rare address long enough to clip even at two. */}
-            <span
-              title={email}
-              className="block line-clamp-2 break-all text-[length:var(--text-caption)] text-ink-tertiary"
-            >
-              {email}
-            </span>
+          // The name alone. The address used to sit under it and wrap to two
+          // lines, which is most of the chip's height spent on something the
+          // signed-in person already knows; `/settings` still shows it.
+          <span
+            title={name}
+            className="min-w-0 flex-1 truncate text-[length:var(--text-body-sm)] font-medium text-ink"
+          >
+            {name}
           </span>
         )}
       </DropdownMenuTrigger>
@@ -66,6 +64,17 @@ export function UserMenu({
         {/* Settings is reached from here, never as a nav row: NAV is
             destinations only (00-master.md §4). MobileTopBar renders this same
             menu, so both navs get it from one change. */}
+        {/* Admin sits here for the same reason, and only for a super admin —
+            it is a separate room rather than a destination, and a member who
+            cannot enter it should not be shown its door. The room is guarded
+            twice over regardless: the (admin) layout redirects and
+            src/proxy.ts rewrites to a 404, so this hides a link, never a
+            permission. */}
+        {isSuperAdmin ? (
+          <DropdownMenuItem asChild>
+            <Link href="/admin">Admin</Link>
+          </DropdownMenuItem>
+        ) : null}
         <DropdownMenuItem asChild>
           <Link href="/settings">Settings</Link>
         </DropdownMenuItem>
