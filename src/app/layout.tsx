@@ -1,5 +1,6 @@
 import type { Metadata, Viewport } from "next";
 import { Inter, Plus_Jakarta_Sans, Sometype_Mono } from "next/font/google";
+import { SpeedInsights } from "@vercel/speed-insights/next";
 import "./globals.css";
 import { cn } from "@/lib/utils";
 
@@ -52,7 +53,14 @@ export default function RootLayout({
         sometypeMono.variable,
       )}
     >
-      <body className="min-h-full flex flex-col">{children}</body>
+      <body className="min-h-full flex flex-col">
+        {children}
+        {/* Real-user performance metrics, reported to Vercel. It sits in the
+            root layout so one instance covers the portal, the admin room and
+            the storefront, and it is inert outside a Vercel deployment — a
+            local `npm run dev` collects nothing. */}
+        <SpeedInsights />
+      </body>
     </html>
   );
 }
