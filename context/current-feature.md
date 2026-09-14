@@ -1,53 +1,33 @@
-# Current Feature: The catalogue's vocabulary, and a product's life
+# Current Feature: Cartons per pallet
 
 ## Status
 
-**Phase 28 — The catalogue's vocabulary, and a product's life — complete and
-merged to `main` on 2026-09-14** from `feature/catalogue-and-lifecycle`.
-854/854 tests, typecheck, lint and build clean; browser-verified end to end,
-with the proof in `docs/specs/28-catalogue-and-product-lifecycle.md` §7. Asked
-for as: let an admin clearly create, edit and remove the values behind brand,
-variant, market and category; always make the Loving Hands header link home;
-and let an admin publish, unpublish and delete a product. Settled in one round
-of questions: a third admin tab; rename rewrites every product carrying the
-value while remove is refused until nothing uses it; "Published" replaces
-"Active" and "Archive"; delete is refused with its reasons while any order
-line references the product.
+**Phase 29 — Cartons per pallet — built and verified on
+`feature/cartons-per-pallet`** (2026-09-14). Spec
+`docs/specs/29-cartons-per-pallet.md`. Asked for as: when creating a product,
+also allow entering how many cartons go on a pallet — prompted by a product
+label reading `SUPER INDO 2.1L (6) 60CTNS/PALLET ZEN SIGNATURE`. Decided in
+one round: capture it in the importer and backfill development (not
+production), and show it in ops **and** on the shop product page.
 
 ## Goals
 
-- `/admin/catalogue` lists brands, variants, markets and categories with real
-  product counts, and offers Add, Rename and Remove on each. Renaming rewrites
-  the vocabulary and every product carrying it in one transaction and says how
-  many moved; removing is refused while anything uses it; "Uncategorised" is
-  protected because the purchase-order intake writes it.
-- `CatalogLabel` gives those four lists an existence of their own — they were
-  a `distinct` over `Product` until now, which is why a value could not be
-  created ahead of a product, renamed, or removed. Products keep their plain
-  strings and take no foreign key; `createProduct`/`updateProduct` register
-  whatever they are given.
-- A product page carries a **Published / Unpublished** pill and the one button
-  that changes it. "Archive" is gone; the column stays `active` and the
-  `?filter=inactive` URL key still works.
-- A danger zone deletes a product nothing references — row, price history,
-  images and their R2 objects — after its name is typed exactly.
-- The wordmark links home from the admin header and the 404 page.
+- `Product.cartonsPerPallet`, nullable, whole number above zero — one
+  additive migration, validated by the same rule as pack size.
+- A field on `/products/new` and in the edit drawer; a row on the product
+  detail page and in the shop's product specs.
+- The catalogue importer stops discarding the pallet note it has been parsing
+  out of every block since Phase 13.
+- `scripts/backfill-cartons-per-pallet.ts` fills the existing catalogue from
+  the same labels file it was imported from, matched by exact SKU, dry run
+  first.
 
 ## Notes
 
-- No foreign key from `Product` to `CatalogLabel`, on purpose: the table is a
-  registry of what may be typed, and a FK would pull the intake path, the
-  importer and every seeded row into the change.
-- Merging two spellings is not one move: rename is refused onto an existing
-  value, so the products must be repointed first and the emptied value then
-  removed. The customer's variant list has real duplicates ("Aloe Vera" beside
-  "Aloevera") — which spelling is right is their call.
-- Still outstanding elsewhere: Phase 18
-  (`docs/specs/design/shop/18-checkout-and-sending.md`) is next in the
-  storefront sequence; the shop still shows only priced products and
-  production holds 309 at RM 0.00; the 5 nested-sub-table catalog blocks, the
-  2 review-queue drafts and the duplicate `SVPPPO26090009` order are still the
-  customer's to settle.
+- Production is untouched by the backfill; running it there is its own
+  decision.
+- Editing an imported product's pallet figure by hand means giving it an
+  image first — Phase 27's gate, working as designed.
 
 ## History
 - 2026-09-14: Phase 28 — the catalogue's vocabulary, and a product's life —

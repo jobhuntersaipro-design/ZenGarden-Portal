@@ -72,6 +72,7 @@ describe("parseBlock", () => {
       line: "ZEN 2.1L",
       size: "2.1L",
       packSize: 6,
+      cartonsPerPallet: null,
     });
   });
 
@@ -92,7 +93,22 @@ describe("parseBlock", () => {
       line: "ZEN 1L",
       size: "1L",
       packSize: 12,
+      cartonsPerPallet: 52,
     });
+  });
+
+  it("reads the pallet count in every shape the sheet writes it", () => {
+    // Bare, parenthesised, spaced, and with a leading dash — the same four the
+    // line strips below. Discarded until Phase 29; the customer's own labels
+    // print it ("60CTNS/PALLET"), so it is a fact about the product.
+    expect(parseBlock("ZEN 1L (12) 52CTNS/PALLET").cartonsPerPallet).toBe(52);
+    expect(parseBlock("MYDIN ZEN 1L (12)(52CTNS/P)").cartonsPerPallet).toBe(52);
+    expect(parseBlock("ZEN 800ML BABY WASH (12) (55 CTN/PLT)").cartonsPerPallet).toBe(55);
+    expect(parseBlock("H/WASH 500ML (24) - 54 ctns/pallet").cartonsPerPallet).toBe(54);
+  });
+
+  it("leaves the pallet count null when the block carries none", () => {
+    expect(parseBlock("PHILLIPPINES ZEN 1L (12)").cartonsPerPallet).toBeNull();
   });
 
   it("drops the pallet note from the line, bare or parenthesised", () => {
@@ -111,6 +127,7 @@ describe("parseBlock", () => {
       line: "2.1L",
       size: "2.1L",
       packSize: 6,
+      cartonsPerPallet: 60,
     });
   });
 });

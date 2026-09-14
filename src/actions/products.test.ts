@@ -59,6 +59,7 @@ const input = {
   brand: "ZEN GARDEN",
   variant: "Goat's Milk",
   packSize: 6,
+  cartonsPerPallet: 60,
   market: "Malaysia",
   description: null,
   active: true,

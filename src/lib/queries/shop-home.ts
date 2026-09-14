@@ -26,6 +26,7 @@ const HOME_PRODUCT_SELECT = {
   category: true,
   market: true,
   packSize: true,
+  cartonsPerPallet: true,
   unit: true,
   listPrice: true,
   images: {
@@ -47,6 +48,7 @@ async function toShopProduct(row: HomeProductRow): Promise<ShopProduct> {
     category: row.category,
     market: row.market,
     packSize: row.packSize,
+    cartonsPerPallet: row.cartonsPerPallet,
     unit: row.unit,
     listPrice: row.listPrice.toFixed(2),
     imageUrl: await thumbUrl(row.images),

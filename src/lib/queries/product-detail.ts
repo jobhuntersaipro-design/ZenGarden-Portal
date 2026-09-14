@@ -41,6 +41,7 @@ export type ProductDetail = {
     brand: string | null;
     variant: string | null;
     packSize: number | null;
+    cartonsPerPallet: number | null;
     market: string | null;
     listPrice: number;
     description: string | null;
@@ -83,6 +84,7 @@ export async function loadProduct(
       brand: true,
       variant: true,
       packSize: true,
+      cartonsPerPallet: true,
       market: true,
       listPrice: true,
       description: true,
@@ -226,6 +228,7 @@ export async function loadProduct(
       brand: product.brand,
       variant: product.variant,
       packSize: product.packSize,
+      cartonsPerPallet: product.cartonsPerPallet,
       market: product.market,
       listPrice,
       description: product.description,

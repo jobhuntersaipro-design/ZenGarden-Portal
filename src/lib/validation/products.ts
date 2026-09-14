@@ -57,11 +57,11 @@ const growingLabel = (limit: number) =>
     .transform((value) => value?.trim() || null);
 
 /**
- * Pieces per carton. Arrives as a string from a text field or as a number from
- * an import, and either way must be a whole number above zero — "1.5 per
- * carton" is a typo, not a pack.
+ * A count of whole things — pieces per carton, cartons per pallet. Arrives as
+ * a string from a text field or as a number from an import, and either way
+ * must be a whole number above zero: "1.5 per carton" is a typo, not a pack.
  */
-const packSize = z
+const wholeCount = (noun: string) => z
   .union([z.number(), z.string(), z.null()])
   .transform((value, ctx) => {
     if (value === null || value === "") return null;
@@ -69,7 +69,7 @@ const packSize = z
     if (!Number.isInteger(number) || number <= 0) {
       ctx.addIssue({
         code: "custom",
-        message: "Pack size must be a whole number above zero",
+        message: `${noun} must be a whole number above zero`,
       });
       return z.NEVER;
     }
@@ -95,7 +95,9 @@ export const productSchema = z.object({
   brand: growingLabel(40),
   /** Goat's Milk, Lavender, Lemon — the fragrance or formulation. */
   variant: growingLabel(40),
-  packSize,
+  packSize: wholeCount("Pack size"),
+  /** "60CTNS/PALLET", as the customer's own labels and sheet print it. */
+  cartonsPerPallet: wholeCount("Cartons per pallet"),
   /**
    * The market a formulation is made for — a country (Vietnam, India) or a
    * customer (Mydin, Hero Market), which is how the ops team's own sheet

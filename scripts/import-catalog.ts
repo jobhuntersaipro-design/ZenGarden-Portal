@@ -160,6 +160,7 @@ async function main() {
       name: p.name,
       category: p.category,
       pack: p.packSize ?? "",
+      pallet: p.cartonsPerPallet ?? "",
     })),
   );
 
@@ -196,6 +197,7 @@ async function main() {
       brand: p.brand,
       variant: p.variant,
       packSize: p.packSize,
+      cartonsPerPallet: p.cartonsPerPallet,
       market: p.market,
       category: p.category,
       unit: p.unit,
@@ -220,6 +222,7 @@ async function main() {
           brand: p.brand,
           variant: p.variant,
           packSize: p.packSize,
+          cartonsPerPallet: p.cartonsPerPallet,
           market: p.market,
           category: p.category,
           unit: p.unit,

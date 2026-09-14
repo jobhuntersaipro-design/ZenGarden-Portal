@@ -32,6 +32,7 @@ const BLANK: ProductInput = {
   brand: null,
   variant: null,
   packSize: "",
+  cartonsPerPallet: "",
   market: "Malaysia",
   listPrice: "",
   description: null,
@@ -362,6 +363,24 @@ export function ProductForm({
               />
               <p className="text-[length:var(--text-caption)] text-ink-tertiary">
                 Pieces per {form.unit || "carton"}
+              </p>
+            </div>
+
+            <div className="flex flex-col gap-xxs">
+              <label htmlFor="product-pallet" className={label}>
+                Cartons per pallet
+              </label>
+              <Input
+                id="product-pallet"
+                inputMode="numeric"
+                placeholder="60"
+                value={
+                  form.cartonsPerPallet === null ? "" : String(form.cartonsPerPallet)
+                }
+                onChange={(event) => set("cartonsPerPallet", event.target.value)}
+              />
+              <p className="text-[length:var(--text-caption)] text-ink-tertiary">
+                As printed on the label — 60CTNS/PALLET
               </p>
             </div>
 

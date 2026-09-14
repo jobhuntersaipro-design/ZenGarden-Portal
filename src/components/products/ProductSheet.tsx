@@ -204,6 +204,23 @@ export function ProductSheet({
                 Pieces per {form.unit || "carton"}
               </p>
             </div>
+
+            <div className="flex flex-col gap-xxs">
+              <label htmlFor="product-pallet" className={label}>
+                Cartons per pallet
+              </label>
+              <Input
+                id="product-pallet"
+                inputMode="numeric"
+                value={
+                  form.cartonsPerPallet === null ? "" : String(form.cartonsPerPallet)
+                }
+                onChange={(event) => set("cartonsPerPallet", event.target.value)}
+              />
+              <p className="text-[length:var(--text-caption)] text-ink-tertiary">
+                As printed on the label — 60CTNS/PALLET
+              </p>
+            </div>
           </div>
 
           <div className="flex flex-col gap-xxs">
