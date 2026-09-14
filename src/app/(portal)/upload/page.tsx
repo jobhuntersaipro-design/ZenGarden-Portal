@@ -4,7 +4,7 @@ import { PageHeader } from "@/components/portal/PageHeader";
 import { UploadWorkspace } from "@/components/upload/UploadWorkspace";
 
 export const metadata: Metadata = {
-  title: "Upload purchase orders · Loving Hands Portal",
+  title: "Upload purchase orders · Zen Garden Portal",
 };
 
 export default async function UploadPage({

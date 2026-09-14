@@ -160,7 +160,7 @@ and a lock there would leave an object behind on every picture change.
    provider. Wait for "Verified".
 3. API Keys → Create → *Sending access*, restricted to that domain →
    `RESEND_API_KEY`.
-4. `EMAIL_FROM="Loving Hands Portal <portal@lovinghandsportal.com>"`.
+4. `EMAIL_FROM="Zen Garden Portal <portal@lovinghandsportal.com>"`.
 5. Until the domain verifies, `EMAIL_FROM=onboarding@resend.dev` works but
    only delivers to your own Resend account email.
 

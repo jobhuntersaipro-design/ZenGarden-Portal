@@ -2,7 +2,7 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { BuyerForm } from "@/components/buyers/BuyerForm";
 
-export const metadata: Metadata = { title: "New buyer · Loving Hands Portal" };
+export const metadata: Metadata = { title: "New buyer · Zen Garden Portal" };
 export const dynamic = "force-dynamic";
 
 export default function NewAdminBuyerPage() {

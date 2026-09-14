@@ -21,9 +21,9 @@ const sometypeMono = Sometype_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "Loving Hands Portal",
+  title: "Zen Garden Portal",
   description:
-    "Purchase-order intake and fulfillment tracking for the Loving Hands ops team",
+    "Purchase-order intake and fulfillment tracking for the Zen Garden ops team",
 };
 
 /**

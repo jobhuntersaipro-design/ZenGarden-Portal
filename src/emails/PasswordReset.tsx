@@ -12,7 +12,7 @@ export function PasswordReset({ name, resetUrl }: PasswordResetProps) {
     <Layout>
       <Heading>Reset your password</Heading>
       <Paragraph>
-        {name}, use the button below to set a new password for the Loving Hands
+        {name}, use the button below to set a new password for the Zen Garden
         Portal. The link expires in 30 minutes and works once.
       </Paragraph>
       <ButtonLink href={resetUrl}>Set a new password</ButtonLink>
@@ -29,6 +29,6 @@ export function PasswordReset({ name, resetUrl }: PasswordResetProps) {
 }
 
 export const passwordResetSubject = () =>
-  "Reset your Loving Hands Portal password";
+  "Reset your Zen Garden Portal password";
 
 export default PasswordReset;

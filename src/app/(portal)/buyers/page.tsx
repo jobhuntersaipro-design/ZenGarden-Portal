@@ -29,7 +29,7 @@ import {
   type SearchParams,
 } from "@/lib/queries/pagination";
 
-export const metadata: Metadata = { title: "Buyers · Loving Hands Portal" };
+export const metadata: Metadata = { title: "Buyers · Zen Garden Portal" };
 export const dynamic = "force-dynamic";
 
 const FILTERS: BuyerFilter[] = ["lapsed", "at-risk", "overdue"];

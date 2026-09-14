@@ -9,7 +9,7 @@ import { listShopProducts } from "@/lib/queries/shop-catalogue";
 import { SHOP_PER_PAGE, parseShopQuery, shopQueryHref } from "@/lib/shop-filters";
 import { shopHref } from "@/lib/shop-routes";
 
-export const metadata: Metadata = { title: "Products · Loving Hands" };
+export const metadata: Metadata = { title: "Products · Zen Garden" };
 export const dynamic = "force-dynamic";
 
 /** "48 products · showing 1–24" / "1 product" / "Nothing yet" (§5.3).

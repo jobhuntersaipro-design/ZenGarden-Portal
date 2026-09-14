@@ -30,7 +30,7 @@ export function ReorderSignalsCard({
         </div>
         <div className="text-right">
           {/* A signal is only useful if acting on it is one click away. The
-              label names what happens: Loving Hands is the seller, so nothing
+              label names what happens: Zen Garden is the seller, so nothing
               here is being bought. */}
           <Link
             href={`/upload?buyer=${encodeURIComponent(buyerId)}`}

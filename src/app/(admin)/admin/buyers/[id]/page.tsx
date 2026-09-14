@@ -62,7 +62,7 @@ export async function generateMetadata({
 }): Promise<Metadata> {
   const { id } = await params;
   const buyer = await prisma.buyer.findUnique({ where: { id }, select: { name: true } });
-  return { title: `${buyer?.name ?? "Buyer"} · Loving Hands Portal` };
+  return { title: `${buyer?.name ?? "Buyer"} · Zen Garden Portal` };
 }
 
 const plural = (count: number, noun: string) => `${count} ${noun}${count === 1 ? "" : "s"}`;

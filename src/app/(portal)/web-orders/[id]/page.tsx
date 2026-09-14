@@ -8,7 +8,7 @@ import { requireUser } from "@/lib/auth-guards";
 import { prisma } from "@/lib/prisma";
 import { loadWebOrderForReview } from "@/lib/queries/web-orders";
 
-export const metadata: Metadata = { title: "Shop order · Loving Hands Portal" };
+export const metadata: Metadata = { title: "Shop order · Zen Garden Portal" };
 export const dynamic = "force-dynamic";
 
 /**

@@ -3,7 +3,7 @@ import { AuthCard } from "@/components/auth/AuthCard";
 import { UseDifferentAccount } from "@/components/auth/UseDifferentAccount";
 
 export const metadata: Metadata = {
-  title: "Access requested · Loving Hands Portal",
+  title: "Access requested · Zen Garden Portal",
 };
 
 /** `?e=` is base64url of the address the visitor signed in with. */
@@ -47,7 +47,7 @@ export default async function AccessRequestedPage({
     <AuthCard
       eyebrow="Access requested"
       title="You're on the list"
-      subtitle="We've sent your request to a Loving Hands admin. You'll get an email at the address below once it's approved — usually within a working day."
+      subtitle="We've sent your request to a Zen Garden admin. You'll get an email at the address below once it's approved — usually within a working day."
     >
       {/* Only what the URL carries is shown. Looking the request up to add the
           real name and avatar would turn this page into a way to test whether

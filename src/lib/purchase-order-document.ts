@@ -124,7 +124,7 @@ export function buildPoDocument(input: {
       contact: joinContact(input.buyer?.contactName ?? null, input.buyer?.email ?? null),
     },
     supplier: {
-      name: input.supplier.name ?? "Loving Hands",
+      name: input.supplier.name ?? "Zen Garden",
       address: input.supplier.address ?? null,
       contact: joinContact(input.supplier.email, input.supplier.phone),
     },

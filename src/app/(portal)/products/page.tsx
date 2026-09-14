@@ -30,7 +30,7 @@ import {
   type SearchParams,
 } from "@/lib/queries/pagination";
 
-export const metadata: Metadata = { title: "Products · Loving Hands Portal" };
+export const metadata: Metadata = { title: "Products · Zen Garden Portal" };
 export const dynamic = "force-dynamic";
 
 const FILTERS: ProductFilter[] = [

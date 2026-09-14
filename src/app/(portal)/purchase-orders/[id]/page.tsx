@@ -38,7 +38,7 @@ export async function generateMetadata({
     where: { id },
     select: { poNumber: true },
   });
-  return { title: `${po?.poNumber ?? "Purchase order"} · Loving Hands Portal` };
+  return { title: `${po?.poNumber ?? "Purchase order"} · Zen Garden Portal` };
 }
 
 const DAY_MS = 24 * 60 * 60 * 1000;

@@ -7,7 +7,7 @@ import { BuyerForm } from "@/components/buyers/BuyerForm";
 import { getSessionUser } from "@/lib/auth-guards";
 
 export const metadata: Metadata = {
-  title: "New buyer · Loving Hands Portal",
+  title: "New buyer · Zen Garden Portal",
 };
 export const dynamic = "force-dynamic";
 

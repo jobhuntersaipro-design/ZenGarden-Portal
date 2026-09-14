@@ -55,7 +55,7 @@ export async function generateMetadata({
     where: { id },
     select: { name: true },
   });
-  return { title: `${product?.name ?? "Product"} · Loving Hands Portal` };
+  return { title: `${product?.name ?? "Product"} · Zen Garden Portal` };
 }
 
 export default async function ProductPage({

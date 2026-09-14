@@ -6,7 +6,7 @@ import { AuthCard } from "@/components/auth/AuthCard";
 import { Notice } from "@/components/auth/Notice";
 import { SignInForm } from "@/components/auth/SignInForm";
 
-export const metadata: Metadata = { title: "Sign in · Loving Hands Portal" };
+export const metadata: Metadata = { title: "Sign in · Zen Garden Portal" };
 
 /**
  * `?next=` is attacker-controlled, so only a same-origin path is honoured.
@@ -55,7 +55,7 @@ export default async function SignInPage({
 
   return (
     <AuthCard
-      title={isShop ? "Sign in to order" : "Sign in to Loving Hands"}
+      title={isShop ? "Sign in to order" : "Sign in to Zen Garden"}
       subtitle={
         isShop
           ? "Browse the catalogue and place your order."

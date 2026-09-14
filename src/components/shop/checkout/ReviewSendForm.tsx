@@ -86,88 +86,123 @@ export function ReviewSendForm({
     });
 
   return (
-    <div className="mt-lg grid gap-xl lg:grid-cols-[minmax(0,1fr)_var(--container-panel-sm)] lg:items-start">
-      <div className="flex flex-col gap-lg">
-        <Card title="Order details">
-          <div className="flex flex-col gap-md">
-            <Field
-              label="Your own PO number (optional)"
-              hint={
-                cart.reference
-                  ? `Printed at the top of your purchase order. Leave it blank and we'll use our reference, ${cart.reference}.`
-                  : "Printed at the top of your purchase order."
-              }
-            >
-              <Input
-                value={buyerReference}
-                onChange={(event) => setBuyerReference(event.target.value)}
-                maxLength={64}
-                className="font-mono"
-                aria-label="Your own PO number"
-              />
-            </Field>
+    <div className="mt-lg flex flex-col gap-xl">
+      {/* The two short cards pair up from `md`; with no buyer on the session
+          there is only one, so the grid is not applied at all rather than
+          leaving half the row empty. `min-w-0` on each item because a grid
+          item defaults to `min-width: auto` and will not shrink below its
+          content (the same trap Phase 25 hit on /admin/buyers/[id]). */}
+      <div className={buyer ? "grid gap-lg md:grid-cols-2 md:items-start" : ""}>
+        <div className="min-w-0">
+          <Card title="Order details">
+            <div className="flex flex-col gap-md">
+              <Field
+                label="Your own PO number (optional)"
+                hint={
+                  cart.reference
+                    ? `Printed at the top of your purchase order. Leave it blank and we'll use our reference, ${cart.reference}.`
+                    : "Printed at the top of your purchase order."
+                }
+              >
+                <Input
+                  value={buyerReference}
+                  onChange={(event) => setBuyerReference(event.target.value)}
+                  maxLength={64}
+                  className="font-mono"
+                  aria-label="Your own PO number"
+                />
+              </Field>
 
-            <Field
-              label="Delivery requested (optional)"
-              hint="A request, not a promise — our team confirms the date with you."
-            >
-              <Input
-                type="date"
-                value={requestedDate}
-                min={todayInKL}
-                onChange={(event) => setRequestedDate(event.target.value)}
-                aria-label="Delivery requested"
-              />
-            </Field>
-          </div>
-        </Card>
+              <Field
+                label="Delivery requested (optional)"
+                hint="A request, not a promise — our team confirms the date with you."
+              >
+                <Input
+                  type="date"
+                  value={requestedDate}
+                  min={todayInKL}
+                  onChange={(event) => setRequestedDate(event.target.value)}
+                  aria-label="Delivery requested"
+                />
+              </Field>
+            </div>
+          </Card>
+        </div>
 
         {buyer ? (
-          <Card title="Deliver to">
-            <p className="text-[length:var(--text-body-md)] font-semibold text-ink">
-              {buyer.name}
-            </p>
-            {buyer.address ? (
-              <p className="mt-xxs whitespace-pre-line text-[length:var(--text-body-sm)] text-ink-secondary">
-                {buyer.address}
+          <div className="min-w-0">
+            <Card title="Deliver to">
+              <p className="text-[length:var(--text-body-md)] font-semibold text-ink">
+                {buyer.name}
               </p>
-            ) : null}
-            {buyer.contactName || buyer.email ? (
-              <p className="mt-xxs text-[length:var(--text-caption)] text-ink-tertiary">
-                {[buyer.contactName, buyer.email].filter(Boolean).join(" · ")}
+              {buyer.address ? (
+                <p className="mt-xxs whitespace-pre-line text-[length:var(--text-body-sm)] text-ink-secondary">
+                  {buyer.address}
+                </p>
+              ) : null}
+              {buyer.contactName || buyer.email ? (
+                <p className="mt-xxs text-[length:var(--text-caption)] text-ink-tertiary">
+                  {[buyer.contactName, buyer.email].filter(Boolean).join(" · ")}
+                </p>
+              ) : null}
+              <p className="mt-sm text-[length:var(--text-caption)] text-ink-tertiary">
+                This is the address we hold for your company. Changing it is a
+                message to our team rather than an edit, so your invoicing
+                details stay correct.
               </p>
-            ) : null}
-            <p className="mt-sm text-[length:var(--text-caption)] text-ink-tertiary">
-              This is the address we hold for your company. Changing it is a
-              message to our team rather than an edit, so your invoicing details
-              stay correct.
-            </p>
-            {supplierEmail ? (
-              <a
-                href={`mailto:${supplierEmail}?subject=${encodeURIComponent(`Change of details for ${buyer.name}`)}`}
-                className="mt-sm flex h-control-md w-fit items-center rounded-pill border border-hairline-strong px-md text-[length:var(--text-button-md)] font-semibold text-ink hover:border-ink focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-focus"
-              >
-                Ask us to change this
-              </a>
-            ) : null}
-          </Card>
+              {supplierEmail ? (
+                <a
+                  href={`mailto:${supplierEmail}?subject=${encodeURIComponent(`Change of details for ${buyer.name}`)}`}
+                  className="mt-sm flex h-control-md w-fit items-center rounded-pill border border-hairline-strong px-md text-[length:var(--text-button-md)] font-semibold text-ink hover:border-ink focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-focus"
+                >
+                  Ask us to change this
+                </a>
+              ) : null}
+            </Card>
+          </div>
         ) : null}
-
-        <Card title="Anything we should know?">
-          <Textarea
-            value={notes}
-            onChange={(event) => setNotes(event.target.value)}
-            maxLength={2000}
-            className="min-h-24"
-            aria-label="Anything we should know"
-          />
-          <p className="mt-xxs text-[length:var(--text-caption)] text-ink-tertiary">
-            Appears on your purchase order and reaches our team with the order.
-          </p>
-        </Card>
       </div>
 
-      <div className="rounded-lg border border-hairline bg-canvas p-lg">
+      <Card title="Anything we should know?">
+        <Textarea
+          value={notes}
+          onChange={(event) => setNotes(event.target.value)}
+          maxLength={2000}
+          className="min-h-24"
+          aria-label="Anything we should know"
+        />
+        <p className="mt-xxs text-[length:var(--text-caption)] text-ink-tertiary">
+          Appears on your purchase order and reaches our team with the order.
+        </p>
+      </Card>
+
+      {/* `min-w-0`: the A4 document inside is 794px wide and would otherwise
+          stretch this column to its own width and push the *page* sideways
+          (measured 856 against 390). With it, the document scrolls inside its
+          own container, which is this project's rule for wide content. */}
+      <section className="min-w-0">
+        <h2 className="text-[length:var(--text-heading-sm)] font-[650] text-ink">
+          Your purchase order
+        </h2>
+        <p className="mt-xxs text-[length:var(--text-body-sm)] text-ink-tertiary">
+          This is the document we file against your order. It updates as you
+          fill in the fields above.
+        </p>
+        <div className="mt-md">
+          {documentIsSound ? (
+            <PurchaseOrderPreview document={document} />
+          ) : (
+            <p className="rounded-lg border border-accent-red p-md text-[length:var(--text-body-sm)] text-accent-red">
+              We couldn&rsquo;t draw your purchase order. Go back to the cart and
+              try again.
+            </p>
+          )}
+        </div>
+      </section>
+
+      {/* Last, because it is the last thing you do: the buyer reads the
+          document above, then confirms the figures underneath it. */}
+      <section className="rounded-lg border border-hairline bg-canvas p-lg">
         <h2 className="text-[length:var(--text-heading-sm)] font-[650] text-ink">
           {`${cart.lines.length} product${cart.lines.length === 1 ? "" : "s"} · ${cartonCount} carton${cartonCount === 1 ? "" : "s"}`}
         </h2>
@@ -199,40 +234,24 @@ export function ReviewSendForm({
           </span>
         </div>
 
-        <Button pending={pending} onClick={send} className="mt-md h-control-lg w-full gap-xs">
-          <Send className="size-4 shrink-0" aria-hidden />
-          Confirm order
-        </Button>
+        {/* The wrapper does the centring, not `mx-auto` on the button: the
+            Button primitive is `inline-flex`, and auto margins have no effect
+            on an inline-level box. */}
+        <div className="mt-md sm:flex sm:justify-center">
+          <Button
+            pending={pending}
+            onClick={send}
+            className="h-control-lg w-full gap-xs sm:w-auto sm:min-w-80"
+          >
+            <Send className="size-4 shrink-0" aria-hidden />
+            Confirm order
+          </Button>
+        </div>
 
-        <p className="mt-sm text-[length:var(--text-caption)] text-ink-tertiary">
+        <p className="mt-sm text-[length:var(--text-caption)] text-ink-tertiary sm:text-center">
           Prices are fixed at the figures above the moment you confirm. Delivery
           is quoted separately when our team confirms.
         </p>
-      </div>
-
-      {/* `min-w-0`: a grid item defaults to `min-width: auto`, so the A4
-          document inside stretched this column to its own 794px and pushed
-          the *page* sideways (measured 856 against 390). With it, the column
-          clamps and the document scrolls inside its own container, which is
-          this project's rule for wide content. */}
-      <section className="min-w-0 lg:col-span-2">
-        <h2 className="text-[length:var(--text-heading-sm)] font-[650] text-ink">
-          Your purchase order
-        </h2>
-        <p className="mt-xxs text-[length:var(--text-body-sm)] text-ink-tertiary">
-          This is the document we file against your order. It updates as you
-          fill in the fields above.
-        </p>
-        <div className="mt-md">
-          {documentIsSound ? (
-            <PurchaseOrderPreview document={document} />
-          ) : (
-            <p className="rounded-lg border border-accent-red p-md text-[length:var(--text-body-sm)] text-accent-red">
-              We couldn&rsquo;t draw your purchase order. Go back to the cart and
-              try again.
-            </p>
-          )}
-        </div>
       </section>
     </div>
   );

@@ -1,6 +1,100 @@
-# Current Feature: The purchase order preview, and the steps
+# Current Feature: Zen Garden — the rebrand, and Confirm order last
 
 ## Status
+
+**Phase 34 — the Zen Garden rebrand, and Confirm order last — built and
+verified on `feature/zen-garden-rebrand`** (2026-09-15). Asked for as: "in the
+review page, put the Confirm Order section in the last, after the Purchase
+Order" and "change all Loving Hands to Zen Garden in pages in all
+shop.lovinghandsportal.com, and lovinghandsportal.com. We are rebranding to
+Zen Garden."
+
+Every user-visible "Loving Hands" on both hosts is now "Zen Garden" — the
+wordmark (`Zen` in the brand gradient, `Garden` in ink), every page title, the
+shop hero and footer, the five email templates and their own wordmark, the
+sign-in card, and the supplier name the purchase-order document falls back to.
+The domains are untouched: `lovinghandsportal.com`, `shop.lovinghandsportal.com`
+and every `@lovinghandsportal.com` address still read as they did.
+
+On `/checkout/review` the summary-and-Confirm card left the right-hand column
+and became the last block on the page: **Order details** and **Deliver to**
+pair up two-across, the note card and the A4 purchase order run full width
+below them, and the buyer confirms underneath the document they just read.
+
+No migration, no new dependency, no schema change.
+
+## Goals
+
+- One display name across both hosts, with the domains and email addresses
+  deliberately unchanged.
+- The extraction prompt naming **both** names, so the 400 purchase orders
+  already filed — and any document a customer sends this week still printing
+  "Loving Hands" — are read as the seller rather than the buyer.
+- `ReviewSendForm` reordered so Confirm order is the last thing on the screen.
+
+## Notes
+
+- **`EMAIL_FROM` in production still carries the old display name.** The
+  repository's `.env.example` and `SETUP-CHECKLIST.md` now say
+  `Zen Garden Portal <portal@lovinghandsportal.com>`, but the live value is a
+  Vercel environment variable this branch cannot reach — until it is changed,
+  every email arrives from "Loving Hands Portal" however the body reads.
+- `docs/specs/**`, `context/*.md`, `CLAUDE.md` and the Claude Design canvas
+  still say "Loving Hands" throughout. Those are internal documents rather
+  than pages, so they were left alone rather than rewritten in passing.
+- `AvatarBroadcast`'s `BroadcastChannel` key is still `"loving-hands.avatar"`.
+  It is an internal channel name with no user-visible surface, and renaming it
+  would only desynchronise tabs open across the deploy.
+- **The supplier block still prints only a name.** No `OrgSettings` row
+  exists, so the document's fallback — now "Zen Garden" — is all that shows;
+  address, email and phone are still unset and still need filling in on
+  `/admin` before a purchase order reaches a real customer.
+
+### Verified, as a real buyer and a real member
+
+- **Both hosts, in a browser.** A `CLIENT` session on `shop.localhost` read
+  the header wordmark, hero eyebrow ("ZEN GARDEN WHOLESALE"), footer
+  ("© 2026 Zen Garden.") and page titles ("Review your order · Zen Garden");
+  an ops `MEMBER` on `localhost` read the sidebar wordmark and
+  "Dashboard · Zen Garden Portal". `document.body.textContent` on the review
+  page matched **"Zen Garden" 8 times and "Loving Hands" 0 times**.
+- **The purchase-order document itself** printed the Zen Garden wordmark and
+  `SUPPLIER Zen Garden`, and still updated live: typing `PO-REBRAND-1` put it
+  on the document without a reload.
+- **The order, measured rather than eyeballed.** At 1440px the section tops
+  read Order details 453, Deliver to 453 (same row), note card 804, purchase
+  order 1034, summary 1962, **Confirm order 2192** — last on the page. At
+  768px the same order held; at 390px the cards stacked (559 / 912 / 1161 /
+  1409 / 2358) and the button went full width at 300×52.
+- **A defect the browser found that the build could not.** `sm:mx-auto` did
+  not centre the Confirm button — the `Button` primitive is `inline-flex`, and
+  auto margins have no effect on an inline-level box, so it sat hard left
+  under a centred caption. A `sm:flex sm:justify-center` wrapper fixed it,
+  re-measured at **0px** between the button's centre and the card's.
+- **No horizontal overflow** at 390 / 768 / 1440 —
+  `scrollWidth === innerWidth` on all three.
+- **Cleanup, counted both ends.** One throwaway `CLIENT` contact was created
+  against an existing buyer for the journey and deleted afterwards with its
+  one `SIGNED_IN` audit row and two `LoginAttempt` rows, all **by id**.
+  Counts returned to the baseline exactly: users **2**, CLIENT **0**, buyers
+  **11**, products **308**, purchase orders **400**, line items **1606**, web
+  orders **0**, `OrgSettings` **0**, audits **5**, login attempts **63**;
+  `aisha@lovinghandsportal.com` read back as `MEMBER`. The shop cart leaves
+  nothing behind by design — `priceCart` takes its lines from the client, so
+  no `WebOrder` row exists until send, and `localStorage` was empty after.
+  Four temporary scripts at the project root were removed.
+- **912/912 tests, `tsc --noEmit`, `npm run lint`** (the same 2 pre-existing
+  warnings, 0 errors) **and `npm run build` all clean.**
+
+**Not verified:** anything on production — this branch has never been
+deployed. The five rebranded emails were not sent; only their source strings
+were checked, and `@react-email/render` is still the missing optional
+dependency recorded on 2026-09-13. The extraction path was not driven against
+a real document (that spends an Anthropic call); the prompt change is covered
+by its unit test alone.
+
+## Previous phase
+
 
 **Phase 33 — The purchase order preview, and the steps — built and verified
 on `feature/po-preview-and-steps`** (2026-09-14). Spec

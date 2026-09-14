@@ -9,7 +9,7 @@ import { loadSentOrder } from "@/lib/queries/shop-checkout";
 import { shopHref } from "@/lib/shop-routes";
 import { loadShopViewer } from "@/lib/shop-viewer";
 
-export const metadata: Metadata = { title: "Order sent · Loving Hands" };
+export const metadata: Metadata = { title: "Order sent · Zen Garden" };
 export const dynamic = "force-dynamic";
 
 /**

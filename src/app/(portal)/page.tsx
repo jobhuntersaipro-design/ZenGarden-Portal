@@ -31,7 +31,7 @@ import {
 import { PO_LIST_SORT_KEYS } from "@/lib/queries/po-list.sql";
 import { listPurchaseOrders } from "@/lib/queries/purchase-orders";
 
-export const metadata: Metadata = { title: "Dashboard · Loving Hands Portal" };
+export const metadata: Metadata = { title: "Dashboard · Zen Garden Portal" };
 export const dynamic = "force-dynamic";
 
 export default async function DashboardPage({

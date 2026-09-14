@@ -10,7 +10,7 @@ import { loadReviewBuyer } from "@/lib/queries/shop-checkout";
 import { shopHref } from "@/lib/shop-routes";
 import { loadShopViewer } from "@/lib/shop-viewer";
 
-export const metadata: Metadata = { title: "Review your order · Loving Hands" };
+export const metadata: Metadata = { title: "Review your order · Zen Garden" };
 export const dynamic = "force-dynamic";
 
 /**

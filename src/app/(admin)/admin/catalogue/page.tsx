@@ -4,7 +4,7 @@ import { Rise } from "@/components/portal/Rise";
 import { LABEL_KINDS } from "@/lib/catalog-labels";
 import { listCatalogLabels } from "@/lib/queries/catalog-labels";
 
-export const metadata: Metadata = { title: "Catalogue · Loving Hands Portal" };
+export const metadata: Metadata = { title: "Catalogue · Zen Garden Portal" };
 export const dynamic = "force-dynamic";
 
 /**
