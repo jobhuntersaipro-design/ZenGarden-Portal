@@ -41,7 +41,7 @@ export function ProductImageManager({
   const refresh = useAwaitableRefresh();
   const [pending, startTransition] = useTransition();
   const [working, setWorking] = useState<string | null>(null);
-  const { rows, add, clear } = useImageUploadQueue(productId, () => {
+  const { rows, add, clear } = useImageUploadQueue(() => {
     startTransition(() => {
       void refresh();
     });
@@ -165,7 +165,7 @@ export function ProductImageManager({
         ) : (
           <ImageDropzone
             disabled={pending}
-            onFiles={(files) => void add(files, ordered.length)}
+            onFiles={(files) => void add(productId, files, ordered.length)}
           />
         )}
       </div>

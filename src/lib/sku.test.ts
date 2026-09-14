@@ -50,6 +50,27 @@ describe("generateSku", () => {
     expect(generateSku({ ...product, size: "1L" })).toBe("ZEN-SC-1000-GM-VN");
   });
 
+  it("falls back to initials for a category the table has never heard of", () => {
+    // Categories grow by typing since Phase 27, so the table is a starting
+    // vocabulary like the brand and market ones — not a closed list whose
+    // absence would leave the type segment `undefined`.
+    expect(generateSku({ ...product, category: "Pet care" })).toBe(
+      "ZEN-PC-2100-GM-VN",
+    );
+    expect(generateSku({ ...product, category: "Bleach" })).toBe(
+      "ZEN-BLEACH-2100-GM-VN",
+    );
+  });
+
+  it("still abbreviates every seeded category", () => {
+    expect(generateSku({ ...product, category: "Hand wash & soap" })).toBe(
+      "ZEN-HW-2100-GM-VN",
+    );
+    expect(generateSku({ ...product, category: "Uncategorised" })).toBe(
+      "ZEN-XX-2100-GM-VN",
+    );
+  });
+
   it("drops a segment that has no value rather than leaving a double dash", () => {
     expect(generateSku({ ...product, variant: null })).toBe("ZEN-SC-2100-VN");
     expect(generateSku({ ...product, market: null, variant: null })).toBe(

@@ -1,5 +1,3 @@
-import type { ProductCategory } from "@/lib/product-categories";
-
 /**
  * SKU generation for the imported catalog.
  *
@@ -17,7 +15,7 @@ import type { ProductCategory } from "@/lib/product-categories";
  * editable, and matched exactly like any other.
  */
 
-export type SkuField = "brand" | "variant" | "market";
+export type SkuField = "brand" | "variant" | "market" | "category";
 
 const BRANDS: Record<string, string> = {
   "zen garden": "ZEN",
@@ -102,23 +100,29 @@ const MARKETS: Record<string, string> = {
   china: "CN",
 };
 
+/**
+ * Category → the two-letter type segment, keyed the way `normalise` leaves a
+ * label. A starting vocabulary like the three above it, not a closed one:
+ * since Phase 27 a super admin can add a category by typing it, and one with
+ * no entry here falls back to the same initials rule ("Pet care" → PC).
+ */
+const CATEGORIES: Record<string, string> = {
+  "shower cream gel": "SC",
+  "hand wash soap": "HW",
+  "hair care": "HC",
+  "body care": "BC",
+  "hand sanitizer": "HS",
+  "dishwash cleanser": "DW",
+  "laundry detergent": "LD",
+  fragrance: "FG",
+  uncategorised: "XX",
+};
+
 const TABLES: Record<SkuField, Record<string, string>> = {
   brand: BRANDS,
   variant: VARIANTS,
   market: MARKETS,
-};
-
-/** Category → the two-letter type segment. */
-const TYPES: Record<ProductCategory, string> = {
-  "Shower cream & gel": "SC",
-  "Hand wash & soap": "HW",
-  "Hair care": "HC",
-  "Body care": "BC",
-  "Hand sanitizer": "HS",
-  "Dishwash & cleanser": "DW",
-  "Laundry detergent": "LD",
-  Fragrance: "FG",
-  Uncategorised: "XX",
+  category: CATEGORIES,
 };
 
 /** "Goat's Milk (Green)" → "goats milk green": what every lookup keys on. */
@@ -162,14 +166,14 @@ export function sizeCode(size: string): string | null {
 
 export function generateSku(product: {
   brand: string | null;
-  category: ProductCategory;
+  category: string;
   size: string | null;
   variant: string | null;
   market: string | null;
 }): string {
   const segments = [
     product.brand ? skuCode("brand", product.brand) : null,
-    TYPES[product.category],
+    skuCode("category", product.category),
     product.size ? sizeCode(product.size) : null,
     product.variant ? skuCode("variant", product.variant) : null,
     product.market ? skuCode("market", product.market) : null,

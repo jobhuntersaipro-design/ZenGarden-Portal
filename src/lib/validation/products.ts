@@ -1,5 +1,4 @@
 import { z } from "zod";
-import { PRODUCT_CATEGORIES } from "@/lib/product-categories";
 import { Prisma } from "@/generated/prisma/browser";
 
 /**
@@ -80,7 +79,16 @@ const packSize = z
 export const productSchema = z.object({
   name: z.string().min(1, "A name is required").max(120),
   sku: skuSchema,
-  category: z.enum(PRODUCT_CATEGORIES),
+  /**
+   * A growing label like brand and market, seeded by `PRODUCT_CATEGORIES` —
+   * a closed enum until Phase 27. Required, unlike its siblings: every
+   * product is some kind of thing, and the share charts group by this.
+   */
+  category: z
+    .string()
+    .transform((value) => value.trim())
+    .refine((value) => value.length > 0, "A category is required")
+    .refine((value) => value.length <= 56, "Use at most 56 characters"),
   unit: z.string().min(1, "A unit is required").max(24),
   listPrice: decimalString,
   /** ZEN GARDEN, MR. KING, L.HANDS — the name on the bottle. */

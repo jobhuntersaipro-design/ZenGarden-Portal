@@ -4,7 +4,6 @@ import { useEffect, useRef, useState } from "react";
 import { usePathname, useSearchParams } from "next/navigation";
 import { LayoutGrid, List, Search } from "lucide-react";
 import { Input } from "@/components/ui/input";
-import { PRODUCT_CATEGORIES } from "@/lib/product-categories";
 import type { ProductFilter, ProductSortKey } from "@/lib/queries/products";
 import { ChoiceButton } from "@/components/portal/ChoiceButton";
 import { SegmentGroup } from "@/components/portal/SegmentGroup";
@@ -41,6 +40,7 @@ export function ProductToolbar({
   sortKey,
   summary,
   brands,
+  categories,
 }: {
   view: ProductView;
   filter: ProductFilter;
@@ -48,6 +48,8 @@ export function ProductToolbar({
   summary: string;
   /** Every brand on a product, for the filter; the page derives it from the rows. */
   brands: string[];
+  /** Every category in use, derived the same way — the list is no longer fixed. */
+  categories: string[];
 }) {
   const { replace } = useUrlNavigation();
   // One transition per group, so a chip click never spins the sort strip.
@@ -137,7 +139,7 @@ export function ProductToolbar({
           className="h-control-md sm:h-control-sm rounded-sm border border-hairline-strong bg-transparent px-xs text-[length:var(--text-body-sm)] text-ink focus-visible:border-focus focus-visible:outline-2 focus-visible:outline-focus"
         >
           <option value="">All categories</option>
-          {PRODUCT_CATEGORIES.map((category) => (
+          {categories.map((category) => (
             <option key={category} value={category}>
               {category}
             </option>

@@ -24,7 +24,15 @@ export type ImageRow = {
 /** Matches the browser's own limit on parallel requests to one origin. */
 const CONCURRENCY = 3;
 
-export function useImageUploadQueue(productId: string, onDone: () => void) {
+/** What one `add` did, for a caller that has to decide what happens next. */
+export type UploadOutcome = { uploaded: number; failed: number };
+
+/**
+ * The product id arrives per call rather than per hook: `/products/new` does
+ * not know it until the moment the form is submitted and the row is written,
+ * and presign needs a product to hang `ProductImage` rows on.
+ */
+export function useImageUploadQueue(onDone: () => void) {
   const [rows, setRows] = useState<ImageRow[]>([]);
   const busy = useRef(false);
 
@@ -59,9 +67,14 @@ export function useImageUploadQueue(productId: string, onDone: () => void) {
   );
 
   const add = useCallback(
-    async (files: File[], existingCount: number) => {
-      if (busy.current || files.length === 0) return;
+    async (
+      productId: string,
+      files: File[],
+      existingCount: number,
+    ): Promise<UploadOutcome> => {
+      if (busy.current || files.length === 0) return { uploaded: 0, failed: 0 };
       busy.current = true;
+      let uploaded = 0;
 
       // Rejected client-side first, so an obviously bad file gets its reason
       // without a round trip — the same contract the server re-applies.
@@ -83,7 +96,8 @@ export function useImageUploadQueue(productId: string, onDone: () => void) {
 
       if (sendable.length === 0) {
         busy.current = false;
-        return;
+        onDone();
+        return { uploaded: 0, failed: files.length };
       }
 
       try {
@@ -141,6 +155,7 @@ export function useImageUploadQueue(productId: string, onDone: () => void) {
                 throw new Error(problem.error ?? "We couldn't process that image");
               }
               patch(job.rowId, { status: "done", progress: 100 });
+              uploaded += 1;
             } catch (cause) {
               patch(job.rowId, {
                 status: "failed",
@@ -167,8 +182,10 @@ export function useImageUploadQueue(productId: string, onDone: () => void) {
         busy.current = false;
         onDone();
       }
+
+      return { uploaded, failed: files.length - uploaded };
     },
-    [productId, patch, put, onDone],
+    [patch, put, onDone],
   );
 
   const clear = useCallback(() => setRows([]), []);

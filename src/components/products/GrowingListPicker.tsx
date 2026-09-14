@@ -28,12 +28,20 @@ export function GrowingListPicker({
   label,
   value,
   known,
+  required = false,
   onChange,
 }: {
-  /** Sentence-case noun: "Brand", "Variant", "Market". */
+  /** Sentence-case noun: "Brand", "Variant", "Market", "Category". */
   label: string;
   value: string | null;
   known: string[];
+  /**
+   * Category is the one of these a product must have, so its list carries no
+   * "No category" row: an option that cannot be honoured — the schema refuses
+   * a blank one — would be a control that looks like it does something and
+   * does nothing.
+   */
+  required?: boolean;
   onChange: (value: string | null) => void;
 }) {
   const options = value && !known.includes(value) ? [value, ...known] : known;
@@ -43,9 +51,9 @@ export function GrowingListPicker({
     <Combobox
       ariaLabel={label}
       value={value ?? NONE}
-      placeholder={none}
+      placeholder={required ? `Choose a ${label.toLowerCase()}` : none}
       options={[
-        { id: NONE, label: none },
+        ...(required ? [] : [{ id: NONE, label: none }]),
         ...options.map((entry) => ({ id: entry, label: entry })),
       ]}
       createLabel={(query) => `+ Add “${query}”`}
