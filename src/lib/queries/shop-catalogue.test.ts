@@ -18,7 +18,7 @@ vi.mock("@/lib/prisma", () => ({
 }));
 vi.mock("@/lib/r2", () => ({ presignGet }));
 
-const { listShopProducts, relatedShopProducts } = await import(
+const { listShopProducts, relatedShopProducts, variantsOfProduct } = await import(
   "@/lib/queries/shop-catalogue"
 );
 const { parseShopQuery } = await import("@/lib/shop-filters");
@@ -44,6 +44,7 @@ const row = (over: Record<string, unknown>) => ({
   id: "p1",
   sku: "SKU-1",
   name: "ZEN 2.1L",
+  family: null,
   brand: "ZEN GARDEN",
   variant: null,
   packSize: 6,
@@ -87,6 +88,21 @@ describe("listShopProducts — grouping", () => {
       "Goat's Milk",
       "Papaya",
     ]);
+  });
+
+  it("draws one card, titled by the family, for two lines ops placed in one family", async () => {
+    // "ZEN 2.1L" and "2.1L ZEN SIGNATURE" derive to two cards; the family
+    // says they are one product, and its name is the card's title.
+    const family = { id: "fam1", name: "Zen Garden Shower Cream 2.1L" };
+    serveRows([
+      variantRow("Papaya", { family }),
+      variantRow("Carrot", { name: "2.1L ZEN SIGNATURE — Carrot", family }),
+    ]);
+
+    const catalogue = await listShopProducts(parseShopQuery({}));
+    expect(catalogue.total).toBe(1);
+    expect(catalogue.groups[0].name).toBe("Zen Garden Shower Cream 2.1L");
+    expect(catalogue.groups[0].variants.map((v) => v.familyId)).toEqual(["fam1", "fam1"]);
   });
 
   it("keeps two pack sizes of the same product as two cards", async () => {
@@ -215,11 +231,44 @@ describe("listShopProducts — sort and paging", () => {
   });
 });
 
+describe("variantsOfProduct", () => {
+  const product = {
+    id: "prd_1",
+    sku: "ZEN-SC-2100-GM-VN",
+    name: "ZEN 2.1L — Goat's Milk",
+    familyId: "fam1",
+    brand: "ZEN GARDEN",
+    variant: "Goat's Milk",
+    packSize: 6,
+    market: "Vietnam",
+  };
+
+  it("asks the database for the family outright when the product has one", async () => {
+    await variantsOfProduct(product);
+    const where = productFindMany.mock.calls[0][0].where;
+    expect(where.familyId).toBe("fam1");
+    expect(where.brand).toBeUndefined();
+    expect({ packSize: where.packSize, market: where.market }).toEqual({
+      packSize: 6,
+      market: "Vietnam",
+    });
+  });
+
+  it("falls back to brand, pack size and market for a product in no family", async () => {
+    await variantsOfProduct({ ...product, familyId: null });
+    const where = productFindMany.mock.calls[0][0].where;
+    expect(where.familyId).toBeUndefined();
+    expect(where.brand).toBe("ZEN GARDEN");
+  });
+});
+
 describe("relatedShopProducts", () => {
   const product: ShopProductDetail = {
     id: "prd_1",
     sku: "ZEN-SC-2100-GM-VN",
     name: "ZEN 2.1L — Goat's Milk",
+    familyId: null,
+    familyName: null,
     brand: "ZEN GARDEN",
     variant: "Goat's Milk",
     category: "Shower cream & gel",

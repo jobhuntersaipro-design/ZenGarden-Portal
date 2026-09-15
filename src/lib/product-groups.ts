@@ -23,6 +23,13 @@
  * when it really is this product's own variant**, matched case-insensitively.
  * A name that merely contains a dash keeps every character, so
  * `H/WASH 500ML (7/LAYER X 8)` is never truncated.
+ *
+ * Since Phase 36 a product may carry a **family** — the product across every
+ * market, assigned in ops — and where it does, the family stands in for the
+ * brand-and-name half of the key and its name is the group's title. Pack
+ * size and market stay in the key either way (see `groupKey`). The derived
+ * key remains the fallback, so a product placed in no family draws the card
+ * it always drew.
  */
 
 /** The fields a group is derived from. Any product row satisfies it. */
@@ -34,6 +41,13 @@ export type Groupable = {
   variant: string | null;
   packSize: number | null;
   market: string | null;
+  /**
+   * Optional rather than nullable so a caller that has not selected it still
+   * groups — on the derived key. A caller that wants families to agree with
+   * ops selects both of these.
+   */
+  familyId?: string | null;
+  familyName?: string | null;
 };
 
 /** Separator for the composite key: a NUL cannot occur in any of the parts. */
@@ -74,12 +88,17 @@ export function groupName(product: Pick<Groupable, "name" | "variant">): string 
  * collapsing those would offer a buyer a variant their market does not stock.
  */
 export function groupKey(product: Groupable): string {
-  return [
-    product.brand ?? "",
-    groupName(product),
-    product.packSize ?? "",
-    product.market ?? "",
-  ].join(SEP);
+  // A family id cannot collide with a brand + name pair: the pair carries a
+  // NUL between its halves and a cuid never does.
+  const identity = product.familyId
+    ? [product.familyId]
+    : [product.brand ?? "", groupName(product)];
+  return [...identity, product.packSize ?? "", product.market ?? ""].join(SEP);
+}
+
+/** The title a group is shown under: its family's name where it has one. */
+function groupTitle(product: Groupable): string {
+  return (product.familyId && product.familyName) || groupName(product);
 }
 
 export type ProductGroup<T extends Groupable> = {
@@ -119,7 +138,7 @@ export function groupProducts<T extends Groupable>(products: T[]): ProductGroup<
     }
     groups.set(key, {
       key,
-      name: groupName(product),
+      name: groupTitle(product),
       brand: product.brand,
       packSize: product.packSize,
       market: product.market,

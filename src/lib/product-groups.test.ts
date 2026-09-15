@@ -77,6 +77,28 @@ describe("groupKey", () => {
     expect(groupKey(zen)).not.toBe(groupKey(therapy));
   });
 
+  it("groups on the family where one is set, whatever the names say", () => {
+    // Ops placed "ZEN 2.1L" and "2.1L ZEN SIGNATURE" in one family; the
+    // derived key would have kept them apart.
+    const a = product({ id: "a", name: "ZEN 2.1L — Papaya", variant: "Papaya", familyId: "fam1" });
+    const b = product({ id: "b", name: "2.1L ZEN SIGNATURE — Carrot", variant: "Carrot", familyId: "fam1" });
+    expect(groupKey(a)).toBe(groupKey(b));
+  });
+
+  it("still keeps one family apart across two markets and two pack sizes", () => {
+    const my = product({ id: "a", familyId: "fam1", market: "Malaysia" });
+    const vn = product({ id: "b", familyId: "fam1", market: "Vietnam" });
+    const big = product({ id: "c", familyId: "fam1", market: "Malaysia", packSize: 12 });
+    expect(groupKey(my)).not.toBe(groupKey(vn));
+    expect(groupKey(my)).not.toBe(groupKey(big));
+  });
+
+  it("falls back to the derived key for a product in no family", () => {
+    const placed = product({ id: "a", familyId: null });
+    const unaware = product({ id: "b" });
+    expect(groupKey(placed)).toBe(groupKey(unaware));
+  });
+
   it("cannot be fooled by a name whose parts line up with another product's", () => {
     // Brand "A" + name "B C" must not collide with brand "A B" + name "C".
     // A space or a pipe as the separator fails this; a NUL cannot, because no
@@ -123,6 +145,13 @@ describe("groupProducts", () => {
 
   it("returns nothing for nothing", () => {
     expect(groupProducts([])).toEqual([]);
+  });
+
+  it("titles a group by its family's name where it has one", () => {
+    const [group] = groupProducts([
+      product({ id: "a", name: "ZEN 2.1L — Papaya", variant: "Papaya", familyId: "fam1", familyName: "Zen Garden Shower Cream 2.1L" }),
+    ]);
+    expect(group.name).toBe("Zen Garden Shower Cream 2.1L");
   });
 });
 

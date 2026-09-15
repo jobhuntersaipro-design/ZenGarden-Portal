@@ -25,6 +25,9 @@ export type ShopProduct = {
   id: string;
   sku: string;
   name: string;
+  /** The product this is a variant of, where ops has placed it (Phase 36). */
+  familyId: string | null;
+  familyName: string | null;
   brand: string | null;
   variant: string | null;
   category: string;
@@ -134,10 +137,14 @@ export async function listShopCategories(): Promise<string[]> {
   return shopCategories();
 }
 
+/** The family's id and name, selected wherever a product is grouped. */
+const FAMILY_SELECT = { select: { id: true, name: true } } as const;
+
 const SHOP_PRODUCT_SELECT = {
   id: true,
   sku: true,
   name: true,
+  family: FAMILY_SELECT,
   brand: true,
   variant: true,
   category: true,
@@ -155,11 +162,18 @@ const SHOP_PRODUCT_SELECT = {
 
 type ShopProductRow = Prisma.ProductGetPayload<{ select: typeof SHOP_PRODUCT_SELECT }>;
 
+/** `Groupable`'s two family fields from a row's `family` relation. */
+const familyFields = (row: { family?: { id: string; name: string } | null }) => ({
+  familyId: row.family?.id ?? null,
+  familyName: row.family?.name ?? null,
+});
+
 async function toShopProduct(row: ShopProductRow): Promise<ShopProduct> {
   return {
     id: row.id,
     sku: row.sku,
     name: row.name,
+    ...familyFields(row),
     brand: row.brand,
     variant: row.variant,
     category: row.category,
@@ -211,6 +225,7 @@ const GROUPING_SELECT = {
   id: true,
   sku: true,
   name: true,
+  family: FAMILY_SELECT,
   brand: true,
   variant: true,
   packSize: true,
@@ -221,6 +236,12 @@ const GROUPING_SELECT = {
 } satisfies Prisma.ProductSelect;
 
 type GroupingRow = Prisma.ProductGetPayload<{ select: typeof GROUPING_SELECT }>;
+
+/** A grouping row with its family flattened into what `groupProducts` reads. */
+const groupable = <R extends { family?: { id: string; name: string } | null }>(row: R) => ({
+  ...row,
+  ...familyFields(row),
+});
 
 type FacetFilters = Pick<ShopCatalogueQuery, "brands" | "packSizes" | "markets">;
 
@@ -244,13 +265,15 @@ function matchesFacets(
   return true;
 }
 
-const priceOf = (group: ProductGroup<GroupingRow>) =>
+type GroupableRow = ReturnType<typeof groupable<GroupingRow>>;
+
+const priceOf = (group: ProductGroup<GroupableRow>) =>
   group.variants.map((variant) => variant.listPrice);
 
 function sortGroups(
-  groups: ProductGroup<GroupingRow>[],
+  groups: ProductGroup<GroupableRow>[],
   sort: ShopSort,
-): ProductGroup<GroupingRow>[] {
+): ProductGroup<GroupableRow>[] {
   const sorted = [...groups];
   switch (sort) {
     case "price-asc":
@@ -280,7 +303,9 @@ function facetCounts<T extends string | number>(
   valueOf: (row: GroupingRow) => T | null,
 ): Facet<T> {
   const counts = new Map<T, number>();
-  for (const group of groupProducts(rows.filter((row) => matchesFacets(row, query, omit)))) {
+  for (const group of groupProducts(
+    rows.filter((row) => matchesFacets(row, query, omit)).map(groupable),
+  )) {
     const value = valueOf(group.variants[0]);
     if (value === null) continue;
     counts.set(value, (counts.get(value) ?? 0) + 1);
@@ -302,7 +327,7 @@ export async function listShopProducts(
     shopCategories(),
   ]);
 
-  const matching = rows.filter((row) => matchesFacets(row, query));
+  const matching = rows.filter((row) => matchesFacets(row, query)).map(groupable);
   const groups = sortGroups(groupProducts(matching), query.sort);
   const total = groups.length;
 
@@ -366,6 +391,7 @@ const VARIANT_SELECT = {
   id: true,
   sku: true,
   name: true,
+  family: FAMILY_SELECT,
   brand: true,
   variant: true,
   packSize: true,
@@ -413,8 +439,9 @@ export async function relatedShopProducts(
  * The flavours of one product, including the product itself — the picker on
  * its own page (Phase 31).
  *
- * The group key is partly derived (`groupName` strips a variant suffix), so
- * the database cannot be asked for it directly. It is asked instead for the
+ * With a family (Phase 36) the database can be asked for the family, pack
+ * size and market outright. Without one the key is partly derived
+ * (`groupName` strips a variant suffix), so it is asked instead for the
  * candidates that share the parts it *can* match — brand, pack size, market —
  * and the group is picked out of those in memory. That set is small: the whole
  * development catalogue holds 308 shop-visible products and its largest such
@@ -424,6 +451,7 @@ export async function variantsOfProduct(product: {
   id: string;
   sku: string;
   name: string;
+  familyId: string | null;
   brand: string | null;
   variant: string | null;
   packSize: number | null;
@@ -432,7 +460,7 @@ export async function variantsOfProduct(product: {
   const candidates = await prisma.product.findMany({
     where: {
       ...SHOP_VISIBLE,
-      brand: product.brand,
+      ...(product.familyId ? { familyId: product.familyId } : { brand: product.brand }),
       packSize: product.packSize,
       market: product.market,
     },
@@ -440,7 +468,7 @@ export async function variantsOfProduct(product: {
     orderBy: { name: "asc" },
   });
 
-  const group = groupProducts(candidates).find((candidate) =>
+  const group = groupProducts(candidates.map(groupable)).find((candidate) =>
     candidate.variants.some((variant) => variant.id === product.id),
   );
   if (!group) return [];
@@ -465,6 +493,7 @@ export async function loadShopProduct(
       id: true,
       sku: true,
       name: true,
+      family: FAMILY_SELECT,
       brand: true,
       variant: true,
       category: true,
@@ -490,6 +519,7 @@ export async function loadShopProduct(
     id: row.id,
     sku: row.sku,
     name: row.name,
+    ...familyFields(row),
     brand: row.brand,
     variant: row.variant,
     category: row.category,
