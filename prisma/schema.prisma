@@ -177,6 +177,10 @@ model Document {
   uploadedAt    DateTime       @default(now())
   extraction    Extraction?
   purchaseOrder PurchaseOrder?
+  /// The shop order this file was generated for (Phase 37). A third kind of
+  /// document: not a scan somebody uploaded, but the purchase order we drew
+  /// ourselves. `deleteOrphans` must exclude it — see that function.
+  webOrder      WebOrder?
 }
 
 model Extraction {
@@ -429,6 +433,12 @@ model WebOrder {
   declinedReason  String?
   purchaseOrderId String?        @unique
   purchaseOrder   PurchaseOrder? @relation(fields: [purchaseOrderId], references: [id])
+  /// The purchase order we generated for this order, in R2 (Phase 37).
+  /// Written after submit, outside the order's own transaction, so a
+  /// renderer that fails leaves an order that was still placed. `SetNull`
+  /// rather than cascade: losing the file must never lose the order.
+  documentId      String?        @unique
+  document        Document?      @relation(fields: [documentId], references: [id], onDelete: SetNull)
   lines           WebOrderLine[]
   createdAt       DateTime       @default(now())
   updatedAt       DateTime       @updatedAt

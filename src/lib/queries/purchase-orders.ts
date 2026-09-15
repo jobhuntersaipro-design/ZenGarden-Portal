@@ -1,4 +1,5 @@
 import { Prisma } from "@/generated/prisma/client";
+import { Role } from "@/generated/prisma/enums";
 import { prisma } from "@/lib/prisma";
 import {
   poListNeedsReviewQuery,
@@ -48,7 +49,11 @@ export async function listFilterOptions() {
   const [buyers, uploaders] = await Promise.all([
     prisma.buyer.findMany({ select: { id: true, name: true }, orderBy: { name: "asc" } }),
     prisma.user.findMany({
-      where: { documents: { some: {} } },
+      // Staff only. Since Phase 37 a generated purchase order is a `Document`
+      // whose uploader is the *buyer's* contact, so without this clause a
+      // customer's name appears in an ops filter — and picking it would show
+      // one buyer's orders under a person who never uploaded anything.
+      where: { documents: { some: {} }, role: { not: Role.CLIENT } },
       select: { id: true, name: true },
       orderBy: { name: "asc" },
     }),
