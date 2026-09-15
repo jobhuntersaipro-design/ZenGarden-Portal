@@ -49,6 +49,18 @@
   --color-hairline: #e8e8e8;
   --color-hairline-strong: #d9d9d9;
 
+  /* Status-tinted surfaces — each accent above at a 12% mix over canvas, so a
+     toast or an inline notice can read as its status from across the room
+     without needing the accent colour itself to carry body text at full
+     saturation (Phase 39, the error-toast fix: a solid accent-red fill under
+     white text measures ~4:1 contrast, short of AA for anything but a short
+     button label — a tint keeps the accent as the border/icon/text colour,
+     which is the ratio already accepted everywhere else in the app). */
+  --color-surface-danger: #fde7e6;
+  --color-surface-success: #e1f1e7;
+  --color-surface-warning: #fff3e9;
+  --color-surface-info: #e0f2ff;
+
   /* Ink ramp */
   --color-ink: #292d34;
   --color-ink-deep: #202020;
