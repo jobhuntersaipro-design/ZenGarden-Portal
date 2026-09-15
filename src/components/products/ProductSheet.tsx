@@ -4,6 +4,7 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
 import { updateProduct } from "@/actions/products";
+import { FamilyPicker, type FamilyChoice } from "@/components/products/FamilyPicker";
 import { GrowingListPicker } from "@/components/products/GrowingListPicker";
 import { ManageLabelsLink } from "@/components/products/ManageLabelsLink";
 import { Button } from "@/components/ui/button";
@@ -18,6 +19,8 @@ import {
 } from "@/components/ui/sheet";
 import { Textarea } from "@/components/ui/textarea";
 import { NEEDS_AN_IMAGE } from "@/lib/validation/product-images";
+import { familyFromDraft } from "@/lib/product-families";
+import type { FamilyOption } from "@/lib/queries/product-families";
 import type { GrowingLabel } from "@/lib/queries/products";
 import type { ProductInput } from "@/lib/validation/products";
 
@@ -36,17 +39,23 @@ export function ProductSheet({
   product,
   imageCount,
   labels,
+  families,
   trigger,
 }: {
   product: ProductInput & { id: string; needsReview?: boolean };
   /** Zero means every field here is unsaveable until a picture is added. */
   imageCount: number;
   labels: Record<GrowingLabel, string[]>;
+  families: FamilyOption[];
   trigger: React.ReactNode;
 }) {
   const router = useRouter();
   const [open, setOpen] = useState(false);
   const [form, setForm] = useState<ProductInput>(product);
+  const [family, setFamily] = useState<FamilyChoice>({
+    familyId: product.familyId,
+    draft: null,
+  });
   const [pending, setPending] = useState(false);
 
   const set = <K extends keyof ProductInput>(key: K, value: ProductInput[K]) =>
@@ -90,6 +99,20 @@ export function ProductSheet({
               value={form.name}
               onChange={(event) => set("name", event.target.value)}
             />
+          </div>
+
+          <div className="flex flex-col gap-xxs">
+            <span className={label}>Family</span>
+            <FamilyPicker
+              families={families}
+              value={family}
+              brand={form.brand ?? null}
+              category={form.category}
+              onChange={setFamily}
+            />
+            <p className="text-[length:var(--text-caption)] text-ink-tertiary">
+              The product this is a variant of, across every market
+            </p>
           </div>
 
           <div className="grid gap-md sm:grid-cols-2">
@@ -246,7 +269,16 @@ export function ProductSheet({
               pending={pending}
               onClick={async () => {
                 setPending(true);
-                const result = await updateProduct(product.id, form);
+                const result = await updateProduct(product.id, {
+                  ...form,
+                  familyId: family.familyId,
+                  newFamily: family.draft
+                    ? familyFromDraft(family.draft, {
+                        brand: form.brand ?? null,
+                        category: form.category,
+                      })
+                    : null,
+                });
                 setPending(false);
                 if (!result.success) {
                   toast.error(result.error);

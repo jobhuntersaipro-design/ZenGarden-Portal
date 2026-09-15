@@ -35,6 +35,19 @@ export function ProductsList({
         </span>
       ),
     },
+    {
+      key: "family",
+      header: "Family",
+      sortable: false,
+      cell: (row) =>
+        row.family ? (
+          <span title={row.family.name} className="font-mono text-ink-secondary">
+            {row.family.code}
+          </span>
+        ) : (
+          <span className="text-ink-tertiary">—</span>
+        ),
+    },
     { key: "category", header: "Category", cell: (row) => row.category },
     {
       key: "listPrice",

@@ -9,11 +9,14 @@ const priceCreate = vi.fn();
 // vocabulary, inside the same transaction.
 const labelFindFirst = vi.fn();
 const labelCreate = vi.fn();
+// Phase 36: a family described on the form is created in the same transaction.
+const familyCreate = vi.fn();
 
 const tx = {
   product: { create: productCreate, update: productUpdate },
   productPrice: { create: priceCreate },
   catalogLabel: { findFirst: labelFindFirst, create: labelCreate },
+  productFamily: { create: familyCreate },
 };
 
 vi.mock("@/lib/prisma", () => ({
@@ -63,12 +66,15 @@ const input = {
   market: "Malaysia",
   description: null,
   active: true,
+  familyId: null,
+  newFamily: null,
 };
 
 beforeEach(() => {
   vi.clearAllMocks();
   requireSuperAdmin.mockResolvedValue(admin);
   productCreate.mockResolvedValue({ id: "prod-1" });
+  familyCreate.mockResolvedValue({ id: "fam-1" });
   productUpdate.mockResolvedValue({});
   productDelete.mockResolvedValue({});
   deleteObject.mockResolvedValue(undefined);
@@ -156,6 +162,88 @@ describe("createProduct", () => {
   it("stores a blank market as null, so the picker never offers an empty row", async () => {
     await createProduct({ ...input, market: "  " });
     expect(productCreate.mock.calls[0][0].data.market).toBeNull();
+  });
+});
+
+describe("createProduct — the family it is a variant of", () => {
+  const newFamily = {
+    code: "zen-sc-2100",
+    name: "Zen Garden Shower Cream 2.1L",
+    brand: "ZEN GARDEN",
+    category: "Shower cream & gel",
+    size: "2.1L",
+  };
+
+  it("links an existing family by id and creates none", async () => {
+    await createProduct({ ...input, familyId: "fam-9" });
+    expect(familyCreate).not.toHaveBeenCalled();
+    expect(productCreate.mock.calls[0][0].data.familyId).toBe("fam-9");
+  });
+
+  it("creates a family described on the form first, then the product in it", async () => {
+    await createProduct({ ...input, newFamily });
+
+    expect(familyCreate).toHaveBeenCalledOnce();
+    // Normalised like a SKU: one case, so a code cannot enter twice.
+    expect(familyCreate.mock.calls[0][0].data.code).toBe("ZEN-SC-2100");
+    expect(familyCreate.mock.invocationCallOrder[0]).toBeLessThan(
+      productCreate.mock.invocationCallOrder[0],
+    );
+    expect(productCreate.mock.calls[0][0].data.familyId).toBe("fam-1");
+  });
+
+  it("refuses a product that names an existing family and describes a new one", async () => {
+    const result = await createProduct({ ...input, familyId: "fam-9", newFamily });
+    expect(result.success).toBe(false);
+    expect(productCreate).not.toHaveBeenCalled();
+    expect(familyCreate).not.toHaveBeenCalled();
+  });
+
+  it("names the family code, not the SKU, when the family's code is taken", async () => {
+    const { Prisma } = await import("@/generated/prisma/client");
+    familyCreate.mockRejectedValue(
+      new Prisma.PrismaClientKnownRequestError("dup", {
+        code: "P2002",
+        clientVersion: "7",
+        // The shape Prisma 7's driver adapter really emits (client-invites.ts).
+        meta: {
+          driverAdapterError: {
+            cause: { constraint: { fields: ["code"], name: "ProductFamily_code_key" } },
+          },
+        },
+      }),
+    );
+
+    expect(await createProduct({ ...input, newFamily })).toEqual({
+      success: false,
+      error: "That family code is already in use.",
+    });
+  });
+
+  it("still names the SKU when that is what clashed", async () => {
+    const { Prisma } = await import("@/generated/prisma/client");
+    productCreate.mockRejectedValue(
+      new Prisma.PrismaClientKnownRequestError("dup", {
+        code: "P2002",
+        clientVersion: "7",
+        meta: { target: ["sku"] },
+      }),
+    );
+
+    expect(await createProduct(input)).toEqual({
+      success: false,
+      error: "That SKU is already in use.",
+    });
+  });
+
+  it("moves a product between families on update", async () => {
+    await updateProduct("prod-1", { ...input, familyId: "fam-2" });
+    expect(productUpdate.mock.calls[0][0].data.familyId).toBe("fam-2");
+  });
+
+  it("takes a product out of its family when told none", async () => {
+    await updateProduct("prod-1", { ...input, familyId: null });
+    expect(productUpdate.mock.calls[0][0].data.familyId).toBeNull();
   });
 });
 

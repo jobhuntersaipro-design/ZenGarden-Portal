@@ -1,8 +1,10 @@
 import type { Metadata } from "next";
 import { CatalogLabelSection } from "@/components/admin/CatalogLabelSection";
+import { ProductFamilySection } from "@/components/admin/ProductFamilySection";
 import { Rise } from "@/components/portal/Rise";
 import { LABEL_KINDS } from "@/lib/catalog-labels";
 import { listCatalogLabels } from "@/lib/queries/catalog-labels";
+import { listFamilies } from "@/lib/queries/product-families";
 
 export const metadata: Metadata = { title: "Catalogue · Zen Garden Portal" };
 export const dynamic = "force-dynamic";
@@ -15,7 +17,7 @@ export const dynamic = "force-dynamic";
  * be corrected or cleared. They are rows now, and this is where they are kept.
  */
 export default async function AdminCataloguePage() {
-  const labels = await listCatalogLabels();
+  const [labels, families] = await Promise.all([listCatalogLabels(), listFamilies()]);
   const total = LABEL_KINDS.reduce((sum, kind) => sum + labels[kind].length, 0);
 
   return (
@@ -29,7 +31,9 @@ export default async function AdminCataloguePage() {
         </h1>
         <p className="mt-xxs max-w-[62ch] text-[length:var(--text-body-sm)] text-ink-secondary">
           {total} {total === 1 ? "value" : "values"} across brand, variant, market and
-          category. Renaming one here renames it on every product that carries it.
+          category, and {families.length} product{" "}
+          {families.length === 1 ? "family" : "families"}. Renaming one here renames
+          it on every product that carries it.
         </p>
       </Rise>
 
@@ -39,6 +43,11 @@ export default async function AdminCataloguePage() {
             <CatalogLabelSection kind={kind} rows={labels[kind]} />
           </Rise>
         ))}
+        {/* Full width: a family row carries a code, a name, a size and a
+            count, which is more than half a column holds. */}
+        <Rise index={LABEL_KINDS.length + 1} className="min-w-0 lg:col-span-2">
+          <ProductFamilySection rows={families} />
+        </Rise>
       </div>
     </>
   );

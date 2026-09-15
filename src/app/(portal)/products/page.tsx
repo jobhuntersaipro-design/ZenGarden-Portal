@@ -6,14 +6,22 @@ import { TablePagination } from "@/components/portal/TablePagination";
 import { KpiMoney, KpiNumber, KpiTile } from "@/components/dashboard/KpiTile";
 import { AttentionTile } from "@/components/products/AttentionTile";
 import { Button } from "@/components/ui/button";
+import { FamiliesList } from "@/components/products/FamiliesList";
 import { ProductCard } from "@/components/products/ProductCard";
 import { ProductsList } from "@/components/products/ProductsList";
 import {
   ProductToolbar,
+  type ProductBy,
   type ProductView,
 } from "@/components/products/ProductToolbar";
 import { getSessionUser } from "@/lib/auth-guards";
 import { formatMYR } from "@/lib/money";
+import {
+  FAMILY_SORT_KEYS,
+  NO_FAMILY,
+  selectFamilies,
+  type FamilySortKey,
+} from "@/lib/product-families";
 import { presignGet } from "@/lib/r2";
 import {
   PRODUCT_SORT_KEYS,
@@ -50,7 +58,7 @@ export default async function ProductsPage({
   searchParams: Promise<SearchParams>;
 }) {
   const params = await searchParams;
-  const [{ products }, user] = await Promise.all([
+  const [{ products, families }, user] = await Promise.all([
     listProducts(),
     getSessionUser(),
   ]);
@@ -60,10 +68,17 @@ export default async function ProductsPage({
   const q = firstParam(params, "q")?.trim() || undefined;
   const category = firstParam(params, "category") || undefined;
   const brand = firstParam(params, "brand") || undefined;
-  const sort = parseSort(params, PRODUCT_SORT_KEYS, {
-    key: "revenue",
-    dir: "desc",
-  });
+  // Rows are products unless asked for families (Phase 36). A `family`
+  // narrows the product view to one family's variants — the family row's
+  // link — and only means something there.
+  const by: ProductBy = firstParam(params, "by") === "family" ? "family" : "product";
+  const familyParam = firstParam(params, "family") || undefined;
+  const family = by === "product" ? familyParam : undefined;
+  const familyRow = family ? families.find((row) => row.id === family) : undefined;
+  const sort =
+    by === "family"
+      ? parseSort(params, FAMILY_SORT_KEYS, { key: "revenue", dir: "desc" })
+      : parseSort(params, PRODUCT_SORT_KEYS, { key: "revenue", dir: "desc" });
 
   // From the rows already fetched, so the filter can never offer a brand that
   // would match nothing.
@@ -87,24 +102,44 @@ export default async function ProductsPage({
     q,
     category,
     brand,
+    family,
     filter,
-    sort,
+    sort: sort as { key: ProductSortKey; dir: "asc" | "desc" },
+  });
+  const selectedFamilies = selectFamilies(families, {
+    q,
+    brand,
+    category,
+    sort: sort as { key: FamilySortKey; dir: "asc" | "desc" },
   });
 
   // The KPI row describes every product; the footer describes the filter. With
   // nothing applied the two read from the same list and must be identical.
   const all = summarise(products);
   const shown = summarise(selected);
+  const shownFamilies = {
+    count: selectedFamilies.length,
+    revenue:
+      Math.round(selectedFamilies.reduce((sum, row) => sum + row.revenue, 0) * 100) / 100,
+  };
 
   // One set of sizes per view, and the footer is told which, so it can never
   // offer "10 per page" beside twelve cards.
-  const sizes = view === "grid" ? GRID_SIZES : undefined;
+  const sizes = view === "grid" && by === "product" ? GRID_SIZES : undefined;
   const { page, size, skip, take } = parsePagination(params, sizes);
   const paged = selected.slice(skip, skip + take);
+  const pagedFamilies = selectedFamilies.slice(skip, skip + take);
+  const total = by === "family" ? selectedFamilies.length : selected.length;
+
+  const familyChip = family
+    ? `${shown.count} ${shown.count === 1 ? "variant" : "variants"} of ${
+        family === NO_FAMILY ? "no family" : (familyRow?.code ?? family)
+      }`
+    : null;
 
   // Signed server-side and passed as props; a key never reaches the client.
   const imageUrls = new Map<string, string>();
-  if (view === "grid") {
+  if (view === "grid" && by === "product") {
     await Promise.all(
       paged.map(async (product) => {
         if (!product.thumbKey) return;
@@ -211,14 +246,22 @@ export default async function ProductsPage({
 
       <ProductToolbar
         view={view}
+        by={by}
+        familyChip={familyChip}
         filter={filter}
-        sortKey={sort.key as ProductSortKey}
-        summary={`${shown.count} ${shown.count === 1 ? "product" : "products"} · ${formatMYR(shown.revenue.toFixed(2))} in 12 months`}
+        sortKey={sort.key as ProductSortKey | FamilySortKey}
+        summary={
+          by === "family"
+            ? `${shownFamilies.count} ${shownFamilies.count === 1 ? "family" : "families"} · ${formatMYR(shownFamilies.revenue.toFixed(2))} in 12 months`
+            : `${shown.count} ${shown.count === 1 ? "product" : "products"} · ${formatMYR(shown.revenue.toFixed(2))} in 12 months`
+        }
         brands={brands}
         categories={categories}
       />
 
-      {view === "grid" ? (
+      {by === "family" ? (
+        <FamiliesList rows={pagedFamilies} sort={sort} />
+      ) : view === "grid" ? (
         paged.length === 0 ? (
           <p className="rounded-lg border border-hairline bg-canvas p-xl text-center text-[length:var(--text-body-sm)] text-ink-secondary">
             No products match.
@@ -238,12 +281,7 @@ export default async function ProductsPage({
         <ProductsList rows={paged} sort={sort} />
       )}
 
-      <TablePagination
-        page={page}
-        size={size}
-        total={selected.length}
-        sizes={sizes}
-      />
+      <TablePagination page={page} size={size} total={total} sizes={sizes} />
     </>
   );
 }

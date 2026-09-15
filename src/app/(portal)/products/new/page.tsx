@@ -5,6 +5,7 @@ import { Role } from "@/generated/prisma/enums";
 import { BackLink } from "@/components/portal/BackLink";
 import { ProductForm } from "@/components/products/ProductForm";
 import { getSessionUser } from "@/lib/auth-guards";
+import { listFamilies } from "@/lib/queries/product-families";
 import { listAllLabels } from "@/lib/queries/products";
 
 export const metadata: Metadata = {
@@ -19,7 +20,7 @@ export default async function NewProductPage() {
   // member sees the catalog rather than a form that can never save.
   if (user?.role !== Role.SUPER_ADMIN) redirect("/products");
 
-  const labels = await listAllLabels();
+  const [labels, families] = await Promise.all([listAllLabels(), listFamilies()]);
 
   return (
     <>
@@ -37,7 +38,7 @@ export default async function NewProductPage() {
         </span>
       </nav>
 
-      <ProductForm labels={labels} />
+      <ProductForm labels={labels} families={families} />
     </>
   );
 }

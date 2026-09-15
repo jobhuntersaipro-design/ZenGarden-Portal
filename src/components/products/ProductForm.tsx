@@ -4,6 +4,7 @@ import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { toast } from "sonner";
 import { createProduct } from "@/actions/products";
+import { FamilyPicker, type FamilyChoice } from "@/components/products/FamilyPicker";
 import { GrowingListPicker } from "@/components/products/GrowingListPicker";
 import { ManageLabelsLink } from "@/components/products/ManageLabelsLink";
 import { StagedImages, type StagedImage } from "@/components/products/StagedImages";
@@ -14,8 +15,10 @@ import { Textarea } from "@/components/ui/textarea";
 import { useImageUploadQueue } from "@/hooks/useImageUploadQueue";
 import { useUrlNavigation } from "@/hooks/useUrlNavigation";
 import { PRODUCT_CATEGORIES } from "@/lib/product-categories";
+import { familyFromDraft } from "@/lib/product-families";
+import type { FamilyOption } from "@/lib/queries/product-families";
 import type { GrowingLabel } from "@/lib/queries/products";
-import { generateSku } from "@/lib/sku";
+import { generateSku, generateVariantSku, sizeInName } from "@/lib/sku";
 import { rejectionReason } from "@/lib/validation/product-images";
 import type { ProductInput } from "@/lib/validation/products";
 
@@ -37,10 +40,9 @@ const BLANK: ProductInput = {
   listPrice: "",
   description: null,
   active: true,
+  familyId: null,
+  newFamily: null,
 };
-
-/** "ZEN Shower Cream 2.1L — Goat's Milk" → "2.1L", for the SKU's size segment. */
-const SIZE_IN_NAME = /(\d+(?:\.\d+)?\s?(?:ML|L|KG|G))\b/i;
 
 const label = "font-mono text-[length:var(--text-eyebrow)] text-ink-tertiary";
 
@@ -56,10 +58,12 @@ const label = "font-mono text-[length:var(--text-eyebrow)] text-ink-tertiary";
  * em-dash tiles above an empty chart would be furniture rather than
  * information.
  *
- * The SKU proposes itself from brand, category, the size in the name, variant
- * and market (`ZEN-SC-2100-GM-VN`) until the reader types one, at which point
- * the field is theirs — the customer's own list has no codes, so a generated
- * one is the common case and a hand-typed one the exception.
+ * The SKU proposes itself until the reader types one, at which point the field
+ * is theirs — the customer's own list has no codes, so a generated one is the
+ * common case and a hand-typed one the exception. With a family chosen it is
+ * the family's code plus variant and market (`ZEN-SC-2100-GM-VN`, Phase 36);
+ * with none it falls back to brand, category, the size in the name, variant
+ * and market, as it did before families existed.
  *
  * Since Phase 27 a product cannot be created without a picture. The files are
  * staged in the browser and uploaded immediately after the row is written,
@@ -75,11 +79,14 @@ const label = "font-mono text-[length:var(--text-eyebrow)] text-ink-tertiary";
  */
 export function ProductForm({
   labels,
+  families,
 }: {
   labels: Record<GrowingLabel, string[]>;
+  families: FamilyOption[];
 }) {
   const { pending: navigating, push } = useUrlNavigation();
   const [form, setForm] = useState<ProductInput>(BLANK);
+  const [family, setFamily] = useState<FamilyChoice>({ familyId: null, draft: null });
   const [skuTouched, setSkuTouched] = useState(false);
   const [saving, setSaving] = useState(false);
   const [staged, setStaged] = useState<(StagedImage & { file: File })[]>([]);
@@ -144,19 +151,21 @@ export function ProductForm({
   const set = <K extends keyof ProductInput>(key: K, value: ProductInput[K]) =>
     setForm((current) => ({ ...current, [key]: value }));
 
-  const suggestedSku = generateSku({
-    brand: form.brand ?? null,
-    category: form.category,
-    size: form.name.match(SIZE_IN_NAME)?.[1] ?? null,
-    variant: form.variant ?? null,
-    market: form.market ?? null,
-  });
+  const productFacts = { brand: form.brand ?? null, category: form.category };
+  const newFamily = family.draft ? familyFromDraft(family.draft, productFacts) : null;
+  const familyCode =
+    families.find((entry) => entry.id === family.familyId)?.code ?? newFamily?.code ?? null;
+  const variantFacts = { variant: form.variant ?? null, market: form.market ?? null };
+  const suggestedSku = familyCode
+    ? generateVariantSku(familyCode, variantFacts)
+    : generateSku({ ...productFacts, size: sizeInName(form.name), ...variantFacts });
   const sku = skuTouched ? form.sku : suggestedSku;
 
   // The eyebrow reads exactly as the detail page's does, filling in as the
   // fields are typed, so the placeholders show what each one becomes.
   const eyebrow = [
     sku || "SKU",
+    familyCode,
     form.category,
     form.packSize ? `${form.packSize} per ${form.unit || "carton"}` : `per ${form.unit || "unit"}`,
     form.market,
@@ -171,7 +180,12 @@ export function ProductForm({
 
   const submit = async () => {
     setSaving(true);
-    const result = await createProduct({ ...form, sku });
+    const result = await createProduct({
+      ...form,
+      sku,
+      familyId: family.familyId,
+      newFamily,
+    });
     if (!result.success) {
       setSaving(false);
       toast.error(result.error);
@@ -302,6 +316,22 @@ export function ProductForm({
 
           {/* The positions the detail page's `dl` uses, as controls. */}
           <div className="mt-md grid gap-md sm:grid-cols-2">
+            {/* First, and full width: the family is the product this row is a
+                variant of, and it decides the SKU proposed below. */}
+            <div className="flex flex-col gap-xxs sm:col-span-2">
+              <span className={label}>Family</span>
+              <FamilyPicker
+                families={families}
+                value={family}
+                brand={form.brand ?? null}
+                category={form.category}
+                onChange={setFamily}
+              />
+              <p className="text-[length:var(--text-caption)] text-ink-tertiary">
+                The product this is a variant of — Zen Garden Shower Cream 2.1L, across every market
+              </p>
+            </div>
+
             <div className="flex flex-col gap-xxs">
               <span className={label}>Brand</span>
               <GrowingListPicker
@@ -413,7 +443,9 @@ export function ProductForm({
               <p className="text-[length:var(--text-caption)] text-ink-tertiary">
                 {skuTouched
                   ? "Capitals, digits and dashes"
-                  : "Suggested from brand, category, size, variant and market — type to override"}
+                  : familyCode
+                    ? "Suggested from the family code, variant and market — type to override"
+                    : "Suggested from brand, category, the size in the name, variant and market — type to override"}
               </p>
             </div>
           </div>

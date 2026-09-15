@@ -47,8 +47,30 @@ export type ProductDetail = {
     description: string | null;
     active: boolean;
     needsReview: boolean;
+    familyId: string | null;
     updatedAt: string;
   };
+  /**
+   * The product this is a variant of, with every sibling and the family's
+   * own twelve-month figures (Phase 36). Null for a product placed in none.
+   */
+  family: {
+    id: string;
+    code: string;
+    name: string;
+    size: string | null;
+    siblings: {
+      id: string;
+      sku: string;
+      name: string;
+      variant: string | null;
+      market: string | null;
+      active: boolean;
+    }[];
+    units: number;
+    revenue: number;
+    orders: number;
+  } | null;
   /** What would be orphaned by a delete — the danger zone's whole argument. */
   references: { purchaseOrderLines: number; shopOrderLines: number };
   images: { id: string; url: string | null; position: number }[];
@@ -90,6 +112,19 @@ export async function loadProduct(
       description: true,
       active: true,
       needsReview: true,
+      familyId: true,
+      family: {
+        select: {
+          id: true,
+          code: true,
+          name: true,
+          size: true,
+          products: {
+            select: { id: true, sku: true, name: true, variant: true, market: true, active: true },
+            orderBy: [{ variant: "asc" }, { market: "asc" }, { sku: "asc" }],
+          },
+        },
+      },
       updatedAt: true,
       images: {
         orderBy: { position: "asc" },
@@ -104,7 +139,7 @@ export async function loadProduct(
   });
   if (!product) return null;
 
-  const [lines, allLines, totalOrders, everyoneRevenue, names] = await Promise.all([
+  const [lines, allLines, totalOrders, everyoneRevenue, names, familyLines] = await Promise.all([
     prisma.lineItem.findMany({
       where: {
         productId,
@@ -164,6 +199,18 @@ export async function loadProduct(
       _sum: { total: true },
     }),
     prisma.product.findMany({ select: { id: true, name: true } }),
+    // The whole family's sales in the same window — every variant, every
+    // market — so the family card's figures and the tiles above it agree on
+    // what twelve months means.
+    product.familyId
+      ? prisma.lineItem.findMany({
+          where: {
+            product: { familyId: product.familyId },
+            purchaseOrder: { ...LATEST_ONLY, poDate: dateColumnRange(window) },
+          },
+          select: { quantity: true, amount: true, purchaseOrderId: true },
+        })
+      : Promise.resolve([]),
   ]);
 
   const rows: ProductSaleRow[] = lines.map((line) => ({
@@ -234,8 +281,21 @@ export async function loadProduct(
       description: product.description,
       active: product.active,
       needsReview: product.needsReview,
+      familyId: product.familyId,
       updatedAt: product.updatedAt.toISOString(),
     },
+    family: product.family
+      ? {
+          id: product.family.id,
+          code: product.family.code,
+          name: product.family.name,
+          size: product.family.size,
+          siblings: product.family.products,
+          units: familyLines.reduce((sum, line) => sum + line.quantity.toNumber(), 0),
+          revenue: familyLines.reduce((sum, line) => sum + line.amount.toNumber(), 0),
+          orders: new Set(familyLines.map((line) => line.purchaseOrderId)).size,
+        }
+      : null,
     references: {
       purchaseOrderLines: product._count.lineItems,
       shopOrderLines: product._count.webOrderLines,

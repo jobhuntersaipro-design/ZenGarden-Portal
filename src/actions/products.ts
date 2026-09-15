@@ -32,8 +32,31 @@ const guard = async () => {
   }
 };
 
-const duplicate = (cause: unknown) =>
+const duplicate = (cause: unknown): cause is Prisma.PrismaClientKnownRequestError =>
   cause instanceof Prisma.PrismaClientKnownRequestError && cause.code === "P2002";
+
+const asRecord = (value: unknown) =>
+  typeof value === "object" && value !== null ? (value as Record<string, unknown>) : null;
+
+/**
+ * Which unique index a P2002 hit. Two shapes, as `uniqueMessage` in
+ * `client-invites.ts` records: the flat `meta.target` Prisma documents, and
+ * `meta.driverAdapterError.cause.constraint.{fields,name}` that Prisma 7's
+ * driver adapter actually emits. Since Phase 36 a product write can create a
+ * family in the same transaction, so "already in use" has to say which code.
+ */
+function duplicateMessage(cause: Prisma.PrismaClientKnownRequestError): string {
+  const meta = asRecord(cause.meta);
+  const constraint = asRecord(asRecord(asRecord(meta?.driverAdapterError)?.cause)?.constraint);
+  const text = [meta?.target, constraint?.fields, constraint?.name]
+    .flatMap((value) => (Array.isArray(value) ? value : [value]))
+    .filter((value): value is string => typeof value === "string")
+    .join(",")
+    .toLowerCase();
+  return text.includes("code")
+    ? "That family code is already in use."
+    : "That SKU is already in use.";
+}
 
 function revalidate(productId?: string) {
   revalidatePath("/products");
@@ -57,10 +80,16 @@ export async function createProduct(
 
   try {
     const product = await prisma.$transaction(async (tx) => {
+      // A family described on the form is created first, in the same
+      // transaction, so a product cannot land without the family it named.
+      const familyId = data.newFamily
+        ? (await tx.productFamily.create({ data: data.newFamily, select: { id: true } })).id
+        : data.familyId;
       const created = await tx.product.create({
         data: {
           name: data.name,
           sku: data.sku,
+          familyId,
           category: data.category,
           unit: data.unit,
           brand: data.brand,
@@ -98,7 +127,7 @@ export async function createProduct(
     return { success: true, data: { id: product.id } };
   } catch (cause) {
     if (duplicate(cause)) {
-      return { success: false, error: "That SKU is already in use." };
+      return { success: false, error: duplicateMessage(cause) };
     }
     console.error("[products] createProduct", cause);
     return { success: false, error: "We couldn't save that product." };
@@ -142,11 +171,15 @@ export async function updateProduct(
     const priceChanged = !existing.listPrice.equals(nextPrice);
 
     await prisma.$transaction(async (tx) => {
+      const familyId = data.newFamily
+        ? (await tx.productFamily.create({ data: data.newFamily, select: { id: true } })).id
+        : data.familyId;
       await tx.product.update({
         where: { id: productId },
         data: {
           name: data.name,
           sku: data.sku,
+          familyId,
           category: data.category,
           unit: data.unit,
           brand: data.brand,
@@ -181,7 +214,7 @@ export async function updateProduct(
     return { success: true, data: undefined };
   } catch (cause) {
     if (duplicate(cause)) {
-      return { success: false, error: "That SKU is already in use." };
+      return { success: false, error: duplicateMessage(cause) };
     }
     console.error("[products] updateProduct", cause);
     return { success: false, error: "We couldn't save that product." };

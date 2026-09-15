@@ -1,5 +1,6 @@
 import { z } from "zod";
 import { Prisma } from "@/generated/prisma/browser";
+import { productFamilySchema } from "@/lib/validation/product-families";
 
 /**
  * A SKU is the product code as printed on a customer's purchase order — it is
@@ -109,7 +110,19 @@ export const productSchema = z.object({
     .nullable()
     .transform((value) => value?.trim() || null),
   active: z.boolean(),
-});
+  /**
+   * The family this product is a variant of (Phase 36) — an existing one by
+   * id, or a new one described inline and created in the same transaction.
+   * Both nullable, never optional, like the labels above: a product with no
+   * family is a state the listing shows, not a key a caller may forget.
+   */
+  familyId: z.string().nullable(),
+  newFamily: productFamilySchema.nullable(),
+})
+  .refine((value) => !(value.familyId && value.newFamily), {
+    message: "Choose an existing family or describe a new one, not both",
+    path: ["familyId"],
+  });
 
 export type ProductInput = z.input<typeof productSchema>;
 export type ProductParsed = z.output<typeof productSchema>;
