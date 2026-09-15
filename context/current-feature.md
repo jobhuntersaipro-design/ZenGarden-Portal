@@ -1,9 +1,53 @@
-# Current Feature: The buyer's orders, as a table and as documents
+# Current Feature: Product families
 
 ## Status
 
+**Phase 36 — product families — built and verified on
+`feature/product-families`, not yet committed** (2026-09-15). Spec
+`docs/specs/36-product-families.md`, whose §6–§9 record the backfill as it
+ran, what was verified, what is known and what is not. The first of three
+phases planned together on 2026-09-15 — 36 product families, 37 the
+purchase-order PDF (`docs/specs/37-purchase-order-pdf.md`), 38 order
+confirmation and the expected delivery date
+(`docs/specs/38-order-confirmation.md`). Asked for as: "design a human
+readable product code … smallest granularity should be until variant level,
+but later on I should be able to analyse by product level" and "revamp the
+product listing from admin or superadmin".
+
+A `ProductFamily` table — code, name, brand, category, size — with a nullable
+`Product.familyId`. Family code `ZEN-SC-2100`; a new product's SKU proposes
+itself as `ZEN-SC-2100-GM-VN` from the family. Existing SKUs are never
+rewritten; the 308 products get families through a propose → review → apply
+script. `/products` gains a family view; `/products/[id]` a family card;
+`/admin/catalogue` a families section; the shop groups by family where one
+exists.
+
+**Before this merges deploys:** production's `DIRECT_URL` still points at the
+pooled Neon host (carried since Phase 30) and this phase carries a migration.
+
+## Notes
+
+- **Development holds 59 families, every product placed**, from
+  `docs/imports/product-families-2026-09-15.json`. Two judgement calls in it
+  are the business's to confirm: *ZEN SIGNATURE* merged with *NORMAL/DIY*
+  into one 2.1L shower cream, and L.Hands' cap and pump dishwash kept as two
+  families. Either is a rename or a move in `/admin/catalogue` and the
+  product drawer, no code.
+- **The shop's card count is the cheapest check on a family decision.** The
+  first review run pulled AA Pharmacy's `H/WASH 500ML` into `ZEN-HW-0500`
+  because decisions were keyed on line text alone, and the shop went from 83
+  cards to 82. Fixed in the script and the data; the count is back at 83.
+- **A dev server started before `prisma generate` keeps the old client** and
+  answers "Unknown field `family`" for every new relation. Restart it after
+  a migration.
+- **Production's backfill must be proposed afresh there**, not replayed from
+  the development file: its catalogue is different (309 products, eight with
+  the customer's own codes) and the ids in the file are development ids.
+
+## Previous phase
+
 **Phase 35 — the buyer's order table, and the purchase order behind each
-order — built and verified on `feature/buyer-order-review`** (2026-09-15).
+order — built, verified and merged from `feature/buyer-order-review`** (2026-09-15).
 Asked for as: "revamp buyer order page, show a table with more infomation" and
 "when buyer clicked in each order, it must show the PO documents for them to
 review".
@@ -114,8 +158,6 @@ by producing a physical PDF, so pagination of a purchase order longer than one
 A4 page is untested — every order to hand fits on one. A declined order's
 wording on the document was not driven in a browser; no declined order exists
 in development.
-
-## Previous phase
 
 **Phase 34 — the Zen Garden rebrand, and Confirm order last — built and
 verified on `feature/zen-garden-rebrand`** (2026-09-15). Asked for as: "in the

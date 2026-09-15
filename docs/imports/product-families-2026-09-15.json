@@ -1,0 +1,2731 @@
+{
+  "groups": [
+    {
+      "key": "aa pharmacy\u0000450ml refill pack\u0000450ML",
+      "proposedCode": "AP-SC-0450",
+      "code": "AP-SC-0450",
+      "name": "450ML REFILL PACK",
+      "brand": "AA Pharmacy",
+      "category": "Shower cream & gel",
+      "size": "450ML",
+      "line": "450ML REFILL PACK",
+      "markets": [],
+      "products": [
+        {
+          "id": "cmtvclhvo007m03otw8yskb3c",
+          "sku": "AP-SC-0450-GM",
+          "name": "450ML REFILL PACK — Goat's Milk",
+          "market": null
+        },
+        {
+          "id": "cmtvclhxp007n03oteydb8u5b",
+          "sku": "AP-SC-0450-LV",
+          "name": "450ML REFILL PACK — Lavender",
+          "market": null
+        },
+        {
+          "id": "cmtvcli10007o03otftrz9dw0",
+          "sku": "AP-SC-0450-RJ",
+          "name": "450ML REFILL PACK — Royal Jelly",
+          "market": null
+        }
+      ]
+    },
+    {
+      "key": "aa pharmacy\u0000h/wash 500ml\u0000500ML",
+      "proposedCode": "AP-HW-0500",
+      "code": "AP-HW-0500",
+      "name": "H/WASH 500ML",
+      "brand": "AA Pharmacy",
+      "category": "Hand wash & soap",
+      "size": "500ML",
+      "line": "H/WASH 500ML",
+      "markets": [],
+      "products": [
+        {
+          "id": "cmtvclhnl007j03ot1tsrbgab",
+          "sku": "AP-HW-0500-GM",
+          "name": "H/WASH 500ML — Goat's Milk",
+          "market": null
+        },
+        {
+          "id": "cmtvclhpw007k03otb1p7b46i",
+          "sku": "AP-HW-0500-LV",
+          "name": "H/WASH 500ML — Lavender",
+          "market": null
+        },
+        {
+          "id": "cmtvclht5007l03otp2smd248",
+          "sku": "AP-HW-0500-RJ",
+          "name": "H/WASH 500ML — Royal Jelly",
+          "market": null
+        }
+      ]
+    },
+    {
+      "key": "aara\u00002l deep moisturising s/c\u00002L",
+      "proposedCode": "AARA-SC-2000",
+      "code": "AARA-SC-2000",
+      "name": "2L DEEP MOISTURISING S/C",
+      "brand": "Aara",
+      "category": "Shower cream & gel",
+      "size": "2L",
+      "line": "2L DEEP MOISTURISING S/C",
+      "markets": [],
+      "products": [
+        {
+          "id": "cmtvcliy5008003otzgnq9uci",
+          "sku": "AARA-SC-2000-GM",
+          "name": "2L DEEP MOISTURISING S/C — Goat's Milk",
+          "market": null
+        },
+        {
+          "id": "cmtvclj0e008103ot8gmjnnnu",
+          "sku": "AARA-SC-2000-LV",
+          "name": "2L DEEP MOISTURISING S/C — Lavender",
+          "market": null
+        }
+      ]
+    },
+    {
+      "key": "aara\u0000750mlshower scrub\u0000",
+      "proposedCode": "AARA-SC",
+      "code": "AARA-SC-0750",
+      "name": "Aara Shower Scrub 750ML",
+      "brand": "Aara",
+      "category": "Shower cream & gel",
+      "size": "750ML",
+      "line": "750MLSHOWER SCRUB",
+      "markets": [],
+      "products": [
+        {
+          "id": "cmtvclj2g008203ot0dhs27vl",
+          "sku": "AARA-SC-ALOEVERA",
+          "name": "750MLSHOWER SCRUB — Aloevera",
+          "market": null
+        },
+        {
+          "id": "cmtvclj5w008303otgje8apas",
+          "sku": "AARA-SC-LV",
+          "name": "750MLSHOWER SCRUB — Lavender",
+          "market": null
+        },
+        {
+          "id": "cmtvclj8x008403otbtpr6ne3",
+          "sku": "AARA-SC-SEASALT",
+          "name": "750MLSHOWER SCRUB — Seasalt",
+          "market": null
+        }
+      ]
+    },
+    {
+      "key": "aara\u0000body wash 500ml\u0000500ML",
+      "proposedCode": "AARA-SC-0500",
+      "code": "AARA-SC-0500",
+      "name": "BODY WASH 500ML",
+      "brand": "Aara",
+      "category": "Shower cream & gel",
+      "size": "500ML",
+      "line": "BODY WASH 500ML",
+      "markets": [],
+      "products": [
+        {
+          "id": "cmtvcljj3008603ott35p5lov",
+          "sku": "AARA-SC-0500-AV",
+          "name": "BODY WASH 500ML — Avocado",
+          "market": null
+        },
+        {
+          "id": "cmtvcljdw008503otl8pc665k",
+          "sku": "AARA-SC-0500-PEACH",
+          "name": "BODY WASH 500ML — Peach",
+          "market": null
+        }
+      ]
+    },
+    {
+      "key": "aara\u0000hair shampoo 400ml\u0000400ML",
+      "proposedCode": "AARA-HC-0400",
+      "code": "AARA-HC-0400",
+      "name": "HAIR SHAMPOO 400ML",
+      "brand": "Aara",
+      "category": "Hair care",
+      "size": "400ML",
+      "line": "HAIR SHAMPOO 400ML",
+      "markets": [],
+      "products": [
+        {
+          "id": "cmtvcljm0008703ot7oatcv4s",
+          "sku": "AARA-HC-0400-AD",
+          "name": "HAIR SHAMPOO 400ML — Anti Dandruff",
+          "market": null
+        },
+        {
+          "id": "cmtvcljou008803ot40j0ycxi",
+          "sku": "AARA-HC-0400-SS",
+          "name": "HAIR SHAMPOO 400ML — Silky Smooth",
+          "market": null
+        }
+      ]
+    },
+    {
+      "key": "buddha\u00001l shower cream\u00001L",
+      "proposedCode": "BUDDHA-SC-1000",
+      "code": "BUDDHA-SC-1000",
+      "name": "1L SHOWER CREAM",
+      "brand": "Buddha",
+      "category": "Shower cream & gel",
+      "size": "1L",
+      "line": "1L SHOWER CREAM",
+      "markets": [],
+      "products": [
+        {
+          "id": "cmtvclhhw007h03otjj3utwe3",
+          "sku": "BUDDHA-SC-1000-AGARWOOD",
+          "name": "1L SHOWER CREAM — Agarwood",
+          "market": null
+        },
+        {
+          "id": "cmtvclhfh007g03otpc15ka6o",
+          "sku": "BUDDHA-SC-1000-KL",
+          "name": "1L SHOWER CREAM — Kaffir Lime",
+          "market": null
+        },
+        {
+          "id": "cmtvclhkx007i03otwi19z5yu",
+          "sku": "BUDDHA-SC-1000-SANDALWOOD",
+          "name": "1L SHOWER CREAM — Sandalwood",
+          "market": null
+        }
+      ]
+    },
+    {
+      "key": "darce\u0000500ml h/wash\u0000500ML",
+      "proposedCode": "DARCE-HW-0500",
+      "code": "DARCE-HW-0500",
+      "name": "500ML H/WASH",
+      "brand": "Darce",
+      "category": "Hand wash & soap",
+      "size": "500ML",
+      "line": "500ML H/WASH",
+      "markets": [],
+      "products": [
+        {
+          "id": "cmtvclffv006r03otysubq51h",
+          "sku": "DARCE-HW-0500-AL",
+          "name": "500ML H/WASH — Aloe Vera",
+          "market": null
+        },
+        {
+          "id": "cmtvclfnp006u03otahtv9csw",
+          "sku": "DARCE-HW-0500-PINE",
+          "name": "500ML H/WASH — Pine",
+          "market": null
+        },
+        {
+          "id": "cmtvclfio006s03otwzzc50zq",
+          "sku": "DARCE-HW-0500-POMEGRANATE",
+          "name": "500ML H/WASH — Pomegranate",
+          "market": null
+        },
+        {
+          "id": "cmtvclfl0006t03ot8nx1dd8l",
+          "sku": "DARCE-HW-0500-SS",
+          "name": "500ML H/WASH — Sea Salt",
+          "market": null
+        }
+      ]
+    },
+    {
+      "key": "darce\u0000750ml shower creme\u0000750ML",
+      "proposedCode": "DARCE-SC-0750",
+      "code": "DARCE-SC-0750",
+      "name": "750ML SHOWER CREME",
+      "brand": "Darce",
+      "category": "Shower cream & gel",
+      "size": "750ML",
+      "line": "750ML SHOWER CREME",
+      "markets": [],
+      "products": [
+        {
+          "id": "cmtvclfd8006q03otj1bjeaoz",
+          "sku": "DARCE-SC-0750-AVA",
+          "name": "750ML SHOWER CREME — Aloe Vera Apple",
+          "market": null
+        },
+        {
+          "id": "cmtvclf63006n03otnszokvfv",
+          "sku": "DARCE-SC-0750-COCONUT",
+          "name": "750ML SHOWER CREME — Coconut",
+          "market": null
+        },
+        {
+          "id": "cmtvclfb3006p03ot7qnzkmau",
+          "sku": "DARCE-SC-0750-POMEGRANATE",
+          "name": "750ML SHOWER CREME — Pomegranate",
+          "market": null
+        },
+        {
+          "id": "cmtvclf8o006o03otvn3pnok2",
+          "sku": "DARCE-SC-0750-SS",
+          "name": "750ML SHOWER CREME — Sea Salt",
+          "market": null
+        }
+      ]
+    },
+    {
+      "key": "econsave\u00001l shower cream\u00001L",
+      "proposedCode": "ECONSAVE-SC-1000",
+      "code": "ECONSAVE-SC-1000",
+      "name": "1L SHOWER CREAM",
+      "brand": "Econsave",
+      "category": "Shower cream & gel",
+      "size": "1L",
+      "line": "1L SHOWER CREAM",
+      "markets": [],
+      "products": [
+        {
+          "id": "cmtvclf1q006l03otpgjzn7kk",
+          "sku": "ECONSAVE-SC-1000-GM",
+          "name": "1L SHOWER CREAM — Goat's Milk",
+          "market": null
+        },
+        {
+          "id": "cmtvclesj006i03otmjratgms",
+          "sku": "ECONSAVE-SC-1000-OB",
+          "name": "1L SHOWER CREAM — Ocean Blue",
+          "market": null
+        },
+        {
+          "id": "cmtvclezc006k03ot0nyylo1h",
+          "sku": "ECONSAVE-SC-1000-PEACH",
+          "name": "1L SHOWER CREAM — Peach",
+          "market": null
+        },
+        {
+          "id": "cmtvclevz006j03otuhjnui10",
+          "sku": "ECONSAVE-SC-1000-RJ",
+          "name": "1L SHOWER CREAM — Royal Jelly",
+          "market": null
+        },
+        {
+          "id": "cmtvclf3r006m03ot4w5qa8yt",
+          "sku": "ECONSAVE-SC-1000-SAKURA",
+          "name": "1L SHOWER CREAM — Sakura",
+          "market": null
+        }
+      ]
+    },
+    {
+      "key": "everfresh\u0000everfresh 1l\u00001L",
+      "proposedCode": "EVF-SC-1000",
+      "code": "EVF-SC-1000",
+      "name": "EVERFRESH 1L",
+      "brand": "Everfresh",
+      "category": "Shower cream & gel",
+      "size": "1L",
+      "line": "EVERFRESH 1L",
+      "markets": [],
+      "products": [
+        {
+          "id": "cmtvclc3s005m03otcs85pjv7",
+          "sku": "EVF-SC-1000-GM",
+          "name": "EVERFRESH 1L — Goat's Milk",
+          "market": null
+        },
+        {
+          "id": "cmtvclc83005o03otiip148ar",
+          "sku": "EVF-SC-1000-GT",
+          "name": "EVERFRESH 1L — Green Tea",
+          "market": null
+        },
+        {
+          "id": "cmtvclc60005n03ot2g7fu0y8",
+          "sku": "EVF-SC-1000-LV",
+          "name": "EVERFRESH 1L — Lavender",
+          "market": null
+        }
+      ]
+    },
+    {
+      "key": "everfresh\u0000everfresh 2.1l\u00002.1L",
+      "proposedCode": "EVF-SC-2100",
+      "code": "EVF-SC-2100",
+      "name": "EVERFRESH 2.1L",
+      "brand": "Everfresh",
+      "category": "Shower cream & gel",
+      "size": "2.1L",
+      "line": "EVERFRESH 2.1L",
+      "markets": [],
+      "products": [
+        {
+          "id": "cmtvclbqw005h03ot8b8rbidu",
+          "sku": "EVF-SC-2100-GMAP",
+          "name": "EVERFRESH 2.1L — Goat's Milk And Papaya",
+          "market": null
+        },
+        {
+          "id": "cmtvclbn6005g03otxghlpjtb",
+          "sku": "EVF-SC-2100-GMARJ",
+          "name": "EVERFRESH 2.1L — Goat's Milk And Royal Jelly",
+          "market": null
+        },
+        {
+          "id": "cmtvclbko005f03ot860jdgzq",
+          "sku": "EVF-SC-2100-GMW",
+          "name": "EVERFRESH 2.1L — Goat's Milk Whitening",
+          "market": null
+        },
+        {
+          "id": "cmtvclbvg005j03otya27fprd",
+          "sku": "EVF-SC-2100-GT",
+          "name": "EVERFRESH 2.1L — Green Tea",
+          "market": null
+        },
+        {
+          "id": "cmtvclbsv005i03oteib4zsy3",
+          "sku": "EVF-SC-2100-LV",
+          "name": "EVERFRESH 2.1L — Lavender",
+          "market": null
+        }
+      ]
+    },
+    {
+      "key": "everfresh\u0000hand soap\u0000",
+      "proposedCode": "EVF-HW",
+      "code": "EVF-HW",
+      "name": "HAND SOAP",
+      "brand": "Everfresh",
+      "category": "Hand wash & soap",
+      "size": null,
+      "line": "HAND SOAP",
+      "markets": [],
+      "products": [
+        {
+          "id": "cmtvclcd1005q03otnnbwwu38",
+          "sku": "EVF-HW-LV",
+          "name": "HAND SOAP — Lavender",
+          "market": null
+        },
+        {
+          "id": "cmtvclcak005p03ottfyhotu6",
+          "sku": "EVF-HW-LE",
+          "name": "HAND SOAP — Lemon",
+          "market": null
+        }
+      ]
+    },
+    {
+      "key": "everfresh\u0000refill 700ml\u0000700ML",
+      "proposedCode": "EVF-SC-0700",
+      "code": "EVF-SC-0700",
+      "name": "REFILL 700ML",
+      "brand": "Everfresh",
+      "category": "Shower cream & gel",
+      "size": "700ML",
+      "line": "REFILL 700ML",
+      "markets": [],
+      "products": [
+        {
+          "id": "cmtvclbxw005k03otnwq5m6qg",
+          "sku": "EVF-SC-0700-GM",
+          "name": "REFILL 700ML — Goat's Milk",
+          "market": null
+        },
+        {
+          "id": "cmtvclc1j005l03ot6sp11bv0",
+          "sku": "EVF-SC-0700-LV",
+          "name": "REFILL 700ML — Lavender",
+          "market": null
+        }
+      ]
+    },
+    {
+      "key": "fair price\u0000500ml cream cleanser\u0000500ML",
+      "proposedCode": "FPR-DW-0500",
+      "code": "FPR-DW-0500",
+      "name": "500ML CREAM CLEANSER",
+      "brand": "Fair Price",
+      "category": "Dishwash & cleanser",
+      "size": "500ML",
+      "line": "500ML CREAM CLEANSER",
+      "markets": [],
+      "products": [
+        {
+          "id": "cmtvclcu8005v03otwe7qpecu",
+          "sku": "FPR-DW-0500-LE",
+          "name": "500ML CREAM CLEANSER — Lemon",
+          "market": null
+        },
+        {
+          "id": "cmtvclcph005u03otyt05eu5n",
+          "sku": "FPR-DW-0500-LI",
+          "name": "500ML CREAM CLEANSER — Lime",
+          "market": null
+        }
+      ]
+    },
+    {
+      "key": "fair price\u0000hand sanitizer 60ml\u000060ML",
+      "proposedCode": "FPR-HS-0060",
+      "code": "FPR-HS-0060",
+      "name": "HAND SANITIZER 60ML",
+      "brand": "Fair Price",
+      "category": "Hand sanitizer",
+      "size": "60ML",
+      "line": "HAND SANITIZER 60ML",
+      "markets": [],
+      "products": [
+        {
+          "id": "cmtvcld37005w03otuaig96nk",
+          "sku": "FPR-HS-0060-FR",
+          "name": "HAND SANITIZER 60ML — Fresh",
+          "market": null
+        },
+        {
+          "id": "cmtvcld6a005x03otreibz5s2",
+          "sku": "FPR-HS-0060-LV",
+          "name": "HAND SANITIZER 60ML — Lavender",
+          "market": null
+        }
+      ]
+    },
+    {
+      "key": "friends\u0000500ml h/w\u0000500ML",
+      "proposedCode": "FRND-HW-0500",
+      "code": "FRND-HW-0500",
+      "name": "500ML H/W",
+      "brand": "Friends",
+      "category": "Hand wash & soap",
+      "size": "500ML",
+      "line": "500ML H/W",
+      "markets": [],
+      "products": [
+        {
+          "id": "cmtvclgzb007a03ot48mj2j6i",
+          "sku": "FRND-HW-0500-GM",
+          "name": "500ML H/W — Goat's Milk",
+          "market": null
+        },
+        {
+          "id": "cmtvclh2a007b03ottutepp4v",
+          "sku": "FRND-HW-0500-LV",
+          "name": "500ML H/W — Lavender",
+          "market": null
+        },
+        {
+          "id": "cmtvclh5a007c03oterkv28da",
+          "sku": "FRND-HW-0500-RJ",
+          "name": "500ML H/W — Royal Jelly",
+          "market": null
+        }
+      ]
+    },
+    {
+      "key": "friends\u0000750ml s/c\u0000750ML",
+      "proposedCode": "FRND-SC-0750",
+      "code": "FRND-SC-0750",
+      "name": "750ML S/C",
+      "brand": "Friends",
+      "category": "Shower cream & gel",
+      "size": "750ML",
+      "line": "750ML S/C",
+      "markets": [],
+      "products": [
+        {
+          "id": "cmtvclgqc007703otibwet39c",
+          "sku": "FRND-SC-0750-GM",
+          "name": "750ML S/C — Goat's Milk",
+          "market": null
+        },
+        {
+          "id": "cmtvclgtx007803otwpf5070m",
+          "sku": "FRND-SC-0750-LV",
+          "name": "750ML S/C — Lavender",
+          "market": null
+        },
+        {
+          "id": "cmtvclgwn007903otek2nsvsp",
+          "sku": "FRND-SC-0750-PP",
+          "name": "750ML S/C — Papaya",
+          "market": null
+        }
+      ]
+    },
+    {
+      "key": "friends\u0000roll on full plt max 48 ctns\u0000",
+      "proposedCode": "FRND-FG",
+      "code": "FRND-FG",
+      "name": "ROLL ON FULL PLT MAX 48 CTNS",
+      "brand": "Friends",
+      "category": "Fragrance",
+      "size": null,
+      "line": "ROLL ON FULL PLT MAX 48 CTNS",
+      "markets": [],
+      "products": [
+        {
+          "id": "cmtvclh7i007d03otnc8ny1lz",
+          "sku": "FRND-FG-CASANOVA",
+          "name": "ROLL ON FULL PLT MAX 48 CTNS — Casanova",
+          "market": null
+        },
+        {
+          "id": "cmtvclhat007e03otcahz4awc",
+          "sku": "FRND-FG-MEMOIR",
+          "name": "ROLL ON FULL PLT MAX 48 CTNS — Memoir",
+          "market": null
+        },
+        {
+          "id": "cmtvclhcy007f03otgnpl7bi0",
+          "sku": "FRND-FG-SPARTANS",
+          "name": "ROLL ON FULL PLT MAX 48 CTNS — Spartans",
+          "market": null
+        }
+      ]
+    },
+    {
+      "key": "hero market\u000025l dishwash\u000025L",
+      "proposedCode": "HM-HW-25000",
+      "code": "HM-HW-25000-DISHWASH",
+      "name": "Hero Market Dishwash 25L",
+      "brand": "Hero Market",
+      "category": "Hand wash & soap",
+      "size": "25L",
+      "line": "25L DISHWASH",
+      "markets": [],
+      "products": [
+        {
+          "id": "cmtvclgj5007403ot70lqc8d6",
+          "sku": "HM-HW-25000-LE",
+          "name": "25L DISHWASH — Lemon",
+          "market": null
+        },
+        {
+          "id": "cmtvclglm007503otnthwhavf",
+          "sku": "HM-HW-25000-LI",
+          "name": "25L DISHWASH — Lime",
+          "market": null
+        }
+      ]
+    },
+    {
+      "key": "hero market\u000025l h/wash\u000025L",
+      "proposedCode": "HM-HW-25000",
+      "code": "HM-HW-25000",
+      "name": "Hero Market Hand Wash 25L",
+      "brand": "Hero Market",
+      "category": "Hand wash & soap",
+      "size": "25L",
+      "line": "25L H/WASH",
+      "markets": [],
+      "products": [
+        {
+          "id": "cmtvclgh0007303ot0xa2d21o",
+          "sku": "HM-HW-25000-LV",
+          "name": "25L H/WASH — Lavender",
+          "market": null
+        }
+      ]
+    },
+    {
+      "key": "hero market\u0000500ml cream cleanser\u0000500ML",
+      "proposedCode": "HM-DW-0500",
+      "code": "HM-DW-0500",
+      "name": "500ML CREAM CLEANSER",
+      "brand": "Hero Market",
+      "category": "Dishwash & cleanser",
+      "size": "500ML",
+      "line": "500ML CREAM CLEANSER",
+      "markets": [],
+      "products": [
+        {
+          "id": "cmtvclgo3007603otkzlfnk9a",
+          "sku": "HM-DW-0500-LE",
+          "name": "500ML CREAM CLEANSER — Lemon",
+          "market": null
+        }
+      ]
+    },
+    {
+      "key": "hero market\u0000hilo 2100ml shower cream\u00002100ML",
+      "proposedCode": "HM-SC-2100",
+      "code": "HM-SC-2100",
+      "name": "HILO 2100ML SHOWER CREAM",
+      "brand": "Hero Market",
+      "category": "Shower cream & gel",
+      "size": "2100ML",
+      "line": "HILO 2100ML SHOWER CREAM",
+      "markets": [],
+      "products": [
+        {
+          "id": "cmtvclfwp006x03otmfum2dmq",
+          "sku": "HM-SC-2100-FLORAL",
+          "name": "HILO 2100ML SHOWER CREAM — Floral",
+          "market": null
+        },
+        {
+          "id": "cmtvclg3j006y03ot33gcte9n",
+          "sku": "HM-SC-2100-FRUITY",
+          "name": "HILO 2100ML SHOWER CREAM — Fruity",
+          "market": null
+        },
+        {
+          "id": "cmtvclfqd006v03otylrt500e",
+          "sku": "HM-SC-2100-GM",
+          "name": "HILO 2100ML SHOWER CREAM — Goat's Milk",
+          "market": null
+        },
+        {
+          "id": "cmtvclft4006w03otyqvf9xb1",
+          "sku": "HM-SC-2100-LV",
+          "name": "HILO 2100ML SHOWER CREAM — Lavender",
+          "market": null
+        }
+      ]
+    },
+    {
+      "key": "hero market\u0000hilo h/wash 500ml\u0000500ML",
+      "proposedCode": "HM-HW-0500",
+      "code": "HM-HW-0500",
+      "name": "HILO H/WASH 500ML",
+      "brand": "Hero Market",
+      "category": "Hand wash & soap",
+      "size": "500ML",
+      "line": "HILO H/WASH 500ML",
+      "markets": [],
+      "products": [
+        {
+          "id": "cmtvclgej007203otehgxviv7",
+          "sku": "HM-HW-0500-FLORAL",
+          "name": "HILO H/WASH 500ML — Floral",
+          "market": null
+        },
+        {
+          "id": "cmtvclg6t006z03ot5meh5d6l",
+          "sku": "HM-HW-0500-GM",
+          "name": "HILO H/WASH 500ML — Goat's Milk",
+          "market": null
+        },
+        {
+          "id": "cmtvclg98007003otgva15qmv",
+          "sku": "HM-HW-0500-LV",
+          "name": "HILO H/WASH 500ML — Lavender",
+          "market": null
+        },
+        {
+          "id": "cmtvclgba007103oty4hylwol",
+          "sku": "HM-HW-0500-RJ",
+          "name": "HILO H/WASH 500ML — Royal Jelly",
+          "market": null
+        }
+      ]
+    },
+    {
+      "key": "l'evinia\u0000400ml\u0000400ML",
+      "proposedCode": "LEV-SC-0400",
+      "code": "LEV-SC-0400",
+      "name": "400ML",
+      "brand": "L'Evinia",
+      "category": "Shower cream & gel",
+      "size": "400ML",
+      "line": "400ML",
+      "markets": [],
+      "products": [
+        {
+          "id": "cmtvcldzd006803otpaok8qun",
+          "sku": "LEV-SC-0400-CHIC",
+          "name": "400ML — Chic",
+          "market": null
+        },
+        {
+          "id": "cmtvcldwi006703otg6u1ejxv",
+          "sku": "LEV-SC-0400-RITZ",
+          "name": "400ML — Ritz",
+          "market": null
+        },
+        {
+          "id": "cmtvcldud006603otz2ia5dz4",
+          "sku": "LEV-SC-0400-STYLE",
+          "name": "400ML — Style",
+          "market": null
+        },
+        {
+          "id": "cmtvcle21006903otgtu7nt1i",
+          "sku": "LEV-SC-0400-VOGUE",
+          "name": "400ML — Vogue",
+          "market": null
+        }
+      ]
+    },
+    {
+      "key": "l'evinia\u0000500ml fine fragrance shower gel\u0000500ML",
+      "proposedCode": "LEV-FG-0500",
+      "code": "LEV-FG-0500",
+      "name": "500ML FINE FRAGRANCE SHOWER GEL",
+      "brand": "L'Evinia",
+      "category": "Fragrance",
+      "size": "500ML",
+      "line": "500ML FINE FRAGRANCE SHOWER GEL",
+      "markets": [],
+      "products": [
+        {
+          "id": "cmtvcldow006403otvfx81kwy",
+          "sku": "LEV-FG-0500-CHIC",
+          "name": "500ML FINE FRAGRANCE SHOWER GEL — Chic",
+          "market": null
+        },
+        {
+          "id": "cmtvcldme006303otk1t8x4cq",
+          "sku": "LEV-FG-0500-RITZ",
+          "name": "500ML FINE FRAGRANCE SHOWER GEL — Ritz",
+          "market": null
+        },
+        {
+          "id": "cmtvcldj6006203ot2d9gtsef",
+          "sku": "LEV-FG-0500-STYLE",
+          "name": "500ML FINE FRAGRANCE SHOWER GEL — Style",
+          "market": null
+        },
+        {
+          "id": "cmtvcldr9006503otkl4vv1rr",
+          "sku": "LEV-FG-0500-VOGUE",
+          "name": "500ML FINE FRAGRANCE SHOWER GEL — Vogue",
+          "market": null
+        }
+      ]
+    },
+    {
+      "key": "l'evinia\u0000700ml fine fragrance shower gel\u0000700ML",
+      "proposedCode": "LEV-FG-0700",
+      "code": "LEV-FG-0700",
+      "name": "700ML FINE FRAGRANCE SHOWER GEL",
+      "brand": "L'Evinia",
+      "category": "Fragrance",
+      "size": "700ML",
+      "line": "700ML FINE FRAGRANCE SHOWER GEL",
+      "markets": [],
+      "products": [
+        {
+          "id": "cmtvclde5006003otf22ly38f",
+          "sku": "LEV-FG-0700-CHIC",
+          "name": "700ML FINE FRAGRANCE SHOWER GEL — Chic",
+          "market": null
+        },
+        {
+          "id": "cmtvcldb3005z03othxadp9hf",
+          "sku": "LEV-FG-0700-RITZ",
+          "name": "700ML FINE FRAGRANCE SHOWER GEL — Ritz",
+          "market": null
+        },
+        {
+          "id": "cmtvcld8w005y03otzydrhpiz",
+          "sku": "LEV-FG-0700-STYLE",
+          "name": "700ML FINE FRAGRANCE SHOWER GEL — Style",
+          "market": null
+        },
+        {
+          "id": "cmtvcldgu006103otj81tc02l",
+          "sku": "LEV-FG-0700-VOGUE",
+          "name": "700ML FINE FRAGRANCE SHOWER GEL — Vogue",
+          "market": null
+        }
+      ]
+    },
+    {
+      "key": "l.hands\u00001l dwash cap\u00001L",
+      "proposedCode": "LHANDS-DW-1000",
+      "code": "LHANDS-DW-1000-CAP",
+      "name": "L.Hands Dishwash 1L (cap)",
+      "brand": "L.Hands",
+      "category": "Dishwash & cleanser",
+      "size": "1L",
+      "line": "1L DWASH CAP",
+      "markets": [],
+      "products": [
+        {
+          "id": "cmtvclbay005b03otomwahdy8",
+          "sku": "LHANDS-DW-1000-LE-2",
+          "name": "1L DWASH CAP — Lemon",
+          "market": null
+        },
+        {
+          "id": "cmtvclbde005c03otg32hoowh",
+          "sku": "LHANDS-DW-1000-LI-2",
+          "name": "1L DWASH CAP — Lime",
+          "market": null
+        }
+      ]
+    },
+    {
+      "key": "l.hands\u00001l dwash pump\u00001L",
+      "proposedCode": "LHANDS-DW-1000",
+      "code": "LHANDS-DW-1000-PUMP",
+      "name": "L.Hands Dishwash 1L (pump)",
+      "brand": "L.Hands",
+      "category": "Dishwash & cleanser",
+      "size": "1L",
+      "line": "1L DWASH PUMP",
+      "markets": [],
+      "products": [
+        {
+          "id": "cmtvclb57005903ot3vwx124e",
+          "sku": "LHANDS-DW-1000-LE",
+          "name": "1L DWASH PUMP — Lemon",
+          "market": null
+        },
+        {
+          "id": "cmtvclb7u005a03otvcdoed4j",
+          "sku": "LHANDS-DW-1000-LI",
+          "name": "1L DWASH PUMP — Lime",
+          "market": null
+        }
+      ]
+    },
+    {
+      "key": "meiri\u0000500ml shower cream\u0000500ML",
+      "proposedCode": "MEIRI-SC-0500",
+      "code": "MEIRI-SC-0500",
+      "name": "500ML SHOWER CREAM",
+      "brand": "Meiri",
+      "category": "Shower cream & gel",
+      "size": "500ML",
+      "line": "500ML SHOWER CREAM",
+      "markets": [],
+      "products": [
+        {
+          "id": "cmtvcledn006d03oteu84q3mp",
+          "sku": "MEIRI-SC-0500-BLANCHE",
+          "name": "500ML SHOWER CREAM — Blanche",
+          "market": null
+        },
+        {
+          "id": "cmtvcle4d006a03ot0cnamzl1",
+          "sku": "MEIRI-SC-0500-FANTASIE",
+          "name": "500ML SHOWER CREAM — Fantasie",
+          "market": null
+        },
+        {
+          "id": "cmtvcle99006c03otjvicklo8",
+          "sku": "MEIRI-SC-0500-JADORE",
+          "name": "500ML SHOWER CREAM — J'Adore",
+          "market": null
+        },
+        {
+          "id": "cmtvcle6f006b03otbn5y4g4l",
+          "sku": "MEIRI-SC-0500-PLAISIR",
+          "name": "500ML SHOWER CREAM — Plaisir",
+          "market": null
+        }
+      ]
+    },
+    {
+      "key": "meiri\u0000shampoo\u0000",
+      "proposedCode": "MEIRI-HC",
+      "code": "MEIRI-HC",
+      "name": "SHAMPOO",
+      "brand": "Meiri",
+      "category": "Hair care",
+      "size": null,
+      "line": "SHAMPOO",
+      "markets": [],
+      "products": [
+        {
+          "id": "cmtvclepi006h03ot9l4gwp0w",
+          "sku": "MEIRI-HC-BLANCHE",
+          "name": "SHAMPOO — Blanche",
+          "market": null
+        },
+        {
+          "id": "cmtvcleip006e03ot2xdtfk4l",
+          "sku": "MEIRI-HC-FANTASIE",
+          "name": "SHAMPOO — Fantasie",
+          "market": null
+        },
+        {
+          "id": "cmtvclenb006g03otjk7epg4d",
+          "sku": "MEIRI-HC-JADORE",
+          "name": "SHAMPOO — J'Adore",
+          "market": null
+        },
+        {
+          "id": "cmtvclel4006f03otjee2amuz",
+          "sku": "MEIRI-HC-PLAISIR",
+          "name": "SHAMPOO — Plaisir",
+          "market": null
+        }
+      ]
+    },
+    {
+      "key": "morning spring\u00002.9kg liquid detergent\u00002.9KG",
+      "proposedCode": "MSP-LD-2900",
+      "code": "MSP-LD-2900",
+      "name": "2.9KG LIQUID DETERGENT",
+      "brand": "Morning Spring",
+      "category": "Laundry detergent",
+      "size": "2.9KG",
+      "line": "2.9KG LIQUID DETERGENT",
+      "markets": [],
+      "products": [
+        {
+          "id": "cmtvclcm0005t03ot1pmydp1s",
+          "sku": "MSP-LD-2900-AB",
+          "name": "2.9KG LIQUID DETERGENT — Anti Bac",
+          "market": null
+        },
+        {
+          "id": "cmtvclcjf005s03otc1vlzhim",
+          "sku": "MSP-LD-2900-CC",
+          "name": "2.9KG LIQUID DETERGENT — Colour Care",
+          "market": null
+        },
+        {
+          "id": "cmtvclcgp005r03otxngdn2mk",
+          "sku": "MSP-LD-2900-RG",
+          "name": "2.9KG LIQUID DETERGENT — Regular",
+          "market": null
+        }
+      ]
+    },
+    {
+      "key": "mr. king\u0000cream cleanser\u0000",
+      "proposedCode": "MRK-DW",
+      "code": "MRK-DW",
+      "name": "CREAM CLEANSER",
+      "brand": "Mr. King",
+      "category": "Dishwash & cleanser",
+      "size": null,
+      "line": "CREAM CLEANSER",
+      "markets": [],
+      "products": [
+        {
+          "id": "cmtvclav0005503otivcwa7oc",
+          "sku": "MRK-DW-LE",
+          "name": "CREAM CLEANSER — Lemon",
+          "market": null
+        },
+        {
+          "id": "cmtvclaxn005603otltfr7gb2",
+          "sku": "MRK-DW-LI",
+          "name": "CREAM CLEANSER — Lime",
+          "market": null
+        }
+      ]
+    },
+    {
+      "key": "mr. king\u0000mr.king 1.5l\u00001.5L",
+      "proposedCode": "MRK-DW-1500",
+      "code": "MRK-DW-1500",
+      "name": "MR.KING 1.5L",
+      "brand": "Mr. King",
+      "category": "Dishwash & cleanser",
+      "size": "1.5L",
+      "line": "MR.KING 1.5L",
+      "markets": [],
+      "products": [
+        {
+          "id": "cmtvclakw005103otxnaj4aoh",
+          "sku": "MRK-DW-1500-LE",
+          "name": "MR.KING 1.5L — Lemon",
+          "market": null
+        },
+        {
+          "id": "cmtvclapo005303ot83ism0bj",
+          "sku": "MRK-DW-1500-LE-X6",
+          "name": "MR.KING 1.5L — Lemon",
+          "market": null
+        },
+        {
+          "id": "cmtvclan9005203ot5ly72z12",
+          "sku": "MRK-DW-1500-LI",
+          "name": "MR.KING 1.5L — Lime",
+          "market": null
+        },
+        {
+          "id": "cmtvclarl005403ot3xy5s490",
+          "sku": "MRK-DW-1500-LI-X6",
+          "name": "MR.KING 1.5L — Lime",
+          "market": null
+        }
+      ]
+    },
+    {
+      "key": "mr. king\u0000mr.king 900ml\u0000900ML",
+      "proposedCode": "MRK-DW-0900",
+      "code": "MRK-DW-0900",
+      "name": "MR.KING 900ML",
+      "brand": "Mr. King",
+      "category": "Dishwash & cleanser",
+      "size": "900ML",
+      "line": "MR.KING 900ML",
+      "markets": [],
+      "products": [
+        {
+          "id": "cmtvclazr005703otdqze166d",
+          "sku": "MRK-DW-0900-LE",
+          "name": "MR.KING 900ML — Lemon",
+          "market": null
+        },
+        {
+          "id": "cmtvclb2n005803ot8c9l9jw4",
+          "sku": "MRK-DW-0900-LI",
+          "name": "MR.KING 900ML — Lime",
+          "market": null
+        }
+      ]
+    },
+    {
+      "key": "nature key\u0000nature key 300ml\u0000300ML",
+      "proposedCode": "NKY-SC-0300",
+      "code": "NKY-SC-0300",
+      "name": "NATURE KEY 300ML",
+      "brand": "Nature Key",
+      "category": "Shower cream & gel",
+      "size": "300ML",
+      "line": "NATURE KEY 300ML",
+      "markets": [],
+      "products": [
+        {
+          "id": "cmtvclbfr005d03otkpw8ikwa",
+          "sku": "NKY-SC-0300-AL",
+          "name": "NATURE KEY 300ML — Aloe Vera",
+          "market": null
+        },
+        {
+          "id": "cmtvclbid005e03ot86bbp3zk",
+          "sku": "NKY-SC-0300-CO",
+          "name": "NATURE KEY 300ML — Collagen",
+          "market": null
+        }
+      ]
+    },
+    {
+      "key": "therapy level\u00001l shower gel\u00001L",
+      "proposedCode": "TL-SC-1000",
+      "code": "TL-SC-1000",
+      "name": "1L SHOWER GEL",
+      "brand": "Therapy Level",
+      "category": "Shower cream & gel",
+      "size": "1L",
+      "line": "1L SHOWER GEL",
+      "markets": [],
+      "products": [
+        {
+          "id": "cmtvclirh007y03otoq2ac41q",
+          "sku": "TL-SC-1000-GT",
+          "name": "1L SHOWER GEL — Green Tea",
+          "market": null
+        },
+        {
+          "id": "cmtvclip0007x03otcnw4kwa7",
+          "sku": "TL-SC-1000-LV",
+          "name": "1L SHOWER GEL — Lavender",
+          "market": null
+        },
+        {
+          "id": "cmtvcliun007z03ot2kfeyss6",
+          "sku": "TL-SC-1000-OW",
+          "name": "1L SHOWER GEL — Ocean Wave",
+          "market": null
+        }
+      ]
+    },
+    {
+      "key": "therapy level\u0000h/wash 500ml (7/layer x 8)\u0000500ML",
+      "proposedCode": "TL-HW-0500",
+      "code": "TL-HW-0500",
+      "name": "H/WASH 500ML (7/LAYER X 8)",
+      "brand": "Therapy Level",
+      "category": "Hand wash & soap",
+      "size": "500ML",
+      "line": "H/WASH 500ML (7/LAYER X 8)",
+      "markets": [],
+      "products": [
+        {
+          "id": "cmtvclib6007s03otvy51wscy",
+          "sku": "TL-HW-0500-BLUEBERRY",
+          "name": "H/WASH 500ML (7/LAYER X 8) — Blueberry",
+          "market": null
+        },
+        {
+          "id": "cmtvclill007w03ot05ycsxg4",
+          "sku": "TL-HW-0500-GM",
+          "name": "H/WASH 500ML (7/LAYER X 8) — Goat's Milk",
+          "market": null
+        },
+        {
+          "id": "cmtvclidx007t03oty7zp2r86",
+          "sku": "TL-HW-0500-GRAPEFRUIT",
+          "name": "H/WASH 500ML (7/LAYER X 8) — Grapefruit",
+          "market": null
+        },
+        {
+          "id": "cmtvcli43007p03otdff2qfze",
+          "sku": "TL-HW-0500-KIWI",
+          "name": "H/WASH 500ML (7/LAYER X 8) — Kiwi",
+          "market": null
+        },
+        {
+          "id": "cmtvcli6m007q03otne3o1sru",
+          "sku": "TL-HW-0500-LV",
+          "name": "H/WASH 500ML (7/LAYER X 8) — Lavender",
+          "market": null
+        },
+        {
+          "id": "cmtvcliga007u03otgbnkrpn9",
+          "sku": "TL-HW-0500-PEACH",
+          "name": "H/WASH 500ML (7/LAYER X 8) — Peach",
+          "market": null
+        },
+        {
+          "id": "cmtvcli93007r03ote1o8hs2c",
+          "sku": "TL-HW-0500-SB2",
+          "name": "H/WASH 500ML (7/LAYER X 8) — Strawberry",
+          "market": null
+        },
+        {
+          "id": "cmtvcliiw007v03ot3vgjdqyb",
+          "sku": "TL-HW-0500-WATERMELON",
+          "name": "H/WASH 500ML (7/LAYER X 8) — Watermelon",
+          "market": null
+        }
+      ]
+    },
+    {
+      "key": "yukazan\u00001l\u00001L",
+      "proposedCode": "YUKAZAN-SC-1000",
+      "code": "YUKAZAN-SC-1000",
+      "name": "1L",
+      "brand": "Yukazan",
+      "category": "Shower cream & gel",
+      "size": "1L",
+      "line": "1L",
+      "markets": [],
+      "products": [
+        {
+          "id": "cmtvcljy5008b03otou4nmilz",
+          "sku": "YUKAZAN-SC-1000-AB",
+          "name": "1L — Anti-Bacterial",
+          "market": null
+        },
+        {
+          "id": "cmtvcljuf008a03otekbfiq1o",
+          "sku": "YUKAZAN-SC-1000-BOUQUET",
+          "name": "1L — Bouquet",
+          "market": null
+        },
+        {
+          "id": "cmtvcljrd008903otgdc03ijq",
+          "sku": "YUKAZAN-SC-1000-EP",
+          "name": "1L — English Pear",
+          "market": null
+        }
+      ]
+    },
+    {
+      "key": "yukazan\u0000230ml\u0000230ML",
+      "proposedCode": "YUKAZAN-SC-0230",
+      "code": "YUKAZAN-SC-0230",
+      "name": "230ML",
+      "brand": "Yukazan",
+      "category": "Shower cream & gel",
+      "size": "230ML",
+      "line": "230ML",
+      "markets": [],
+      "products": [
+        {
+          "id": "cmtvclkd1008h03ot6l2mgy48",
+          "sku": "YUKAZAN-SC-0230-AB",
+          "name": "230ML — Anti-Bacterial",
+          "market": null
+        },
+        {
+          "id": "cmtvclkh0008j03otvtfhylc5",
+          "sku": "YUKAZAN-SC-0230-BB",
+          "name": "230ML — Blue Bell",
+          "market": null
+        },
+        {
+          "id": "cmtvclkay008g03otjfrhbu5e",
+          "sku": "YUKAZAN-SC-0230-BOUQUET",
+          "name": "230ML — Bouquet",
+          "market": null
+        },
+        {
+          "id": "cmtvclk89008f03otyjnd8pu1",
+          "sku": "YUKAZAN-SC-0230-EP",
+          "name": "230ML — English Pear",
+          "market": null
+        },
+        {
+          "id": "cmtvclkex008i03ot02dnlvdp",
+          "sku": "YUKAZAN-SC-0230-LB",
+          "name": "230ML — Lime Basil",
+          "market": null
+        }
+      ]
+    },
+    {
+      "key": "yukazan\u0000850ml 12.75kg/ctn (446.25kg/plt)\u0000850ML",
+      "proposedCode": "YUKAZAN-SC-0850",
+      "code": "YUKAZAN-SC-0850",
+      "name": "850ML 12.75KG/CTN (446.25KG/PLT)",
+      "brand": "Yukazan",
+      "category": "Shower cream & gel",
+      "size": "850ML",
+      "line": "850ML 12.75KG/CTN (446.25KG/PLT)",
+      "markets": [],
+      "products": [
+        {
+          "id": "cmtvclk3u008d03ot2nd3uieo",
+          "sku": "YUKAZAN-SC-0850-BLUEBELL",
+          "name": "850ML 12.75KG/CTN (446.25KG/PLT) — Bluebell",
+          "market": null
+        },
+        {
+          "id": "cmtvclk0e008c03ot0lnft5c8",
+          "sku": "YUKAZAN-SC-0850-EP",
+          "name": "850ML 12.75KG/CTN (446.25KG/PLT) — English Pear",
+          "market": null
+        },
+        {
+          "id": "cmtvclk5z008e03ot04qcvmam",
+          "sku": "YUKAZAN-SC-0850-LB",
+          "name": "850ML 12.75KG/CTN (446.25KG/PLT) — Lime Basil",
+          "market": null
+        }
+      ]
+    },
+    {
+      "key": "zen garden\u00001l hair shampoo\u00001L",
+      "proposedCode": "ZEN-HC-1000",
+      "code": "ZEN-HC-1000",
+      "name": "Zen Garden Hair Shampoo 1L",
+      "brand": "Zen Garden",
+      "category": "Hair care",
+      "size": "1L",
+      "line": "1L HAIR SHAMPOO",
+      "markets": [
+        "India"
+      ],
+      "products": [
+        {
+          "id": "cmtvcl1qq001y03otz73pmrub",
+          "sku": "ZEN-HC-1000-GM-IN",
+          "name": "1L HAIR SHAMPOO — Goat's Milk",
+          "market": "India"
+        },
+        {
+          "id": "cmtvcl20d002003otywrgoipg",
+          "sku": "ZEN-HC-1000-GT-IN",
+          "name": "1L HAIR SHAMPOO — Green Tea",
+          "market": "India"
+        },
+        {
+          "id": "cmtvcl1w7001z03otztu7mcln",
+          "sku": "ZEN-HC-1000-RJ-IN",
+          "name": "1L HAIR SHAMPOO — Royal Jelly",
+          "market": "India"
+        }
+      ]
+    },
+    {
+      "key": "zen garden\u00002.1l zen signature\u00002.1L",
+      "proposedCode": "ZEN-SC-2100",
+      "code": "ZEN-SC-2100",
+      "name": "Zen Garden Shower Cream 2.1L",
+      "brand": "Zen Garden",
+      "category": "Shower cream & gel",
+      "size": "2.1L",
+      "line": "2.1L ZEN SIGNATURE",
+      "markets": [
+        "Super Indo"
+      ],
+      "products": [
+        {
+          "id": "cmtvckx7y000d03otapwihv1n",
+          "sku": "ZEN-SC-2100-CR-ID",
+          "name": "2.1L ZEN SIGNATURE — Carrot",
+          "market": "Super Indo"
+        },
+        {
+          "id": "cmtvckwro000803ot7sk5o95t",
+          "sku": "ZEN-SC-2100-GM-ID",
+          "name": "2.1L ZEN SIGNATURE — Goat's Milk",
+          "market": "Super Indo"
+        },
+        {
+          "id": "cmtvckx48000c03otru0atxy8",
+          "sku": "ZEN-SC-2100-GT-ID",
+          "name": "2.1L ZEN SIGNATURE — Green Tea",
+          "market": "Super Indo"
+        },
+        {
+          "id": "cmtvckwup000903ot6q16gy40",
+          "sku": "ZEN-SC-2100-LV-ID",
+          "name": "2.1L ZEN SIGNATURE — Lavender",
+          "market": "Super Indo"
+        },
+        {
+          "id": "cmtvckwye000a03ot72qufiqf",
+          "sku": "ZEN-SC-2100-PP-ID",
+          "name": "2.1L ZEN SIGNATURE — Papaya",
+          "market": "Super Indo"
+        },
+        {
+          "id": "cmtvckx1i000b03ot9f2xt6qw",
+          "sku": "ZEN-SC-2100-RJ-ID",
+          "name": "2.1L ZEN SIGNATURE — Royal Jelly",
+          "market": "Super Indo"
+        }
+      ]
+    },
+    {
+      "key": "zen garden\u00002.1l\u00002.1L",
+      "proposedCode": "ZEN-SC-2100",
+      "code": "ZEN-SC-2100",
+      "name": "Zen Garden Shower Cream 2.1L",
+      "brand": "Zen Garden",
+      "category": "Shower cream & gel",
+      "size": "2.1L",
+      "line": "2.1L",
+      "markets": [
+        "Lotus"
+      ],
+      "products": [
+        {
+          "id": "cmtvckxpv000j03otl1yrnc21",
+          "sku": "ZEN-SC-2100-CR-LOTUS",
+          "name": "2.1L — Carrot",
+          "market": "Lotus"
+        },
+        {
+          "id": "cmtvckxb5000e03otx7ztcdhl",
+          "sku": "ZEN-SC-2100-GM-LOTUS",
+          "name": "2.1L — Goat's Milk",
+          "market": "Lotus"
+        },
+        {
+          "id": "cmtvckxnd000i03otrzvuwqj1",
+          "sku": "ZEN-SC-2100-GT-LOTUS",
+          "name": "2.1L — Green Tea",
+          "market": "Lotus"
+        },
+        {
+          "id": "cmtvckxdj000f03otlxbnnmbz",
+          "sku": "ZEN-SC-2100-LV-LOTUS",
+          "name": "2.1L — Lavender",
+          "market": "Lotus"
+        },
+        {
+          "id": "cmtvckxh3000g03otifc0zg6o",
+          "sku": "ZEN-SC-2100-PP-LOTUS",
+          "name": "2.1L — Papaya",
+          "market": "Lotus"
+        },
+        {
+          "id": "cmtvckxkx000h03ot2yh1gstn",
+          "sku": "ZEN-SC-2100-RJ-LOTUS",
+          "name": "2.1L — Royal Jelly",
+          "market": "Lotus"
+        }
+      ]
+    },
+    {
+      "key": "zen garden\u0000400ml shampoo\u0000400ML",
+      "proposedCode": "ZEN-HC-0400",
+      "code": "ZEN-HC-0400",
+      "name": "400ML SHAMPOO",
+      "brand": "Zen Garden",
+      "category": "Hair care",
+      "size": "400ML",
+      "line": "400ML SHAMPOO",
+      "markets": [
+        "Arab"
+      ],
+      "products": [
+        {
+          "id": "cmtvcl81t004603otd2370ant",
+          "sku": "ZEN-HC-0400-AD",
+          "name": "400ML SHAMPOO — Anti-Dandruff",
+          "market": null
+        },
+        {
+          "id": "cmtvcl3qw002n03otdr87jgdc",
+          "sku": "ZEN-HC-0400-GM-AE",
+          "name": "400ML SHAMPOO — Goat's Milk",
+          "market": "Arab"
+        },
+        {
+          "id": "cmtvcl3x2002p03otb6pmu5e3",
+          "sku": "ZEN-HC-0400-GT-AE",
+          "name": "400ML SHAMPOO — Green Tea",
+          "market": "Arab"
+        },
+        {
+          "id": "cmtvcl896004903othfwwjv5h",
+          "sku": "ZEN-HC-0400-HC",
+          "name": "400ML SHAMPOO — Hair Conditioner",
+          "market": null
+        },
+        {
+          "id": "cmtvcl842004703ot8qvycgkp",
+          "sku": "ZEN-HC-0400-HF",
+          "name": "400ML SHAMPOO — Hair Fall Control",
+          "market": null
+        },
+        {
+          "id": "cmtvcl3to002o03otbdado9qq",
+          "sku": "ZEN-HC-0400-RJ-AE",
+          "name": "400ML SHAMPOO — Royal Jelly",
+          "market": "Arab"
+        },
+        {
+          "id": "cmtvcl869004803ot0qzx3vy7",
+          "sku": "ZEN-HC-0400-SM",
+          "name": "400ML SHAMPOO — Soft & Smooth",
+          "market": null
+        }
+      ]
+    },
+    {
+      "key": "zen garden\u0000h/wash 500ml\u0000500ML",
+      "proposedCode": "ZEN-HW-0500",
+      "code": "ZEN-HW-0500",
+      "name": "Zen Garden Hand Wash 500ML",
+      "brand": "Zen Garden",
+      "category": "Hand wash & soap",
+      "size": "500ML",
+      "line": "H/WASH 500ML",
+      "markets": [
+        "Mydin",
+        "Arab",
+        "Vietnam",
+        "Lotus",
+        "Philippines"
+      ],
+      "products": [
+        {
+          "id": "cmtvcl707003s03otbhffv5jp",
+          "sku": "ZEN-HW-0500-APPLE",
+          "name": "H/WASH 500ML — Apple",
+          "market": null
+        },
+        {
+          "id": "cmtvcl72l003t03otgqsh98h1",
+          "sku": "ZEN-HW-0500-GM-MYDIN",
+          "name": "H/WASH 500ML — Goat's Milk",
+          "market": "Mydin"
+        },
+        {
+          "id": "cmtvcl6o7003n03ot22zdyure",
+          "sku": "ZEN-HW-0500-GM",
+          "name": "H/WASH 500ML — Goat's Milk",
+          "market": null
+        },
+        {
+          "id": "cmtvcl30e002d03otkp01bzje",
+          "sku": "ZEN-HW-0500-GM-AE",
+          "name": "H/WASH 500ML — Goat's Milk",
+          "market": "Arab"
+        },
+        {
+          "id": "cmtvcl4sy003003otetatb1h6",
+          "sku": "ZEN-HW-0500-GM-VN",
+          "name": "H/WASH 500ML — Goat's Milk",
+          "market": "Vietnam"
+        },
+        {
+          "id": "cmtvcl7dn003x03ot1gd97shj",
+          "sku": "ZEN-HW-0500-GM-LOTUS",
+          "name": "H/WASH 500ML — Goat's Milk",
+          "market": "Lotus"
+        },
+        {
+          "id": "cmtvcl5il003a03ot2e7ingyu",
+          "sku": "ZEN-HW-0500-GM-PH",
+          "name": "H/WASH 500ML — Goat's Milk",
+          "market": "Philippines"
+        },
+        {
+          "id": "cmtvcl33k002e03otj80qx49z",
+          "sku": "ZEN-HW-0500-LV-AE",
+          "name": "H/WASH 500ML — Lavender",
+          "market": "Arab"
+        },
+        {
+          "id": "cmtvcl75w003u03otn6lgrdsb",
+          "sku": "ZEN-HW-0500-LV-MYDIN",
+          "name": "H/WASH 500ML — Lavender",
+          "market": "Mydin"
+        },
+        {
+          "id": "cmtvcl5ku003b03otvy81ukdl",
+          "sku": "ZEN-HW-0500-LV-PH",
+          "name": "H/WASH 500ML — Lavender",
+          "market": "Philippines"
+        },
+        {
+          "id": "cmtvcl7gk003y03ot275okvea",
+          "sku": "ZEN-HW-0500-LV-LOTUS",
+          "name": "H/WASH 500ML — Lavender",
+          "market": "Lotus"
+        },
+        {
+          "id": "cmtvcl4v8003103otourmgsak",
+          "sku": "ZEN-HW-0500-LV-VN",
+          "name": "H/WASH 500ML — Lavender",
+          "market": "Vietnam"
+        },
+        {
+          "id": "cmtvcl6qj003o03ot78prrvq0",
+          "sku": "ZEN-HW-0500-LV",
+          "name": "H/WASH 500ML — Lavender",
+          "market": null
+        },
+        {
+          "id": "cmtvcl6y6003r03otca3fcqqp",
+          "sku": "ZEN-HW-0500-LS",
+          "name": "H/WASH 500ML — Lavender + Strawberry",
+          "market": null
+        },
+        {
+          "id": "cmtvcl7jd003z03otu8to4raw",
+          "sku": "ZEN-HW-0500-RJ-LOTUS",
+          "name": "H/WASH 500ML — Royal Jelly",
+          "market": "Lotus"
+        },
+        {
+          "id": "cmtvcl781003v03otys55pfjf",
+          "sku": "ZEN-HW-0500-RJ-MYDIN",
+          "name": "H/WASH 500ML — Royal Jelly",
+          "market": "Mydin"
+        },
+        {
+          "id": "cmtvcl6si003p03otwp5ee3tg",
+          "sku": "ZEN-HW-0500-RJ",
+          "name": "H/WASH 500ML — Royal Jelly",
+          "market": null
+        },
+        {
+          "id": "cmtvcl36z002f03otnztkipyc",
+          "sku": "ZEN-HW-0500-RJ-AE",
+          "name": "H/WASH 500ML — Royal Jelly",
+          "market": "Arab"
+        },
+        {
+          "id": "cmtvcl5o5003c03otb8n6dbf7",
+          "sku": "ZEN-HW-0500-RJ-PH",
+          "name": "H/WASH 500ML — Royal Jelly",
+          "market": "Philippines"
+        },
+        {
+          "id": "cmtvcl4xn003203oti3qm8xlk",
+          "sku": "ZEN-HW-0500-RJ-VN",
+          "name": "H/WASH 500ML — Royal Jelly",
+          "market": "Vietnam"
+        },
+        {
+          "id": "cmtvcl7m6004003otd8f5hntm",
+          "sku": "ZEN-HW-0500-SB2-LOTUS",
+          "name": "H/WASH 500ML — Strawberry",
+          "market": "Lotus"
+        },
+        {
+          "id": "cmtvcl6vo003q03ots5lz7smq",
+          "sku": "ZEN-HW-0500-SB2",
+          "name": "H/WASH 500ML — Strawberry",
+          "market": null
+        },
+        {
+          "id": "cmtvcl50f003303ot20v30biy",
+          "sku": "ZEN-HW-0500-SB2-VN",
+          "name": "H/WASH 500ML — Strawberry",
+          "market": "Vietnam"
+        },
+        {
+          "id": "cmtvcl39r002g03otdgzl3gm6",
+          "sku": "ZEN-HW-0500-SB2-AE",
+          "name": "H/WASH 500ML — Strawberry",
+          "market": "Arab"
+        },
+        {
+          "id": "cmtvcl5qr003d03ot1t8hz035",
+          "sku": "ZEN-HW-0500-SB2-PH",
+          "name": "H/WASH 500ML — Strawberry",
+          "market": "Philippines"
+        },
+        {
+          "id": "cmtvcl79x003w03otk1pxq40z",
+          "sku": "ZEN-HW-0500-SB2-MYDIN",
+          "name": "H/WASH 500ML — Strawberry",
+          "market": "Mydin"
+        }
+      ]
+    },
+    {
+      "key": "zen garden\u0000hand wash refill 450ml\u0000450ML",
+      "proposedCode": "ZEN-HW-0450",
+      "code": "ZEN-HW-0450",
+      "name": "HAND WASH REFILL 450ML",
+      "brand": "Zen Garden",
+      "category": "Hand wash & soap",
+      "size": "450ML",
+      "line": "HAND WASH REFILL 450ML",
+      "markets": [],
+      "products": [
+        {
+          "id": "cmtvcl7o4004103otfv2addmk",
+          "sku": "ZEN-HW-0450-GM",
+          "name": "HAND WASH REFILL 450ML — Goat Milk",
+          "market": null
+        },
+        {
+          "id": "cmtvcl7qm004203ot34daiffh",
+          "sku": "ZEN-HW-0450-LV",
+          "name": "HAND WASH REFILL 450ML — Lavender",
+          "market": null
+        }
+      ]
+    },
+    {
+      "key": "zen garden\u0000hyang-gii 1l s/g\u00001L",
+      "proposedCode": "ZEN-SC-1000",
+      "code": "ZEN-SC-1000-HYANGGII",
+      "name": "Hyang-Gii Shower Gel 1L",
+      "brand": "Zen Garden",
+      "category": "Shower cream & gel",
+      "size": "1L",
+      "line": "HYANG-GII 1L S/G",
+      "markets": [
+        "Lotus"
+      ],
+      "products": [
+        {
+          "id": "cmtvckztj001a03ote37l3v31",
+          "sku": "ZEN-SC-1000-BLUEBELL-LOTUS",
+          "name": "HYANG-GII 1L S/G — Bluebell",
+          "market": "Lotus"
+        },
+        {
+          "id": "cmtvckzos001803otg1b932fd",
+          "sku": "ZEN-SC-1000-BOMBSHELL-LOTUS",
+          "name": "HYANG-GII 1L S/G — Bombshell",
+          "market": "Lotus"
+        },
+        {
+          "id": "cmtvckzrb001903ot04c06xww",
+          "sku": "ZEN-SC-1000-EG-LOTUS",
+          "name": "HYANG-GII 1L S/G — Earl Grey",
+          "market": "Lotus"
+        },
+        {
+          "id": "cmtvckzmd001703ot4b2xhuna",
+          "sku": "ZEN-SC-1000-PEAR-LOTUS",
+          "name": "HYANG-GII 1L S/G — Pear",
+          "market": "Lotus"
+        }
+      ]
+    },
+    {
+      "key": "zen garden\u0000olive oil - big ctn\u0000",
+      "proposedCode": "ZEN-BC",
+      "code": "ZEN-BC",
+      "name": "Zen Garden Olive Oil",
+      "brand": "Zen Garden",
+      "category": "Body care",
+      "size": null,
+      "line": "OLIVE OIL - BIG CTN",
+      "markets": [],
+      "products": [
+        {
+          "id": "cmtvcl8eb004b03otj369e4g3",
+          "sku": "ZEN-BC-LV",
+          "name": "OLIVE OIL - BIG CTN — Lavender",
+          "market": null
+        },
+        {
+          "id": "cmtvcl8bq004a03ot0prequq0",
+          "sku": "ZEN-BC-NM",
+          "name": "OLIVE OIL - BIG CTN — Normal",
+          "market": null
+        },
+        {
+          "id": "cmtvcl8gs004c03otkethnbeb",
+          "sku": "ZEN-BC-SF",
+          "name": "OLIVE OIL - BIG CTN — Sunflower",
+          "market": null
+        }
+      ]
+    },
+    {
+      "key": "zen garden\u0000olive oil - inner\u0000",
+      "proposedCode": "ZEN-BC",
+      "code": "ZEN-BC",
+      "name": "Zen Garden Olive Oil",
+      "brand": "Zen Garden",
+      "category": "Body care",
+      "size": null,
+      "line": "OLIVE OIL - INNER",
+      "markets": [],
+      "products": [
+        {
+          "id": "cmtvcl8ox004e03otd429k63y",
+          "sku": "ZEN-BC-LV-X12",
+          "name": "OLIVE OIL - INNER — Lavender",
+          "market": null
+        },
+        {
+          "id": "cmtvcl8m3004d03otlia29oop",
+          "sku": "ZEN-BC-NM-X12",
+          "name": "OLIVE OIL - INNER — Normal",
+          "market": null
+        },
+        {
+          "id": "cmtvcl8rq004f03ot1rcrx9gz",
+          "sku": "ZEN-BC-SF-X12",
+          "name": "OLIVE OIL - INNER — Sunflower",
+          "market": null
+        }
+      ]
+    },
+    {
+      "key": "zen garden\u0000promo h/wash 500ml\u0000500ML",
+      "proposedCode": "ZEN-HW-0500",
+      "code": "ZEN-HW-0500-PROMO",
+      "name": "Zen Garden Promo Hand Wash 500ML",
+      "brand": "Zen Garden",
+      "category": "Hand wash & soap",
+      "size": "500ML",
+      "line": "PROMO H/WASH 500ML",
+      "markets": [
+        "Arab",
+        "India"
+      ],
+      "products": [
+        {
+          "id": "cmtvcl3jt002k03ot7spqvzar",
+          "sku": "ZEN-HW-0500-GLR-AE",
+          "name": "PROMO H/WASH 500ML — GM + Lav + RJ",
+          "market": "Arab"
+        },
+        {
+          "id": "cmtvcl3mj002l03otew2b2fan",
+          "sku": "ZEN-HW-0500-GLS-AE",
+          "name": "PROMO H/WASH 500ML — GM + Lav + Stb",
+          "market": "Arab"
+        },
+        {
+          "id": "cmtvcl1l2001w03otsn7talil",
+          "sku": "ZEN-HW-0500-GMS-IN",
+          "name": "PROMO H/WASH 500ML — Goat's Milk + Strawberry",
+          "market": "India"
+        },
+        {
+          "id": "cmtvcl3cs002h03ot6nbijvvz",
+          "sku": "ZEN-HW-0500-GMS-AE",
+          "name": "PROMO H/WASH 500ML — Goat's Milk + Strawberry",
+          "market": "Arab"
+        },
+        {
+          "id": "cmtvcl3ou002m03ot3qmlkju2",
+          "sku": "ZEN-HW-0500-LRS-AE",
+          "name": "PROMO H/WASH 500ML — Lav + RJ + Stb",
+          "market": "Arab"
+        },
+        {
+          "id": "cmtvcl1nz001x03otq4ux4tnt",
+          "sku": "ZEN-HW-0500-LRJ-IN",
+          "name": "PROMO H/WASH 500ML — Lavender + Royal Jelly",
+          "market": "India"
+        },
+        {
+          "id": "cmtvcl3eu002i03otiu0xc0vf",
+          "sku": "ZEN-HW-0500-LRJ-AE",
+          "name": "PROMO H/WASH 500ML — Lavender + Royal Jelly",
+          "market": "Arab"
+        },
+        {
+          "id": "cmtvcl3hc002j03otelyaz3lc",
+          "sku": "ZEN-HW-0500-SB2-AE-2",
+          "name": "PROMO H/WASH 500ML — Strawberry",
+          "market": "Arab"
+        }
+      ]
+    },
+    {
+      "key": "zen garden\u0000shower cream refill 700ml\u0000700ML",
+      "proposedCode": "ZEN-SC-0700",
+      "code": "ZEN-SC-0700",
+      "name": "SHOWER CREAM REFILL 700ML",
+      "brand": "Zen Garden",
+      "category": "Shower cream & gel",
+      "size": "700ML",
+      "line": "SHOWER CREAM REFILL 700ML",
+      "markets": [],
+      "products": [
+        {
+          "id": "cmtvcl0y4001o03ot5v7u4lgg",
+          "sku": "ZEN-SC-0700-GM",
+          "name": "SHOWER CREAM REFILL 700ML — Goat Milk",
+          "market": null
+        },
+        {
+          "id": "cmtvcl11c001p03ot90s7g1wx",
+          "sku": "ZEN-SC-0700-LV",
+          "name": "SHOWER CREAM REFILL 700ML — Lavender",
+          "market": null
+        }
+      ]
+    },
+    {
+      "key": "zen garden\u0000zen 1l shampoo\u00001L",
+      "proposedCode": "ZEN-HC-1000",
+      "code": "ZEN-HC-1000",
+      "name": "Zen Garden Hair Shampoo 1L",
+      "brand": "Zen Garden",
+      "category": "Hair care",
+      "size": "1L",
+      "line": "ZEN 1L SHAMPOO",
+      "markets": [
+        "Iraq",
+        "Arab"
+      ],
+      "products": [
+        {
+          "id": "cmtvcl6cp003j03ot4ga5drhe",
+          "sku": "ZEN-HC-1000-GM-IQ",
+          "name": "ZEN 1L SHAMPOO — Goat's Milk",
+          "market": "Iraq"
+        },
+        {
+          "id": "cmtvcl2sd002a03ot44rfo1vv",
+          "sku": "ZEN-HC-1000-GM-AE",
+          "name": "ZEN 1L SHAMPOO — Goat's Milk",
+          "market": "Arab"
+        },
+        {
+          "id": "cmtvcl6l7003m03otw7lgu561",
+          "sku": "ZEN-HC-1000-GT-IQ",
+          "name": "ZEN 1L SHAMPOO — Green Tea",
+          "market": "Iraq"
+        },
+        {
+          "id": "cmtvcl2x7002c03otbfu9kzry",
+          "sku": "ZEN-HC-1000-GT-AE",
+          "name": "ZEN 1L SHAMPOO — Green Tea",
+          "market": "Arab"
+        },
+        {
+          "id": "cmtvcl6g6003k03ot0ji4tpri",
+          "sku": "ZEN-HC-1000-LV-IQ",
+          "name": "ZEN 1L SHAMPOO — Lavender",
+          "market": "Iraq"
+        },
+        {
+          "id": "cmtvcl6ii003l03otoi0hgeir",
+          "sku": "ZEN-HC-1000-RJ-IQ",
+          "name": "ZEN 1L SHAMPOO — Royal Jelly",
+          "market": "Iraq"
+        },
+        {
+          "id": "cmtvcl2uk002b03otpth7msvn",
+          "sku": "ZEN-HC-1000-RJ-AE",
+          "name": "ZEN 1L SHAMPOO — Royal Jelly",
+          "market": "Arab"
+        }
+      ]
+    },
+    {
+      "key": "zen garden\u0000zen 1l shower scrub\u00001L",
+      "proposedCode": "ZEN-SC-1000",
+      "code": "ZEN-SC-1000-SCRUB",
+      "name": "Zen Garden Shower Scrub 1L",
+      "brand": "Zen Garden",
+      "category": "Shower cream & gel",
+      "size": "1L",
+      "line": "ZEN 1L SHOWER SCRUB",
+      "markets": [],
+      "products": [
+        {
+          "id": "cmtvcl033001d03otb2r18cmq",
+          "sku": "ZEN-SC-1000-CH",
+          "name": "ZEN 1L SHOWER SCRUB — Charcoal",
+          "market": null
+        },
+        {
+          "id": "cmtvcl2qe002903oteqbpvfed",
+          "sku": "ZEN-SC-1000-CH-2",
+          "name": "ZEN 1L SHOWER SCRUB — Charcoal",
+          "market": null
+        },
+        {
+          "id": "cmtvcl000001c03ot6xkdwpe3",
+          "sku": "ZEN-SC-1000-LV-2",
+          "name": "ZEN 1L SHOWER SCRUB — Lavender",
+          "market": null
+        },
+        {
+          "id": "cmtvcl2nx002803otcagkmfzy",
+          "sku": "ZEN-SC-1000-LV-3",
+          "name": "ZEN 1L SHOWER SCRUB — Lavender",
+          "market": null
+        },
+        {
+          "id": "cmtvcl2kq002703ot3hwojf9e",
+          "sku": "ZEN-SC-1000-SS-2",
+          "name": "ZEN 1L SHOWER SCRUB — Sea Salt",
+          "market": null
+        },
+        {
+          "id": "cmtvckzwk001b03otfmmmz03u",
+          "sku": "ZEN-SC-1000-SS",
+          "name": "ZEN 1L SHOWER SCRUB — Sea Salt",
+          "market": null
+        }
+      ]
+    },
+    {
+      "key": "zen garden\u0000zen 1l\u00001L",
+      "proposedCode": "ZEN-SC-1000",
+      "code": "ZEN-SC-1000",
+      "name": "Zen Garden Shower Cream 1L",
+      "brand": "Zen Garden",
+      "category": "Shower cream & gel",
+      "size": "1L",
+      "line": "ZEN 1L",
+      "markets": [
+        "Philippines",
+        "Arab",
+        "India",
+        "Lotus",
+        "Mydin",
+        "Vietnam",
+        "Iraq"
+      ],
+      "products": [
+        {
+          "id": "cmtvckyll000u03otn7hkkwvq",
+          "sku": "ZEN-SC-1000-CR",
+          "name": "ZEN 1L — Carrot",
+          "market": null
+        },
+        {
+          "id": "cmtvcl5fz003903otlpcl8ezk",
+          "sku": "ZEN-SC-1000-CR-PH",
+          "name": "ZEN 1L — Carrot",
+          "market": "Philippines"
+        },
+        {
+          "id": "cmtvcl2i6002603otjp6trchg",
+          "sku": "ZEN-SC-1000-CR-AE",
+          "name": "ZEN 1L — Carrot",
+          "market": "Arab"
+        },
+        {
+          "id": "cmtvcl1i9001v03ot5hr31plv",
+          "sku": "ZEN-SC-1000-CR-IN",
+          "name": "ZEN 1L — Carrot",
+          "market": "India"
+        },
+        {
+          "id": "cmtvckzjk001603otugijnnhd",
+          "sku": "ZEN-SC-1000-CR-LOTUS",
+          "name": "ZEN 1L — Carrot",
+          "market": "Lotus"
+        },
+        {
+          "id": "cmtvckz2y001003ottd5txxgo",
+          "sku": "ZEN-SC-1000-CR-MYDIN",
+          "name": "ZEN 1L — Carrot",
+          "market": "Mydin"
+        },
+        {
+          "id": "cmtvckz5c001103ot5xqesh67",
+          "sku": "ZEN-SC-1000-GM-LOTUS",
+          "name": "ZEN 1L — Goat's Milk",
+          "market": "Lotus"
+        },
+        {
+          "id": "cmtvcl4dt002v03ot011xbbc9",
+          "sku": "ZEN-SC-1000-GM-VN",
+          "name": "ZEN 1L — Goat's Milk",
+          "market": "Vietnam"
+        },
+        {
+          "id": "cmtvcl144001q03ot5725h4xu",
+          "sku": "ZEN-SC-1000-GM-IN",
+          "name": "ZEN 1L — Goat's Milk",
+          "market": "India"
+        },
+        {
+          "id": "cmtvcky8f000p03otrbw3vpbu",
+          "sku": "ZEN-SC-1000-GM",
+          "name": "ZEN 1L — Goat's Milk",
+          "market": null
+        },
+        {
+          "id": "cmtvcl5t2003e03otk2c5obby",
+          "sku": "ZEN-SC-1000-GM-IQ",
+          "name": "ZEN 1L — Goat's Milk",
+          "market": "Iraq"
+        },
+        {
+          "id": "cmtvcl22x002103otarux2gny",
+          "sku": "ZEN-SC-1000-GM-AE",
+          "name": "ZEN 1L — Goat's Milk",
+          "market": "Arab"
+        },
+        {
+          "id": "cmtvcl52b003403ott5a79spy",
+          "sku": "ZEN-SC-1000-GM-PH",
+          "name": "ZEN 1L — Goat's Milk",
+          "market": "Philippines"
+        },
+        {
+          "id": "cmtvckyos000v03ot71qd286k",
+          "sku": "ZEN-SC-1000-GM-MYDIN",
+          "name": "ZEN 1L — Goat's Milk",
+          "market": "Mydin"
+        },
+        {
+          "id": "cmtvcl2fo002503ot96pn121w",
+          "sku": "ZEN-SC-1000-GT-AE",
+          "name": "ZEN 1L — Green Tea",
+          "market": "Arab"
+        },
+        {
+          "id": "cmtvckyj7000t03ot6ez3yo76",
+          "sku": "ZEN-SC-1000-GT",
+          "name": "ZEN 1L — Green Tea",
+          "market": null
+        },
+        {
+          "id": "cmtvckz11000z03otu5agyi2k",
+          "sku": "ZEN-SC-1000-GT-MYDIN",
+          "name": "ZEN 1L — Green Tea",
+          "market": "Mydin"
+        },
+        {
+          "id": "cmtvcl1eq001u03otogh9rclm",
+          "sku": "ZEN-SC-1000-GT-IN",
+          "name": "ZEN 1L — Green Tea",
+          "market": "India"
+        },
+        {
+          "id": "cmtvcl5cn003803otylkg172q",
+          "sku": "ZEN-SC-1000-GT-PH",
+          "name": "ZEN 1L — Green Tea",
+          "market": "Philippines"
+        },
+        {
+          "id": "cmtvcl6a6003i03otf5rb63ro",
+          "sku": "ZEN-SC-1000-GT-IQ",
+          "name": "ZEN 1L — Green Tea",
+          "market": "Iraq"
+        },
+        {
+          "id": "cmtvckzgp001503otpcr8g4os",
+          "sku": "ZEN-SC-1000-GT-LOTUS",
+          "name": "ZEN 1L — Green Tea",
+          "market": "Lotus"
+        },
+        {
+          "id": "cmtvcl4pt002z03ot3aidwqb2",
+          "sku": "ZEN-SC-1000-GT-VN",
+          "name": "ZEN 1L — Green Tea",
+          "market": "Vietnam"
+        },
+        {
+          "id": "cmtvckyse000w03otqcmyjp96",
+          "sku": "ZEN-SC-1000-LV-MYDIN",
+          "name": "ZEN 1L — Lavender",
+          "market": "Mydin"
+        },
+        {
+          "id": "cmtvckz7h001203otiuej066z",
+          "sku": "ZEN-SC-1000-LV-LOTUS",
+          "name": "ZEN 1L — Lavender",
+          "market": "Lotus"
+        },
+        {
+          "id": "cmtvcl54k003503otkywaz1o5",
+          "sku": "ZEN-SC-1000-LV-PH",
+          "name": "ZEN 1L — Lavender",
+          "market": "Philippines"
+        },
+        {
+          "id": "cmtvcl25b002203otpyk5iaqj",
+          "sku": "ZEN-SC-1000-LV-AE",
+          "name": "ZEN 1L — Lavender",
+          "market": "Arab"
+        },
+        {
+          "id": "cmtvcl16q001r03otwqz7v8bn",
+          "sku": "ZEN-SC-1000-LV-IN",
+          "name": "ZEN 1L — Lavender",
+          "market": "India"
+        },
+        {
+          "id": "cmtvcl5x9003f03ot5uszgxgd",
+          "sku": "ZEN-SC-1000-LV-IQ",
+          "name": "ZEN 1L — Lavender",
+          "market": "Iraq"
+        },
+        {
+          "id": "cmtvcl4gb002w03otwiucactn",
+          "sku": "ZEN-SC-1000-LV-VN",
+          "name": "ZEN 1L — Lavender",
+          "market": "Vietnam"
+        },
+        {
+          "id": "cmtvckyaw000q03ot1xldsryu",
+          "sku": "ZEN-SC-1000-LV",
+          "name": "ZEN 1L — Lavender",
+          "market": null
+        },
+        {
+          "id": "cmtvckyvt000x03otqea7nwrr",
+          "sku": "ZEN-SC-1000-PP-MYDIN",
+          "name": "ZEN 1L — Papaya",
+          "market": "Mydin"
+        },
+        {
+          "id": "cmtvckzaa001303ot4xzphros",
+          "sku": "ZEN-SC-1000-PP-LOTUS",
+          "name": "ZEN 1L — Papaya",
+          "market": "Lotus"
+        },
+        {
+          "id": "cmtvcl57n003603ot4tdjlgg3",
+          "sku": "ZEN-SC-1000-PP-PH",
+          "name": "ZEN 1L — Papaya",
+          "market": "Philippines"
+        },
+        {
+          "id": "cmtvcl4kp002x03otsbz0sd06",
+          "sku": "ZEN-SC-1000-PP-VN",
+          "name": "ZEN 1L — Papaya",
+          "market": "Vietnam"
+        },
+        {
+          "id": "cmtvcl290002303ot290xl341",
+          "sku": "ZEN-SC-1000-PP-AE",
+          "name": "ZEN 1L — Papaya",
+          "market": "Arab"
+        },
+        {
+          "id": "cmtvcl653003g03otpa920968",
+          "sku": "ZEN-SC-1000-PP-IQ",
+          "name": "ZEN 1L — Papaya",
+          "market": "Iraq"
+        },
+        {
+          "id": "cmtvcl19q001s03ot8gwv807h",
+          "sku": "ZEN-SC-1000-PP-IN",
+          "name": "ZEN 1L — Papaya",
+          "market": "India"
+        },
+        {
+          "id": "cmtvckydd000r03otehojy56d",
+          "sku": "ZEN-SC-1000-PP",
+          "name": "ZEN 1L — Papaya",
+          "market": null
+        },
+        {
+          "id": "cmtvcl1c3001t03otxbgq50u6",
+          "sku": "ZEN-SC-1000-RJ-IN",
+          "name": "ZEN 1L — Royal Jelly",
+          "market": "India"
+        },
+        {
+          "id": "cmtvcl2bp002403otzuavinfp",
+          "sku": "ZEN-SC-1000-RJ-AE",
+          "name": "ZEN 1L — Royal Jelly",
+          "market": "Arab"
+        },
+        {
+          "id": "cmtvckzde001403ot8xyqrojw",
+          "sku": "ZEN-SC-1000-RJ-LOTUS",
+          "name": "ZEN 1L — Royal Jelly",
+          "market": "Lotus"
+        },
+        {
+          "id": "cmtvckyyf000y03otg9n8zjw6",
+          "sku": "ZEN-SC-1000-RJ-MYDIN",
+          "name": "ZEN 1L — Royal Jelly",
+          "market": "Mydin"
+        },
+        {
+          "id": "cmtvcl4n9002y03oti83f5a0h",
+          "sku": "ZEN-SC-1000-RJ-VN",
+          "name": "ZEN 1L — Royal Jelly",
+          "market": "Vietnam"
+        },
+        {
+          "id": "cmtvcl67u003h03otc71lfzf7",
+          "sku": "ZEN-SC-1000-RJ-IQ",
+          "name": "ZEN 1L — Royal Jelly",
+          "market": "Iraq"
+        },
+        {
+          "id": "cmtvcl59z003703otxkx6kr8l",
+          "sku": "ZEN-SC-1000-RJ-PH",
+          "name": "ZEN 1L — Royal Jelly",
+          "market": "Philippines"
+        },
+        {
+          "id": "cmtvckygl000s03ot9oq39zk9",
+          "sku": "ZEN-SC-1000-RJ",
+          "name": "ZEN 1L — Royal Jelly",
+          "market": null
+        }
+      ]
+    },
+    {
+      "key": "zen garden\u0000zen 2.1l normal/diy\u00002.1L",
+      "proposedCode": "ZEN-SC-2100",
+      "code": "ZEN-SC-2100",
+      "name": "Zen Garden Shower Cream 2.1L",
+      "brand": "Zen Garden",
+      "category": "Shower cream & gel",
+      "size": "2.1L",
+      "line": "ZEN 2.1L NORMAL/DIY",
+      "markets": [],
+      "products": [
+        {
+          "id": "cmtvckwl0000603otf22vfihp",
+          "sku": "ZEN-SC-2100-AV",
+          "name": "ZEN 2.1L NORMAL/DIY — Avocado",
+          "market": null
+        },
+        {
+          "id": "cmtvckwi6000503ot5mpasr7r",
+          "sku": "ZEN-SC-2100-CR",
+          "name": "ZEN 2.1L NORMAL/DIY — Carrot",
+          "market": null
+        },
+        {
+          "id": "cmtvckw26000003ot70izhdcw",
+          "sku": "ZEN-SC-2100-GM",
+          "name": "ZEN 2.1L NORMAL/DIY — Goat's Milk",
+          "market": null
+        },
+        {
+          "id": "cmtvckwfn000403otlqtv2igm",
+          "sku": "ZEN-SC-2100-GT",
+          "name": "ZEN 2.1L NORMAL/DIY — Green Tea",
+          "market": null
+        },
+        {
+          "id": "cmtvckw62000103ots5mexrx3",
+          "sku": "ZEN-SC-2100-LV",
+          "name": "ZEN 2.1L NORMAL/DIY — Lavender",
+          "market": null
+        },
+        {
+          "id": "cmtvckwoh000703oth7gkwwsv",
+          "sku": "ZEN-SC-2100-OM",
+          "name": "ZEN 2.1L NORMAL/DIY — Oat Milk",
+          "market": null
+        },
+        {
+          "id": "cmtvckw9h000203otpbz0v4x0",
+          "sku": "ZEN-SC-2100-PP",
+          "name": "ZEN 2.1L NORMAL/DIY — Papaya",
+          "market": null
+        },
+        {
+          "id": "cmtvckwce000303otmq1vqmi7",
+          "sku": "ZEN-SC-2100-RJ",
+          "name": "ZEN 2.1L NORMAL/DIY — Royal Jelly",
+          "market": null
+        }
+      ]
+    },
+    {
+      "key": "zen garden\u0000zen 2.1l\u00002.1L",
+      "proposedCode": "ZEN-SC-2100",
+      "code": "ZEN-SC-2100",
+      "name": "Zen Garden Shower Cream 2.1L",
+      "brand": "Zen Garden",
+      "category": "Shower cream & gel",
+      "size": "2.1L",
+      "line": "ZEN 2.1L",
+      "markets": [
+        "Libya",
+        "Vietnam"
+      ],
+      "products": [
+        {
+          "id": "cmtvckxrt000k03otbta4p11w",
+          "sku": "ZEN-SC-2100-GM-LY",
+          "name": "ZEN 2.1L — Goat's Milk",
+          "market": "Libya"
+        },
+        {
+          "id": "cmtvcl3zw002q03otfvlxnso0",
+          "sku": "ZEN-SC-2100-GM-VN",
+          "name": "ZEN 2.1L — Goat's Milk",
+          "market": "Vietnam"
+        },
+        {
+          "id": "cmtvcl4bb002u03otczvfqfe5",
+          "sku": "ZEN-SC-2100-GT-VN",
+          "name": "ZEN 2.1L — Green Tea",
+          "market": "Vietnam"
+        },
+        {
+          "id": "cmtvcky4r000o03otpw9o5vxp",
+          "sku": "ZEN-SC-2100-GT-LY",
+          "name": "ZEN 2.1L — Green Tea",
+          "market": "Libya"
+        },
+        {
+          "id": "cmtvcl436002r03otvlc0mlrn",
+          "sku": "ZEN-SC-2100-LV-VN",
+          "name": "ZEN 2.1L — Lavender",
+          "market": "Vietnam"
+        },
+        {
+          "id": "cmtvckxu0000l03ot28vax7rq",
+          "sku": "ZEN-SC-2100-LV-LY",
+          "name": "ZEN 2.1L — Lavender",
+          "market": "Libya"
+        },
+        {
+          "id": "cmtvckxy7000m03ot9zt3ow2d",
+          "sku": "ZEN-SC-2100-PP-LY",
+          "name": "ZEN 2.1L — Papaya",
+          "market": "Libya"
+        },
+        {
+          "id": "cmtvcl459002s03otgm3kixuu",
+          "sku": "ZEN-SC-2100-PP-VN",
+          "name": "ZEN 2.1L — Papaya",
+          "market": "Vietnam"
+        },
+        {
+          "id": "cmtvcky24000n03ot3f6ea74f",
+          "sku": "ZEN-SC-2100-RJ-LY",
+          "name": "ZEN 2.1L — Royal Jelly",
+          "market": "Libya"
+        },
+        {
+          "id": "cmtvcl47p002t03otn8o2z51h",
+          "sku": "ZEN-SC-2100-RJ-VN",
+          "name": "ZEN 2.1L — Royal Jelly",
+          "market": "Vietnam"
+        }
+      ]
+    },
+    {
+      "key": "zen garden\u0000zen 300ml\u0000300ML",
+      "proposedCode": "ZEN-SC-0300",
+      "code": "ZEN-SC-0300",
+      "name": "ZEN 300ML",
+      "brand": "Zen Garden",
+      "category": "Shower cream & gel",
+      "size": "300ML",
+      "line": "ZEN 300ML",
+      "markets": [],
+      "products": [
+        {
+          "id": "cmtvcl0k4001j03ot7htb9gcp",
+          "sku": "ZEN-SC-0300-GM",
+          "name": "ZEN 300ML — Goat's Milk",
+          "market": null
+        },
+        {
+          "id": "cmtvcl0vm001n03otqlpnm0ow",
+          "sku": "ZEN-SC-0300-GT",
+          "name": "ZEN 300ML — Green Tea",
+          "market": null
+        },
+        {
+          "id": "cmtvcl0nz001k03otdrrnmswv",
+          "sku": "ZEN-SC-0300-LV",
+          "name": "ZEN 300ML — Lavender",
+          "market": null
+        },
+        {
+          "id": "cmtvcl0q7001l03ot23j62uhv",
+          "sku": "ZEN-SC-0300-PP",
+          "name": "ZEN 300ML — Papaya",
+          "market": null
+        },
+        {
+          "id": "cmtvcl0t0001m03otww7dkj1g",
+          "sku": "ZEN-SC-0300-RJ",
+          "name": "ZEN 300ML — Royal Jelly",
+          "market": null
+        }
+      ]
+    },
+    {
+      "key": "zen garden\u0000zen 410ml massage & body oil\u0000410ML",
+      "proposedCode": "ZEN-BC-0410",
+      "code": "ZEN-BC-0410",
+      "name": "ZEN 410ML MASSAGE & BODY OIL",
+      "brand": "Zen Garden",
+      "category": "Body care",
+      "size": "410ML",
+      "line": "ZEN 410ML MASSAGE & BODY OIL",
+      "markets": [],
+      "products": [
+        {
+          "id": "cmtvcl9q0004p03ot7usni5r4",
+          "sku": "ZEN-BC-0410-BC",
+          "name": "ZEN 410ML MASSAGE & BODY OIL — Blue Cypress",
+          "market": null
+        },
+        {
+          "id": "cmtvcl9n1004o03ot0vterzo0",
+          "sku": "ZEN-BC-0410-FL",
+          "name": "ZEN 410ML MASSAGE & BODY OIL — French Lavender",
+          "market": null
+        },
+        {
+          "id": "cmtvcl9sj004q03otnsy3yes7",
+          "sku": "ZEN-BC-0410-PE",
+          "name": "ZEN 410ML MASSAGE & BODY OIL — Peppermint Eucalyptus",
+          "market": null
+        }
+      ]
+    },
+    {
+      "key": "zen garden\u0000zen 750ml\u0000750ML",
+      "proposedCode": "ZEN-SC-0750",
+      "code": "ZEN-SC-0750",
+      "name": "ZEN 750ML",
+      "brand": "Zen Garden",
+      "category": "Shower cream & gel",
+      "size": "750ML",
+      "line": "ZEN 750ML",
+      "markets": [],
+      "products": [
+        {
+          "id": "cmtvcl072001e03ot3eyu8d2e",
+          "sku": "ZEN-SC-0750-GM",
+          "name": "ZEN 750ML — Goat's Milk",
+          "market": null
+        },
+        {
+          "id": "cmtvcl0hk001i03otmzatlk8l",
+          "sku": "ZEN-SC-0750-GT",
+          "name": "ZEN 750ML — Green Tea",
+          "market": null
+        },
+        {
+          "id": "cmtvcl09y001f03oteawc0n6o",
+          "sku": "ZEN-SC-0750-LG",
+          "name": "ZEN 750ML — Lavender (gel)",
+          "market": null
+        },
+        {
+          "id": "cmtvcl0ch001g03otm8tbtryf",
+          "sku": "ZEN-SC-0750-PP",
+          "name": "ZEN 750ML — Papaya",
+          "market": null
+        },
+        {
+          "id": "cmtvcl0fg001h03ot88q2o2hs",
+          "sku": "ZEN-SC-0750-RJ",
+          "name": "ZEN 750ML — Royal Jelly",
+          "market": null
+        }
+      ]
+    },
+    {
+      "key": "zen garden\u0000zen 800ml baby wash\u0000800ML",
+      "proposedCode": "ZEN-BC-0800",
+      "code": "ZEN-BC-0800",
+      "name": "ZEN 800ML BABY WASH",
+      "brand": "Zen Garden",
+      "category": "Body care",
+      "size": "800ML",
+      "line": "ZEN 800ML BABY WASH",
+      "markets": [],
+      "products": [
+        {
+          "id": "cmtvclaic005003ot4y2l8sd6",
+          "sku": "ZEN-BC-0800-AM",
+          "name": "ZEN 800ML BABY WASH — Almond Milk",
+          "market": null
+        },
+        {
+          "id": "cmtvcladp004y03otojd0rywe",
+          "sku": "ZEN-BC-0800-AV",
+          "name": "ZEN 800ML BABY WASH — Avocado",
+          "market": null
+        },
+        {
+          "id": "cmtvclag2004z03ot8vsg499l",
+          "sku": "ZEN-BC-0800-OM",
+          "name": "ZEN 800ML BABY WASH — Oat Milk",
+          "market": null
+        },
+        {
+          "id": "cmtvclab3004x03otrsazlr5m",
+          "sku": "ZEN-BC-0800-SB",
+          "name": "ZEN 800ML BABY WASH — Shea Butter",
+          "market": null
+        }
+      ]
+    },
+    {
+      "key": "zen garden\u0000zen d'lux 2.9kg liquid detergent\u00002.9KG",
+      "proposedCode": "ZEN-LD-2900",
+      "code": "ZEN-LD-2900",
+      "name": "ZEN D'LUX 2.9KG LIQUID DETERGENT",
+      "brand": "Zen Garden",
+      "category": "Laundry detergent",
+      "size": "2.9KG",
+      "line": "ZEN D'LUX 2.9KG LIQUID DETERGENT",
+      "markets": [],
+      "products": [
+        {
+          "id": "cmtvcl9w2004r03otz3lqcq73",
+          "sku": "ZEN-LD-2900-GD",
+          "name": "ZEN D'LUX 2.9KG LIQUID DETERGENT — Gold",
+          "market": null
+        },
+        {
+          "id": "cmtvcl9y9004s03otpj49bi6z",
+          "sku": "ZEN-LD-2900-PK",
+          "name": "ZEN D'LUX 2.9KG LIQUID DETERGENT — Pink",
+          "market": null
+        },
+        {
+          "id": "cmtvcla15004t03ot210dlb96",
+          "sku": "ZEN-LD-2900-PU",
+          "name": "ZEN D'LUX 2.9KG LIQUID DETERGENT — Purple",
+          "market": null
+        }
+      ]
+    },
+    {
+      "key": "zen garden\u0000zen d'lux 3kg liquid detergent\u00003KG",
+      "proposedCode": "ZEN-LD-3000",
+      "code": "ZEN-LD-3000",
+      "name": "ZEN D'LUX 3KG LIQUID DETERGENT",
+      "brand": "Zen Garden",
+      "category": "Laundry detergent",
+      "size": "3KG",
+      "line": "ZEN D'LUX 3KG LIQUID DETERGENT",
+      "markets": [],
+      "products": [
+        {
+          "id": "cmtvcla43004u03otrqtt0886",
+          "sku": "ZEN-LD-3000-GD",
+          "name": "ZEN D'LUX 3KG LIQUID DETERGENT — Gold",
+          "market": null
+        },
+        {
+          "id": "cmtvcla6d004v03oty72s5jsv",
+          "sku": "ZEN-LD-3000-PK",
+          "name": "ZEN D'LUX 3KG LIQUID DETERGENT — Pink",
+          "market": null
+        },
+        {
+          "id": "cmtvcla8o004w03otsimqalhz",
+          "sku": "ZEN-LD-3000-PU",
+          "name": "ZEN D'LUX 3KG LIQUID DETERGENT — Purple",
+          "market": null
+        }
+      ]
+    },
+    {
+      "key": "zen garden\u0000zen hair shampoo 1l\u00001L",
+      "proposedCode": "ZEN-HC-1000",
+      "code": "ZEN-HC-1000",
+      "name": "Zen Garden Hair Shampoo 1L",
+      "brand": "Zen Garden",
+      "category": "Hair care",
+      "size": "1L",
+      "line": "ZEN HAIR SHAMPOO 1L",
+      "markets": [],
+      "products": [
+        {
+          "id": "cmtvcl7ty004303ot0gm9wlmx",
+          "sku": "ZEN-HC-1000-GM",
+          "name": "ZEN HAIR SHAMPOO 1L — Goat's Milk",
+          "market": null
+        },
+        {
+          "id": "cmtvcl7za004503ot1rdf8zsc",
+          "sku": "ZEN-HC-1000-GT",
+          "name": "ZEN HAIR SHAMPOO 1L — Green Tea",
+          "market": null
+        },
+        {
+          "id": "cmtvcl7we004403otbnvr5k58",
+          "sku": "ZEN-HC-1000-RJ",
+          "name": "ZEN HAIR SHAMPOO 1L — Royal Jelly",
+          "market": null
+        }
+      ]
+    },
+    {
+      "key": "zen garden\u0000zen roll on\u0000",
+      "proposedCode": "ZEN-FG",
+      "code": "ZEN-FG",
+      "name": "ZEN ROLL ON",
+      "brand": "Zen Garden",
+      "category": "Fragrance",
+      "size": null,
+      "line": "ZEN ROLL ON",
+      "markets": [],
+      "products": [
+        {
+          "id": "cmtvcl8tw004g03otl51weaab",
+          "sku": "ZEN-FG-CASANOVA",
+          "name": "ZEN ROLL ON — Casanova",
+          "market": null
+        },
+        {
+          "id": "cmtvcl9df004k03otu0lebp0y",
+          "sku": "ZEN-FG-CASANOVA-X12",
+          "name": "ZEN ROLL ON — Casanova",
+          "market": null
+        },
+        {
+          "id": "cmtvcl95b004j03otnqcvlwpx",
+          "sku": "ZEN-FG-MEMOIR",
+          "name": "ZEN ROLL ON — Memoir",
+          "market": null
+        },
+        {
+          "id": "cmtvcl9ki004n03otmshdwqsn",
+          "sku": "ZEN-FG-MEMOIR-X12",
+          "name": "ZEN ROLL ON — Memoir",
+          "market": null
+        },
+        {
+          "id": "cmtvcl9ie004m03ot0s2ektci",
+          "sku": "ZEN-FG-QUEEN-X12",
+          "name": "ZEN ROLL ON — Queen",
+          "market": null
+        },
+        {
+          "id": "cmtvcl91w004i03otcto9hk9s",
+          "sku": "ZEN-FG-QUEEN",
+          "name": "ZEN ROLL ON — Queen",
+          "market": null
+        },
+        {
+          "id": "cmtvcl8zf004h03otgqdo7guf",
+          "sku": "ZEN-FG-SPORTZ",
+          "name": "ZEN ROLL ON — Sportz",
+          "market": null
+        },
+        {
+          "id": "cmtvcl9ge004l03ot0eh21zmt",
+          "sku": "ZEN-FG-SPORTZ-X12",
+          "name": "ZEN ROLL ON — Sportz",
+          "market": null
+        }
+      ]
+    }
+  ],
+  "skipped": []
+}
