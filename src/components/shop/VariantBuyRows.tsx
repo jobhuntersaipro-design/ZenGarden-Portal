@@ -128,6 +128,13 @@ export function VariantBuyRows({
                 packSize={variant.packSize}
                 unit={variant.unit}
                 label={labels.get(variant.id) ?? variant.sku}
+                // A row typed into while the batch above is in flight would
+                // never be part of that batch, and `setCartons({})` clears
+                // every row on success — so a keystroke landing in that
+                // window would vanish silently rather than being sent twice.
+                // Disabling every row for the whole request is what makes
+                // "the batch you submitted is the batch that lands" true.
+                disabled={pending}
                 onChange={async (next) => {
                   setCartons((current) => ({ ...current, [variant.id]: next }));
                   return { success: true };
