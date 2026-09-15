@@ -69,6 +69,30 @@ export function headObject(key: string) {
   return r2.send(new HeadObjectCommand({ Bucket: env.R2_BUCKET, Key: key }));
 }
 
+/**
+ * Write an object from the server (Phase 37).
+ *
+ * Every other upload in this app is presigned and performed by the browser,
+ * because the bytes start there. A generated purchase order is the opposite
+ * case: the bytes exist only on the server, and presigning a URL for
+ * ourselves would be a round trip to sign a request we are about to make.
+ */
+export function putObject(
+  key: string,
+  body: Uint8Array,
+  contentType: string,
+) {
+  return r2.send(
+    new PutObjectCommand({
+      Bucket: env.R2_BUCKET,
+      Key: key,
+      Body: body,
+      ContentType: contentType,
+      ContentLength: body.byteLength,
+    }),
+  );
+}
+
 /** Whole object into memory — used to hand PDF bytes to Claude. */
 export async function getObjectBytes(key: string): Promise<Uint8Array> {
   const result = await r2.send(
