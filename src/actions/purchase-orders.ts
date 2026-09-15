@@ -206,6 +206,12 @@ export async function writePurchaseOrder(
     totals: ReturnType<typeof checkTotals>;
     totalsAcknowledged: boolean;
     buyerReference?: string | null;
+    /**
+     * The day the team commits to delivering (Phase 38). Required when
+     * confirming a shop order and absent for an uploaded one, which may
+     * carry no delivery date at all.
+     */
+    deliveryDate?: string | null;
   },
 ): Promise<string> {
   const { data } = input;
@@ -217,6 +223,9 @@ export async function writePurchaseOrder(
       revisionOfId: input.revisionOfId,
       buyerId: input.buyerId,
       poDate: new Date(data.poDate),
+      // An ISO day parses as UTC midnight, which is what a `@db.Date` column
+      // stores — the same rule `submitWebOrder` follows for `requestedDate`.
+      deliveryDate: input.deliveryDate ? new Date(input.deliveryDate) : null,
       currency: data.currency,
       paymentTerms: data.paymentTerms,
       subtotal: new Prisma.Decimal(data.subtotal),

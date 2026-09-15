@@ -34,6 +34,17 @@ export function WebOrderReviewForm({ order }: { order: OpsWebOrder }) {
   const [acknowledged, setAcknowledged] = useState(false);
   const [declining, setDeclining] = useState(false);
   const [reason, setReason] = useState("");
+  /**
+   * The day the team commits to (Phase 38), prefilled with the day the buyer
+   * asked for. It is not part of the draft: the draft is the purchase order
+   * as printed, and this is a promise the team is making now.
+   *
+   * `requestedDate` is stored as UTC midnight of the chosen day, so slicing
+   * the ISO string gives back that same day rather than the one before it.
+   */
+  const [deliveryDate, setDeliveryDate] = useState(
+    order.requestedDate ? order.requestedDate.toISOString().slice(0, 10) : "",
+  );
 
   const [draft, dispatch] = useReducer(draftReducer, {
     // Defaults a reviewer can type over: the shop reference as the PO number,
@@ -105,6 +116,13 @@ export function WebOrderReviewForm({ order }: { order: OpsWebOrder }) {
           type="date"
           value={draft.poDate}
           onChange={(value) => dispatch({ type: "field", field: "poDate", value })}
+        />
+        <Field
+          id="deliveryDate"
+          label="Expected delivery"
+          type="date"
+          value={deliveryDate}
+          onChange={setDeliveryDate}
         />
         <Field
           id="paymentTerms"
@@ -184,12 +202,13 @@ export function WebOrderReviewForm({ order }: { order: OpsWebOrder }) {
       <div className="mt-md flex flex-wrap items-center gap-sm">
         <Button
           pending={pending && !declining}
-          disabled={blockedByTotals}
+          disabled={blockedByTotals || !deliveryDate}
           onClick={() =>
             startTransition(async () => {
               setDeclining(false);
               const result = await confirmWebOrder(order.id, submitted, {
                 totalsAcknowledged: acknowledged,
+                deliveryDate,
               });
               if (result.success) {
                 toast.success("Order confirmed.");
@@ -208,6 +227,19 @@ export function WebOrderReviewForm({ order }: { order: OpsWebOrder }) {
         {blockedByTotals ? (
           <p className="text-[length:var(--text-caption)] text-ink-tertiary">
             Locked — totals don&rsquo;t match
+          </p>
+        ) : !deliveryDate ? (
+          // The buyer is emailed this date the moment Confirm is pressed, so
+          // there is no confirming without one.
+          <p className="text-[length:var(--text-caption)] text-ink-tertiary">
+            Locked — set an expected delivery date
+          </p>
+        ) : deliveryDate < todayISO() ? (
+          // Allowed, not blocked: backdating a date the goods already went
+          // out on is legitimate. It is said out loud because it is usually
+          // a typo.
+          <p className="text-[length:var(--text-caption)] text-brand-amber">
+            That delivery date is in the past
           </p>
         ) : null}
       </div>

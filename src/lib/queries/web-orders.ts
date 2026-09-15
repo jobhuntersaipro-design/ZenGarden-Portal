@@ -30,6 +30,11 @@ export type ClientOrder = {
   date: Date | null;
   stage: PoStage | null;
   stageChangedAt: Date | null;
+  /**
+   * The day the team committed to (Phase 38). Null on an order still waiting
+   * to be confirmed, and on one confirmed before that phase.
+   */
+  deliveryDate: Date | null;
   total: string;
   lineCount: number;
   declinedReason?: string | null;
@@ -54,6 +59,7 @@ export const BUYER_ORDER_SORT_KEYS = [
   "reference",
   "buyerReference",
   "date",
+  "deliveryDate",
   "status",
   "lineCount",
   "total",
@@ -90,6 +96,8 @@ const statusRank = (order: ClientOrder) =>
 function isBlank(order: ClientOrder, key: BuyerOrderSortKey): boolean {
   if (key === "buyerReference") return !order.buyerReference;
   if (key === "date") return order.date === null;
+  // An order the team has not confirmed has no delivery date to sort on.
+  if (key === "deliveryDate") return order.deliveryDate === null;
   return false;
 }
 
@@ -120,6 +128,10 @@ function compareOrders(
       return a.lineCount - b.lineCount;
     case "total":
       return Number(a.total) - Number(b.total);
+    case "deliveryDate":
+      return (
+        (a.deliveryDate?.getTime() ?? 0) - (b.deliveryDate?.getTime() ?? 0)
+      );
     case "date":
     default:
       return (a.date?.getTime() ?? 0) - (b.date?.getTime() ?? 0);
@@ -149,6 +161,7 @@ export async function listBuyerOrders(
         poDate: true,
         stage: true,
         stageChangedAt: true,
+        deliveryDate: true,
         total: true,
         buyerReference: true,
         _count: { select: { lineItems: true } },
@@ -182,6 +195,7 @@ export async function listBuyerOrders(
       date: po.poDate,
       stage: po.stage,
       stageChangedAt: po.stageChangedAt,
+      deliveryDate: po.deliveryDate,
       total: po.total.toFixed(2),
       lineCount: po._count.lineItems,
       buyerReference: po.buyerReference,
@@ -196,6 +210,8 @@ export async function listBuyerOrders(
       date: order.submittedAt,
       stage: null,
       stageChangedAt: null,
+      // Nothing is promised until the team confirms it.
+      deliveryDate: null,
       total: order.subtotal.toFixed(2),
       lineCount: order._count.lines,
       declinedReason: order.declinedReason,
@@ -331,6 +347,7 @@ export async function loadBuyerOrder(
       poDate: true,
       stage: true,
       stageChangedAt: true,
+      deliveryDate: true,
       subtotal: true,
       tax: true,
       total: true,
@@ -381,6 +398,7 @@ export async function loadBuyerOrder(
       date: po.poDate,
       stage: po.stage,
       stageChangedAt: po.stageChangedAt,
+      deliveryDate: po.deliveryDate,
       subtotal: po.subtotal.toFixed(2),
       tax: po.tax.toFixed(2),
       total: po.total.toFixed(2),
@@ -463,6 +481,7 @@ export async function loadBuyerOrder(
     date: web.submittedAt,
     stage: null,
     stageChangedAt: null,
+    deliveryDate: null,
     subtotal: web.subtotal.toFixed(2),
     // The cart quotes no tax; the team settles it when they confirm.
     tax: null,
@@ -583,6 +602,12 @@ export type OpsWebOrder = {
   placedByName: string;
   placedByEmail: string;
   submittedAt: Date | null;
+  /**
+   * The day the buyer asked for (Phase 38). Written since Phase 32 and shown
+   * on no ops screen until now — the person confirming the order could not
+   * see what had been asked of them.
+   */
+  requestedDate: Date | null;
   buyerReference: string | null;
   notes: string | null;
   subtotal: string;
@@ -613,6 +638,7 @@ export async function loadWebOrderForReview(
       notes: true,
       subtotal: true,
       submittedAt: true,
+      requestedDate: true,
       buyer: { select: { name: true, paymentTerms: true } },
       placedBy: { select: { name: true, email: true } },
       lines: {
@@ -640,6 +666,7 @@ export async function loadWebOrderForReview(
     placedByName: order.placedBy.name,
     placedByEmail: order.placedBy.email,
     submittedAt: order.submittedAt,
+    requestedDate: order.requestedDate,
     buyerReference: order.buyerReference,
     notes: order.notes,
     subtotal: order.subtotal.toFixed(2),
