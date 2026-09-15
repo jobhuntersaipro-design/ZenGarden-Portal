@@ -1,5 +1,6 @@
 "use server";
 
+import { after } from "next/server";
 import { revalidatePath } from "next/cache";
 import { z } from "zod";
 import { Prisma } from "@/generated/prisma/client";
@@ -7,6 +8,15 @@ import { PoEventKind, PoStage, Role } from "@/generated/prisma/enums";
 import { UnauthorizedError, requireUser } from "@/lib/auth-guards";
 import { prisma } from "@/lib/prisma";
 import { nextStage, prevStage, stageLabel } from "@/lib/po-stages";
+import { isoDate } from "@/lib/validation/purchase-orders";
+import {
+  WebOrderConfirmed,
+  webOrderConfirmedSubject,
+} from "@/emails/WebOrderConfirmed";
+import { sendEmail } from "@/lib/email";
+import { env } from "@/lib/env";
+import { formatDate } from "@/lib/dates";
+import { formatMYR } from "@/lib/money";
 
 export type ActionResult<T = undefined> =
   | { success: true; data: T }
@@ -14,10 +24,6 @@ export type ActionResult<T = undefined> =
 
 /** Two people clicking at once must not double-advance an order. */
 const RACE_LOST = "This order was already moved. Refresh.";
-
-const isoDate = z
-  .string()
-  .regex(/^\d{4}-\d{2}-\d{2}$/, "Use an ISO date, YYYY-MM-DD");
 
 const emptyToNull = z
   .string()
@@ -27,6 +33,8 @@ const emptyToNull = z
 const purchaseOrderPatchSchema = z.object({
   poNumber: z.string().min(1, "PO number is required"),
   poDate: isoDate,
+  /** The day the team committed to. Nullable: a scanned PO may carry none. */
+  deliveryDate: isoDate.nullable(),
   paymentTerms: emptyToNull,
   // The remark is the one free-prose field on an order, so it gets a bound.
   notes: emptyToNull.pipe(
@@ -180,6 +188,7 @@ export async function revertStage(
 export type PurchaseOrderPatch = {
   poNumber: string;
   poDate: string;
+  deliveryDate: string | null;
   paymentTerms: string | null;
   notes: string | null;
 };
@@ -187,6 +196,7 @@ export type PurchaseOrderPatch = {
 const FIELD_LABELS: Record<keyof PurchaseOrderPatch, string> = {
   poNumber: "PO number",
   poDate: "PO date",
+  deliveryDate: "expected delivery",
   paymentTerms: "payment terms",
   notes: "remark",
 };
@@ -219,8 +229,21 @@ export async function updatePurchaseOrder(
         stage: true,
         poNumber: true,
         poDate: true,
+        deliveryDate: true,
         paymentTerms: true,
         notes: true,
+        total: true,
+        currency: true,
+        // Only a shop order has a buyer waiting on this date, and only they
+        // are told when it moves.
+        webOrder: {
+          select: {
+            reference: true,
+            buyerReference: true,
+            placedBy: { select: { email: true } },
+            _count: { select: { lines: true } },
+          },
+        },
       },
     });
     if (!po) return { success: false, error: "That order is gone." };
@@ -231,6 +254,8 @@ export async function updatePurchaseOrder(
     const changed: string[] = [];
     if (po.poNumber !== data.poNumber) changed.push(FIELD_LABELS.poNumber);
     if (asDay(po.poDate) !== data.poDate) changed.push(FIELD_LABELS.poDate);
+    const deliveryMoved = asDay(po.deliveryDate) !== data.deliveryDate;
+    if (deliveryMoved) changed.push(FIELD_LABELS.deliveryDate);
     if ((po.paymentTerms ?? null) !== data.paymentTerms) {
       changed.push(FIELD_LABELS.paymentTerms);
     }
@@ -245,6 +270,9 @@ export async function updatePurchaseOrder(
         data: {
           poNumber: data.poNumber,
           poDate: new Date(data.poDate),
+          // An ISO day parses as UTC midnight, which is what a `@db.Date`
+          // column stores — the same rule `submitWebOrder` follows.
+          deliveryDate: data.deliveryDate ? new Date(data.deliveryDate) : null,
           paymentTerms: data.paymentTerms,
           notes: data.notes,
         },
@@ -262,6 +290,34 @@ export async function updatePurchaseOrder(
     ]);
 
     revalidate(poId);
+
+    // A delivery date that moves without telling the buyer is exactly what
+    // they would ring up about. Only for an order they placed themselves —
+    // a scanned PO has no shop account behind it to write to — and after the
+    // response, through sendEmail, which never throws.
+    if (deliveryMoved && po.webOrder && data.deliveryDate) {
+      const order = po.webOrder;
+      // Formatted once and used for both, or the subject line and the body
+      // print the same day two different ways.
+      const when = formatDate(data.deliveryDate);
+      after(async () => {
+        await sendEmail({
+          to: [order.placedBy.email],
+          subject: webOrderConfirmedSubject(order.reference, when, true),
+          react: WebOrderConfirmed({
+            reference: order.reference,
+            buyerReference: order.buyerReference,
+            poNumber: data.poNumber,
+            expectedDelivery: when,
+            lineCount: order._count.lines,
+            total: formatMYR(po.total.toNumber()),
+            orderUrl: `${env.SHOP_URL ?? env.APP_URL}/orders/${poId}`,
+            updated: true,
+          }),
+        });
+      });
+    }
+
     return { success: true, data: undefined };
   } catch (cause) {
     if (

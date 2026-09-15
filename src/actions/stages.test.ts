@@ -1,3 +1,4 @@
+import { renderToStaticMarkup } from "react-dom/server";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 const poFindUnique = vi.fn();
@@ -22,8 +23,28 @@ vi.mock("@/lib/auth-guards", () => ({
   requireUser: () => requireUser(),
 }));
 vi.mock("next/cache", () => ({ revalidatePath: vi.fn() }));
+// Phase 38: a delivery date that moves emails the buyer, so this module now
+// reaches the env and the mailer. `after` is run inline and its promise kept,
+// so a test asserting on an email cannot race the send.
+vi.mock("@/lib/env", () => ({
+  env: { APP_URL: "https://www.example.com", SHOP_URL: "https://shop.example.com" },
+}));
+const sendEmail = vi.fn().mockResolvedValue({ sent: true });
+vi.mock("@/lib/email", () => ({ sendEmail }));
+const afterTasks: Promise<unknown>[] = [];
+vi.mock("next/server", () => ({
+  after: (fn: () => unknown) => {
+    afterTasks.push(Promise.resolve(fn()));
+  },
+}));
+const flushAfter = async () => {
+  await Promise.all(afterTasks);
+  afterTasks.length = 0;
+};
 
-const { advanceStage, revertStage } = await import("@/actions/stages");
+const { advanceStage, revertStage, updatePurchaseOrder } = await import(
+  "@/actions/stages"
+);
 
 const member = {
   id: "user-1",
@@ -37,6 +58,8 @@ const admin = { ...member, id: "user-2", name: "Chris Lam", role: "SUPER_ADMIN" 
 
 beforeEach(() => {
   vi.clearAllMocks();
+  afterTasks.length = 0;
+  sendEmail.mockResolvedValue({ sent: true });
   requireUser.mockResolvedValue(member);
   poFindUnique.mockResolvedValue({ stage: "IN_PRODUCTION" });
   poUpdateMany.mockResolvedValue({ count: 1 });
@@ -142,5 +165,97 @@ describe("revertStage", () => {
       success: false,
       error: "This order was already moved. Refresh.",
     });
+  });
+});
+
+describe("updatePurchaseOrder — the expected delivery date", () => {
+  const existing = {
+    stage: "ORDER_PLACED",
+    poNumber: "W-2609-00001",
+    poDate: new Date("2026-09-15T00:00:00.000Z"),
+    deliveryDate: new Date("2026-10-02T00:00:00.000Z"),
+    paymentTerms: "30 days",
+    notes: null,
+    total: { toNumber: () => 210 },
+    currency: "MYR",
+    webOrder: {
+      reference: "W-2609-00001",
+      buyerReference: "ACME-PO-771",
+      placedBy: { email: "buyer@acme.test" },
+      _count: { lines: 1 },
+    },
+  };
+  const patch = {
+    poNumber: "W-2609-00001",
+    poDate: "2026-09-15",
+    deliveryDate: "2026-10-02",
+    paymentTerms: "30 days",
+    notes: null,
+  };
+
+  const transaction = vi.fn();
+
+  beforeEach(async () => {
+    poFindUnique.mockResolvedValue(existing);
+    const { prisma } = await import("@/lib/prisma");
+    (prisma as unknown as { $transaction: unknown }).$transaction = transaction;
+    transaction.mockResolvedValue([{}, {}]);
+    (prisma as unknown as { purchaseOrder: Record<string, unknown> }).purchaseOrder.update =
+      vi.fn();
+    (prisma as unknown as { poStageEvent: Record<string, unknown> }).poStageEvent = {
+      create: vi.fn(),
+    };
+  });
+
+  it("writes nothing and emails nobody when nothing moved", async () => {
+    const result = await updatePurchaseOrder("po1", patch);
+    await flushAfter();
+    expect(result.success).toBe(true);
+    expect(transaction).not.toHaveBeenCalled();
+    expect(sendEmail).not.toHaveBeenCalled();
+  });
+
+  /**
+   * A delivery date that moves without telling the buyer is exactly what they
+   * would ring up about — so the same template goes out again, saying so.
+   */
+  it("tells the buyer when the date moves, in the subject as well as the body", async () => {
+    await updatePurchaseOrder("po1", { ...patch, deliveryDate: "2026-10-09" });
+    await flushAfter();
+
+    const call = sendEmail.mock.calls[0][0];
+    expect(call.to).toEqual(["buyer@acme.test"]);
+    expect(call.subject).toBe(
+      "Updated: order W-2609-00001 · delivery now expected 9 Oct 2026",
+    );
+    const body = renderToStaticMarkup(call.react);
+    expect(body).toContain("9 Oct 2026");
+    expect(body).toContain("has moved");
+  });
+
+  it("names the change in the activity entry", async () => {
+    await updatePurchaseOrder("po1", { ...patch, deliveryDate: "2026-10-09" });
+    const writes = transaction.mock.calls[0][0];
+    expect(writes).toHaveLength(2);
+  });
+
+  /**
+   * An uploaded purchase order has no shop account behind it to write to, so
+   * the same edit on one sends nothing at all.
+   */
+  it("emails nobody when the order did not come from the shop", async () => {
+    poFindUnique.mockResolvedValue({ ...existing, webOrder: null });
+    await updatePurchaseOrder("po1", { ...patch, deliveryDate: "2026-10-09" });
+    await flushAfter();
+    expect(transaction).toHaveBeenCalled();
+    expect(sendEmail).not.toHaveBeenCalled();
+  });
+
+  it("emails nobody when the date is cleared rather than moved", async () => {
+    // There is no date to promise, so there is nothing to tell them.
+    await updatePurchaseOrder("po1", { ...patch, deliveryDate: null });
+    await flushAfter();
+    expect(transaction).toHaveBeenCalled();
+    expect(sendEmail).not.toHaveBeenCalled();
   });
 });

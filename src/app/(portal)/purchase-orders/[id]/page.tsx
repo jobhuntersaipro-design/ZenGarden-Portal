@@ -106,6 +106,29 @@ export default async function PurchaseOrderPage({
     Math.round((now - enteredStageAt.getTime()) / DAY_MS),
   );
 
+  /**
+   * How the promised delivery date reads against today (Phase 38). Only while
+   * the order is still moving: once it is delivered the date is history, and
+   * "3 days overdue" on a delivered order would be wrong as well as unhelpful.
+   */
+  const deliveryNote =
+    po.deliveryDate && !isFinalStage(current)
+      ? (() => {
+          const days = Math.round((po.deliveryDate.getTime() - now) / DAY_MS);
+          if (days < 0) {
+            const late = Math.abs(days);
+            return {
+              text: `Expected ${formatDate(po.deliveryDate)} · ${late} ${late === 1 ? "day" : "days"} overdue`,
+              late: true,
+            };
+          }
+          return {
+            text: `Expected ${formatDate(po.deliveryDate)} · ${days === 0 ? "due today" : `in ${days} ${days === 1 ? "day" : "days"}`}`,
+            late: false,
+          };
+        })()
+      : null;
+
   return (
     <>
       {/* A detail page reached from four different places needs a way back:
@@ -143,6 +166,9 @@ export default async function PurchaseOrderPage({
               initial={{
                 poNumber: po.poNumber,
                 poDate: po.poDate.toISOString().slice(0, 10),
+                deliveryDate: po.deliveryDate
+                  ? po.deliveryDate.toISOString().slice(0, 10)
+                  : null,
                 paymentTerms: po.paymentTerms,
                 notes: po.notes,
               }}
@@ -206,6 +232,16 @@ export default async function PurchaseOrderPage({
               {daysInStage === 1 ? "day" : "days"} in this stage
               {latestStageEvent?.note ? ` · “${latestStageEvent.note}”` : ""}
             </p>
+            {/* Overdue is red, the one status palette — not a second scheme
+                invented here. On time is the caption's own quiet grey: it is
+                information, not an alarm. */}
+            {deliveryNote ? (
+              <p
+                className={`mt-xxs text-[length:var(--text-caption)] ${deliveryNote.late ? "text-accent-red" : "text-ink-tertiary"}`}
+              >
+                {deliveryNote.text}
+              </p>
+            ) : null}
           </div>
 
           <LifecycleActions
@@ -289,6 +325,10 @@ export default async function PurchaseOrderPage({
               {[
                 ["PO number", po.poNumber],
                 ["PO date", formatDate(po.poDate)],
+                [
+                  "Expected delivery",
+                  po.deliveryDate ? formatDate(po.deliveryDate) : "—",
+                ],
                 ["Payment terms", po.paymentTerms ?? "—"],
                 ["Confirmed at", formatDateTime(po.confirmedAt)],
               ].map(([label, value]) => (

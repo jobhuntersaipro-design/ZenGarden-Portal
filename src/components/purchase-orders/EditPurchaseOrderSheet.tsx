@@ -19,6 +19,10 @@ import { Textarea } from "@/components/ui/textarea";
 const LABELS: { key: keyof PurchaseOrderPatch; label: string; type?: string }[] = [
   { key: "poNumber", label: "PO number" },
   { key: "poDate", label: "PO date", type: "date" },
+  // Phase 38. Editable after the fact, and a change here emails the buyer
+  // when the order came from the shop — a date that moves silently is what
+  // they would ring up about.
+  { key: "deliveryDate", label: "Expected delivery", type: "date" },
   { key: "paymentTerms", label: "Payment terms" },
 ];
 
