@@ -141,6 +141,20 @@ export function ProductForm({
   useEffect(() => {
     rowsRef.current = rows;
   }, [rows]);
+
+  /**
+   * Every row write goes through here, and `rowsRef` is kept in step
+   * synchronously rather than only by the effect above, which lands after the
+   * commit. Two events inside one commit — two drops on one row's dropzone —
+   * would otherwise each compute from the same `rows`, and the second would
+   * replace the first, losing its files and leaking the object URLs nothing
+   * has revoked.
+   */
+  const updateRows = (next: (current: VariantRowState[]) => VariantRowState[]) => {
+    const value = next(rowsRef.current);
+    rowsRef.current = value;
+    setRows(value);
+  };
   useEffect(
     () => () => {
       for (const image of stagedRef.current) URL.revokeObjectURL(image.url);
@@ -199,7 +213,7 @@ export function ProductForm({
     });
 
   const patchRow = (key: string, patch: Partial<VariantRowState>) =>
-    setRows((current) =>
+    updateRows((current) =>
       current.map((row) => (row.key === key ? { ...row, ...patch } : row)),
     );
 
@@ -222,7 +236,7 @@ export function ProductForm({
    * a third row must not re-open or re-claim a draft the reader has edited.
    */
   const addRow = () => {
-    setRows((current) => [...current, blankRow(current.at(-1)?.listPrice ?? "")]);
+    updateRows((current) => [...current, blankRow(current.at(-1)?.listPrice ?? "")]);
     if (!many && !family.familyId && !family.draft) {
       setFamily({ familyId: null, draft: { name: form.name, size: "", qualifier: "" } });
       setFamilyAutoOpened(true);
@@ -230,34 +244,57 @@ export function ProductForm({
   };
 
   const removeRow = (key: string) => {
-    setRows((current) => {
-      if (current.length === 1) return current;
-      const going = current.find((row) => row.key === key);
-      for (const image of going?.staged ?? []) URL.revokeObjectURL(image.url);
-      return current.filter((row) => row.key !== key);
-    });
+    const current = rowsRef.current;
+    const going = current.find((row) => row.key === key);
+    if (!going || current.length === 1) return;
+    const left = current.filter((row) => row.key !== key);
+
+    for (const image of going.staged) URL.revokeObjectURL(image.url);
+
+    // Back to one variant, which takes the Variants section off the screen —
+    // and with it the only place the surviving row's own pictures are visible.
+    // They become the shared set rather than invisible files that still drive
+    // the write: what is on screen is what is uploaded, which is what the
+    // Create gate already assumes. Ownership of the object URLs moves with
+    // them, so none is revoked here and none leaks.
+    const survivor = left[0];
+    if (left.length === 1 && survivor.staged.length > 0) {
+      const adopted = survivor.staged;
+      setStaged((currentStaged) => [...currentStaged, ...adopted]);
+      updateRows(() => [{ ...survivor, staged: [] }]);
+    } else {
+      updateRows(() => left);
+    }
 
     // The draft `addRow` opened by itself goes when the last extra row goes.
     // Undoing an action must not leave a `ProductFamily` behind that nobody
     // asked for — and only the return to a single row withdraws it, because at
-    // two rows the family is still required.
-    const removing = rows.some((row) => row.key === key);
-    if (removing && rows.length === 2 && familyAutoOpened) {
+    // two rows the family is still required. Independent of the transfer
+    // above: both happen on this transition, and neither reads the other.
+    if (left.length === 1 && familyAutoOpened) {
       setFamily({ familyId: null, draft: null });
       setFamilyAutoOpened(false);
     }
   };
 
   const addRowFiles = (key: string, files: File[]) => {
-    const row = rows.find((candidate) => candidate.key === key);
+    const row = rowsRef.current.find((candidate) => candidate.key === key);
     if (!row) return;
     const { accepted, refused } = acceptFiles(files, row.staged.length);
-    if (accepted.length > 0) patchRow(key, { staged: [...row.staged, ...accepted] });
+    if (accepted.length > 0) {
+      updateRows((current) =>
+        current.map((candidate) =>
+          candidate.key === key
+            ? { ...candidate, staged: [...candidate.staged, ...accepted] }
+            : candidate,
+        ),
+      );
+    }
     setRowRejected((current) => ({ ...current, [key]: refused }));
   };
 
   const moveRowImage = (key: string, index: number, delta: number) =>
-    setRows((current) =>
+    updateRows((current) =>
       current.map((row) => {
         if (row.key !== key) return row;
         const next = [...row.staged];
@@ -269,7 +306,7 @@ export function ProductForm({
     );
 
   const removeRowImage = (key: string, index: number) =>
-    setRows((current) =>
+    updateRows((current) =>
       current.map((row) => {
         if (row.key !== key) return row;
         const going = row.staged[index];
@@ -339,9 +376,26 @@ export function ProductForm({
   /**
    * Rows first, then pictures — Phase 27's order, because presign hangs a
    * `ProductImage` on a `productId` that does not exist until the rows are
-   * written. Then: each row that staged its own images gets them, the shared
-   * set is uploaded once to the first row that staged none, and the remaining
-   * shareholders are served by an R2 copy rather than by seven more uploads.
+   * written. Then, in this order:
+   *
+   * 1. every row that staged its own pictures gets them, so the first of them
+   *    holds position 0 and stays that variant's cover;
+   * 2. the shared set, if there is one, goes to **every** row — not only to
+   *    rows that staged none. Someone who supplies range shots *and* a picture
+   *    per flavour means both, and silently dropping the range shots after the
+   *    header counted them is the worst of the readings available;
+   * 3. it is uploaded once and copied, because eight rows' worth of the same
+   *    photographs over a phone's uplink is the difference between a submit
+   *    and a timeout. `copyImagesToVariants` appends past whatever a target
+   *    already holds, so a row keeps its own cover and gains the shared set
+   *    after it.
+   *
+   * The row it is uploaded to has to be one that staged nothing of its own:
+   * the copy takes everything the source holds, so a source carrying its own
+   * bottle shot would spread that shot across its siblings. Where every row
+   * staged its own there is no such row, and the shared set is uploaded per
+   * row instead — the rare shape, and correctness there is worth more than the
+   * bytes.
    */
   const submit = async () => {
     setSaving(true);
@@ -367,8 +421,7 @@ export function ProductForm({
     let uploaded = 0;
     let failed = 0;
 
-    // Own pictures first, so a row that has them is never counted as a
-    // shareholder below.
+    // Own pictures first, so a row that has them keeps its own cover.
     for (const [index, row] of rows.entries()) {
       const id = created[index]?.id;
       if (!id || row.staged.length === 0) continue;
@@ -381,32 +434,42 @@ export function ProductForm({
       failed += outcome.failed;
     }
 
-    const shareholders = rows
-      .map((row, index) => ({ row, id: created[index]?.id }))
-      .filter((entry): entry is { row: VariantRowState; id: string } =>
-        Boolean(entry.id) && entry.row.staged.length === 0,
-      );
+    if (staged.length > 0) {
+      const files = staged.map((image) => image.file);
+      const clean = rows.findIndex((row) => row.staged.length === 0);
+      const source = clean >= 0 ? created[clean] : undefined;
 
-    if (staged.length > 0 && shareholders.length > 0) {
-      const [shared, ...rest] = shareholders;
-      const outcome = await add(
-        shared.id,
-        staged.map((image) => image.file),
-        0,
-      );
-      uploaded += outcome.uploaded;
-      failed += outcome.failed;
+      if (source) {
+        const outcome = await add(source.id, files, 0);
+        uploaded += outcome.uploaded;
+        failed += outcome.failed;
 
-      if (outcome.uploaded > 0 && rest.length > 0) {
-        const copy = await copyImagesToVariants(
-          shared.id,
-          rest.map((entry) => entry.id),
-        );
-        if (!copy.success) failed += rest.length;
-        else failed += copy.data.failed;
-      } else if (rest.length > 0) {
-        // Nothing landed to copy, so every other shareholder is short too.
-        failed += rest.length;
+        const targets = created.filter((entry) => entry.id !== source.id);
+        if (outcome.uploaded > 0 && targets.length > 0) {
+          const copy = await copyImagesToVariants(
+            source.id,
+            targets.map((entry) => entry.id),
+          );
+          // Both counts are images, never products: a failed copy of three
+          // pictures onto two siblings is six missing pictures.
+          if (!copy.success) failed += targets.length * staged.length;
+          else failed += copy.data.failed;
+        } else if (targets.length > 0) {
+          // Nothing landed to copy, so every other row is short the whole
+          // shared set too.
+          failed += targets.length * staged.length;
+        }
+      } else {
+        // Every row staged its own, so there is no clean copy source. Counted
+        // against what each row already holds, which is the limit the server
+        // applies.
+        for (const [index, row] of rows.entries()) {
+          const id = created[index]?.id;
+          if (!id) continue;
+          const outcome = await add(id, files, row.staged.length);
+          uploaded += outcome.uploaded;
+          failed += outcome.failed;
+        }
       }
     }
 

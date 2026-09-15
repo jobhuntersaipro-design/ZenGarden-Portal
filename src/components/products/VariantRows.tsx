@@ -73,7 +73,16 @@ export function VariantRows({
         const name = row.variant?.trim() || `Variant ${index + 1}`;
 
         return (
-          <div key={row.key} className="rounded-lg border border-hairline p-md">
+          // A named group, so every control inside it — the combobox whose own
+          // label is just "Variant", the tile buttons that say "Remove image
+          // 1" — is announced against the flavour it belongs to rather than
+          // against twenty-three identical siblings.
+          <div
+            key={row.key}
+            role="group"
+            aria-label={name}
+            className="rounded-lg border border-hairline p-md"
+          >
             <div className="flex items-start justify-between gap-sm">
               <p className="text-[length:var(--text-body-sm)] font-semibold text-ink">
                 {name}

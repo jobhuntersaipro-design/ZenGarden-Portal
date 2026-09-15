@@ -116,6 +116,14 @@ function productRowData(
   };
 }
 
+/**
+ * One product, one submit. **Nothing in the application calls this since Phase
+ * 39**: `/products/new` goes through `createProductVariants`, which with a
+ * single variant row writes the same `Product`, the same first `ProductPrice`
+ * and the same labels. It stays for now — a tested write path is not something
+ * to remove in passing — and whether it is deleted is a decision for the end of
+ * the phase.
+ */
 export async function createProduct(
   input: ProductInput,
 ): Promise<ActionResult<{ id: string }>> {
