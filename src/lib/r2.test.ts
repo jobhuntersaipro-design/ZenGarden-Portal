@@ -10,8 +10,14 @@ vi.mock("@/lib/env", () => ({
   },
 }));
 
-const { documentKey, isPendingKey, PENDING_KEY_PREFIX, productImageKey, productThumbKey } =
-  await import("@/lib/r2");
+const {
+  documentKey,
+  extensionOfKey,
+  isPendingKey,
+  PENDING_KEY_PREFIX,
+  productImageKey,
+  productThumbKey,
+} = await import("@/lib/r2");
 
 beforeEach(() => {
   vi.useFakeTimers();
@@ -67,5 +73,27 @@ describe("product image keys", () => {
       /^products\/[^/]+\/[^/]+\.[a-z]+$/,
     );
     expect(productThumbKey("p", "i")).toMatch(/^products\/[^/]+\/[^/]+\.1600\.webp$/);
+  });
+});
+
+describe("extensionOfKey", () => {
+  it("reads the extension off an image key", () => {
+    expect(extensionOfKey("products/prd-1/img-a.jpg")).toBe("jpg");
+  });
+
+  it("lower-cases it, so a copy cannot fork the key on casing", () => {
+    expect(extensionOfKey("products/prd-1/img-a.JPEG")).toBe("jpeg");
+  });
+
+  it("reads the last extension, not the first", () => {
+    expect(extensionOfKey("products/prd-1/img-a.1600.webp")).toBe("webp");
+  });
+
+  it("falls back to jpg where there is no extension at all", () => {
+    expect(extensionOfKey("products/prd-1/img-a")).toBe("jpg");
+  });
+
+  it("is not fooled by a dot in a folder name", () => {
+    expect(extensionOfKey("products/v1.2/img-a")).toBe("jpg");
   });
 });

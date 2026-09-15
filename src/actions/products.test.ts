@@ -11,6 +11,14 @@ const labelFindFirst = vi.fn();
 const labelCreate = vi.fn();
 // Phase 36: a family described on the form is created in the same transaction.
 const familyCreate = vi.fn();
+// Phase 39: copying a variant's photographs reads and writes ProductImage
+// directly, never through a transaction (see copyImagesToVariants's own
+// doc comment for why).
+const imageFindMany = vi.fn();
+const imageCount = vi.fn();
+const imageCreate = vi.fn();
+const imageUpdate = vi.fn();
+const imageDelete = vi.fn();
 
 const tx = {
   product: { create: productCreate, update: productUpdate },
@@ -26,6 +34,13 @@ vi.mock("@/lib/prisma", () => ({
       update: productUpdate,
       delete: productDelete,
     },
+    productImage: {
+      findMany: imageFindMany,
+      count: imageCount,
+      create: imageCreate,
+      update: imageUpdate,
+      delete: imageDelete,
+    },
     $transaction: (fn: (client: typeof tx) => unknown) => fn(tx),
   },
 }));
@@ -37,10 +52,32 @@ vi.mock("@/lib/auth-guards", () => ({
   requireSuperAdmin: () => requireSuperAdmin(),
 }));
 vi.mock("next/cache", () => ({ revalidatePath: vi.fn() }));
+
+// r2.ts builds an S3 client at import time, which needs the full env. Same
+// block as src/lib/r2.test.ts — the real key builders are wanted here, so the
+// real module has to load.
+vi.mock("@/lib/env", () => ({
+  env: {
+    R2_ACCOUNT_ID: "acct",
+    R2_ACCESS_KEY_ID: "key",
+    R2_SECRET_ACCESS_KEY: "secret",
+    R2_BUCKET: "bucket",
+  },
+}));
+
 const deleteObject = vi.fn();
-vi.mock("@/lib/r2", () => ({ deleteObject: (key: string) => deleteObject(key) }));
+const copyObject = vi.fn();
+vi.mock("@/lib/r2", async () => {
+  const actual = await vi.importActual<typeof import("@/lib/r2")>("@/lib/r2");
+  return {
+    ...actual,
+    deleteObject: (key: string) => deleteObject(key),
+    copyObject: (from: string, to: string) => copyObject(from, to),
+  };
+});
 
 const {
+  copyImagesToVariants,
   createProduct,
   createProductVariants,
   deleteProduct,
@@ -687,5 +724,129 @@ describe("createProductVariants", () => {
       error: "This action needs super admin access.",
     });
     expect(productCreate).not.toHaveBeenCalled();
+  });
+});
+
+describe("copyImagesToVariants", () => {
+  const source = [
+    {
+      r2Key: "products/prd-1/img-a.jpg",
+      thumbKey: "products/prd-1/img-a.1600.webp",
+      sizeBytes: 12345,
+      position: 0,
+    },
+    {
+      r2Key: "products/prd-1/img-b.png",
+      thumbKey: "products/prd-1/img-b.1600.webp",
+      sizeBytes: 6789,
+      position: 1,
+    },
+  ];
+
+  beforeEach(() => {
+    requireSuperAdmin.mockResolvedValue(admin);
+    imageFindMany.mockResolvedValue(source);
+    imageCount.mockResolvedValue(0);
+    let seq = 0;
+    imageCreate.mockImplementation(() => {
+      seq += 1;
+      return Promise.resolve({ id: `new-${seq}` });
+    });
+    imageUpdate.mockResolvedValue({});
+    copyObject.mockResolvedValue({});
+  });
+
+  it("copies both objects of every image to every target", async () => {
+    const result = await copyImagesToVariants("prd-1", ["prd-2", "prd-3"]);
+
+    expect(result).toEqual({ success: true, data: { copied: 4, failed: 0 } });
+    // Two images × two targets × the original and its derivative.
+    expect(copyObject).toHaveBeenCalledTimes(8);
+    expect(copyObject).toHaveBeenCalledWith(
+      "products/prd-1/img-a.jpg",
+      "products/prd-2/new-1.jpg",
+    );
+    expect(copyObject).toHaveBeenCalledWith(
+      "products/prd-1/img-a.1600.webp",
+      "products/prd-2/new-1.1600.webp",
+    );
+    // The extension follows the source, so a PNG does not become a JPG.
+    expect(copyObject).toHaveBeenCalledWith(
+      "products/prd-1/img-b.png",
+      "products/prd-2/new-2.png",
+    );
+  });
+
+  it("writes the row before the copy and points it at the real keys after", async () => {
+    await copyImagesToVariants("prd-1", ["prd-2"]);
+
+    const created = imageCreate.mock.calls[0]?.[0]?.data;
+    expect(created.productId).toBe("prd-2");
+    expect(created.position).toBe(0);
+    expect(created.sizeBytes).toBe(12345);
+    // A unique r2Key is needed before the row's own id exists — the Phase 03
+    // placeholder, never a real object.
+    expect(String(created.r2Key).startsWith("pending:")).toBe(true);
+
+    expect(imageUpdate).toHaveBeenCalledWith({
+      where: { id: "new-1" },
+      data: {
+        r2Key: "products/prd-2/new-1.jpg",
+        thumbKey: "products/prd-2/new-1.1600.webp",
+      },
+    });
+  });
+
+  it("offsets positions past whatever the target already has", async () => {
+    imageCount.mockResolvedValue(2);
+    await copyImagesToVariants("prd-1", ["prd-2"]);
+    expect(imageCreate.mock.calls.map(([args]) => args.data.position)).toEqual([2, 3]);
+  });
+
+  it("deletes the row when a copy fails, so no unloadable tile is left", async () => {
+    copyObject.mockRejectedValueOnce(new Error("R2 said no"));
+    imageDelete.mockResolvedValue({});
+
+    const result = await copyImagesToVariants("prd-1", ["prd-2"]);
+
+    expect(result).toEqual({ success: true, data: { copied: 1, failed: 1 } });
+    expect(imageDelete).toHaveBeenCalledWith({ where: { id: "new-1" } });
+  });
+
+  it("only copies images that have been processed", async () => {
+    await copyImagesToVariants("prd-1", ["prd-2"]);
+    expect(imageFindMany).toHaveBeenCalledWith(
+      expect.objectContaining({
+        where: { productId: "prd-1", thumbKey: { not: null } },
+      }),
+    );
+  });
+
+  it("says so when the source has no processed image", async () => {
+    imageFindMany.mockResolvedValue([]);
+    const result = await copyImagesToVariants("prd-1", ["prd-2"]);
+    expect(result).toEqual({
+      success: false,
+      error: "That product has no processed images to copy.",
+    });
+    expect(copyObject).not.toHaveBeenCalled();
+  });
+
+  it("does nothing, successfully, with no targets", async () => {
+    const result = await copyImagesToVariants("prd-1", []);
+    expect(result).toEqual({ success: true, data: { copied: 0, failed: 0 } });
+    expect(imageFindMany).not.toHaveBeenCalled();
+  });
+
+  it("refuses anyone who is not a super admin", async () => {
+    requireSuperAdmin.mockRejectedValue(
+      new UnauthorizedError("This action needs super admin access."),
+    );
+    const result = await copyImagesToVariants("prd-1", ["prd-2"]);
+    expect(result).toEqual({
+      success: false,
+      error: "This action needs super admin access.",
+    });
+    expect(copyObject).not.toHaveBeenCalled();
   });
 });
