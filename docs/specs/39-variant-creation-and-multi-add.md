@@ -247,6 +247,20 @@ the baseline (308 products, 59 families, 400 purchase orders, 0 web orders).
   that already exists is the create screen's job for now: open it, pick the
   family, add the rows. A "+ Add variant" on `/products/[id]` is a fair
   follow-on and is not in this phase.
+- **Every variant of one submit shares the product's `name`**, with the
+  flavour in the `variant` column alone. That is the convention
+  `product-groups.ts` documents for a product typed in ops, as against the
+  Phase 13 importer's `"{name} — {variant}"`. One consequence is worth knowing
+  rather than discovering: `matchProducts` resolves a purchase-order line by
+  exact SKU first and exact name second, and "two active products sharing a
+  name match neither" — so a set of variants created this way is matchable by
+  its codes and never by its name. That is the safe direction of that rule
+  (nothing is mis-attached), and it is why each variant keeps its own SKU.
+- **The three per-variant fields move rather than duplicate.** Variant label,
+  SKU and list price sit in the details card while there is one variant — so a
+  single-variant create is the screen that exists today, unchanged — and move
+  into the Variants table the moment a second row is added, the card showing a
+  caption in their place. No value is ever editable in two fields at once.
 - **Prices are per variant and prefilled, not shared.** A single price field
   applying to all of them would be less typing and would quietly overwrite a
   flavour that really costs more.
