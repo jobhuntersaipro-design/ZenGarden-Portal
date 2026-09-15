@@ -281,14 +281,14 @@ const COPY_CONCURRENCY = 6;
 async function runWithConcurrency<T>(
   items: T[],
   concurrency: number,
-  worker: (item: T) => Promise<void>,
+  worker: (item: T, index: number) => Promise<void>,
 ): Promise<void> {
   let next = 0;
   const runners = Array.from({ length: Math.min(concurrency, items.length) }, async () => {
     while (next < items.length) {
-      const item = items[next];
+      const index = next;
       next += 1;
-      await worker(item);
+      await worker(items[index], index);
     }
   });
   await Promise.all(runners);
@@ -339,7 +339,17 @@ export async function copyImagesToVariants(
 ): Promise<ActionResult<{ copied: number; failed: number }>> {
   const { user, error } = await guard();
   if (!user) return { success: false, error: error! };
-  if (targetProductIds.length === 0) {
+  // Collapsed before anything else runs: two entries of the same target id
+  // would each be handed the same `taken` offset by the count fan-out below
+  // (it is read once per *distinct* target, not once per call), and so
+  // compute the same positions for every image — a collision
+  // `@@unique([productId, position])` would reject. The old, fully
+  // sequential loop read a target's count fresh on each pass and so
+  // naturally saw its own prior writes; de-duplicating here keeps that
+  // guarantee under concurrency rather than depending on the one caller
+  // (which always passes distinct ids) to keep it true by convention.
+  const targetIds = [...new Set(targetProductIds)];
+  if (targetIds.length === 0) {
     return { success: true, data: { copied: 0, failed: 0 } };
   }
 
@@ -362,13 +372,15 @@ export async function copyImagesToVariants(
     // Offset past anything each target already carries, read once per target
     // before any unit exists — not lazily inside a unit, where two units for
     // the same target running at once would both read the same count and
-    // propose the same position.
-    const taken = await Promise.all(
-      targetProductIds.map((targetId) =>
-        prisma.productImage.count({ where: { productId: targetId } }),
-      ),
-    );
-    const units: CopyUnit[] = targetProductIds.flatMap((targetId, targetIndex) =>
+    // propose the same position. Bounded by the same COPY_CONCURRENCY as the
+    // copies themselves: an unbounded fan-out here would put as many
+    // concurrent queries on the Prisma pool as there are targets, which is
+    // exactly the pressure COPY_CONCURRENCY exists to cap.
+    const taken: number[] = new Array(targetIds.length);
+    await runWithConcurrency(targetIds, COPY_CONCURRENCY, async (targetId, index) => {
+      taken[index] = await prisma.productImage.count({ where: { productId: targetId } });
+    });
+    const units: CopyUnit[] = targetIds.flatMap((targetId, targetIndex) =>
       images.map((image, index) => ({
         targetId,
         image,

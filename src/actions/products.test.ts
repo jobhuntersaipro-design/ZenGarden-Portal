@@ -803,6 +803,21 @@ describe("copyImagesToVariants", () => {
     expect(imageCreate.mock.calls.map(([args]) => args.data.position)).toEqual([2, 3]);
   });
 
+  it("collapses duplicate target ids so they don't collide on position", async () => {
+    // The count that offsets a target's positions is read once per
+    // *distinct* target before any unit runs — two entries of the same id
+    // would each be handed that same count and propose the same positions
+    // for both passes, which `@@unique([productId, position])` would refuse
+    // on the second write. One target's worth of copies is the only
+    // correct reading of "copy to prd-2, twice".
+    const result = await copyImagesToVariants("prd-1", ["prd-2", "prd-2"]);
+
+    expect(result).toEqual({ success: true, data: { copied: 2, failed: 0 } });
+    expect(imageCreate).toHaveBeenCalledTimes(2);
+    expect(imageCreate.mock.calls.map(([args]) => args.data.position)).toEqual([0, 1]);
+    expect(copyObject).toHaveBeenCalledTimes(4);
+  });
+
   it("deletes the row when a copy fails, so no unloadable tile is left", async () => {
     imageDelete.mockResolvedValue({});
     // Keyed on the destination key, not on `copyObject`'s call position: the
