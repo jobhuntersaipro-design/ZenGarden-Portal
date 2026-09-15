@@ -142,9 +142,12 @@ sibling's own key with R2's `CopyObject` and writes its `ProductImage` row —
 upload over the wire, one server-side copy per sibling per image, and every
 row lands with a picture.
 
-A variant that staged its own images gets those instead and is left out of the
-copy. Where every variant staged its own, there is no shared set to copy and
-none is asked for.
+A variant that staged its own images keeps them as its cover — position 0 —
+and the shared set is copied in **after** them, not instead of them. Dropping
+a range shot in silence once the header has already counted it is the worst
+of the available readings, and someone who supplies both a range photo and a
+per-flavour shot plainly means both. Where every variant staged its own,
+there is no shared set to copy and none is asked for.
 
 **The gate, stated once:** Create is disabled unless the shared dropzone holds
 an image **or** every variant row holds one of its own — the two ways every
@@ -203,7 +206,9 @@ order."
    across the three products, each with its own `r2Key` and `thumbKey`, all
    three objects readable from R2, and exactly **one** browser upload observed
    on the wire.
-8. A variant with its own staged image gets that image and not the shared one.
+8. A variant with its own staged image gets that image at position 0, and the
+   shared set copied in behind it — its own picture stays the cover, the
+   shared set is additive rather than a replacement.
 9. The shop product page of a single-variant product renders today's buy box
    unchanged: one stepper, one Add to cart, no table.
 10. On a multi-variant page, setting 3 on one variant and 2 on another and
@@ -214,7 +219,10 @@ order."
 12. Adding a variant already in the cart increments that line rather than
     duplicating it.
 13. A MEMBER and a CLIENT both fail to reach `createProductVariants`; the
-    error is the guard's own.
+    error is the guard's own. A CLIENT is structurally unreachable through a
+    browser on the portal host — the proxy already turns them back before
+    `/products/new` renders — so that half of this criterion is covered by
+    unit test alone, not driven end to end.
 14. Create is disabled with no image anywhere, enabled by one shared image,
     and enabled by per-variant images alone with the shared dropzone empty.
 15. No horizontal overflow at 390 / 768 / 1440 on `/products/new` with three
@@ -270,3 +278,15 @@ the baseline (308 products, 59 families, 400 purchase orders, 0 web orders).
 - **Production's `DIRECT_URL` still points at the pooled Neon host** (carried
   since Phase 30). This phase carries no migration, so it does not deploy into
   that defect — but Phases 36, 37 and 38 do.
+- **The copy path is capped at `MAX_IMAGES_PER_PRODUCT` the same way the
+  upload path already is.** `copyImagesToVariants` skips any unit whose
+  position would reach or exceed the limit (8), counting those units as
+  skipped rather than copied or failed — a row with 8 of its own plus a
+  2-image shared set lands with 8, not 10, and the caller does not report a
+  failure that never happened. Found in the final whole-branch review; fixed
+  in the same pass rather than carried as a known gap.
+- **The 24-row ceiling has never been driven end to end.** The browser pass
+  (§8) created a three-variant product; nothing this phase built was
+  exercised at the real ceiling the form and schema advertise. The unit tests
+  cover it at the boundary; a real submit of 24 rows, its transaction cost and
+  its upload volume remain unverified.
