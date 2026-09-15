@@ -7,6 +7,7 @@ import { writePurchaseOrder } from "@/actions/purchase-orders";
 import { UnauthorizedError, requireUser } from "@/lib/auth-guards";
 import { prisma } from "@/lib/prisma";
 import { shopPath } from "@/lib/shop-routes";
+import { attachWebOrderDocument } from "@/lib/web-order-document";
 import {
   PoDraftSchema,
   checkTotals,
@@ -80,6 +81,14 @@ export async function confirmWebOrder(
   }
 
   try {
+    // Outside the transaction, because it renders a PDF and writes to R2.
+    // Usually this is a read: the file was drawn when the order was sent, and
+    // `attachWebOrderDocument` hands back the one that exists. It only draws
+    // where that failed, which is how an order whose render hiccupped still
+    // reaches its purchase order with a document attached. Null is fine —
+    // `documentId` has been nullable since Phase 16 for exactly this.
+    const file = await attachWebOrderDocument(webOrderId);
+
     const poId = await prisma.$transaction(async (tx) => {
       const order = await tx.webOrder.findUnique({
         where: { id: webOrderId },
@@ -93,9 +102,10 @@ export async function confirmWebOrder(
       const written = await writePurchaseOrder(tx, {
         data,
         buyerId: order.buyerId,
-        // No scan behind it. Nullable since Phase 16 precisely so this does
-        // not have to invent a Document naming an object nobody uploaded.
-        documentId: null,
+        // The purchase order we generated ourselves, where there is one. This
+        // is what puts a shop order's document on the ops detail page beside
+        // an uploaded scan's.
+        documentId: file?.documentId ?? null,
         confirmedById: user.id,
         revision: 1,
         revisionOfId: null,

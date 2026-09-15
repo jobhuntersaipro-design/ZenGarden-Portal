@@ -54,6 +54,8 @@ export type PoListRow = {
   confirmedByName: string | null;
   confirmedByImage: string | null;
   fileType: string;
+  /** Where the order came from: `web` for one placed on the shop (Phase 37). */
+  source: "web" | "scan";
   revision: number;
 };
 
@@ -199,6 +201,7 @@ function webOrderRows(filters: PoListFilters): Prisma.Sql {
       NULL                                      AS "confirmedByName",
       NULL                                      AS "confirmedByImage",
       'web'                                     AS "fileType",
+      'web'                                     AS "source",
       1                                         AS "revision",
       0                                         AS "sortStatus"
     FROM "WebOrder" wo
@@ -264,6 +267,14 @@ function orderRows(filters: PoListFilters): Prisma.Sql {
       confirmer."name"                          AS "confirmedByName",
       confirmer."image"                         AS "confirmedByImage",
       COALESCE(doc."mimeType", 'web')           AS "fileType",
+      -- Where the order came from, asked directly rather than inferred.
+      -- Until Phase 37 a shop order had no document at all, so a null
+      -- uploader meant "from the shop"; now it has one, whose uploader is the
+      -- *buyer's own contact* — and the list would have printed a customer's
+      -- name in the Uploaded by column.
+      CASE WHEN EXISTS (
+        SELECT 1 FROM "WebOrder" wo2 WHERE wo2."purchaseOrderId" = po."id"
+      ) THEN 'web' ELSE 'scan' END              AS "source",
       po."revision"                             AS "revision",
       -- Confirmed rows sort after the backlog on a status sort: the queue is
       -- what someone opens this page for.
@@ -339,6 +350,7 @@ function draftRows(filters: PoListFilters): Prisma.Sql {
       NULL                                      AS "confirmedByName",
       NULL                                      AS "confirmedByImage",
       doc."mimeType"                            AS "fileType",
+      'scan'                                    AS "source",
       1                                         AS "revision",
       0                                         AS "sortStatus"
     FROM "Extraction" ext

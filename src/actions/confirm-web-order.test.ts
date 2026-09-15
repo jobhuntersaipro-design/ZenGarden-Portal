@@ -21,9 +21,11 @@ vi.mock("@/lib/auth-guards", () => ({
   requireUser,
 }));
 // The writer is exercised by confirm.test.ts; here what matters is *how* it is
-// called — above all, with documentId null.
+// called — above all, with the document the order carries.
 vi.mock("@/actions/purchase-orders", () => ({ writePurchaseOrder }));
 vi.mock("next/cache", () => ({ revalidatePath: vi.fn() }));
+const attachWebOrderDocument = vi.fn();
+vi.mock("@/lib/web-order-document", () => ({ attachWebOrderDocument }));
 
 const { confirmWebOrder, declineWebOrder } =
   await import("@/actions/web-orders");
@@ -67,11 +69,31 @@ beforeEach(() => {
   webUpdate.mockResolvedValue({});
   webUpdateMany.mockResolvedValue({ count: 1 });
   writePurchaseOrder.mockResolvedValue("po-new");
+  attachWebOrderDocument.mockResolvedValue({
+    documentId: "doc1",
+    filename: "W-2609-00001 purchase order.pdf",
+    bytes: new Uint8Array([37, 80]),
+  });
 });
 
 describe("confirmWebOrder", () => {
-  it("writes the purchase order with no document — the whole reason documentId is nullable", async () => {
+  /**
+   * Phase 37 closes the `documentId: null` gap Phase 16 opened. Usually this
+   * is a read — the file was drawn when the order was sent — and the id is
+   * carried onto the purchase order so the ops detail page can preview it.
+   */
+  it("carries the generated purchase order onto the confirmed order", async () => {
     await confirmWebOrder("wo1", draft());
+    expect(attachWebOrderDocument).toHaveBeenCalledExactlyOnceWith("wo1");
+    expect(writePurchaseOrder.mock.calls[0][1].documentId).toBe("doc1");
+  });
+
+  it("still confirms with no document when the file cannot be produced", async () => {
+    attachWebOrderDocument.mockResolvedValue(null);
+    const result = await confirmWebOrder("wo1", draft());
+    expect(result.success).toBe(true);
+    // Nullable since Phase 16 for exactly this: a missing PDF must not block
+    // the team from confirming an order they have already agreed.
     expect(writePurchaseOrder.mock.calls[0][1].documentId).toBeNull();
   });
 

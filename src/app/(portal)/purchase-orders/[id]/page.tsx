@@ -235,13 +235,30 @@ export default async function PurchaseOrderPage({
       <div className="mt-lg grid min-w-0 gap-lg lg:grid-cols-[45fr_55fr]">
         <section className="min-w-0">
           <p className="mb-xs font-mono text-[length:var(--text-eyebrow)] text-ink-tertiary">
-            {po.document ? "Original document" : "Placed on the shop"}
+            {/* Three cases now, not two: a scan the customer emailed, the
+                purchase order we generated for an order placed on the shop
+                (Phase 37), and an older shop order that has neither. */}
+            {po.document
+              ? po.webOrder
+                ? "Purchase order · generated on the shop"
+                : "Original document"
+              : "Placed on the shop"}
           </p>
           {po.document ? (
-            <DocumentPreview
-              documentId={po.document.id}
-              originalName={po.document.originalName}
-            />
+            <>
+              <DocumentPreview
+                documentId={po.document.id}
+                originalName={po.document.originalName}
+              />
+              {po.webOrder ? (
+                <Link
+                  href={`/web-orders/${po.webOrder.id}`}
+                  className="mt-xs inline-block text-[length:var(--text-body-sm)] text-brand-link hover:underline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-focus"
+                >
+                  {`See what the buyer sent · ${po.webOrder.reference}`}
+                </Link>
+              ) : null}
+            </>
           ) : (
             /* An order placed on the shop has no scan behind it. The pane says
                so rather than rendering a preview that can only fail — which is
