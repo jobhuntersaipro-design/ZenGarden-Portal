@@ -31,7 +31,7 @@ export const skuSchema = z
     "Use capitals, digits and - . _ / +",
   );
 
-const decimalString = z
+export const decimalString = z
   .string()
   .min(1, "A list price is required")
   .refine((value) => {
@@ -50,7 +50,7 @@ const decimalString = z
  * (`listMarkets()` and its siblings), and a blank or padded one would show up
  * in the list as something you can choose.
  */
-const growingLabel = (limit: number) =>
+export const growingLabel = (limit: number) =>
   z
     .string()
     .max(limit, `Use at most ${limit} characters`)
@@ -77,7 +77,14 @@ const wholeCount = (noun: string) => z
     return number;
   });
 
-export const productSchema = z.object({
+/**
+ * The shape without its cross-field rule, so a caller that needs a different
+ * arrangement of the same fields can `omit` and `extend` it — Phase 39's batch
+ * create keeps the shared half and moves `sku`, `listPrice` and `variant` into
+ * a per-variant row. Refinements do not survive `omit`, so the rule below is
+ * restated there rather than inherited.
+ */
+export const productObject = z.object({
   name: z.string().min(1, "A name is required").max(120),
   sku: skuSchema,
   /**
@@ -118,11 +125,15 @@ export const productSchema = z.object({
    */
   familyId: z.string().nullable(),
   newFamily: productFamilySchema.nullable(),
-})
-  .refine((value) => !(value.familyId && value.newFamily), {
-    message: "Choose an existing family or describe a new one, not both",
-    path: ["familyId"],
-  });
+});
+
+export const FAMILY_XOR_MESSAGE =
+  "Choose an existing family or describe a new one, not both";
+
+export const productSchema = productObject.refine(
+  (value) => !(value.familyId && value.newFamily),
+  { message: FAMILY_XOR_MESSAGE, path: ["familyId"] },
+);
 
 export type ProductInput = z.input<typeof productSchema>;
 export type ProductParsed = z.output<typeof productSchema>;
