@@ -25,6 +25,8 @@ export type BuyerOrderRow = {
   buyerReference: string | null;
   /** Already formatted, or null where the order has no date yet. */
   date: string | null;
+  /** The day we said we would deliver. Null until the team confirms it. */
+  deliveryDate: string | null;
   /** What the buyer should read, never the raw enum. */
   status: string;
   /** True for "Not accepted", the one status that is not progress. */
@@ -76,6 +78,13 @@ export function BuyerOrdersTable({
       defaultDir: "desc",
       cell: (row) =>
         row.date ?? <span className="text-ink-tertiary">—</span>,
+    },
+    {
+      key: "deliveryDate",
+      header: "Expected delivery",
+      defaultDir: "desc",
+      cell: (row) =>
+        row.deliveryDate ?? <span className="text-ink-disabled">—</span>,
     },
     {
       key: "status",

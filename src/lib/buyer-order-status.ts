@@ -15,5 +15,8 @@ export function buyerOrderStatus(order: {
 }): string {
   if (order.kind === "declined") return "Not accepted";
   if (order.kind === "confirmed" && order.stage) return stageLabel(order.stage);
-  return "With the team";
+  // Phase 38: there is now a concrete thing being waited for — the team
+  // confirming a delivery date, which arrives by email the moment they do.
+  // "With the team" said where the order was; this says what happens next.
+  return "Awaiting confirmation";
 }

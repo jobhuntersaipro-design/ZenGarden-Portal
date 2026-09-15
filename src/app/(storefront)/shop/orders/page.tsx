@@ -46,6 +46,7 @@ export default async function OrdersPage({
     reference: order.reference,
     buyerReference: order.buyerReference,
     date: order.date ? formatDate(order.date) : null,
+    deliveryDate: order.deliveryDate ? formatDate(order.deliveryDate) : null,
     status: buyerOrderStatus(order),
     declined: order.kind === "declined",
     lineCount: order.lineCount,

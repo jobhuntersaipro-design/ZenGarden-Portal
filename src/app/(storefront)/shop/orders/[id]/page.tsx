@@ -57,6 +57,7 @@ export default async function OrderDetailPage({
     supplier,
     orderDate: order.date ? formatDate(order.date) : "—",
     requestedDate: order.requestedDate ? formatDate(order.requestedDate) : null,
+    deliveryDate: order.deliveryDate ? formatDate(order.deliveryDate) : null,
   });
   // A confirmed purchase order carries its own total, and a scan-origin one can
   // carry tax on top of its lines. Where the document's own arithmetic does not
@@ -83,6 +84,9 @@ export default async function OrderDetailPage({
             {[
               order.date ? formatDate(order.date) : "Not yet dated",
               buyerOrderStatus(order),
+              order.deliveryDate
+                ? `Expected delivery ${formatDate(order.deliveryDate)}`
+                : null,
               order.buyerReference ? `Your ref ${order.buyerReference}` : null,
             ]
               .filter(Boolean)
@@ -117,6 +121,11 @@ export default async function OrderDetailPage({
               is complete and the fulfilment stages below carry the story on
               (Phase 33). */}
           <CheckoutSteps current={4} complete />
+          {order.deliveryDate ? (
+            <p className="mt-sm text-[length:var(--text-body-md)] text-ink">
+              {`Confirmed by our team. Expected delivery ${formatDate(order.deliveryDate)}.`}
+            </p>
+          ) : null}
           <div className="mt-lg border-t border-hairline pt-lg">
             <StageStepper current={order.stage} events={order.events} />
           </div>

@@ -198,6 +198,9 @@ export function PurchaseOrderPdf({
         <View style={styles.metaStrip}>
           <Meta label="Order date" value={document.orderDate} />
           <Meta label="Delivery requested" value={document.requestedDate ?? "—"} />
+          {document.deliveryDate ? (
+            <Meta label="Expected delivery" value={document.deliveryDate} />
+          ) : null}
           <Meta label="Payment terms" value={document.paymentTerms ?? "—"} />
           <Meta label="Currency" value={document.currency} />
         </View>

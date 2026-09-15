@@ -14,6 +14,7 @@ const document: PoDocumentData = {
   ourReference: "W-2609-00015",
   orderDate: "15 Sep 2026",
   requestedDate: "30 Sep 2026",
+  deliveryDate: null,
   paymentTerms: "45 days",
   currency: "MYR",
   buyer: {
@@ -53,6 +54,14 @@ describe("renderPurchaseOrderPdf", () => {
     const bytes = await renderPurchaseOrderPdf(document, "Sent to our team.");
     expect(bytes.subarray(0, 5).toString("latin1")).toBe("%PDF-");
     expect(bytes.byteLength).toBeGreaterThan(2000);
+  }, 30_000);
+
+  it("renders a confirmed order, whose meta strip carries a fifth cell", async () => {
+    const bytes = await renderPurchaseOrderPdf(
+      { ...document, deliveryDate: "2 Oct 2026" },
+      "Confirmed by our team.",
+    );
+    expect(bytes.subarray(0, 5).toString("latin1")).toBe("%PDF-");
   }, 30_000);
 
   it("renders an order carrying tax, and one with no notes or contact", async () => {
