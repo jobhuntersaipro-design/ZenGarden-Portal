@@ -118,10 +118,17 @@ export function BuyBox({
       ) : (
         <>
           <VariantBuyRows variants={variants} selectedId={productId} />
-          <div className="mt-sm flex justify-center">
+          {/* Same action as the single-variant box's pill, styled the same
+              way — a text link here read as a second-class version of the
+              same control (D2 in the Phase 39 browser pass, 64×21 at 390px
+              against the single-variant pill's 114×52). `VariantBuyRows`'s
+              own Add to cart is full width, so the pill matches it full
+              width too rather than introducing the single-variant page's
+              side-by-side row, which `VariantBuyRows` doesn't lay out for. */}
+          <div className="mt-sm">
             <Link
               href={shopHref.cart()}
-              className="text-[length:var(--text-body-sm)] font-semibold text-brand-link hover:underline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-focus"
+              className="flex h-control-lg w-full items-center justify-center rounded-pill border border-hairline-strong px-lg text-[length:var(--text-button-md)] font-semibold text-ink hover:border-ink focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-focus"
             >
               View cart
             </Link>
