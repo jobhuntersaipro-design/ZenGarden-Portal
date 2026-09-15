@@ -43,7 +43,15 @@ const ALLOWED_LIST_KEYS = [
  * style assertions — each names a real column that carries internal text or
  * identifies a member of staff.
  */
-const FORBIDDEN = ["notes", "confirmedBy", "confirmedById", "document"];
+const FORBIDDEN = [
+  "notes",
+  "confirmedBy",
+  "confirmedById",
+  "document",
+  // The scan a customer emailed and ops uploaded. A buyer's own generated
+  // purchase order is reached through `webOrder.documentId` instead.
+  "documentId",
+];
 
 describe("listBuyerOrders is a narrow select, never an include", () => {
   it("asks for no forbidden column on the purchase order", async () => {
@@ -144,11 +152,17 @@ describe("loadBuyerOrder", () => {
     await loadBuyerOrder("b1", "po1");
     const args = poFindFirst.mock.calls[0][0];
     expect(args.select.notes).toBeUndefined();
+    // `documentId` joined this list in Phase 37 — deliberately, and only
+    // here: it is the *shop order's* generated file, which belongs to the
+    // buyer. `PurchaseOrder.documentId` stays out of the top-level select,
+    // because on a scan-origin order that is the ops team's own upload.
     expect(Object.keys(args.select.webOrder.select).sort()).toEqual([
       "buyerReference",
+      "documentId",
       "notes",
       "requestedDate",
     ]);
+    expect(args.select.documentId).toBeUndefined();
   });
 });
 

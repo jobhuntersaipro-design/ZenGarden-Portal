@@ -272,6 +272,13 @@ export type ClientOrderDetail = ClientOrder & {
   /** Null where the order has none — a shop order never does. */
   tax: string | null;
   buyer: ClientOrderParty;
+  /**
+   * The purchase order we generated for this order, if it has one (Phase 37).
+   * Null for an order placed before that phase, and for one whose render
+   * failed — the page offers Print either way, and Download only when there
+   * is something to download.
+   */
+  documentId: string | null;
 };
 
 const joinContact = (name: string | null, email: string | null): string | null => {
@@ -336,7 +343,12 @@ export async function loadBuyerOrder(
       // unlike `PurchaseOrder.notes`, which ops may have typed or edited, and
       // which is deliberately not selected anywhere in this file.
       webOrder: {
-        select: { buyerReference: true, requestedDate: true, notes: true },
+        select: {
+          buyerReference: true,
+          requestedDate: true,
+          notes: true,
+          documentId: true,
+        },
       },
       lineItems: {
         orderBy: { position: "asc" },
@@ -376,6 +388,10 @@ export async function loadBuyerOrder(
       paymentTerms: po.paymentTerms ?? po.buyer.paymentTerms,
       requestedDate: po.webOrder?.requestedDate ?? null,
       notes: po.webOrder?.notes ?? null,
+      // Deliberately the *shop order's* document, not `PurchaseOrder.documentId`:
+      // on a scan-origin purchase order that column is the customer's own
+      // emailed file, which is ops-only and must not be served to a buyer.
+      documentId: po.webOrder?.documentId ?? null,
       lineCount: po.lineItems.length,
       buyer: {
         name: po.buyer.name,
@@ -423,6 +439,7 @@ export async function loadBuyerOrder(
       requestedDate: true,
       notes: true,
       currency: true,
+      documentId: true,
       buyer: { select: BUYER_PARTY_SELECT },
       lines: {
         select: {
@@ -454,6 +471,7 @@ export async function loadBuyerOrder(
     paymentTerms: web.buyer.paymentTerms,
     requestedDate: web.requestedDate,
     notes: web.notes,
+    documentId: web.documentId,
     lineCount: web.lines.length,
     declinedReason: web.declinedReason,
     buyer: {

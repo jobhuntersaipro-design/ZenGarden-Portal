@@ -1,9 +1,57 @@
-# Current Feature: Product families
+# Current Feature: The purchase-order file
 
 ## Status
 
-**Phase 36 — product families — built and verified on
-`feature/product-families`, not yet committed** (2026-09-15). Spec
+**Phase 37 — the purchase-order file — built and verified on
+`feature/purchase-order-pdf`** (2026-09-15). Spec
+`docs/specs/37-purchase-order-pdf.md`. Asked for as: "send an email including
+the purchase order file to customer and notify admin or superadmin via email
+with purchase order file too."
+
+The moment a buyer sends an order, an A4 PDF of the purchase order is
+rendered from the same `PoDocumentData` the on-screen preview draws, stored in
+R2, filed as a `Document`, attached to both the buyer's receipt and the team's
+notification, and carried onto the `PurchaseOrder` when the team confirms it —
+so the ops document pane shows a real document for the first time. The buyer
+downloads their own copy through a buyer-scoped route; the ops-wide one stays
+closed, as Phase 35 recorded.
+
+One additive migration (`WebOrder.documentId`) and one new dependency
+(`@react-pdf/renderer`, plus the `server-only` marker). The orphan sweep was
+fixed in the same commit as the migration: without `webOrder: null` it deletes
+every generated file an hour after it is written.
+
+**Still to come in this set:** Phase 38, order confirmation and the expected
+delivery date (`docs/specs/38-order-confirmation.md`).
+
+## Notes
+
+- **`@react-pdf/renderer` has never run on Vercel's linux runtime.** It loads
+  a WebAssembly layout engine, which is the same shape of risk as the sharp
+  failure of 2026-09-08 — a macOS build proves nothing about the deployed one.
+  Check the first deploy by sending one order and reading
+  `WebOrder.documentId`. It is kept out of the bundle by
+  `serverExternalPackages`, and the renderer is marked `server-only`.
+- **`server-only` throws under every export condition but `react-server`**, so
+  `vitest.config.mts` aliases it to the package's own `empty.js` — the very
+  file that condition resolves to. Running a script through `tsx` against the
+  renderer needs the same treatment; `--conditions react-server` does not work,
+  because it breaks `@react-pdf/hyphenate`'s own exports. Render samples
+  through vitest instead.
+- **The stored PDF is the order as sent**, drawn once at submit and not
+  redrawn at confirm. Regenerating it with the PO number and the agreed
+  delivery date belongs with Phase 38, where that date first exists.
+- **The supplier block still prints only a name** — no `OrgSettings` row — and
+  it now leaves the building as an email attachment, which raises the stakes
+  on filling it in at `/admin`.
+- **Two Prisma migrations are now pending on production**, Phase 36's and this
+  one, and `DIRECT_URL` still points at the pooled Neon host (Phase 30). Fix
+  that before either merge deploys.
+
+## Previous phase
+
+**Phase 36 — product families — built, verified and committed on
+`feature/product-families`** (2026-09-15). Spec
 `docs/specs/36-product-families.md`, whose §6–§9 record the backfill as it
 ran, what was verified, what is known and what is not. The first of three
 phases planned together on 2026-09-15 — 36 product families, 37 the
@@ -43,8 +91,6 @@ pooled Neon host (carried since Phase 30) and this phase carries a migration.
 - **Production's backfill must be proposed afresh there**, not replayed from
   the development file: its catalogue is different (309 products, eight with
   the customer's own codes) and the ids in the file are development ids.
-
-## Previous phase
 
 **Phase 35 — the buyer's order table, and the purchase order behind each
 order — built, verified and merged from `feature/buyer-order-review`** (2026-09-15).

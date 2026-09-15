@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 import Link from "next/link";
-import { ArrowLeft } from "lucide-react";
+import { ArrowLeft, Download } from "lucide-react";
 import { CheckoutSteps } from "@/components/shop/checkout/CheckoutSteps";
 import { PurchaseOrderPreview } from "@/components/shop/checkout/PurchaseOrderPreview";
 import { PrintOrderButton } from "@/components/shop/orders/PrintOrderButton";
@@ -89,7 +89,23 @@ export default async function OrderDetailPage({
               .join(" · ")}
           </p>
         </div>
-        {documentIsSound ? <PrintOrderButton /> : null}
+        <div className="flex flex-wrap items-center gap-xs">
+          {/* A real link, not a fetch: the route answers a 302 to a
+              short-lived presigned URL, so no key is ever rendered into the
+              page and the browser does the rest. Offered only when the file
+              exists — an order placed before Phase 37, or one whose render
+              failed, still has Print. */}
+          {order.documentId ? (
+            <a
+              href={shopHref.documentDownload(order.documentId)}
+              className="flex h-control-md items-center gap-xs rounded-pill border border-hairline-strong px-md text-[length:var(--text-button-md)] font-semibold text-ink hover:border-ink focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-focus"
+            >
+              <Download className="size-4 shrink-0" aria-hidden />
+              Download PDF
+            </a>
+          ) : null}
+          {documentIsSound ? <PrintOrderButton /> : null}
+        </div>
       </div>
 
       {order.kind === "confirmed" && order.stage ? (

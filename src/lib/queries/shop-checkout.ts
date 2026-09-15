@@ -43,6 +43,8 @@ export type SentOrder = {
   total: string;
   placedByEmail: string;
   submittedAt: Date | null;
+  /** The generated purchase order, once it exists (Phase 37). */
+  documentId: string | null;
 };
 
 /**
@@ -69,6 +71,7 @@ export async function loadSentOrder(
       buyerReference: true,
       subtotal: true,
       submittedAt: true,
+      documentId: true,
       placedBy: { select: { email: true } },
     },
   });
@@ -81,5 +84,12 @@ export async function loadSentOrder(
     total: order.subtotal.toFixed(2),
     placedByEmail: order.placedBy.email,
     submittedAt: order.submittedAt,
+    /**
+     * Usually null on the first paint, and that is not a bug: the document is
+     * rendered in the `after()` that also sends the emails, so this page is
+     * built before it exists. It fills in on a reload. The copy below says
+     * what is true either way.
+     */
+    documentId: order.documentId,
   };
 }
