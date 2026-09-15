@@ -19,7 +19,7 @@ import {
 } from "@/components/ui/sheet";
 import { Textarea } from "@/components/ui/textarea";
 import { NEEDS_AN_IMAGE } from "@/lib/validation/product-images";
-import { familyFromDraft } from "@/lib/product-families";
+import { familyFromDraft, findFamilyCodeCollision } from "@/lib/product-families";
 import type { FamilyOption } from "@/lib/queries/product-families";
 import type { GrowingLabel } from "@/lib/queries/products";
 import type { ProductInput } from "@/lib/validation/products";
@@ -62,6 +62,19 @@ export function ProductSheet({
     setForm((current) => ({ ...current, [key]: value }));
 
   const label = "font-mono text-[length:var(--text-eyebrow)] text-ink-tertiary";
+
+  // A drafted family whose code already belongs to another one — the same
+  // check `ProductForm` runs, and for the same reason: a code is built from
+  // brand + category + size alone (Phase 36), so a different family *name*
+  // typed here cannot disambiguate it, and this drawer opens the identical
+  // "+ Create a family…" disclosure `FamilyPicker` does.
+  const newFamily = family.draft
+    ? familyFromDraft(family.draft, { brand: form.brand ?? null, category: form.category })
+    : null;
+  const familyCollision = newFamily
+    ? findFamilyCodeCollision(newFamily.code, families)
+    : null;
+  const blockedByFamilyCollision = familyCollision !== null;
 
   return (
     <Sheet open={open} onOpenChange={setOpen}>
@@ -108,6 +121,7 @@ export function ProductSheet({
               value={family}
               brand={form.brand ?? null}
               category={form.category}
+              collision={familyCollision}
               onChange={setFamily}
             />
             <p className="text-[length:var(--text-caption)] text-ink-tertiary">
@@ -265,19 +279,14 @@ export function ProductSheet({
               form, unchanged, so a save cannot flip it by omission. */}
           <div className="flex flex-wrap items-center gap-sm">
             <Button
-              disabled={imageCount === 0}
+              disabled={imageCount === 0 || blockedByFamilyCollision}
               pending={pending}
               onClick={async () => {
                 setPending(true);
                 const result = await updateProduct(product.id, {
                   ...form,
                   familyId: family.familyId,
-                  newFamily: family.draft
-                    ? familyFromDraft(family.draft, {
-                        brand: form.brand ?? null,
-                        category: form.category,
-                      })
-                    : null,
+                  newFamily,
                 });
                 setPending(false);
                 if (!result.success) {
@@ -292,6 +301,15 @@ export function ProductSheet({
               {pending ? "Saving…" : "Save changes"}
             </Button>
           </div>
+          {/* Same shape as `ProductForm`'s own caption: neutral text, naming
+              where the real explanation lives rather than repeating it — the
+              red warning itself is `FamilyPicker`'s alert, above this button
+              rather than below it, hence "above" and not "below" here. */}
+          {blockedByFamilyCollision ? (
+            <p className="text-[length:var(--text-caption)] text-ink-tertiary">
+              That family code is already in use — see the note above
+            </p>
+          ) : null}
         </div>
       </SheetContent>
     </Sheet>
