@@ -467,7 +467,11 @@ export function ProductForm({
             targets.map((entry) => entry.id),
           );
           // Both counts are images, never products: a failed copy of three
-          // pictures onto two siblings is six missing pictures.
+          // pictures onto two siblings is six missing pictures. `copy.data`
+          // also carries `skipped` — units the 8-image cap refused before
+          // ever attempting them — deliberately left out of this sum: a
+          // capped copy is not a failure, and folding it in here would toast
+          // "images didn't upload" for pictures nothing ever tried to copy.
           if (!copy.success) failed += targets.length * staged.length;
           else failed += copy.data.failed;
         } else if (targets.length > 0) {

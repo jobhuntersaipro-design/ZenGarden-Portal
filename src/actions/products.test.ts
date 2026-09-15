@@ -759,7 +759,7 @@ describe("copyImagesToVariants", () => {
   it("copies both objects of every image to every target", async () => {
     const result = await copyImagesToVariants("prd-1", ["prd-2", "prd-3"]);
 
-    expect(result).toEqual({ success: true, data: { copied: 4, failed: 0 } });
+    expect(result).toEqual({ success: true, data: { copied: 4, failed: 0, skipped: 0 } });
     // Two images × two targets × the original and its derivative.
     expect(copyObject).toHaveBeenCalledTimes(8);
     expect(copyObject).toHaveBeenCalledWith(
@@ -803,6 +803,38 @@ describe("copyImagesToVariants", () => {
     expect(imageCreate.mock.calls.map(([args]) => args.data.position)).toEqual([2, 3]);
   });
 
+  // Fix 3 (final whole-branch review): the upload path refuses a file once a
+  // product already holds MAX_IMAGES_PER_PRODUCT (8), via `rejectionReason`
+  // in the presign route — but the copy path offset positions past whatever a
+  // target already held with no such ceiling, so a target with 7 of its own
+  // plus a 2-image shared set landed at 9. Skipped units must never be
+  // reported as failed: nothing was attempted for them, so they are neither
+  // copied nor a failure.
+  it("skips a unit that would push a target past the 8-image cap, without attempting it", async () => {
+    // prd-2 already holds 7 images. The two-image shared set would land at
+    // positions 7 and 8 — only the first fits under the cap.
+    imageCount.mockResolvedValue(7);
+
+    const result = await copyImagesToVariants("prd-1", ["prd-2"]);
+
+    expect(result).toEqual({ success: true, data: { copied: 1, failed: 0, skipped: 1 } });
+    // The skipped unit is never attempted: one create, one pair of copies —
+    // not a create that is then rolled back.
+    expect(imageCreate).toHaveBeenCalledTimes(1);
+    expect(imageCreate.mock.calls[0][0].data.position).toBe(7);
+    expect(copyObject).toHaveBeenCalledTimes(2);
+  });
+
+  it("skips every unit for a target already at the cap", async () => {
+    imageCount.mockResolvedValue(8);
+
+    const result = await copyImagesToVariants("prd-1", ["prd-2"]);
+
+    expect(result).toEqual({ success: true, data: { copied: 0, failed: 0, skipped: 2 } });
+    expect(imageCreate).not.toHaveBeenCalled();
+    expect(copyObject).not.toHaveBeenCalled();
+  });
+
   it("collapses duplicate target ids so they don't collide on position", async () => {
     // The count that offsets a target's positions is read once per
     // *distinct* target before any unit runs — two entries of the same id
@@ -812,7 +844,7 @@ describe("copyImagesToVariants", () => {
     // correct reading of "copy to prd-2, twice".
     const result = await copyImagesToVariants("prd-1", ["prd-2", "prd-2"]);
 
-    expect(result).toEqual({ success: true, data: { copied: 2, failed: 0 } });
+    expect(result).toEqual({ success: true, data: { copied: 2, failed: 0, skipped: 0 } });
     expect(imageCreate).toHaveBeenCalledTimes(2);
     expect(imageCreate.mock.calls.map(([args]) => args.data.position)).toEqual([0, 1]);
     expect(copyObject).toHaveBeenCalledTimes(4);
@@ -834,7 +866,7 @@ describe("copyImagesToVariants", () => {
 
     const result = await copyImagesToVariants("prd-1", ["prd-2"]);
 
-    expect(result).toEqual({ success: true, data: { copied: 1, failed: 1 } });
+    expect(result).toEqual({ success: true, data: { copied: 1, failed: 1, skipped: 0 } });
     expect(imageDelete).toHaveBeenCalledWith({ where: { id: "new-1" } });
   });
 
@@ -852,7 +884,7 @@ describe("copyImagesToVariants", () => {
 
     const result = await copyImagesToVariants("prd-1", ["prd-2"]);
 
-    expect(result).toEqual({ success: true, data: { copied: 1, failed: 1 } });
+    expect(result).toEqual({ success: true, data: { copied: 1, failed: 1, skipped: 0 } });
     expect(deleteObject).toHaveBeenCalledWith("products/prd-2/new-1.jpg");
     expect(imageDelete).toHaveBeenCalledWith({ where: { id: "new-1" } });
   });
@@ -878,7 +910,7 @@ describe("copyImagesToVariants", () => {
 
   it("does nothing, successfully, with no targets", async () => {
     const result = await copyImagesToVariants("prd-1", []);
-    expect(result).toEqual({ success: true, data: { copied: 0, failed: 0 } });
+    expect(result).toEqual({ success: true, data: { copied: 0, failed: 0, skipped: 0 } });
     expect(imageFindMany).not.toHaveBeenCalled();
   });
 
@@ -932,7 +964,7 @@ describe("copyImagesToVariants", () => {
 
     const result = await copyImagesToVariants("prd-1", targets);
 
-    expect(result).toEqual({ success: true, data: { copied: 10, failed: 0 } });
+    expect(result).toEqual({ success: true, data: { copied: 10, failed: 0, skipped: 0 } });
     expect(maxActive).toBeLessThanOrEqual(6);
     // Ten units and a bound of six means the ceiling is actually exercised,
     // not just never violated by coincidence.

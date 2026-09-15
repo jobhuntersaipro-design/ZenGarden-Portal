@@ -15,7 +15,10 @@ import {
 } from "@/lib/r2";
 import { registerLabels } from "@/lib/catalog-label-registry";
 import { productBlockedMessage } from "@/lib/product-delete-message";
-import { NEEDS_AN_IMAGE } from "@/lib/validation/product-images";
+import {
+  MAX_IMAGES_PER_PRODUCT,
+  NEEDS_AN_IMAGE,
+} from "@/lib/validation/product-images";
 import {
   productSchema,
   type ProductInput,
@@ -212,37 +215,56 @@ export async function createProductVariants(
   const data = parsed.data;
 
   try {
-    const result = await prisma.$transaction(async (tx) => {
-      const familyId = data.newFamily
-        ? (await tx.productFamily.create({ data: data.newFamily, select: { id: true } })).id
-        : data.familyId;
+    const result = await prisma.$transaction(
+      async (tx) => {
+        const familyId = data.newFamily
+          ? (await tx.productFamily.create({ data: data.newFamily, select: { id: true } })).id
+          : data.familyId;
 
-      const variants: { id: string; sku: string }[] = [];
-      for (const row of data.variants) {
-        const created = await tx.product.create({
-          data: productRowData(data, familyId, row),
-          select: { id: true, sku: true },
-        });
-        // The first price is history too, exactly as in `createProduct`:
-        // without it a variant's trend has no origin.
-        await tx.productPrice.create({
-          data: {
-            productId: created.id,
-            price: new Prisma.Decimal(row.listPrice),
-            setById: user.id,
-          },
-        });
-        await registerLabels(tx, {
-          brand: data.brand,
-          variant: row.variant,
-          market: data.market,
-          category: data.category,
-        });
-        variants.push(created);
-      }
+        const variants: { id: string; sku: string }[] = [];
+        for (const row of data.variants) {
+          const created = await tx.product.create({
+            data: productRowData(data, familyId, row),
+            select: { id: true, sku: true },
+          });
+          // The first price is history too, exactly as in `createProduct`:
+          // without it a variant's trend has no origin.
+          await tx.productPrice.create({
+            data: {
+              productId: created.id,
+              price: new Prisma.Decimal(row.listPrice),
+              setById: user.id,
+            },
+          });
+          await registerLabels(tx, {
+            brand: data.brand,
+            variant: row.variant,
+            market: data.market,
+            category: data.category,
+          });
+          variants.push(created);
+        }
 
-      return { familyId: familyId ?? null, variants };
-    });
+        return { familyId: familyId ?? null, variants };
+      },
+      {
+        // Prisma's interactive-transaction default is 5s, which is a ceiling
+        // on the *transaction*, separate from the 120s `maxDuration` the
+        // calling page already grants the function
+        // (`src/app/(portal)/products/new/page.tsx`) for
+        // `copyImagesToVariants`. That grant does nothing here: at the
+        // 24-row ceiling this loop does `product.create` +
+        // `productPrice.create` + up to four
+        // `catalogLabel.findFirst`/`create` calls per row — on the order of
+        // 144 sequential round trips — which the default budget was never
+        // sized for. Left alone, a legitimate 24-row submit hits P2028
+        // partway through, writes nothing (the whole point of one
+        // transaction), and the caller sees the same generic "We couldn't
+        // save those variants." whether the cause was a real conflict or
+        // just running out of clock.
+        timeout: 30_000,
+      },
+    );
 
     revalidate();
     return { success: true, data: result };
@@ -332,11 +354,21 @@ type CopyUnit = {
  * it if they did. The two R2 calls within one image — original, then
  * derivative — stay sequential, because a unit's own orphan cleanup depends on
  * knowing which of the two actually landed; only the units run in parallel.
+ *
+ * `MAX_IMAGES_PER_PRODUCT` is enforced here the same way the upload path
+ * enforces it in `rejectionReason` — a unit whose computed `position` would
+ * reach or exceed the cap is never run. Without this, a target that already
+ * holds 8 of its own pictures plus a 2-image shared set would land at 10: the
+ * upload path refuses the same intent (`TOO_MANY_IMAGES`) while this one
+ * silently accepted it, since nothing here ever read the cap. A skipped unit
+ * is neither an error nor work done, so it is counted in `skipped` rather
+ * than `copied` or `failed` — the caller must not report an image failure
+ * that never happened.
  */
 export async function copyImagesToVariants(
   sourceProductId: string,
   targetProductIds: string[],
-): Promise<ActionResult<{ copied: number; failed: number }>> {
+): Promise<ActionResult<{ copied: number; failed: number; skipped: number }>> {
   const { user, error } = await guard();
   if (!user) return { success: false, error: error! };
   // Collapsed before anything else runs: two entries of the same target id
@@ -350,7 +382,7 @@ export async function copyImagesToVariants(
   // (which always passes distinct ids) to keep it true by convention.
   const targetIds = [...new Set(targetProductIds)];
   if (targetIds.length === 0) {
-    return { success: true, data: { copied: 0, failed: 0 } };
+    return { success: true, data: { copied: 0, failed: 0, skipped: 0 } };
   }
 
   try {
@@ -388,10 +420,15 @@ export async function copyImagesToVariants(
       })),
     );
 
+    // A unit at or past the cap is never run — see the doc comment above for
+    // why this has to be a skip rather than a copy attempt or a failure.
+    const runnable = units.filter((unit) => unit.position < MAX_IMAGES_PER_PRODUCT);
+    const skipped = units.length - runnable.length;
+
     let copied = 0;
     let failed = 0;
 
-    await runWithConcurrency(units, COPY_CONCURRENCY, async (unit) => {
+    await runWithConcurrency(runnable, COPY_CONCURRENCY, async (unit) => {
       let rowId: string | null = null;
       // Keys that have actually landed in R2 for this image, so a failure
       // partway through (the original copied but the derivative didn't, or
@@ -440,7 +477,7 @@ export async function copyImagesToVariants(
     });
 
     revalidate();
-    return { success: true, data: { copied, failed } };
+    return { success: true, data: { copied, failed, skipped } };
   } catch (cause) {
     console.error("[products] copyImagesToVariants", cause);
     return { success: false, error: "We couldn't copy those images." };
