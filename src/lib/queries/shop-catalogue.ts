@@ -378,13 +378,21 @@ export async function listShopProducts(
   };
 }
 
-/** What the variant picker renders: enough to label a chip and link to it. */
+/**
+ * What the variant picker renders: enough to label a chip and link to it.
+ *
+ * `packSize` and `unit` were added in Phase 39 for `VariantBuyRows`, which
+ * needs them for the same reason `BuyBox` does — a `CartonStepper` shows
+ * pieces per carton, and the per-carton unit is not always "carton".
+ */
 export type ShopVariant = {
   id: string;
   sku: string;
   name: string;
   variant: string | null;
   listPrice: string;
+  packSize: number | null;
+  unit: string;
 };
 
 const VARIANT_SELECT = {
@@ -396,6 +404,7 @@ const VARIANT_SELECT = {
   variant: true,
   packSize: true,
   market: true,
+  unit: true,
   listPrice: true,
 } satisfies Prisma.ProductSelect;
 
@@ -478,6 +487,8 @@ export async function variantsOfProduct(product: {
     name: variant.name,
     variant: variant.variant,
     listPrice: variant.listPrice.toFixed(2),
+    packSize: variant.packSize,
+    unit: variant.unit,
   }));
 }
 

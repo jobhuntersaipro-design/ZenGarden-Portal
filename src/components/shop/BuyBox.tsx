@@ -6,8 +6,10 @@ import { Check } from "lucide-react";
 import { AddToCart } from "@/components/shop/AddToCart";
 import { CartonStepper } from "@/components/shop/CartonStepper";
 import { useShopViewer } from "@/components/shop/ShopViewer";
+import { VariantBuyRows } from "@/components/shop/VariantBuyRows";
 import { lineTotal } from "@/lib/cartons";
 import { formatMYR } from "@/lib/money";
+import type { ShopVariant } from "@/lib/queries/shop-catalogue";
 import { shopHref } from "@/lib/shop-routes";
 
 /**
@@ -25,6 +27,7 @@ export function BuyBox({
   packSize,
   listPrice,
   perPieceLabel,
+  variants,
 }: {
   productId: string;
   name: string;
@@ -34,6 +37,10 @@ export function BuyBox({
   /** "RM 37.58 a piece · 6 per carton", pre-formatted server-side through
    * `Prisma.Decimal`. Null when the catalogue carries no pack size. */
   perPieceLabel: string | null;
+  /** This product's own flavours, `variantsOfProduct`'s answer including this
+   * product itself (Phase 39). A group of one draws the single-stepper box
+   * exactly as it always has; two or more hand off to `VariantBuyRows`. */
+  variants: ShopVariant[];
 }) {
   const viewer = useShopViewer();
   const [cartons, setCartons] = useState(1);
@@ -55,53 +62,72 @@ export function BuyBox({
         </p>
       ) : null}
 
-      <div className="mt-lg flex flex-wrap items-center gap-md">
-        <CartonStepper
-          size="lg"
-          value={cartons}
-          packSize={packSize}
-          unit={unit}
-          onChange={async (next) => {
-            setCartons(next);
-            return { success: true };
-          }}
-          label={name}
-        />
-        <p className="text-[length:var(--text-body-sm)] text-ink-secondary">
-          {unit}s
-          {pieces !== null ? (
-            <span className="text-ink-tertiary">
-              {" "}
-              = {pieces} piece{pieces === 1 ? "" : "s"}
-            </span>
-          ) : null}
-        </p>
-        <div className="ml-auto text-right">
-          <p className="text-[length:var(--text-caption)] text-ink-tertiary">Line total</p>
-          <p className="text-[length:var(--text-body-lg)] font-semibold tabular-nums text-ink">
-            {formatMYR(lineTotal(cartons, listPrice))}
-          </p>
-        </div>
-      </div>
+      {/* One variant: the box that existed before Phase 39, untouched. Several:
+          a quantity against each, added together. The price above stays this
+          page's own either way. */}
+      {variants.length <= 1 ? (
+        <>
+          <div className="mt-lg flex flex-wrap items-center gap-md">
+            <CartonStepper
+              size="lg"
+              value={cartons}
+              packSize={packSize}
+              unit={unit}
+              onChange={async (next) => {
+                setCartons(next);
+                return { success: true };
+              }}
+              label={name}
+            />
+            <p className="text-[length:var(--text-body-sm)] text-ink-secondary">
+              {unit}s
+              {pieces !== null ? (
+                <span className="text-ink-tertiary">
+                  {" "}
+                  = {pieces} piece{pieces === 1 ? "" : "s"}
+                </span>
+              ) : null}
+            </p>
+            <div className="ml-auto text-right">
+              <p className="text-[length:var(--text-caption)] text-ink-tertiary">Line total</p>
+              <p className="text-[length:var(--text-body-lg)] font-semibold tabular-nums text-ink">
+                {formatMYR(lineTotal(cartons, listPrice))}
+              </p>
+            </div>
+          </div>
 
-      <div className="mt-lg flex gap-sm">
-        <div className="flex-1">
-          <AddToCart
-            productId={productId}
-            name={name}
-            unit={unit}
-            packSize={packSize}
-            variant="buybox"
-            cartons={cartons}
-          />
-        </div>
-        <Link
-          href={shopHref.cart()}
-          className="flex h-control-lg items-center rounded-pill border border-hairline-strong px-lg text-[length:var(--text-button-md)] font-semibold text-ink hover:border-ink focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-focus"
-        >
-          View cart
-        </Link>
-      </div>
+          <div className="mt-lg flex gap-sm">
+            <div className="flex-1">
+              <AddToCart
+                productId={productId}
+                name={name}
+                unit={unit}
+                packSize={packSize}
+                variant="buybox"
+                cartons={cartons}
+              />
+            </div>
+            <Link
+              href={shopHref.cart()}
+              className="flex h-control-lg items-center rounded-pill border border-hairline-strong px-lg text-[length:var(--text-button-md)] font-semibold text-ink hover:border-ink focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-focus"
+            >
+              View cart
+            </Link>
+          </div>
+        </>
+      ) : (
+        <>
+          <VariantBuyRows variants={variants} selectedId={productId} />
+          <div className="mt-sm flex justify-center">
+            <Link
+              href={shopHref.cart()}
+              className="text-[length:var(--text-body-sm)] font-semibold text-brand-link hover:underline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-focus"
+            >
+              View cart
+            </Link>
+          </div>
+        </>
+      )}
 
       {viewer.kind !== "client" ? (
         <div className="mt-sm flex items-center gap-xs">

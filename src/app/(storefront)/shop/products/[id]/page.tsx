@@ -117,6 +117,7 @@ export default async function ShopProductPage({
               packSize={product.packSize}
               listPrice={product.listPrice}
               perPieceLabel={perPieceLabel}
+              variants={variants}
             />
           </div>
 
