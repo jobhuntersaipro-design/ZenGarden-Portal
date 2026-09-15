@@ -9,6 +9,22 @@
  *   ZEN-SC-2100-GM-VN   ZEN Shower cream 2.1L, Goat's Milk, Vietnam
  *   MRK-DW-1500-LE-MY   Mr. King Dishwash 1.5L, Lemon, Malaysia
  *
+ * Since Phase 36 the same shape has two levels. The first three segments are
+ * the **family** — the product, across every market — and are stored on
+ * `ProductFamily.code`; the rest name the **variant**:
+ *
+ *   ZEN-SC-2100          the family: Zen Garden shower cream 2.1L
+ *   ZEN-SC-1000-SCRUB    a family that needed a qualifier, because the 1L
+ *                        shower scrub shares brand, type and size with the
+ *                        1L shower cream and is not the same product
+ *   ZEN-SC-2100-GM-VN    a variant of the first: Goat's Milk, for Vietnam
+ *
+ * `generateSku` is the one-shot form the importer uses and the fallback for a
+ * product created with no family; `generateFamilyCode` and
+ * `generateVariantSku` are the two halves. Nothing parses a SKU to find its
+ * family — the family is a column — so a customer's own code
+ * (`ZEN/SC/2100/CARROT`) belongs to a family like any generated one.
+ *
  * Each table below is a starting vocabulary, not a closed one: a value with
  * no entry falls back to its initials, so an unknown market or a new fragrance
  * still produces a code. Generated codes are ordinary SKUs afterwards —
@@ -164,6 +180,66 @@ export function sizeCode(size: string): string | null {
   return String(Math.round(base)).padStart(4, "0");
 }
 
+/**
+ * "ZEN Shower Cream 2.1L — Goat's Milk" → "2.1L": the size a name prints,
+ * normalised to no spaces and capitals so `sizeCode` reads it. Used by the
+ * family backfill and by the create form's fallback proposal.
+ */
+export function sizeInName(name: string): string | null {
+  const match = name.match(/(\d+(?:\.\d+)?\s?(?:ML|L|KG|G))\b/i);
+  return match ? match[1].replace(/\s+/g, "").toUpperCase() : null;
+}
+
+const joinSegments = (segments: (string | null)[]) =>
+  segments
+    .filter((segment): segment is string => Boolean(segment))
+    .join("-")
+    .replace(/[^A-Z0-9-]/g, "");
+
+/**
+ * The qualifier is typed by a person when two families would otherwise share
+ * a code, and is taken as typed — capitals, letters and digits only — rather
+ * than abbreviated, because "SCRUB" tells the reader what "SS" would not.
+ */
+const qualifierCode = (value: string) =>
+  value.toUpperCase().replace(/[^A-Z0-9]/g, "");
+
+/** `{BRAND}-{CATEGORY}[-{SIZE}][-{QUALIFIER}]` — the product, across markets. */
+export function generateFamilyCode(family: {
+  brand: string | null;
+  category: string;
+  size: string | null;
+  qualifier?: string | null;
+}): string {
+  return joinSegments([
+    family.brand ? skuCode("brand", family.brand) : null,
+    skuCode("category", family.category),
+    family.size ? sizeCode(family.size) : null,
+    family.qualifier ? qualifierCode(family.qualifier) : null,
+  ]);
+}
+
+/**
+ * `{familyCode}-{VARIANT}[-{MARKET}][-X{pack}]` — one variant of a family.
+ * The pack suffix is only ever asked for by a caller that knows two variants
+ * differ by carton alone (the importer's clash rule); a form never sends it.
+ */
+export function generateVariantSku(
+  familyCode: string,
+  variant: {
+    variant: string | null;
+    market: string | null;
+    packSize?: number | null;
+  },
+): string {
+  return joinSegments([
+    familyCode,
+    variant.variant ? skuCode("variant", variant.variant) : null,
+    variant.market ? skuCode("market", variant.market) : null,
+    variant.packSize ? `X${variant.packSize}` : null,
+  ]);
+}
+
 export function generateSku(product: {
   brand: string | null;
   category: string;
@@ -171,15 +247,5 @@ export function generateSku(product: {
   variant: string | null;
   market: string | null;
 }): string {
-  const segments = [
-    product.brand ? skuCode("brand", product.brand) : null,
-    skuCode("category", product.category),
-    product.size ? sizeCode(product.size) : null,
-    product.variant ? skuCode("variant", product.variant) : null,
-    product.market ? skuCode("market", product.market) : null,
-  ];
-  return segments
-    .filter((segment): segment is string => Boolean(segment))
-    .join("-")
-    .replace(/[^A-Z0-9-]/g, "");
+  return generateVariantSku(generateFamilyCode(product), product);
 }

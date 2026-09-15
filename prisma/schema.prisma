@@ -280,10 +280,35 @@ enum PoEventKind {
   EDIT
 }
 
+/// A product line at one size, across every market (Phase 36).
+///
+/// The product is "Zen Garden Shower Cream 2.1L"; its variants — Goat's Milk,
+/// Papaya, the same fragrance for Vietnam — are the `Product` rows. The code
+/// (`ZEN-SC-2100`) is the family's own; a variant's SKU extends it. Market is
+/// deliberately not part of a family: it is a dimension of a variant.
+///
+/// The link from `Product` is nullable on purpose. The purchase-order intake
+/// path and the catalogue importer create products with no family, as they
+/// create them with `needsReview: true` — a family is something a person
+/// assigns, and "no family yet" is a state the listing shows rather than hides.
+model ProductFamily {
+  id        String    @id @default(cuid())
+  code      String    @unique // ZEN-SC-2100, ZEN-SC-1000-SCRUB
+  name      String // "Zen Garden Shower Cream 2.1L"
+  brand     String?
+  category  String
+  size      String? // "2.1L"; null for a line the sheet gives no size
+  products  Product[]
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+}
+
 model Product {
   id            String         @id @default(cuid())
   sku           String         @unique
   name          String
+  familyId      String?
+  family        ProductFamily? @relation(fields: [familyId], references: [id], onDelete: SetNull)
   brand         String? // ZEN GARDEN, MR. KING, L.HANDS…; free-growing list
   variant       String? // Goat's Milk, Lavender, Lemon…; free-growing list
   packSize      Int? // pieces per carton (6, 12, 24)
@@ -301,6 +326,8 @@ model Product {
   webOrderLines WebOrderLine[]
   createdAt     DateTime       @default(now())
   updatedAt     DateTime       @updatedAt
+
+  @@index([familyId])
 }
 
 /// The vocabulary the catalogue's four labels are chosen from (Phase 28).
