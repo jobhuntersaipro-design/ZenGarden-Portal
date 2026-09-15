@@ -820,7 +820,13 @@ export function ProductForm({
               variant="outline"
               disabled={busy || rows.length >= MAX_VARIANT_ROWS}
               onClick={addRow}
-              className="mt-md"
+              // `outline` carries no height or horizontal padding of its own —
+              // every other stepped control in the app (`ChoiceButton`,
+              // `SortSelect`, the toolbar selects) is `h-control-md
+              // sm:h-control-sm`, 44px at 390 and 36px from `sm` up, so this
+              // one follows suit rather than sitting at the browser's default
+              // button height (measured 22px before this).
+              className="mt-md h-control-md px-md sm:h-control-sm"
             >
               + Add variant
             </Button>
