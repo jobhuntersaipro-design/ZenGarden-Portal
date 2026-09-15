@@ -3,11 +3,12 @@
 import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { toast } from "sonner";
-import { createProduct } from "@/actions/products";
+import { copyImagesToVariants, createProductVariants } from "@/actions/products";
 import { FamilyPicker, type FamilyChoice } from "@/components/products/FamilyPicker";
 import { GrowingListPicker } from "@/components/products/GrowingListPicker";
 import { ManageLabelsLink } from "@/components/products/ManageLabelsLink";
 import { StagedImages, type StagedImage } from "@/components/products/StagedImages";
+import { VariantRows, type VariantRowState } from "@/components/products/VariantRows";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Switch } from "@/components/ui/switch";
@@ -20,29 +21,42 @@ import type { FamilyOption } from "@/lib/queries/product-families";
 import type { GrowingLabel } from "@/lib/queries/products";
 import { generateSku, generateVariantSku, sizeInName } from "@/lib/sku";
 import { rejectionReason } from "@/lib/validation/product-images";
-import type { ProductInput } from "@/lib/validation/products";
+import {
+  MAX_VARIANT_ROWS,
+  type ProductVariantsInput,
+} from "@/lib/validation/product-variants";
+
+/** Everything a set of variants share: one value each, entered once. */
+type SharedInput = Omit<ProductVariantsInput, "variants">;
 
 /**
  * Malaysia is the home market and a carton the unit everything ships in, so
  * both start filled rather than blank. Defaults, not assertions: "No market"
  * is the first option in its picker and the unit is an ordinary text field.
  */
-const BLANK: ProductInput = {
+const BLANK: SharedInput = {
   name: "",
-  sku: "",
   category: PRODUCT_CATEGORIES[0],
   unit: "carton",
   brand: null,
-  variant: null,
   packSize: "",
   cartonsPerPallet: "",
   market: "Malaysia",
-  listPrice: "",
   description: null,
   active: true,
   familyId: null,
   newFamily: null,
 };
+
+/** A row's price is inherited from the row above it; everything else is blank. */
+const blankRow = (listPrice = ""): VariantRowState => ({
+  key: crypto.randomUUID(),
+  variant: null,
+  sku: "",
+  skuTouched: false,
+  listPrice,
+  staged: [],
+});
 
 const label = "font-mono text-[length:var(--text-eyebrow)] text-ink-tertiary";
 
@@ -58,21 +72,29 @@ const label = "font-mono text-[length:var(--text-eyebrow)] text-ink-tertiary";
  * em-dash tiles above an empty chart would be furniture rather than
  * information.
  *
+ * Since Phase 39 the screen creates a product and **all of its flavours** in
+ * one submit. Everything above is shared — brand, category, pack size, market,
+ * description, family, active, and one set of pictures — and a row per variant
+ * below carries the three things that genuinely differ. Those three live in
+ * the details card while there is one variant, so a single-variant create is
+ * the screen that existed before, and move into the Variants section the
+ * moment a second row is added.
+ *
  * The SKU proposes itself until the reader types one, at which point the field
  * is theirs — the customer's own list has no codes, so a generated one is the
  * common case and a hand-typed one the exception. With a family chosen it is
  * the family's code plus variant and market (`ZEN-SC-2100-GM-VN`, Phase 36);
  * with none it falls back to brand, category, the size in the name, variant
- * and market, as it did before families existed.
+ * and market, as it did before families existed. Each row proposes its own,
+ * and typing in one row's field stops the proposal for that row alone.
  *
  * Since Phase 27 a product cannot be created without a picture. The files are
- * staged in the browser and uploaded immediately after the row is written,
+ * staged in the browser and uploaded immediately after the rows are written,
  * because presign needs a `productId` that does not exist until then. That
- * order has one consequence worth knowing: if the row is written and the
- * uploads then fail, the product exists. It is not deleted — a rollback could
- * not cover a browser closed mid-upload either — so the form says what
- * happened and links to the product, where `ProductImageManager` finishes the
- * job.
+ * order has one consequence worth knowing: if the rows are written and the
+ * uploads then fail, the products exist. They are not deleted — a rollback
+ * could not cover a browser closed mid-upload either — so the form says what
+ * happened and links to them, where `ProductImageManager` finishes the job.
  *
  * Editing stays in `ProductSheet`. A drawer is right for changing one field on
  * a product you are already looking at; a page is right for entering eleven.
@@ -85,38 +107,58 @@ export function ProductForm({
   families: FamilyOption[];
 }) {
   const { pending: navigating, push } = useUrlNavigation();
-  const [form, setForm] = useState<ProductInput>(BLANK);
+  const [form, setForm] = useState<SharedInput>(BLANK);
+  const [rows, setRows] = useState<VariantRowState[]>([blankRow()]);
   const [family, setFamily] = useState<FamilyChoice>({ familyId: null, draft: null });
-  const [skuTouched, setSkuTouched] = useState(false);
   const [saving, setSaving] = useState(false);
   const [staged, setStaged] = useState<(StagedImage & { file: File })[]>([]);
   const [rejected, setRejected] = useState<{ name: string; reason: string }[]>([]);
-  /** Set once the row exists. Non-null while still on this page means the
-      product was created and its images were not — the one state this form
+  /** A row's own refusals, keyed by that row, so one row's rejected file is
+      reported beside its own dropzone rather than in the shared panel. */
+  const [rowRejected, setRowRejected] = useState<
+    Record<string, { name: string; reason: string }[]>
+  >({});
+  /** Set once the rows exist. Non-empty while still on this page means the
+      products were created and their images were not — the one state this form
       cannot resolve itself. */
-  const [created, setCreated] = useState<string | null>(null);
-  const { rows, add } = useImageUploadQueue(() => {});
+  const [createdIds, setCreatedIds] = useState<string[]>([]);
+  const [createdFamilyId, setCreatedFamilyId] = useState<string | null>(null);
+  const { rows: uploadRows, add } = useImageUploadQueue(() => {});
 
-  // Object URLs are revoked on removal and again on unmount, through a ref so
+  const many = rows.length > 1;
+
+  // Object URLs are revoked on removal and again on unmount, through refs so
   // the cleanup does not re-run on every staged change and revoke live ones.
+  // Both lists, because a row's pictures are object URLs too.
   const stagedRef = useRef(staged);
+  const rowsRef = useRef(rows);
   useEffect(() => {
     stagedRef.current = staged;
   }, [staged]);
+  useEffect(() => {
+    rowsRef.current = rows;
+  }, [rows]);
   useEffect(
     () => () => {
       for (const image of stagedRef.current) URL.revokeObjectURL(image.url);
+      for (const row of rowsRef.current) {
+        for (const image of row.staged) URL.revokeObjectURL(image.url);
+      }
     },
     [],
   );
 
-  const addFiles = (files: File[]) => {
+  /**
+   * One rejection rule for the shared dropzone and every row's, so a file the
+   * shared panel refuses is refused the same way inside a row.
+   */
+  const acceptFiles = (files: File[], alreadyStaged: number) => {
     const accepted: (StagedImage & { file: File })[] = [];
     const refused: { name: string; reason: string }[] = [];
     for (const file of files) {
       // Counted against what is already staged plus what this batch has taken,
       // which is the same arithmetic the server applies to existing rows.
-      const reason = rejectionReason(file, staged.length + accepted.length);
+      const reason = rejectionReason(file, alreadyStaged + accepted.length);
       if (reason) {
         refused.push({ name: file.name, reason });
         continue;
@@ -128,6 +170,11 @@ export function ProductForm({
         file,
       });
     }
+    return { accepted, refused };
+  };
+
+  const addFiles = (files: File[]) => {
+    const { accepted, refused } = acceptFiles(files, staged.length);
     if (accepted.length > 0) setStaged((current) => [...current, ...accepted]);
     setRejected(refused);
   };
@@ -148,23 +195,99 @@ export function ProductForm({
       return current.filter((_, at) => at !== index);
     });
 
-  const set = <K extends keyof ProductInput>(key: K, value: ProductInput[K]) =>
+  const patchRow = (key: string, patch: Partial<VariantRowState>) =>
+    setRows((current) =>
+      current.map((row) => (row.key === key ? { ...row, ...patch } : row)),
+    );
+
+  /**
+   * A new row inherits the price above it: a range is usually priced alike.
+   * The second row also opens the family disclosure with the product's name in
+   * it, because two variants need a family (§2 of the spec) and the moment a
+   * person adds the second row is the moment they need to describe one.
+   */
+  const addRow = () => {
+    setRows((current) => [...current, blankRow(current.at(-1)?.listPrice ?? "")]);
+    if (!many && !family.familyId && !family.draft) {
+      setFamily({ familyId: null, draft: { name: form.name, size: "", qualifier: "" } });
+    }
+  };
+
+  const removeRow = (key: string) =>
+    setRows((current) => {
+      if (current.length === 1) return current;
+      const going = current.find((row) => row.key === key);
+      for (const image of going?.staged ?? []) URL.revokeObjectURL(image.url);
+      return current.filter((row) => row.key !== key);
+    });
+
+  const addRowFiles = (key: string, files: File[]) => {
+    const row = rows.find((candidate) => candidate.key === key);
+    if (!row) return;
+    const { accepted, refused } = acceptFiles(files, row.staged.length);
+    if (accepted.length > 0) patchRow(key, { staged: [...row.staged, ...accepted] });
+    setRowRejected((current) => ({ ...current, [key]: refused }));
+  };
+
+  const moveRowImage = (key: string, index: number, delta: number) =>
+    setRows((current) =>
+      current.map((row) => {
+        if (row.key !== key) return row;
+        const next = [...row.staged];
+        const to = index + delta;
+        if (to < 0 || to >= next.length) return row;
+        [next[index], next[to]] = [next[to], next[index]];
+        return { ...row, staged: next };
+      }),
+    );
+
+  const removeRowImage = (key: string, index: number) =>
+    setRows((current) =>
+      current.map((row) => {
+        if (row.key !== key) return row;
+        const going = row.staged[index];
+        if (going) URL.revokeObjectURL(going.url);
+        return { ...row, staged: row.staged.filter((_, at) => at !== index) };
+      }),
+    );
+
+  const set = <K extends keyof SharedInput>(key: K, value: SharedInput[K]) =>
     setForm((current) => ({ ...current, [key]: value }));
 
   const productFacts = { brand: form.brand ?? null, category: form.category };
   const newFamily = family.draft ? familyFromDraft(family.draft, productFacts) : null;
   const familyCode =
     families.find((entry) => entry.id === family.familyId)?.code ?? newFamily?.code ?? null;
-  const variantFacts = { variant: form.variant ?? null, market: form.market ?? null };
-  const suggestedSku = familyCode
-    ? generateVariantSku(familyCode, variantFacts)
-    : generateSku({ ...productFacts, size: sizeInName(form.name), ...variantFacts });
-  const sku = skuTouched ? form.sku : suggestedSku;
+
+  /**
+   * The code a row takes while nobody has typed one into it. Identical
+   * arithmetic to the single-product form's — the family's code plus this
+   * row's flavour and the shared market, falling back to brand, category and
+   * the size in the name where there is no family.
+   */
+  const suggestedSku = (row: VariantRowState) =>
+    familyCode
+      ? generateVariantSku(familyCode, {
+          variant: row.variant,
+          market: form.market ?? null,
+        })
+      : generateSku({
+          ...productFacts,
+          size: sizeInName(form.name),
+          variant: row.variant,
+          market: form.market ?? null,
+        });
+
+  const skuOf = (row: VariantRowState) => (row.skuTouched ? row.sku : suggestedSku(row));
+
+  const first = rows[0];
 
   // The eyebrow reads exactly as the detail page's does, filling in as the
-  // fields are typed, so the placeholders show what each one becomes.
+  // fields are typed, so the placeholders show what each one becomes. The SKU
+  // leads it while there is one variant; with several there is no one code to
+  // print, so the family's takes its place.
   const eyebrow = [
-    sku || "SKU",
+    many ? null : skuOf(first) || "SKU",
     familyCode,
     form.category,
     form.packSize ? `${form.packSize} per ${form.unit || "carton"}` : `per ${form.unit || "unit"}`,
@@ -178,41 +301,108 @@ export function ProductForm({
   // still being fetched, which is the failure the avatar work ran into.
   const busy = saving || navigating;
 
+  /**
+   * Phase 27's rule, counted across rows: every product must land with a
+   * picture, and there are two ways for that to be true — a shared set, or
+   * pictures on every row that has none of the shared ones.
+   */
+  const everyRowCovered =
+    staged.length > 0 || rows.every((row) => row.staged.length > 0);
+
+  /**
+   * Rows first, then pictures — Phase 27's order, because presign hangs a
+   * `ProductImage` on a `productId` that does not exist until the rows are
+   * written. Then: each row that staged its own images gets them, the shared
+   * set is uploaded once to the first row that staged none, and the remaining
+   * shareholders are served by an R2 copy rather than by seven more uploads.
+   */
   const submit = async () => {
     setSaving(true);
-    const result = await createProduct({
+
+    const result = await createProductVariants({
       ...form,
-      sku,
       familyId: family.familyId,
       newFamily,
+      variants: rows.map((row) => ({
+        variant: row.variant,
+        sku: skuOf(row),
+        listPrice: row.listPrice,
+      })),
     });
     if (!result.success) {
       setSaving(false);
       toast.error(result.error);
       return;
     }
-    const productId = result.data.id;
 
-    // `0` existing images: the row was created one statement ago and nothing
-    // else can have added any.
-    const outcome = await add(
-      productId,
-      staged.map((image) => image.file),
-      0,
-    );
-    if (outcome.failed > 0) {
+    const created = result.data.variants;
+    const familyId = result.data.familyId;
+    let uploaded = 0;
+    let failed = 0;
+
+    // Own pictures first, so a row that has them is never counted as a
+    // shareholder below.
+    for (const [index, row] of rows.entries()) {
+      const id = created[index]?.id;
+      if (!id || row.staged.length === 0) continue;
+      const outcome = await add(
+        id,
+        row.staged.map((image) => image.file),
+        0,
+      );
+      uploaded += outcome.uploaded;
+      failed += outcome.failed;
+    }
+
+    const shareholders = rows
+      .map((row, index) => ({ row, id: created[index]?.id }))
+      .filter((entry): entry is { row: VariantRowState; id: string } =>
+        Boolean(entry.id) && entry.row.staged.length === 0,
+      );
+
+    if (staged.length > 0 && shareholders.length > 0) {
+      const [shared, ...rest] = shareholders;
+      const outcome = await add(
+        shared.id,
+        staged.map((image) => image.file),
+        0,
+      );
+      uploaded += outcome.uploaded;
+      failed += outcome.failed;
+
+      if (outcome.uploaded > 0 && rest.length > 0) {
+        const copy = await copyImagesToVariants(
+          shared.id,
+          rest.map((entry) => entry.id),
+        );
+        if (!copy.success) failed += rest.length;
+        else failed += copy.data.failed;
+      } else if (rest.length > 0) {
+        // Nothing landed to copy, so every other shareholder is short too.
+        failed += rest.length;
+      }
+    }
+
+    if (failed > 0) {
       setSaving(false);
-      setCreated(productId);
+      setCreatedIds(created.map((variant) => variant.id));
+      setCreatedFamilyId(familyId);
       toast.error(
-        outcome.uploaded > 0
-          ? `Product created — ${outcome.failed} of ${staged.length} images didn't upload`
-          : "Product created, but its images didn't upload",
+        uploaded > 0
+          ? `${created.length === 1 ? "Product" : "Variants"} created — ${failed} image${failed === 1 ? "" : "s"} didn't upload`
+          : `${created.length === 1 ? "Product" : "Variants"} created, but the images didn't upload`,
       );
       return;
     }
 
-    toast.success("Product created");
-    push(`/products/${productId}`);
+    toast.success(
+      created.length === 1 ? "Product created" : `${created.length} variants created`,
+    );
+    push(
+      familyId && created.length > 1
+        ? `/products?family=${familyId}`
+        : `/products/${created[0].id}`,
+    );
   };
 
   return (
@@ -234,29 +424,41 @@ export function ProductForm({
           />
         </div>
         <div className="flex flex-col items-stretch gap-xxs sm:shrink-0 sm:items-end">
-          {created ? (
-            // The row exists and its images do not. Creating again would make a
-            // second product, so the only move offered is the one that fixes
-            // the first.
+          {createdIds.length > 0 ? (
+            // The rows exist and their images do not. Creating again would make
+            // a second set of products, so the only move offered is the one
+            // that fixes the first.
             <Button asChild>
-              <Link href={`/products/${created}`}>Open the product</Link>
+              <Link
+                href={
+                  createdIds.length > 1 && createdFamilyId
+                    ? `/products?family=${createdFamilyId}`
+                    : `/products/${createdIds[0]}`
+                }
+              >
+                {createdIds.length > 1 ? "Open the products" : "Open the product"}
+              </Link>
             </Button>
           ) : (
             <Button
               pending={busy}
-              disabled={staged.length === 0}
+              disabled={!everyRowCovered}
               onClick={submit}
               className="self-start sm:self-auto"
             >
-              {busy ? "Creating…" : "Create product"}
+              {busy ? "Creating…" : many ? "Create variants" : "Create product"}
             </Button>
           )}
           <p className="text-[length:var(--text-caption)] text-ink-tertiary">
-            {created
-              ? "Finish adding its images there"
-              : staged.length === 0
+            {createdIds.length > 0
+              ? createdIds.length > 1
+                ? "Finish adding their images there"
+                : "Finish adding its images there"
+              : !everyRowCovered
                 ? "Add at least one image"
-                : `${staged.length} ${staged.length === 1 ? "image" : "images"} ready`}
+                : staged.length > 0
+                  ? `${staged.length} shared ${staged.length === 1 ? "image" : "images"} ready`
+                  : "Each variant has its own images"}
           </p>
         </div>
       </header>
@@ -270,7 +472,7 @@ export function ProductForm({
         <div className="min-w-0">
           <StagedImages
             staged={staged}
-            rows={rows}
+            rows={uploadRows}
             rejected={rejected}
             busy={busy}
             onFiles={addFiles}
@@ -280,27 +482,43 @@ export function ProductForm({
         </div>
 
         <section className="rounded-lg border border-hairline bg-canvas p-lg">
-          <div className="flex flex-col gap-xxs">
-            <label htmlFor="product-price" className={label}>
-              List price
-            </label>
-            <div className="flex items-baseline gap-xs">
-              <span className="font-display text-[length:var(--text-heading-md)] font-[650] tracking-[-0.91px] text-ink-tertiary">
-                RM
-              </span>
-              <Input
-                id="product-price"
-                inputMode="decimal"
-                placeholder="0.00"
-                value={form.listPrice}
-                onChange={(event) => set("listPrice", event.target.value)}
-                className="h-auto rounded-none border-0 border-b border-hairline-strong px-0 py-xxs font-display text-[length:var(--text-display-md)] leading-[1.2] font-[650] tracking-[-1.36px] text-ink tabular-nums placeholder:text-ink-disabled focus-visible:border-focus focus-visible:ring-0 md:text-[length:var(--text-display-md)]"
-              />
+          {/* The three fields that differ per variant live here while there is
+              one of them — so a single-variant create is the screen that
+              existed before Phase 39 — and move into the Variants table the
+              moment a second row is added. Never both: a value editable in two
+              places is a value that can disagree with itself. */}
+          {many ? (
+            <div className="flex flex-col gap-xxs">
+              <span className={label}>List price</span>
+              <p className="text-[length:var(--text-caption)] text-ink-tertiary">
+                Priced per variant below
+              </p>
             </div>
-            <p className="text-[length:var(--text-caption)] text-ink-tertiary">
-              Recorded as the first entry in this product&rsquo;s price history
-            </p>
-          </div>
+          ) : (
+            <div className="flex flex-col gap-xxs">
+              <label htmlFor="product-price" className={label}>
+                List price
+              </label>
+              <div className="flex items-baseline gap-xs">
+                <span className="font-display text-[length:var(--text-heading-md)] font-[650] tracking-[-0.91px] text-ink-tertiary">
+                  RM
+                </span>
+                <Input
+                  id="product-price"
+                  inputMode="decimal"
+                  placeholder="0.00"
+                  value={first.listPrice}
+                  onChange={(event) =>
+                    patchRow(first.key, { listPrice: event.target.value })
+                  }
+                  className="h-auto rounded-none border-0 border-b border-hairline-strong px-0 py-xxs font-display text-[length:var(--text-display-md)] leading-[1.2] font-[650] tracking-[-1.36px] text-ink tabular-nums placeholder:text-ink-disabled focus-visible:border-focus focus-visible:ring-0 md:text-[length:var(--text-display-md)]"
+                />
+              </div>
+              <p className="text-[length:var(--text-caption)] text-ink-tertiary">
+                Recorded as the first entry in this product&rsquo;s price history
+              </p>
+            </div>
+          )}
 
           <div className="mt-md flex flex-col gap-xxs">
             <label htmlFor="product-description" className={label}>
@@ -328,7 +546,9 @@ export function ProductForm({
                 onChange={setFamily}
               />
               <p className="text-[length:var(--text-caption)] text-ink-tertiary">
-                The product this is a variant of — Zen Garden Shower Cream 2.1L, across every market
+                {many
+                  ? "Required with more than one variant, so the shop shows them as one product"
+                  : "The product this is a variant of — Zen Garden Shower Cream 2.1L, across every market"}
               </p>
             </div>
 
@@ -345,13 +565,21 @@ export function ProductForm({
 
             <div className="flex flex-col gap-xxs">
               <span className={label}>Variant</span>
-              <GrowingListPicker
-                label="Variant"
-                value={form.variant ?? null}
-                known={labels.variant}
-                onChange={(variant) => set("variant", variant)}
-              />
-              <ManageLabelsLink hint="Fragrance or formulation — type to add one" />
+              {many ? (
+                <p className="text-[length:var(--text-caption)] text-ink-tertiary">
+                  One per variant, below
+                </p>
+              ) : (
+                <>
+                  <GrowingListPicker
+                    label="Variant"
+                    value={first.variant}
+                    known={labels.variant}
+                    onChange={(variant) => patchRow(first.key, { variant })}
+                  />
+                  <ManageLabelsLink hint="Fragrance or formulation — type to add one" />
+                </>
+              )}
             </div>
 
             <div className="flex flex-col gap-xxs">
@@ -427,26 +655,40 @@ export function ProductForm({
             </div>
 
             <div className="flex flex-col gap-xxs sm:col-span-2">
-              <label htmlFor="product-sku" className={label}>
-                SKU
-              </label>
-              <Input
-                id="product-sku"
-                value={sku}
-                // Upper-cased as typed, so two people cannot enter the same SKU
-                // two ways and create a duplicate the schema would reject.
-                onChange={(event) => {
-                  setSkuTouched(true);
-                  set("sku", event.target.value.toUpperCase());
-                }}
-              />
-              <p className="text-[length:var(--text-caption)] text-ink-tertiary">
-                {skuTouched
-                  ? "Capitals, digits and dashes"
-                  : familyCode
-                    ? "Suggested from the family code, variant and market — type to override"
-                    : "Suggested from brand, category, the size in the name, variant and market — type to override"}
-              </p>
+              {many ? (
+                <>
+                  <span className={label}>SKU</span>
+                  <p className="text-[length:var(--text-caption)] text-ink-tertiary">
+                    One per variant, below
+                  </p>
+                </>
+              ) : (
+                <>
+                  <label htmlFor="product-sku" className={label}>
+                    SKU
+                  </label>
+                  <Input
+                    id="product-sku"
+                    value={skuOf(first)}
+                    // Upper-cased as typed, so two people cannot enter the same
+                    // SKU two ways and create a duplicate the schema would
+                    // reject.
+                    onChange={(event) =>
+                      patchRow(first.key, {
+                        skuTouched: true,
+                        sku: event.target.value.toUpperCase(),
+                      })
+                    }
+                  />
+                  <p className="text-[length:var(--text-caption)] text-ink-tertiary">
+                    {first.skuTouched
+                      ? "Capitals, digits and dashes"
+                      : familyCode
+                        ? "Suggested from the family code, variant and market — type to override"
+                        : "Suggested from brand, category, the size in the name, variant and market — type to override"}
+                  </p>
+                </>
+              )}
             </div>
           </div>
 
@@ -457,6 +699,47 @@ export function ProductForm({
             />
             Active
           </label>
+
+          <div className="mt-lg border-t border-hairline pt-lg">
+            <div className="flex items-baseline justify-between gap-sm">
+              <h2 className="text-[length:var(--text-heading-sm)] font-[650] text-ink">
+                Variants
+              </h2>
+              <span className="text-[length:var(--text-caption)] text-ink-tertiary">
+                {rows.length} {rows.length === 1 ? "variant" : "variants"}
+              </span>
+            </div>
+
+            {many ? (
+              <VariantRows
+                rows={rows}
+                knownVariants={labels.variant}
+                suggestedSku={suggestedSku}
+                busy={busy}
+                rejected={rowRejected}
+                onPatch={patchRow}
+                onRemove={removeRow}
+                onFiles={addRowFiles}
+                onMoveImage={moveRowImage}
+                onRemoveImage={removeRowImage}
+              />
+            ) : null}
+
+            <Button
+              type="button"
+              variant="outline"
+              disabled={busy || rows.length >= MAX_VARIANT_ROWS}
+              onClick={addRow}
+              className="mt-md"
+            >
+              + Add variant
+            </Button>
+            <p className="mt-xxs text-[length:var(--text-caption)] text-ink-tertiary">
+              {rows.length >= MAX_VARIANT_ROWS
+                ? `${MAX_VARIANT_ROWS} is the most in one go`
+                : "Another flavour of the same product — it shares everything above"}
+            </p>
+          </div>
         </section>
       </div>
     </>

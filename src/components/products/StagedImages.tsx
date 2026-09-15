@@ -35,6 +35,7 @@ export function StagedImages({
   rows,
   rejected,
   busy,
+  note = "At least one image is required. The first is the cover.",
   onFiles,
   onMove,
   onRemove,
@@ -44,6 +45,13 @@ export function StagedImages({
   rows: ImageRow[];
   rejected: { name: string; reason: string }[];
   busy: boolean;
+  /**
+   * The sentence under the dropzone, which defaults to Phase 27's rule for the
+   * shared panel. A variant row's own set is optional — the shared pictures
+   * cover a row that stages none — so that panel says so instead, rather than
+   * printing a requirement that is not true of it.
+   */
+  note?: string;
   onFiles: (files: File[]) => void;
   onMove: (index: number, delta: number) => void;
   onRemove: (index: number) => void;
@@ -143,9 +151,7 @@ export function StagedImages({
         </ul>
       ) : null}
 
-      <p className="text-[length:var(--text-caption)] text-ink-tertiary">
-        At least one image is required. The first is the cover.
-      </p>
+      <p className="text-[length:var(--text-caption)] text-ink-tertiary">{note}</p>
     </section>
   );
 }
