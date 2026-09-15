@@ -14,11 +14,13 @@ import {
   EMPTY_GUEST_CART,
   GUEST_CART_KEY,
   addLine,
+  addLines,
   guestCountOf,
   parseGuestCart,
   removeLine,
   setLine,
   type GuestCart,
+  type GuestCartLine,
 } from "@/lib/guest-cart";
 import type { Cart, CartSummary } from "@/lib/queries/cart";
 import { useShopViewer } from "@/components/shop/ShopViewer";
@@ -34,6 +36,7 @@ export type GuestCartApi = {
   /** Re-runs `priceCart` immediately, bypassing the debounce. */
   retryPricing: () => void;
   add: (productId: string, cartons: number) => void;
+  addMany: (lines: GuestCartLine[]) => void;
   set: (productId: string, cartons: number) => void;
   remove: (productId: string) => void;
   clear: () => void;
@@ -52,6 +55,7 @@ const INERT_GUEST_CART: GuestCartApi = {
   pricingFailed: false,
   retryPricing: () => {},
   add: () => {},
+  addMany: () => {},
   set: () => {},
   remove: () => {},
   clear: () => {},
@@ -145,6 +149,10 @@ export function GuestCartProvider({ children }: { children: ReactNode }) {
       persist((prev) => addLine(prev, productId, cartons)),
     [persist],
   );
+  const addMany = useCallback(
+    (lines: GuestCartLine[]) => persist((prev) => addLines(prev, lines)),
+    [persist],
+  );
   const set = useCallback(
     (productId: string, cartons: number) =>
       persist((prev) => setLine(prev, productId, cartons)),
@@ -214,7 +222,19 @@ export function GuestCartProvider({ children }: { children: ReactNode }) {
 
   return (
     <GuestCartContext.Provider
-      value={{ hydrated, cart, priced, pricing, pricingFailed, retryPricing, add, set, remove, clear }}
+      value={{
+        hydrated,
+        cart,
+        priced,
+        pricing,
+        pricingFailed,
+        retryPricing,
+        add,
+        addMany,
+        set,
+        remove,
+        clear,
+      }}
     >
       {children}
     </GuestCartContext.Provider>

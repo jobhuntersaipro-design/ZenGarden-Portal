@@ -22,6 +22,7 @@ import {
 import { webOrderReference } from "@/lib/web-order-number";
 import type { GuestCartLine } from "@/lib/guest-cart";
 import {
+  addManyToCartSchema,
   addToCartSchema,
   guestCartLinesSchema,
   setCartonsSchema,
@@ -176,6 +177,64 @@ export async function addToCart(input: {
   } catch (cause) {
     console.error("[cart] addToCart", cause);
     return { success: false, error: "We couldn't add that to your order." };
+  }
+}
+
+/**
+ * Several variants of one product, in one action (Phase 39).
+ *
+ * `mergeGuestCart`'s shape rather than a loop over `addToCart`: one query for
+ * every product instead of one per line, and one transaction, because a
+ * failure halfway through N sequential upserts would leave some flavours in
+ * the cart while the buyer's screen still showed the quantities they set — a
+ * retry would then double what had already landed.
+ *
+ * A line whose product has left the shop is skipped and counted, never
+ * silently dropped; the caller says so. Every line gone is a refusal, because
+ * "added to your order" would be false.
+ */
+export async function addManyToCart(input: {
+  lines: { productId: string; cartons: number }[];
+}): Promise<ActionResult<{ added: number; skipped: number }>> {
+  const { user, error } = await guard();
+  if (!user) return { success: false, error: error! };
+
+  const parsed = addManyToCartSchema.safeParse(input);
+  if (!parsed.success) {
+    return {
+      success: false,
+      error: parsed.error.issues[0]?.message ?? "Those quantities are not valid.",
+    };
+  }
+
+  try {
+    const productIds = [...new Set(parsed.data.lines.map((line) => line.productId))];
+    const products = await prisma.product.findMany({
+      where: { id: { in: productIds } },
+      select: ORDERABLE_PRODUCT_SELECT,
+    });
+    const orderableIds = new Set(
+      products.filter(isOrderable).map((product) => product.id),
+    );
+
+    const lines = parsed.data.lines.filter((line) => orderableIds.has(line.productId));
+    const skipped = parsed.data.lines.length - lines.length;
+    if (lines.length === 0) {
+      return { success: false, error: "Those products are not available to order." };
+    }
+
+    const cart = await openCart(user.id, user.buyerId);
+    await prisma.$transaction(async (tx) => {
+      for (const line of lines) {
+        await upsertLine(tx, cart.id, line.productId, line.cartons);
+      }
+    });
+
+    revalidateShop();
+    return { success: true, data: { added: lines.length, skipped } };
+  } catch (cause) {
+    console.error("[cart] addManyToCart", cause);
+    return { success: false, error: "We couldn't add those to your order." };
   }
 }
 

@@ -4,11 +4,13 @@ import {
   EMPTY_GUEST_CART,
   MAX_GUEST_LINES,
   addLine,
+  addLines,
   guestCartonCount,
   guestCountOf,
   parseGuestCart,
   removeLine,
   setLine,
+  type GuestCart,
 } from "@/lib/guest-cart";
 
 describe("parseGuestCart", () => {
@@ -91,5 +93,57 @@ describe("guestCartonCount", () => {
 describe("guestCountOf", () => {
   it("is zero for a product not in the cart", () => {
     expect(guestCountOf(EMPTY_GUEST_CART, "nope")).toBe(0);
+  });
+});
+
+describe("addLines", () => {
+  it("adds every line in one move", () => {
+    const cart = addLines(EMPTY_GUEST_CART, [
+      { productId: "a", cartons: 3 },
+      { productId: "b", cartons: 2 },
+    ]);
+    expect(cart.lines).toEqual([
+      { productId: "a", cartons: 3 },
+      { productId: "b", cartons: 2 },
+    ]);
+  });
+
+  it("increments a product already in the cart", () => {
+    const cart = addLines(addLine(EMPTY_GUEST_CART, "a", 1), [
+      { productId: "a", cartons: 2 },
+      { productId: "b", cartons: 1 },
+    ]);
+    expect(cart.lines).toEqual([
+      { productId: "a", cartons: 3 },
+      { productId: "b", cartons: 1 },
+    ]);
+  });
+
+  it("stops at the line cap rather than growing past it", () => {
+    const full: GuestCart = {
+      v: 1,
+      lines: Array.from({ length: MAX_GUEST_LINES }, (_, index) => ({
+        productId: `p-${index}`,
+        cartons: 1,
+      })),
+      updatedAt: "",
+    };
+    const cart = addLines(full, [{ productId: "new", cartons: 1 }]);
+    expect(cart.lines).toHaveLength(MAX_GUEST_LINES);
+    expect(cart.lines.some((line) => line.productId === "new")).toBe(false);
+  });
+
+  it("still increments an existing line when the cart is full", () => {
+    const full: GuestCart = {
+      v: 1,
+      lines: Array.from({ length: MAX_GUEST_LINES }, (_, index) => ({
+        productId: `p-${index}`,
+        cartons: 1,
+      })),
+      updatedAt: "",
+    };
+    const cart = addLines(full, [{ productId: "p-0", cartons: 4 }]);
+    expect(cart.lines).toHaveLength(MAX_GUEST_LINES);
+    expect(cart.lines[0]).toEqual({ productId: "p-0", cartons: 5 });
   });
 });

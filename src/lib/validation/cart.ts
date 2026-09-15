@@ -27,6 +27,18 @@ export const guestCartLinesSchema = z
   .array(z.object({ productId: z.string().min(1).max(64), cartons: cartonsSchema }))
   .max(MAX_GUEST_LINES);
 
+/**
+ * Several lines in one action (Phase 39). `max` is the guest cap, which is a
+ * ceiling on any one batch too: a request past it is a script, not a buyer
+ * choosing flavours.
+ */
+export const addManyToCartSchema = z.object({
+  lines: z
+    .array(addToCartSchema)
+    .min(1, "Choose a quantity for at least one variant")
+    .max(MAX_GUEST_LINES),
+});
+
 export const submitOrderSchema = z.object({
   buyerReference: z.string().trim().max(64).nullable().optional(),
   /**

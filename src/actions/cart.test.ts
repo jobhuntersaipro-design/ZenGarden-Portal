@@ -70,8 +70,14 @@ const flushAfter = async () => {
   afterTasks.length = 0;
 };
 
-const { addToCart, setCartons, removeFromCart, submitWebOrder, mergeGuestCart } =
-  await import("@/actions/cart");
+const {
+  addToCart,
+  setCartons,
+  removeFromCart,
+  submitWebOrder,
+  mergeGuestCart,
+  addManyToCart,
+} = await import("@/actions/cart");
 const { Prisma } = await import("@/generated/prisma/client");
 
 const dec = (v: string) => new Prisma.Decimal(v);
@@ -416,5 +422,97 @@ describe("mergeGuestCart", () => {
     expect(webOrderFindFirst).not.toHaveBeenCalled();
     expect(webOrderCreate).not.toHaveBeenCalled();
     expect(productFindMany).not.toHaveBeenCalled();
+  });
+});
+
+describe("addManyToCart", () => {
+  const client = { id: "user-1", buyerId: "buyer-1", role: "CLIENT" };
+
+  beforeEach(() => {
+    requireClient.mockResolvedValue(client);
+    webOrderFindFirst.mockResolvedValue({ id: "cart-1" });
+    lineUpsert.mockResolvedValue({});
+  });
+
+  it("upserts every line in one transaction", async () => {
+    productFindMany.mockResolvedValue([
+      { id: "p-1", active: true, needsReview: false, listPrice: new Prisma.Decimal("10") },
+      { id: "p-2", active: true, needsReview: false, listPrice: new Prisma.Decimal("20") },
+    ]);
+
+    const result = await addManyToCart({
+      lines: [
+        { productId: "p-1", cartons: 3 },
+        { productId: "p-2", cartons: 2 },
+      ],
+    });
+
+    expect(result).toEqual({ success: true, data: { added: 2, skipped: 0 } });
+    expect(lineUpsert).toHaveBeenCalledTimes(2);
+    expect(lineUpsert).toHaveBeenCalledWith({
+      where: { webOrderId_productId: { webOrderId: "cart-1", productId: "p-1" } },
+      create: { webOrderId: "cart-1", productId: "p-1", cartons: 3 },
+      update: { cartons: { increment: 3 } },
+    });
+  });
+
+  it("reads every product in one query, not one per line", async () => {
+    productFindMany.mockResolvedValue([
+      { id: "p-1", active: true, needsReview: false, listPrice: new Prisma.Decimal("10") },
+      { id: "p-2", active: true, needsReview: false, listPrice: new Prisma.Decimal("20") },
+    ]);
+    await addManyToCart({
+      lines: [
+        { productId: "p-1", cartons: 1 },
+        { productId: "p-2", cartons: 1 },
+      ],
+    });
+    expect(productFindMany).toHaveBeenCalledTimes(1);
+    expect(productFindUnique).not.toHaveBeenCalled();
+  });
+
+  it("skips a line whose product has left the shop, and counts it", async () => {
+    productFindMany.mockResolvedValue([
+      { id: "p-1", active: true, needsReview: false, listPrice: new Prisma.Decimal("10") },
+      { id: "p-2", active: false, needsReview: false, listPrice: new Prisma.Decimal("20") },
+    ]);
+
+    const result = await addManyToCart({
+      lines: [
+        { productId: "p-1", cartons: 1 },
+        { productId: "p-2", cartons: 1 },
+      ],
+    });
+
+    expect(result).toEqual({ success: true, data: { added: 1, skipped: 1 } });
+    expect(lineUpsert).toHaveBeenCalledTimes(1);
+  });
+
+  it("refuses when every line has left the shop", async () => {
+    productFindMany.mockResolvedValue([]);
+    const result = await addManyToCart({ lines: [{ productId: "p-1", cartons: 1 }] });
+    expect(result).toEqual({
+      success: false,
+      error: "Those products are not available to order.",
+    });
+    expect(lineUpsert).not.toHaveBeenCalled();
+  });
+
+  it("refuses an empty batch", async () => {
+    const result = await addManyToCart({ lines: [] });
+    expect(result).toEqual({
+      success: false,
+      error: "Choose a quantity for at least one variant",
+    });
+    expect(webOrderFindFirst).not.toHaveBeenCalled();
+  });
+
+  it("refuses anyone who is not a client", async () => {
+    requireClient.mockRejectedValue(
+      new (class extends Error {})("Sign in to order."),
+    );
+    await expect(
+      addManyToCart({ lines: [{ productId: "p-1", cartons: 1 }] }),
+    ).rejects.toThrow();
   });
 });
