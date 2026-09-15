@@ -256,6 +256,54 @@ export async function createProductVariants(
 }
 
 /**
+ * How many copy units (one image copied to one target) run at once.
+ *
+ * Bounded rather than unbounded (`Promise.all` over everything) for two
+ * reasons that both bite in production and never show up on a laptop against
+ * a handful of test rows: R2 rate-limits a bucket's concurrent requests, and
+ * Prisma's connection pool has a fixed size shared with every other request
+ * this deployment is serving at the same moment. Fully sequential measured at
+ * ~463 ms a unit — 8 variants × 4 images is already ~13 s, past a serverless
+ * function's default ceiling (Phase 39 browser pass, task-7-report.md §4). 6
+ * is comfortably under both limits while still cutting that wall time by
+ * roughly the same factor.
+ */
+// Not exported: a "use server" file may only export async functions, so the
+// value the concurrency test pins is the observed behaviour (six units in
+// flight), not this symbol.
+const COPY_CONCURRENCY = 6;
+
+/**
+ * Runs `worker` over `items` with at most `concurrency` in flight, in order —
+ * a fixed pool of workers each pulling the next unclaimed index, rather than
+ * `items.length` promises started all at once.
+ */
+async function runWithConcurrency<T>(
+  items: T[],
+  concurrency: number,
+  worker: (item: T) => Promise<void>,
+): Promise<void> {
+  let next = 0;
+  const runners = Array.from({ length: Math.min(concurrency, items.length) }, async () => {
+    while (next < items.length) {
+      const item = items[next];
+      next += 1;
+      await worker(item);
+    }
+  });
+  await Promise.all(runners);
+}
+
+/** One image, headed to one target — the unit of work `copyImagesToVariants`
+ * parallelises. `position` is fixed before any unit runs (see below), so two
+ * units for the same target can never collide on it. */
+type CopyUnit = {
+  targetId: string;
+  image: { r2Key: string; thumbKey: string | null; sizeBytes: number };
+  position: number;
+};
+
+/**
  * Gives a set of variants the photographs of one of their siblings
  * (Phase 39).
  *
@@ -274,6 +322,16 @@ export async function createProductVariants(
  * nor an orphaned object behind, because a `ProductImage` whose `r2Key` is
  * still the placeholder renders a tile nobody can load and nobody can remove,
  * and an object nothing points at is a silent, permanent leak in the bucket.
+ *
+ * The copy units — one image × one target — run with bounded concurrency
+ * (`COPY_CONCURRENCY`) rather than one at a time. Positions still have to be
+ * deterministic under that: each target's existing image count is read
+ * *before any of its units are built*, so every unit already knows its final
+ * `position` and no two units racing on the same target can compute the same
+ * one. `ProductImage`'s `@@unique([productId, position])` is what would catch
+ * it if they did. The two R2 calls within one image — original, then
+ * derivative — stay sequential, because a unit's own orphan cleanup depends on
+ * knowing which of the two actually landed; only the units run in parallel.
  */
 export async function copyImagesToVariants(
   sourceProductId: string,
@@ -301,59 +359,73 @@ export async function copyImagesToVariants(
       };
     }
 
+    // Offset past anything each target already carries, read once per target
+    // before any unit exists — not lazily inside a unit, where two units for
+    // the same target running at once would both read the same count and
+    // propose the same position.
+    const taken = await Promise.all(
+      targetProductIds.map((targetId) =>
+        prisma.productImage.count({ where: { productId: targetId } }),
+      ),
+    );
+    const units: CopyUnit[] = targetProductIds.flatMap((targetId, targetIndex) =>
+      images.map((image, index) => ({
+        targetId,
+        image,
+        position: taken[targetIndex] + index,
+      })),
+    );
+
     let copied = 0;
     let failed = 0;
 
-    for (const targetId of targetProductIds) {
-      // Offset past anything the target already carries: `ProductImage` has
-      // `@@unique([productId, position])`, so reusing the source's positions
-      // would throw on a variant that staged its own pictures.
-      const taken = await prisma.productImage.count({ where: { productId: targetId } });
+    await runWithConcurrency(units, COPY_CONCURRENCY, async (unit) => {
+      let rowId: string | null = null;
+      // Keys that have actually landed in R2 for this image, so a failure
+      // partway through (the original copied but the derivative didn't, or
+      // the update itself throws) can undo the object as well as the row —
+      // otherwise the first copy is an orphan nothing ever cleans up.
+      const written: string[] = [];
+      try {
+        const row = await prisma.productImage.create({
+          data: {
+            productId: unit.targetId,
+            r2Key: `${PENDING_KEY_PREFIX}${randomUUID()}`,
+            position: unit.position,
+            sizeBytes: unit.image.sizeBytes,
+          },
+          select: { id: true },
+        });
+        rowId = row.id;
 
-      for (const [index, image] of images.entries()) {
-        let rowId: string | null = null;
-        // Keys that have actually landed in R2 for this image, so a failure
-        // partway through (the original copied but the derivative didn't, or
-        // the update itself throws) can undo the object as well as the row —
-        // otherwise the first copy is an orphan nothing ever cleans up.
-        const written: string[] = [];
-        try {
-          const row = await prisma.productImage.create({
-            data: {
-              productId: targetId,
-              r2Key: `${PENDING_KEY_PREFIX}${randomUUID()}`,
-              position: taken + index,
-              sizeBytes: image.sizeBytes,
-            },
-            select: { id: true },
-          });
-          rowId = row.id;
-
-          const r2Key = productImageKey(targetId, row.id, extensionOfKey(image.r2Key));
-          const thumbKey = productThumbKey(targetId, row.id);
-          await copyObject(image.r2Key, r2Key);
-          written.push(r2Key);
-          await copyObject(image.thumbKey!, thumbKey);
-          written.push(thumbKey);
-          await prisma.productImage.update({
-            where: { id: row.id },
-            data: { r2Key, thumbKey },
-          });
-          copied += 1;
-        } catch (cause) {
-          console.error("[products] copyImagesToVariants", cause);
-          failed += 1;
-          for (const key of written) {
-            await deleteObject(key).catch(() => undefined);
-          }
-          if (rowId) {
-            await prisma.productImage
-              .delete({ where: { id: rowId } })
-              .catch(() => undefined);
-          }
+        const r2Key = productImageKey(
+          unit.targetId,
+          row.id,
+          extensionOfKey(unit.image.r2Key),
+        );
+        const thumbKey = productThumbKey(unit.targetId, row.id);
+        await copyObject(unit.image.r2Key, r2Key);
+        written.push(r2Key);
+        await copyObject(unit.image.thumbKey!, thumbKey);
+        written.push(thumbKey);
+        await prisma.productImage.update({
+          where: { id: row.id },
+          data: { r2Key, thumbKey },
+        });
+        copied += 1;
+      } catch (cause) {
+        console.error("[products] copyImagesToVariants", cause);
+        failed += 1;
+        for (const key of written) {
+          await deleteObject(key).catch(() => undefined);
+        }
+        if (rowId) {
+          await prisma.productImage
+            .delete({ where: { id: rowId } })
+            .catch(() => undefined);
         }
       }
-    }
+    });
 
     revalidate();
     return { success: true, data: { copied, failed } };

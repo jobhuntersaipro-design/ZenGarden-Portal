@@ -804,8 +804,18 @@ describe("copyImagesToVariants", () => {
   });
 
   it("deletes the row when a copy fails, so no unloadable tile is left", async () => {
-    copyObject.mockRejectedValueOnce(new Error("R2 said no"));
     imageDelete.mockResolvedValue({});
+    // Keyed on the destination key, not on `copyObject`'s call position: the
+    // two images' copy units now run concurrently (Fix 3), so which one the
+    // mock queue happens to serve first is no longer meaningful. This fails
+    // image-a's row (its create call — and so its row id — is still
+    // deterministic: units are dispatched to the pool in image order, and
+    // both fit inside one wave of COPY_CONCURRENCY).
+    copyObject.mockImplementation((_from: string, to: string) =>
+      to === "products/prd-2/new-1.jpg"
+        ? Promise.reject(new Error("R2 said no"))
+        : Promise.resolve({}),
+    );
 
     const result = await copyImagesToVariants("prd-1", ["prd-2"]);
 
@@ -814,10 +824,15 @@ describe("copyImagesToVariants", () => {
   });
 
   it("deletes the orphaned original when only the derivative's copy fails", async () => {
-    // The first copyObject (the original) succeeds and writes a real R2
-    // object; the second (the derivative) fails. Without cleanup, that first
-    // object is left in the bucket with no row pointing at it.
-    copyObject.mockResolvedValueOnce({}).mockRejectedValueOnce(new Error("R2 said no"));
+    // image-a's original succeeds and writes a real R2 object; its derivative
+    // fails. Without cleanup, that first object is left in the bucket with no
+    // row pointing at it. Keyed on the destination key rather than on
+    // `copyObject`'s call position, for the same reason as the test above.
+    copyObject.mockImplementation((_from: string, to: string) =>
+      to === "products/prd-2/new-1.1600.webp"
+        ? Promise.reject(new Error("R2 said no"))
+        : Promise.resolve({}),
+    );
     imageDelete.mockResolvedValue({});
 
     const result = await copyImagesToVariants("prd-1", ["prd-2"]);
@@ -864,6 +879,49 @@ describe("copyImagesToVariants", () => {
       success: false,
       error: "We couldn't copy those images.",
     });
+  });
+
+  it("never runs more than 6 copy units at once", async () => {
+    // 10 targets × 1 image = 10 units, comfortably past the concurrency bound
+    // (6) this test exists to pin. Every mock resolves after a real, short
+    // delay so units genuinely overlap in time rather than settling on
+    // already-resolved promises in call order, which would prove nothing
+    // about a runtime bound.
+    const targets = Array.from({ length: 10 }, (_, i) => `prd-target-${i}`);
+    imageFindMany.mockResolvedValue([source[0]]);
+    imageCount.mockResolvedValue(0);
+
+    let active = 0;
+    let maxActive = 0;
+    const delay = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
+    let seq = 0;
+
+    imageCreate.mockImplementation(async () => {
+      active += 1;
+      maxActive = Math.max(maxActive, active);
+      await delay(5);
+      seq += 1;
+      return { id: `row-${seq}` };
+    });
+    copyObject.mockImplementation(async () => {
+      await delay(1);
+      return {};
+    });
+    imageUpdate.mockImplementation(async () => {
+      await delay(1);
+      // The unit is done the moment its row is pointed at real keys — this is
+      // where a worker frees up to pick the next one.
+      active -= 1;
+      return {};
+    });
+
+    const result = await copyImagesToVariants("prd-1", targets);
+
+    expect(result).toEqual({ success: true, data: { copied: 10, failed: 0 } });
+    expect(maxActive).toBeLessThanOrEqual(6);
+    // Ten units and a bound of six means the ceiling is actually exercised,
+    // not just never violated by coincidence.
+    expect(maxActive).toBe(6);
   });
 
   it("refuses anyone who is not a super admin", async () => {
