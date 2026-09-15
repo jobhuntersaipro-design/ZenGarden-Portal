@@ -1,9 +1,15 @@
 import { PoEventKind, WebOrderStatus } from "@/generated/prisma/enums";
 import { prisma } from "@/lib/prisma";
+import { unitLabel } from "@/lib/cartons";
 import type { PoStage } from "@/generated/prisma/enums";
 
 export type ClientOrderLine = {
+  position: number;
+  /** The seller's product code. Empty where the line carries none. */
+  sku: string;
   description: string;
+  /** "6 per carton · 36 pieces". Empty where the pack size is unknown. */
+  packCaption: string;
   quantity: string;
   unit: string | null;
   unitPrice: string;
@@ -15,6 +21,12 @@ export type ClientOrder = {
   id: string;
   /** The PO number once confirmed, otherwise the shop reference. */
   reference: string;
+  /**
+   * The buyer's own PO number, where they gave one. Stored on both sources
+   * since Phase 32 and shown on no screen until now — it is the number their
+   * own system uses, so it is how they will look an order up.
+   */
+  buyerReference: string | null;
   date: Date | null;
   stage: PoStage | null;
   stageChangedAt: Date | null;
@@ -38,10 +50,90 @@ export type ClientOrder = {
  * None of that is selected here. An `include` would pull all of it, and a
  * schema change months from now would turn that into a leak nobody edited.
  */
+export const BUYER_ORDER_SORT_KEYS = [
+  "reference",
+  "buyerReference",
+  "date",
+  "status",
+  "lineCount",
+  "total",
+] as const;
+
+export type BuyerOrderSortKey = (typeof BUYER_ORDER_SORT_KEYS)[number];
+
+/**
+ * Where a row sits when sorted by status: the order a buyer cares about, which
+ * is how far along their goods are, not the alphabet. "Not accepted" sorts
+ * last because it is the only outcome with nothing still to come.
+ */
+const STATUS_RANK: Record<string, number> = {
+  submitted: 0,
+  ORDER_PLACED: 1,
+  IN_PRODUCTION: 2,
+  QC_PASSED: 3,
+  IN_WAREHOUSE: 4,
+  DELIVERING: 5,
+  DELIVERED: 6,
+  declined: 7,
+};
+
+const statusRank = (order: ClientOrder) =>
+  order.kind === "confirmed" && order.stage
+    ? (STATUS_RANK[order.stage] ?? 0)
+    : (STATUS_RANK[order.kind] ?? 0);
+
+/**
+ * Whether a row has nothing in the sorted column. Only two columns can be
+ * empty: a buyer's own PO number is optional, and an order has no date until
+ * it is sent.
+ */
+function isBlank(order: ClientOrder, key: BuyerOrderSortKey): boolean {
+  if (key === "buyerReference") return !order.buyerReference;
+  if (key === "date") return order.date === null;
+  return false;
+}
+
+/**
+ * Compares two rows on one column, in ascending order. Text goes through
+ * `localeCompare` with `numeric`, so "PO-10" sorts after "PO-9" the way a
+ * person reads them rather than before it the way a byte comparison would.
+ *
+ * Blanks are not handled here, on purpose: they must sort last in *both*
+ * directions, and anything this function returns is multiplied by the
+ * direction by its caller.
+ */
+function compareOrders(
+  a: ClientOrder,
+  b: ClientOrder,
+  key: BuyerOrderSortKey,
+): number {
+  switch (key) {
+    case "reference":
+      return a.reference.localeCompare(b.reference, undefined, { numeric: true });
+    case "buyerReference":
+      return (a.buyerReference ?? "").localeCompare(b.buyerReference ?? "", undefined, {
+        numeric: true,
+      });
+    case "status":
+      return statusRank(a) - statusRank(b);
+    case "lineCount":
+      return a.lineCount - b.lineCount;
+    case "total":
+      return Number(a.total) - Number(b.total);
+    case "date":
+    default:
+      return (a.date?.getTime() ?? 0) - (b.date?.getTime() ?? 0);
+  }
+}
+
 export async function listBuyerOrders(
   buyerId: string,
   page = 1,
   perPage = 20,
+  sort: { key: BuyerOrderSortKey; dir: "asc" | "desc" } = {
+    key: "date",
+    dir: "desc",
+  },
 ): Promise<{ orders: ClientOrder[]; total: number }> {
   const [confirmed, web] = await Promise.all([
     prisma.purchaseOrder.findMany({
@@ -58,6 +150,7 @@ export async function listBuyerOrders(
         stage: true,
         stageChangedAt: true,
         total: true,
+        buyerReference: true,
         _count: { select: { lineItems: true } },
       },
       orderBy: { poDate: "desc" },
@@ -74,6 +167,7 @@ export async function listBuyerOrders(
         subtotal: true,
         status: true,
         declinedReason: true,
+        buyerReference: true,
         _count: { select: { lines: true } },
       },
       orderBy: { submittedAt: "desc" },
@@ -90,6 +184,7 @@ export async function listBuyerOrders(
       stageChangedAt: po.stageChangedAt,
       total: po.total.toFixed(2),
       lineCount: po._count.lineItems,
+      buyerReference: po.buyerReference,
     })),
     ...web.map((order) => ({
       kind:
@@ -104,6 +199,7 @@ export async function listBuyerOrders(
       total: order.subtotal.toFixed(2),
       lineCount: order._count.lines,
       declinedReason: order.declinedReason,
+      buyerReference: order.buyerReference,
     })),
   ];
 
@@ -112,9 +208,29 @@ export async function listBuyerOrders(
   // millions — so this is cheaper than a UNION and far easier to read. Paged
   // afterwards, because the walkthrough on 2026-09-10 rendered 60-odd rows in
   // one wall.
-  const sorted = rows.sort(
-    (a, b) => (b.date?.getTime() ?? 0) - (a.date?.getTime() ?? 0),
-  );
+  //
+  // Sorting happens here, before the slice, so page 2 of a sort is the second
+  // page of that sort rather than the second page of the default one re-sorted
+  // in the browser.
+  //
+  // Two passes, and the first is not redundant: newest-first is the tie-break
+  // for every other column, and `Array.prototype.sort` is stable, so rows that
+  // compare equal on the chosen column keep the date order underneath.
+  //
+  // A row with nothing in the sorted column sinks to the bottom whichever
+  // direction is asked for — an empty cell is not a small value, and somebody
+  // sorting by "Your PO no." wants the orders that have one, not a screenful of
+  // em dashes at the top.
+  const direction = sort.dir === "asc" ? 1 : -1;
+  const sorted = rows
+    .sort((a, b) => (b.date?.getTime() ?? 0) - (a.date?.getTime() ?? 0))
+    .sort((a, b) => {
+      const aBlank = isBlank(a, sort.key);
+      const bBlank = isBlank(b, sort.key);
+      if (aBlank !== bBlank) return aBlank ? 1 : -1;
+      if (aBlank) return 0;
+      return compareOrders(a, b, sort.key) * direction;
+    });
   const start = Math.max(0, (page - 1) * perPage);
   return { orders: sorted.slice(start, start + perPage), total: sorted.length };
 }
@@ -131,10 +247,69 @@ export type ClientStageEvent = {
   changedByName: null;
 };
 
+/** A party as the purchase order prints it. */
+export type ClientOrderParty = {
+  name: string;
+  address: string | null;
+  /** "Aisha Rahman · orders@acme.test" — either half may be missing. */
+  contact: string | null;
+};
+
 export type ClientOrderDetail = ClientOrder & {
   lines: ClientOrderLine[];
   events: ClientStageEvent[];
+  /** Everything the purchase-order document prints that the list does not. */
+  requestedDate: Date | null;
+  /**
+   * The buyer's **own** note, from the order they placed. Never
+   * `PurchaseOrder.notes`, which an ops user may have typed or edited — see
+   * this module's opening comment.
+   */
+  notes: string | null;
+  paymentTerms: string | null;
+  currency: string;
+  subtotal: string;
+  /** Null where the order has none — a shop order never does. */
+  tax: string | null;
+  buyer: ClientOrderParty;
 };
+
+const joinContact = (name: string | null, email: string | null): string | null => {
+  const parts = [name, email].filter(Boolean);
+  return parts.length ? parts.join(" · ") : null;
+};
+
+/**
+ * The buyer's own company, as the document prints it.
+ *
+ * `remark` is **not** selected and must never be: it is the internal note ops
+ * keeps about this customer, and `prisma/schema.prisma` says so on the column
+ * itself. The same rule is pinned by equality on `loadShopViewer`'s select in
+ * `shop-viewer.test.ts`; this select is pinned by `web-orders.test.ts`.
+ */
+const BUYER_PARTY_SELECT = {
+  name: true,
+  address: true,
+  contactName: true,
+  email: true,
+  paymentTerms: true,
+} as const;
+
+/** "6 per carton · 36 pieces", from whatever the line actually knows. */
+function packCaptionFor(
+  packSize: number | null,
+  unit: string | null,
+  cartons: number,
+): string {
+  if (!unit) return "";
+  const pieces = packSize === null ? null : packSize * cartons;
+  return [
+    unitLabel(packSize, unit),
+    pieces === null ? null : `${pieces} pieces`,
+  ]
+    .filter(Boolean)
+    .join(" · ");
+}
 
 /** One order, scoped to the caller's buyer. A guessed id returns null. */
 export async function loadBuyerOrder(
@@ -149,15 +324,31 @@ export async function loadBuyerOrder(
       poDate: true,
       stage: true,
       stageChangedAt: true,
+      subtotal: true,
+      tax: true,
       total: true,
+      currency: true,
+      paymentTerms: true,
+      buyerReference: true,
+      buyer: { select: BUYER_PARTY_SELECT },
+      // The order the buyer placed on the shop, where this PO came from one.
+      // Its reference, requested date and note are the buyer's own words —
+      // unlike `PurchaseOrder.notes`, which ops may have typed or edited, and
+      // which is deliberately not selected anywhere in this file.
+      webOrder: {
+        select: { buyerReference: true, requestedDate: true, notes: true },
+      },
       lineItems: {
         orderBy: { position: "asc" },
         select: {
+          position: true,
+          sku: true,
           description: true,
           quantity: true,
           unit: true,
           unitPrice: true,
           amount: true,
+          product: { select: { sku: true, packSize: true } },
         },
       },
       stageEvents: {
@@ -174,18 +365,39 @@ export async function loadBuyerOrder(
       kind: "confirmed",
       id: po.id,
       reference: po.poNumber,
+      buyerReference: po.webOrder?.buyerReference ?? po.buyerReference,
       date: po.poDate,
       stage: po.stage,
       stageChangedAt: po.stageChangedAt,
+      subtotal: po.subtotal.toFixed(2),
+      tax: po.tax.toFixed(2),
       total: po.total.toFixed(2),
+      currency: po.currency,
+      paymentTerms: po.paymentTerms ?? po.buyer.paymentTerms,
+      requestedDate: po.webOrder?.requestedDate ?? null,
+      notes: po.webOrder?.notes ?? null,
       lineCount: po.lineItems.length,
+      buyer: {
+        name: po.buyer.name,
+        address: po.buyer.address,
+        contact: joinContact(po.buyer.contactName, po.buyer.email),
+      },
       events: po.stageEvents.map((event) => ({
         toStage: event.toStage,
         changedAt: event.changedAt.toISOString(),
         changedByName: null as null,
       })),
       lines: po.lineItems.map((line) => ({
+        position: line.position,
+        // The code the buyer printed, where the document carried one;
+        // otherwise the catalogue's own, which is what they would quote back.
+        sku: line.sku ?? line.product?.sku ?? "",
         description: line.description,
+        packCaption: packCaptionFor(
+          line.product?.packSize ?? null,
+          line.unit,
+          Number(line.quantity),
+        ),
         quantity: line.quantity.toFixed(0),
         unit: line.unit,
         unitPrice: line.unitPrice.toFixed(2),
@@ -207,13 +419,19 @@ export async function loadBuyerOrder(
       subtotal: true,
       status: true,
       declinedReason: true,
+      buyerReference: true,
+      requestedDate: true,
+      notes: true,
+      currency: true,
+      buyer: { select: BUYER_PARTY_SELECT },
       lines: {
         select: {
           cartons: true,
+          packSize: true,
           unit: true,
           unitPrice: true,
           amount: true,
-          product: { select: { name: true } },
+          product: { select: { sku: true, name: true } },
         },
       },
     },
@@ -224,15 +442,33 @@ export async function loadBuyerOrder(
     kind: web.status === WebOrderStatus.DECLINED ? "declined" : "submitted",
     id: web.id,
     reference: web.reference,
+    buyerReference: web.buyerReference,
     date: web.submittedAt,
     stage: null,
     stageChangedAt: null,
+    subtotal: web.subtotal.toFixed(2),
+    // The cart quotes no tax; the team settles it when they confirm.
+    tax: null,
     total: web.subtotal.toFixed(2),
+    currency: web.currency,
+    paymentTerms: web.buyer.paymentTerms,
+    requestedDate: web.requestedDate,
+    notes: web.notes,
     lineCount: web.lines.length,
     declinedReason: web.declinedReason,
+    buyer: {
+      name: web.buyer.name,
+      address: web.buyer.address,
+      contact: joinContact(web.buyer.contactName, web.buyer.email),
+    },
     events: [],
-    lines: web.lines.map((line) => ({
+    // A cart has no position column (the schema says why), so the document's
+    // numbering comes from the order the rows are read in.
+    lines: web.lines.map((line, index) => ({
+      position: index + 1,
+      sku: line.product.sku,
       description: line.product.name,
+      packCaption: packCaptionFor(line.packSize, line.unit, line.cartons),
       quantity: String(line.cartons),
       unit: line.unit,
       unitPrice: line.unitPrice.toFixed(2),

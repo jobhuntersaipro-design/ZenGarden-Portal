@@ -1,6 +1,121 @@
-# Current Feature: Zen Garden — the rebrand, and Confirm order last
+# Current Feature: The buyer's orders, as a table and as documents
 
 ## Status
+
+**Phase 35 — the buyer's order table, and the purchase order behind each
+order — built and verified on `feature/buyer-order-review`** (2026-09-15).
+Asked for as: "revamp buyer order page, show a table with more infomation" and
+"when buyer clicked in each order, it must show the PO documents for them to
+review".
+
+`/orders` was a stack of link cards carrying a reference, a date, a status and
+a total. It is a sortable six-column table now — **Order, Your PO no., Date,
+Status, Lines, Total** — and "Your PO no." is the buyer's own reference, a
+column stored on both order sources since Phase 32 and shown on no screen
+until now.
+
+Opening an order draws **the purchase order itself**, from the order's own
+stored lines, with **Print or save as PDF** beside it. It is the same artboard
+and the same `PurchaseOrderPreview` the buyer read before confirming, so there
+is one purchase order rather than a checkout version and a history version
+that can drift apart.
+
+No migration, no new dependency.
+
+## Goals
+
+- `listBuyerOrders` sorts the whole merged list before it pages it, and
+  `DataTable` is reused rather than a second table grown for the shop.
+- `buildPoDocumentFromOrder`, pure, beside Phase 33's cart builder and
+  returning the same `PoDocumentData`.
+- Print through one `window.print()` and an `@media print` block — no PDF
+  library. Phase 19's generated file is still unbuilt and still the only way
+  to get a real download.
+
+## Notes
+
+- **The original scan is still not shown**, deliberately. A purchase order the
+  team keyed in from a PDF the buyer emailed has that file in R2, but
+  `/api/documents/[id]/url` is ops-wide and unscoped by buyer — a hazard
+  already recorded in that route — so exposing it to clients needs a
+  buyer-scoped route, which was out of scope here. Every order draws its
+  rebuilt document instead, which is the one thing that works for both kinds.
+- The lines card and the document say the same thing on purpose: A4 is 794px
+  and scrolls inside its own container on a phone, so the card stays the quick
+  read and the document is the record.
+- **The supplier block still prints only a name** — no `OrgSettings` row
+  exists, so address, email and phone are still unset. Unchanged by this phase
+  and still worth doing before a buyer prints one.
+
+### Verified, as a real buyer
+
+- **Both kinds of row, in a browser.** Signed in as a `CLIENT` against a buyer
+  holding **51 confirmed purchase orders**, placed a real shop order through
+  the cart with the PO number `KS-PO-4471`, and read the table: the new order
+  on top carrying that reference, the confirmed ones below reading *QC passed*,
+  *Delivering*, *Delivered*.
+- **Sorting sorts the list, not the page** — proven with a figure only the
+  whole list has: sorting by Total descending put **RM 99,689.38** first
+  against a page of 20 out of **52**, which page-local sorting could not
+  produce. A unit test asserts the same thing on page 2 for the same reason.
+- **Blanks sink in both directions.** Sorting on "Your PO no." — one row with
+  a value against 51 without — put that row first at `dir=asc` *and* at
+  `dir=desc`, read off two separate responses. My first implementation
+  returned 0 for a blank while the comment above it claimed blanks sort last;
+  the test was written to the comment, failed, and the code was corrected to
+  match rather than the comment softened.
+- **The document draws for both kinds**: the web order printed `KS-PO-4471` in
+  the masthead, `W-2609-00015` in the footer, the buyer's note, `45 days` terms
+  and both product codes; the confirmed `PO-2026-0051` printed its four
+  extracted lines and totalled **3,761.97** against the order's own 3,761.97.
+- **Print was measured, not asserted.** Under `emulateMedia({ media: "print" })`
+  the shop header, the category strip, the lines card, the Print button itself
+  and the shop footer all computed `visibility: hidden`, while the document and
+  its own footer computed `visible`; the scroller's `overflow-x` computed
+  `visible` and its padding `0px`, and the sheet's `box-shadow` `none`.
+- **Two defects the browser found that the build could not.** The document's
+  footer still read *"This is a preview. The order is not placed until you
+  confirm it."* on an order that had already been placed — it takes a
+  `footnote` now, and the three order kinds each say what is true of them. And
+  the detail page had no metadata at all, so every order titled its tab
+  "Zen Garden"; `generateMetadata` names the order, scoped through
+  `requireClient` so another buyer's id titles the tab "Order".
+- **A defect found by reasoning about production rather than by the seed.**
+  The document originally refused to draw wherever its lines did not reach the
+  order's total, which would have been correct on the 400 development orders —
+  **all of which carry `tax: 0`** — and wrong on any real purchase order
+  carrying SST, where the buyer would have seen a red error instead of their
+  order. `PoDocumentData` carries `tax` now, prints it as its own row only
+  when there is some, and adds it to the total; a zero is still no tax,
+  because a "Tax 0.00" row reads as a charge to check.
+- **The leak guard was watched failing.** `loadBuyerOrder` now reads a `Buyer`
+  — the row carrying `remark`, the internal note about the customer — so a new
+  test pins that select by equality. Adding `remark: true` made it fail
+  (`+ "remark"` in the diff) and removing it made it pass. `PurchaseOrder.notes`
+  stays unselected; the note the document prints comes from the buyer's own
+  `webOrder`, pinned by its own test.
+- **Sweep:** `/orders`, a confirmed order and a web order at 390/768/1440 —
+  nine combinations, `scrollWidth === innerWidth` on all. At 390 the table
+  drops to `DataTable`'s card mode with a Sort select; every sub-44px element
+  is an already-accepted class (`SkipLink`, the wordmark, the 32/36px search
+  and category chips, footer rows, card-mode title links). Console: 0 errors.
+- **Cleanup, counted both ends.** The throwaway `CLIENT`, its shop order and
+  two lines, one `SIGNED_IN` audit row and one `LoginAttempt` were deleted
+  **by id**; counts returned to the baseline exactly — users **2**, CLIENT
+  **0**, web orders **0**, lines **0**, buyers **11**, purchase orders
+  **400**, line items **1606**, products **308**, audits **5**, login attempts
+  **63**. Three temporary scripts at the project root were removed.
+- **925/925 tests** (13 new), **`tsc --noEmit`**, **`npm run lint`** (the same
+  2 pre-existing warnings, 0 errors) **and `npm run build` all clean.**
+
+**Not verified:** anything on production — this branch has never been
+deployed. Printing was measured through Chrome's print emulation rather than
+by producing a physical PDF, so pagination of a purchase order longer than one
+A4 page is untested — every order to hand fits on one. A declined order's
+wording on the document was not driven in a browser; no declined order exists
+in development.
+
+## Previous phase
 
 **Phase 34 — the Zen Garden rebrand, and Confirm order last — built and
 verified on `feature/zen-garden-rebrand`** (2026-09-15). Asked for as: "in the
@@ -109,9 +224,6 @@ were checked, and `@react-email/render` is still the missing optional
 dependency recorded on 2026-09-13. The extraction path was not driven against
 a real document (that spends an Anthropic call); the prompt change is covered
 by its unit test alone.
-
-## Previous phase
-
 
 **Phase 33 — The purchase order preview, and the steps — built and verified
 on `feature/po-preview-and-steps`** (2026-09-14). Spec

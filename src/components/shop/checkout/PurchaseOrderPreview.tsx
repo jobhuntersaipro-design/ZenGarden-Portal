@@ -21,10 +21,32 @@ import type { PoDocumentData } from "@/lib/purchase-order-document";
  * passes a fresh `PoDocumentData` as the reader types, so it is always
  * current without this component knowing anything about forms.
  */
-export function PurchaseOrderPreview({ document }: { document: PoDocumentData }) {
+export function PurchaseOrderPreview({
+  document,
+  footnote = "This is a preview. The order is not placed until you confirm it.",
+}: {
+  document: PoDocumentData;
+  /**
+   * The line along the bottom of the page. It defaults to the checkout
+   * wording because that is where this component was born, but the default is
+   * a lie anywhere else: an order that has already been sent is not a preview,
+   * and the buyer reading it on `/orders/{id}` is looking at a record. Pass
+   * what is true for the screen.
+   */
+  footnote?: string;
+}) {
   return (
-    <div className="overflow-x-auto rounded-lg border border-hairline bg-surface p-md">
+    // The two data attributes are print hooks, not styling: `globals.css`
+    // needs to reach the scroller (to stop it clipping the page at the paper's
+    // edge) and the sheet itself (to drop the screen-only shadow) without
+    // matching on utility classes, which tailwind-merge or a restyle could
+    // move out from under it.
+    <div
+      data-po-scroller
+      className="overflow-x-auto rounded-lg border border-hairline bg-surface p-md"
+    >
       <article
+        data-po-page
         aria-label="Purchase order preview"
         className="mx-auto flex w-po-page flex-col bg-canvas p-xl text-ink shadow-sm"
       >
@@ -123,6 +145,16 @@ export function PurchaseOrderPreview({ document }: { document: PoDocumentData })
                 {document.subtotal}
               </span>
             </div>
+            {document.tax ? (
+              <div className="flex justify-between py-xxs">
+                <span className="text-[length:var(--text-body-md)] text-ink-secondary">
+                  Tax
+                </span>
+                <span className="text-[length:var(--text-body-md)] font-medium tabular-nums text-ink">
+                  {document.tax}
+                </span>
+              </div>
+            ) : null}
             <div className="mt-xxs flex items-baseline justify-between border-t-2 border-ink pt-sm">
               <span className="font-display text-[length:var(--text-heading-sm)] font-[650] text-ink">
                 {`Total (${document.currency})`}
@@ -154,7 +186,7 @@ export function PurchaseOrderPreview({ document }: { document: PoDocumentData })
 
         <footer className="mt-md flex justify-between border-t border-hairline pt-xs">
           <span className="text-[length:var(--text-caption)] text-ink-tertiary">
-            This is a preview. The order is not placed until you confirm it.
+            {footnote}
           </span>
           {document.ourReference ? (
             <span className="font-mono text-[length:var(--text-caption)] text-ink-tertiary">

@@ -1,13 +1,20 @@
-import Link from "next/link";
-import { TablePagination } from "@/components/portal/TablePagination";
+import type { Metadata } from "next";
+import {
+  BuyerOrdersTable,
+  type BuyerOrderRow,
+} from "@/components/shop/orders/BuyerOrdersTable";
 import { requireClient } from "@/lib/auth-guards";
+import { buyerOrderStatus } from "@/lib/buyer-order-status";
 import { formatDate } from "@/lib/dates";
-import { formatMYR } from "@/lib/money";
-import { stageLabel } from "@/lib/po-stages";
-import { listBuyerOrders } from "@/lib/queries/web-orders";
-import { shopHref } from "@/lib/shop-routes";
+import { parseSort } from "@/lib/queries/pagination";
+import {
+  BUYER_ORDER_SORT_KEYS,
+  listBuyerOrders,
+  type BuyerOrderSortKey,
+} from "@/lib/queries/web-orders";
 
 export const dynamic = "force-dynamic";
+export const metadata: Metadata = { title: "My orders · Zen Garden" };
 
 const PER_PAGE = 20;
 
@@ -20,64 +27,55 @@ export default async function OrdersPage({
   const query = await searchParams;
   const raw = query.page;
   const page = Math.max(1, Number(Array.isArray(raw) ? raw[0] : raw) || 1);
+  const sort = parseSort<BuyerOrderSortKey>(query, BUYER_ORDER_SORT_KEYS, {
+    key: "date",
+    dir: "desc",
+  });
 
-  const { orders, total } = await listBuyerOrders(buyerId, page, PER_PAGE);
+  const { orders, total } = await listBuyerOrders(
+    buyerId,
+    page,
+    PER_PAGE,
+    sort,
+  );
+
+  // Crossed to strings here, in the server component: a client component may
+  // be handed neither a Date nor a Decimal.
+  const rows: BuyerOrderRow[] = orders.map((order) => ({
+    id: order.id,
+    reference: order.reference,
+    buyerReference: order.buyerReference,
+    date: order.date ? formatDate(order.date) : null,
+    status: buyerOrderStatus(order),
+    declined: order.kind === "declined",
+    lineCount: order.lineCount,
+    total: order.total,
+  }));
 
   return (
     <div className="pt-lg">
-      <h1 className="mb-md font-display text-[length:var(--text-heading-md)] text-ink">
+      <h1 className="font-display text-[length:var(--text-heading-md)] text-ink">
         My orders
       </h1>
+      <p className="mt-xxs mb-md text-[length:var(--text-body-sm)] text-ink-tertiary">
+        Orders you send and orders the team keys in for you, together. Open one
+        to read its purchase order.
+      </p>
 
-      {orders.length === 0 ? (
+      {total === 0 ? (
         <p className="rounded-lg border border-hairline bg-canvas p-lg text-[length:var(--text-body-md)] text-ink-secondary">
           Nothing yet. Orders you send, and orders the team keys in for you,
           both appear here.
         </p>
       ) : (
-        <ul className="flex flex-col gap-sm">
-          {orders.map((order) => (
-            <li key={`${order.kind}-${order.id}`}>
-              <Link
-                href={shopHref.order(order.id)}
-                className="flex flex-wrap items-center justify-between gap-sm rounded-lg border border-hairline bg-canvas p-md hover:bg-surface focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-focus"
-              >
-                <div className="min-w-0">
-                  <p className="text-[length:var(--text-body-sm)] font-semibold text-ink">
-                    {order.reference}
-                  </p>
-                  <p className="text-[length:var(--text-caption)] text-ink-tertiary">
-                    {[
-                      order.date ? formatDate(order.date) : null,
-                      `${order.lineCount} line${order.lineCount === 1 ? "" : "s"}`,
-                    ]
-                      .filter(Boolean)
-                      .join(" · ")}
-                  </p>
-                </div>
-                <div className="flex items-center gap-sm">
-                  <span className="text-[length:var(--text-caption)] text-ink-secondary">
-                    {order.kind === "confirmed" && order.stage
-                      ? stageLabel(order.stage)
-                      : order.kind === "declined"
-                        ? "Not accepted"
-                        : "With the team"}
-                  </span>
-                  <span className="text-[length:var(--text-body-sm)] font-semibold tabular-nums text-ink">
-                    {formatMYR(Number(order.total))}
-                  </span>
-                </div>
-              </Link>
-            </li>
-          ))}
-        </ul>
+        <BuyerOrdersTable
+          rows={rows}
+          sort={sort}
+          page={page}
+          size={PER_PAGE}
+          total={total}
+        />
       )}
-
-      {total > PER_PAGE ? (
-        <div className="mt-lg">
-          <TablePagination page={page} size={PER_PAGE} total={total} />
-        </div>
-      ) : null}
     </div>
   );
 }
