@@ -261,9 +261,11 @@ export async function createProductVariants(
  * and a failed one must not roll back the images that did land: a variant with
  * one of two photographs is a product somebody can fix from
  * `ProductImageManager`, while a rollback would leave it with none and no
- * record of what was attempted. What each failure *does* undo is its own row,
- * because a `ProductImage` whose `r2Key` is still the placeholder renders a
- * tile nobody can load and nobody can remove.
+ * record of what was attempted. What each failure *does* undo is its own row
+ * and any object it already wrote to R2 — a failed image leaves neither a row
+ * nor an orphaned object behind, because a `ProductImage` whose `r2Key` is
+ * still the placeholder renders a tile nobody can load and nobody can remove,
+ * and an object nothing points at is a silent, permanent leak in the bucket.
  */
 export async function copyImagesToVariants(
   sourceProductId: string,
@@ -275,67 +277,82 @@ export async function copyImagesToVariants(
     return { success: true, data: { copied: 0, failed: 0 } };
   }
 
-  // `thumbKey: { not: null }` is what "processed" means: a row whose upload
-  // never completed has no derivative, and copying its original alone would
-  // give the sibling a tile every screen reads through the derivative.
-  const images = await prisma.productImage.findMany({
-    where: { productId: sourceProductId, thumbKey: { not: null } },
-    orderBy: { position: "asc" },
-    select: { r2Key: true, thumbKey: true, sizeBytes: true, position: true },
-  });
-  if (images.length === 0) {
-    return {
-      success: false,
-      error: "That product has no processed images to copy.",
-    };
-  }
+  try {
+    // `thumbKey: { not: null }` is what "processed" means: a row whose upload
+    // never completed has no derivative, and copying its original alone would
+    // give the sibling a tile every screen reads through the derivative.
+    const images = await prisma.productImage.findMany({
+      where: { productId: sourceProductId, thumbKey: { not: null } },
+      orderBy: { position: "asc" },
+      select: { r2Key: true, thumbKey: true, sizeBytes: true, position: true },
+    });
+    if (images.length === 0) {
+      return {
+        success: false,
+        error: "That product has no processed images to copy.",
+      };
+    }
 
-  let copied = 0;
-  let failed = 0;
+    let copied = 0;
+    let failed = 0;
 
-  for (const targetId of targetProductIds) {
-    // Offset past anything the target already carries: `ProductImage` has
-    // `@@unique([productId, position])`, so reusing the source's positions
-    // would throw on a variant that staged its own pictures.
-    const taken = await prisma.productImage.count({ where: { productId: targetId } });
+    for (const targetId of targetProductIds) {
+      // Offset past anything the target already carries: `ProductImage` has
+      // `@@unique([productId, position])`, so reusing the source's positions
+      // would throw on a variant that staged its own pictures.
+      const taken = await prisma.productImage.count({ where: { productId: targetId } });
 
-    for (const [index, image] of images.entries()) {
-      let rowId: string | null = null;
-      try {
-        const row = await prisma.productImage.create({
-          data: {
-            productId: targetId,
-            r2Key: `${PENDING_KEY_PREFIX}${randomUUID()}`,
-            position: taken + index,
-            sizeBytes: image.sizeBytes,
-          },
-          select: { id: true },
-        });
-        rowId = row.id;
+      for (const [index, image] of images.entries()) {
+        let rowId: string | null = null;
+        // Keys that have actually landed in R2 for this image, so a failure
+        // partway through (the original copied but the derivative didn't, or
+        // the update itself throws) can undo the object as well as the row —
+        // otherwise the first copy is an orphan nothing ever cleans up.
+        const written: string[] = [];
+        try {
+          const row = await prisma.productImage.create({
+            data: {
+              productId: targetId,
+              r2Key: `${PENDING_KEY_PREFIX}${randomUUID()}`,
+              position: taken + index,
+              sizeBytes: image.sizeBytes,
+            },
+            select: { id: true },
+          });
+          rowId = row.id;
 
-        const r2Key = productImageKey(targetId, row.id, extensionOfKey(image.r2Key));
-        const thumbKey = productThumbKey(targetId, row.id);
-        await copyObject(image.r2Key, r2Key);
-        await copyObject(image.thumbKey!, thumbKey);
-        await prisma.productImage.update({
-          where: { id: row.id },
-          data: { r2Key, thumbKey },
-        });
-        copied += 1;
-      } catch (cause) {
-        console.error("[products] copyImagesToVariants", cause);
-        failed += 1;
-        if (rowId) {
-          await prisma.productImage
-            .delete({ where: { id: rowId } })
-            .catch(() => undefined);
+          const r2Key = productImageKey(targetId, row.id, extensionOfKey(image.r2Key));
+          const thumbKey = productThumbKey(targetId, row.id);
+          await copyObject(image.r2Key, r2Key);
+          written.push(r2Key);
+          await copyObject(image.thumbKey!, thumbKey);
+          written.push(thumbKey);
+          await prisma.productImage.update({
+            where: { id: row.id },
+            data: { r2Key, thumbKey },
+          });
+          copied += 1;
+        } catch (cause) {
+          console.error("[products] copyImagesToVariants", cause);
+          failed += 1;
+          for (const key of written) {
+            await deleteObject(key).catch(() => undefined);
+          }
+          if (rowId) {
+            await prisma.productImage
+              .delete({ where: { id: rowId } })
+              .catch(() => undefined);
+          }
         }
       }
     }
-  }
 
-  revalidate();
-  return { success: true, data: { copied, failed } };
+    revalidate();
+    return { success: true, data: { copied, failed } };
+  } catch (cause) {
+    console.error("[products] copyImagesToVariants", cause);
+    return { success: false, error: "We couldn't copy those images." };
+  }
 }
 
 export async function updateProduct(

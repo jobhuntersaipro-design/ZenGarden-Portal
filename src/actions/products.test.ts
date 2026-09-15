@@ -813,6 +813,20 @@ describe("copyImagesToVariants", () => {
     expect(imageDelete).toHaveBeenCalledWith({ where: { id: "new-1" } });
   });
 
+  it("deletes the orphaned original when only the derivative's copy fails", async () => {
+    // The first copyObject (the original) succeeds and writes a real R2
+    // object; the second (the derivative) fails. Without cleanup, that first
+    // object is left in the bucket with no row pointing at it.
+    copyObject.mockResolvedValueOnce({}).mockRejectedValueOnce(new Error("R2 said no"));
+    imageDelete.mockResolvedValue({});
+
+    const result = await copyImagesToVariants("prd-1", ["prd-2"]);
+
+    expect(result).toEqual({ success: true, data: { copied: 1, failed: 1 } });
+    expect(deleteObject).toHaveBeenCalledWith("products/prd-2/new-1.jpg");
+    expect(imageDelete).toHaveBeenCalledWith({ where: { id: "new-1" } });
+  });
+
   it("only copies images that have been processed", async () => {
     await copyImagesToVariants("prd-1", ["prd-2"]);
     expect(imageFindMany).toHaveBeenCalledWith(
@@ -836,6 +850,20 @@ describe("copyImagesToVariants", () => {
     const result = await copyImagesToVariants("prd-1", []);
     expect(result).toEqual({ success: true, data: { copied: 0, failed: 0 } });
     expect(imageFindMany).not.toHaveBeenCalled();
+  });
+
+  it("returns a result rather than throwing when a database read fails", async () => {
+    // findMany and count sit outside the per-image try/catch — a transient
+    // failure there must still resolve to the module's standard shape rather
+    // than reject the Server Action.
+    imageFindMany.mockRejectedValue(new Error("connection reset"));
+
+    const result = await copyImagesToVariants("prd-1", ["prd-2"]);
+
+    expect(result).toEqual({
+      success: false,
+      error: "We couldn't copy those images.",
+    });
   });
 
   it("refuses anyone who is not a super admin", async () => {
