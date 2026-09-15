@@ -9,6 +9,10 @@ import { registerLabels } from "@/lib/catalog-label-registry";
 import { productBlockedMessage } from "@/lib/product-delete-message";
 import { NEEDS_AN_IMAGE } from "@/lib/validation/product-images";
 import { productSchema, type ProductInput } from "@/lib/validation/products";
+import {
+  productVariantsSchema,
+  type ProductVariantsInput,
+} from "@/lib/validation/product-variants";
 
 export type ActionResult<T = undefined> =
   | { success: true; data: T }
@@ -131,6 +135,94 @@ export async function createProduct(
     }
     console.error("[products] createProduct", cause);
     return { success: false, error: "We couldn't save that product." };
+  }
+}
+
+/**
+ * A product and every flavour of it, in one submit and one transaction
+ * (Phase 39).
+ *
+ * Not a loop over `createProduct`: eight separate calls means eight
+ * transactions, so a duplicate SKU on the seventh leaves six products and a
+ * family behind — a half-entered catalogue nobody asked for and nobody can see
+ * is half-entered. Here the family is created once and every row, its first
+ * price and its labels commit together or not at all.
+ *
+ * The ids come back in submitted row order, because the caller has staged
+ * images per row and nothing else could tell it which product owns which.
+ */
+export async function createProductVariants(
+  input: ProductVariantsInput,
+): Promise<
+  ActionResult<{ familyId: string | null; variants: { id: string; sku: string }[] }>
+> {
+  const { user, error } = await guard();
+  if (!user) return { success: false, error: error! };
+
+  const parsed = productVariantsSchema.safeParse(input);
+  if (!parsed.success) {
+    return {
+      success: false,
+      error: parsed.error.issues[0]?.message ?? "Those variants could not be saved.",
+    };
+  }
+  const data = parsed.data;
+
+  try {
+    const result = await prisma.$transaction(async (tx) => {
+      const familyId = data.newFamily
+        ? (await tx.productFamily.create({ data: data.newFamily, select: { id: true } })).id
+        : data.familyId;
+
+      const variants: { id: string; sku: string }[] = [];
+      for (const row of data.variants) {
+        const created = await tx.product.create({
+          data: {
+            name: data.name,
+            sku: row.sku,
+            familyId,
+            category: data.category,
+            unit: data.unit,
+            brand: data.brand,
+            variant: row.variant,
+            packSize: data.packSize,
+            cartonsPerPallet: data.cartonsPerPallet,
+            market: data.market,
+            listPrice: new Prisma.Decimal(row.listPrice),
+            description: data.description,
+            active: data.active,
+          },
+          select: { id: true, sku: true },
+        });
+        // The first price is history too, exactly as in `createProduct`:
+        // without it a variant's trend has no origin.
+        await tx.productPrice.create({
+          data: {
+            productId: created.id,
+            price: new Prisma.Decimal(row.listPrice),
+            setById: user.id,
+          },
+        });
+        await registerLabels(tx, {
+          brand: data.brand,
+          variant: row.variant,
+          market: data.market,
+          category: data.category,
+        });
+        variants.push(created);
+      }
+
+      return { familyId: familyId ?? null, variants };
+    });
+
+    revalidate();
+    return { success: true, data: result };
+  } catch (cause) {
+    if (duplicate(cause)) {
+      return { success: false, error: duplicateMessage(cause) };
+    }
+    console.error("[products] createProductVariants", cause);
+    return { success: false, error: "We couldn't save those variants." };
   }
 }
 

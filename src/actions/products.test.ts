@@ -40,9 +40,15 @@ vi.mock("next/cache", () => ({ revalidatePath: vi.fn() }));
 const deleteObject = vi.fn();
 vi.mock("@/lib/r2", () => ({ deleteObject: (key: string) => deleteObject(key) }));
 
-const { createProduct, deleteProduct, setProductPublished, updateProduct } =
-  await import("@/actions/products");
+const {
+  createProduct,
+  createProductVariants,
+  deleteProduct,
+  setProductPublished,
+  updateProduct,
+} = await import("@/actions/products");
 const { NEEDS_AN_IMAGE } = await import("@/lib/validation/product-images");
+const { Prisma } = await import("@/generated/prisma/client");
 
 const admin = {
   id: "user-1",
@@ -449,5 +455,227 @@ describe("deleteProduct", () => {
     const result = await deleteProduct("prod-1", product.name);
 
     expect(result.success).toBe(true);
+  });
+});
+
+describe("createProductVariants", () => {
+  /** The shared half, matching the form's own shape. */
+  const shared = {
+    name: "Zen Garden Shower Cream 2.1L",
+    category: "Shower cream & gel",
+    unit: "carton",
+    brand: "ZEN GARDEN",
+    packSize: 6,
+    cartonsPerPallet: 60,
+    market: "Vietnam",
+    description: null,
+    active: true,
+    familyId: null,
+    newFamily: null,
+  };
+
+  const threeRows = [
+    { variant: "Goat's Milk", sku: "ZEN-SC-2100-GM-VN", listPrice: "189.00" },
+    { variant: "Papaya", sku: "ZEN-SC-2100-PP-VN", listPrice: "189.00" },
+    { variant: "Lavender", sku: "ZEN-SC-2100-LV-VN", listPrice: "195.50" },
+  ];
+
+  beforeEach(() => {
+    requireSuperAdmin.mockResolvedValue(admin);
+    labelFindFirst.mockResolvedValue({ id: "label-1" });
+    let seq = 0;
+    productCreate.mockImplementation(({ data }: { data: { sku: string } }) => {
+      seq += 1;
+      return Promise.resolve({ id: `prd-${seq}`, sku: data.sku });
+    });
+    priceCreate.mockResolvedValue({ id: "price-1" });
+    familyCreate.mockResolvedValue({ id: "fam-new" });
+  });
+
+  it("writes one product and one price per variant, in row order", async () => {
+    const result = await createProductVariants({
+      ...shared,
+      familyId: "fam-1",
+      variants: threeRows,
+    });
+
+    expect(result).toEqual({
+      success: true,
+      data: {
+        familyId: "fam-1",
+        variants: [
+          { id: "prd-1", sku: "ZEN-SC-2100-GM-VN" },
+          { id: "prd-2", sku: "ZEN-SC-2100-PP-VN" },
+          { id: "prd-3", sku: "ZEN-SC-2100-LV-VN" },
+        ],
+      },
+    });
+    expect(productCreate).toHaveBeenCalledTimes(3);
+    expect(priceCreate).toHaveBeenCalledTimes(3);
+  });
+
+  it("gives every variant the shared fields and its own flavour, code and price", async () => {
+    await createProductVariants({ ...shared, familyId: "fam-1", variants: threeRows });
+
+    const rows = productCreate.mock.calls.map(([args]) => args.data);
+    expect(rows.map((row) => row.name)).toEqual([
+      "Zen Garden Shower Cream 2.1L",
+      "Zen Garden Shower Cream 2.1L",
+      "Zen Garden Shower Cream 2.1L",
+    ]);
+    expect(rows.map((row) => row.familyId)).toEqual(["fam-1", "fam-1", "fam-1"]);
+    expect(rows.map((row) => row.packSize)).toEqual([6, 6, 6]);
+    expect(rows.map((row) => row.variant)).toEqual([
+      "Goat's Milk",
+      "Papaya",
+      "Lavender",
+    ]);
+    expect(rows.map((row) => String(row.listPrice))).toEqual([
+      "189",
+      "189",
+      "195.5",
+    ]);
+  });
+
+  it("creates a described family once and points every variant at it", async () => {
+    const result = await createProductVariants({
+      ...shared,
+      newFamily: {
+        code: "ZEN-SC-2100",
+        name: "Zen Garden Shower Cream 2.1L",
+        brand: "ZEN GARDEN",
+        category: "Shower cream & gel",
+        size: "2.1L",
+      },
+      variants: threeRows,
+    });
+
+    expect(familyCreate).toHaveBeenCalledTimes(1);
+    expect(result).toMatchObject({ success: true, data: { familyId: "fam-new" } });
+    const rows = productCreate.mock.calls.map(([args]) => args.data);
+    expect(rows.every((row) => row.familyId === "fam-new")).toBe(true);
+  });
+
+  it("registers each variant's own label", async () => {
+    await createProductVariants({ ...shared, familyId: "fam-1", variants: threeRows });
+    // Phase 28's registry is called per variant, with that variant's flavour.
+    expect(labelFindFirst).toHaveBeenCalled();
+    expect(labelFindFirst.mock.calls.length).toBeGreaterThanOrEqual(3);
+  });
+
+  it("writes nothing when a SKU is repeated in the batch", async () => {
+    const result = await createProductVariants({
+      ...shared,
+      familyId: "fam-1",
+      variants: [threeRows[0]!, { ...threeRows[1]!, sku: threeRows[0]!.sku }],
+    });
+
+    expect(result).toEqual({
+      success: false,
+      error:
+        "Two variants carry the SKU ZEN-SC-2100-GM-VN. Every variant needs its own.",
+    });
+    expect(productCreate).not.toHaveBeenCalled();
+  });
+
+  it("writes nothing when a second variant has no family", async () => {
+    const result = await createProductVariants({ ...shared, variants: threeRows });
+
+    expect(result).toEqual({
+      success: false,
+      error:
+        "Two or more variants need a family, so the shop shows them as one product.",
+    });
+    expect(productCreate).not.toHaveBeenCalled();
+  });
+
+  it("reports a duplicate SKU the database refuses", async () => {
+    productCreate.mockRejectedValueOnce(
+      new Prisma.PrismaClientKnownRequestError("dup", {
+        code: "P2002",
+        clientVersion: "7",
+        meta: { target: ["sku"] },
+      }),
+    );
+
+    const result = await createProductVariants({
+      ...shared,
+      familyId: "fam-1",
+      variants: threeRows,
+    });
+    expect(result).toEqual({ success: false, error: "That SKU is already in use." });
+  });
+
+  it("leaves no product behind when the family's code is taken", async () => {
+    // The family is created first inside the transaction, so a collision on
+    // its code is reached before any product row is attempted. Spec
+    // criterion 6.
+    familyCreate.mockRejectedValue(
+      new Prisma.PrismaClientKnownRequestError("dup", {
+        code: "P2002",
+        clientVersion: "7",
+        meta: {
+          driverAdapterError: { cause: { constraint: { fields: ["code"] } } },
+        },
+      }),
+    );
+
+    const result = await createProductVariants({
+      ...shared,
+      newFamily: {
+        code: "ZEN-SC-2100",
+        name: "Zen Garden Shower Cream 2.1L",
+        brand: "ZEN GARDEN",
+        category: "Shower cream & gel",
+        size: "2.1L",
+      },
+      variants: threeRows,
+    });
+
+    expect(result).toEqual({
+      success: false,
+      error: "That family code is already in use.",
+    });
+    expect(productCreate).not.toHaveBeenCalled();
+  });
+
+  it("fails the whole submit when the third variant collides", async () => {
+    // What this pins is that the action reports a failure rather than a
+    // partial success. The *rollback* is Postgres's, and a mocked
+    // `$transaction` cannot prove it — Task 7 reads the product count back
+    // from the real database for that.
+    productCreate
+      .mockImplementationOnce(() => Promise.resolve({ id: "prd-1", sku: "a" }))
+      .mockImplementationOnce(() => Promise.resolve({ id: "prd-2", sku: "b" }))
+      .mockRejectedValueOnce(
+        new Prisma.PrismaClientKnownRequestError("dup", {
+          code: "P2002",
+          clientVersion: "7",
+          meta: { target: ["sku"] },
+        }),
+      );
+
+    const result = await createProductVariants({
+      ...shared,
+      familyId: "fam-1",
+      variants: threeRows,
+    });
+    expect(result).toEqual({ success: false, error: "That SKU is already in use." });
+  });
+
+  it("refuses anyone who is not a super admin", async () => {
+    requireSuperAdmin.mockRejectedValue(
+      new UnauthorizedError("This action needs super admin access."),
+    );
+    const result = await createProductVariants({
+      ...shared,
+      familyId: "fam-1",
+      variants: threeRows,
+    });
+    expect(result).toEqual({
+      success: false,
+      error: "This action needs super admin access.",
+    });
+    expect(productCreate).not.toHaveBeenCalled();
   });
 });
