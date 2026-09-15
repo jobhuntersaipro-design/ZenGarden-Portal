@@ -220,9 +220,15 @@ order."
     duplicating it.
 13. A MEMBER and a CLIENT both fail to reach `createProductVariants`; the
     error is the guard's own. A CLIENT is structurally unreachable through a
-    browser on the portal host — the proxy already turns them back before
-    `/products/new` renders — so that half of this criterion is covered by
-    unit test alone, not driven end to end.
+    browser on the portal host — `src/proxy.ts` reads the JWT only and
+    deliberately does not redirect a client away by itself (its own comment
+    explains why: a cross-host redirect issued from the proxy comes back with
+    its origin stripped, where one issued from a layout survives intact); the
+    redirect that actually turns a CLIENT back, against a real session rather
+    than a token up to five minutes stale, is `(portal)/layout.tsx`'s own
+    `user.role === Role.CLIENT` check, which every route under it — including
+    `/products/new` — renders behind. So that half of this criterion is
+    covered by unit test alone, not driven end to end.
 14. Create is disabled with no image anywhere, enabled by one shared image,
     and enabled by per-variant images alone with the shared dropzone empty.
 15. No horizontal overflow at 390 / 768 / 1440 on `/products/new` with three
