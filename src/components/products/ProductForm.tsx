@@ -582,6 +582,19 @@ export function ProductForm({
             aspect ratio of its own for the same reason: its height is however
             many tiles are staged. */}
         <div className="min-w-0">
+          {/* `uploadRows` is one shared `useImageUploadQueue` state, and
+              `StagedImages` maps it onto `staged` by index — sound only when
+              `rows` reflects the same files `staged` names. `submit` (below)
+              can call `add()` more than once now: a row with its own pictures
+              uploads first, then the shared set. Each call *replaces*
+              `rows`, so mid-submit this panel can briefly show a per-row
+              file's status — even its failure reason — against the shared
+              thumbnails. Not fixed, because it is self-correcting: whenever
+              `staged.length > 0` the shared upload is always the *last*
+              `add()` to run, so by the time anything reads this state at
+              rest it is already correct. Do not take the positional mapping
+              for a sound invariant mid-flight; it only holds once uploading
+              settles. */}
           <StagedImages
             staged={staged}
             rows={uploadRows}

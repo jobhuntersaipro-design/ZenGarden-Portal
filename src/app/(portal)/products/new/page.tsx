@@ -25,8 +25,8 @@ export const maxDuration = 120;
 export default async function NewProductPage() {
   const user = await getSessionUser();
   // The catalog only offers this link to a super admin, but the link is a URL
-  // and anyone can type it. `createProduct` refuses either way; this is so a
-  // member sees the catalog rather than a form that can never save.
+  // and anyone can type it. `createProductVariants` refuses either way; this
+  // is so a member sees the catalog rather than a form that can never save.
   if (user?.role !== Role.SUPER_ADMIN) redirect("/products");
 
   const [labels, families] = await Promise.all([listAllLabels(), listFamilies()]);

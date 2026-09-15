@@ -69,11 +69,6 @@ const Toaster = ({ ...props }: ToasterProps) => {
           "--info-text": "var(--color-ink)",
         } as React.CSSProperties
       }
-      toastOptions={{
-        classNames: {
-          toast: "cn-toast",
-        },
-      }}
       {...props}
     />
   )
