@@ -1,3 +1,4 @@
+import { WebOrderStatus } from "@/generated/prisma/enums";
 import { dateColumnRange } from "@/lib/dates";
 import { prisma } from "@/lib/prisma";
 import {
@@ -80,7 +81,23 @@ export type ProductDetail = {
   buyers: ShareSlice[];
   together: CoProduct[];
   history: OrderHistoryRow[];
+  /**
+   * Shop orders containing this product that nobody has confirmed yet
+   * (Phase 38). The order history above reads confirmed purchase-order lines,
+   * so demand sitting in the review queue was invisible here: a product in
+   * five unconfirmed orders looked like a product nobody wanted.
+   */
+  openShopOrders: OpenShopOrderRow[];
   window: { from: Date; to: Date };
+};
+
+export type OpenShopOrderRow = {
+  id: string;
+  reference: string;
+  buyerName: string;
+  cartons: number;
+  submittedAt: string | null;
+  requestedDate: string | null;
 };
 
 /**
@@ -139,7 +156,7 @@ export async function loadProduct(
   });
   if (!product) return null;
 
-  const [lines, allLines, totalOrders, everyoneRevenue, names, familyLines] = await Promise.all([
+  const [lines, allLines, totalOrders, everyoneRevenue, names, familyLines, openShopLines] = await Promise.all([
     prisma.lineItem.findMany({
       where: {
         productId,
@@ -211,6 +228,24 @@ export async function loadProduct(
           select: { quantity: true, amount: true, purchaseOrderId: true },
         })
       : Promise.resolve([]),
+    // SUBMITTED only: a DRAFT is a client's live cart, and putting one on an
+    // ops screen would show the team a basket nobody has sent.
+    prisma.webOrderLine.findMany({
+      where: { productId, webOrder: { status: WebOrderStatus.SUBMITTED } },
+      select: {
+        cartons: true,
+        webOrder: {
+          select: {
+            id: true,
+            reference: true,
+            submittedAt: true,
+            requestedDate: true,
+            buyer: { select: { name: true } },
+          },
+        },
+      },
+      orderBy: { webOrder: { submittedAt: "desc" } },
+    }),
   ]);
 
   const rows: ProductSaleRow[] = lines.map((line) => ({
@@ -310,6 +345,14 @@ export async function loadProduct(
       allRows,
       new Map(names.map((entry) => [entry.id, entry.name])),
     ),
+    openShopOrders: openShopLines.map((line) => ({
+      id: line.webOrder.id,
+      reference: line.webOrder.reference,
+      buyerName: line.webOrder.buyer.name,
+      cartons: line.cartons,
+      submittedAt: line.webOrder.submittedAt?.toISOString() ?? null,
+      requestedDate: line.webOrder.requestedDate?.toISOString() ?? null,
+    })),
     history: lines.map((line) => ({
       lineItemId: line.id,
       purchaseOrderId: line.purchaseOrder.id,

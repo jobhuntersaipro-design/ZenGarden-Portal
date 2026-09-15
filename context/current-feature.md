@@ -1,8 +1,46 @@
-# Current Feature: The purchase-order file
+# Current Feature: Order confirmation and the expected delivery date
 
 ## Status
 
-**Phase 37 — the purchase-order file — built and verified on
+**Phase 38 — order confirmation and the expected delivery date — built and
+verified on `feature/order-confirmation`, not yet committed** (2026-09-15).
+Spec `docs/specs/38-order-confirmation.md`. The last of the three phases
+planned together on 2026-09-15. Asked for as: "admin or superadmin should see
+the order placed under Purchase Order tab, pending approval and review the
+delivery date. Once the delivery date is confirmed, it should be reflected to
+shop and send email to buyer saying the order is confirmed and showing
+expected delivery date. Product page should note there's an associated
+Purchase Order."
+
+Confirming a shop order now requires an expected delivery date, prefilled from
+the day the buyer asked for — which the ops review screen could not previously
+show at all. The buyer is emailed when an order is confirmed, when it is
+declined, and when the date later moves; the date appears on their list, their
+order, and the purchase-order document. The ops product page lists the open
+shop orders containing a product.
+
+No migration: `PurchaseOrder.deliveryDate` has existed since Phase 01 with no
+reader or writer in application code.
+
+## Notes
+
+- **The delivery-date column was dead in code but not in data.** All 400
+  seeded purchase orders carry one, written by `prisma/seed.ts`, and Phase 11
+  kept the column on purpose when it removed delivery date from every screen.
+  That older data means *the date printed on the customer's PO*; this phase's
+  means *the date the team commits to*. Harmless in development, and invisible
+  on production, where no real order has ever had the column written — but
+  check it on the first deploy rather than assume.
+- **The decline path was driven end to end for the first time.** Every earlier
+  phase recorded it as unverified because no declined order existed in
+  development. The toast has said "and the buyer told" since Phase 16; that is
+  now true.
+- **Emails go through `after()` and never block the action.** A failed send
+  costs a nudge, not a confirmation.
+
+## Previous phase
+
+**Phase 37 — the purchase-order file — built, verified and committed on
 `feature/purchase-order-pdf`** (2026-09-15). Spec
 `docs/specs/37-purchase-order-pdf.md`. Asked for as: "send an email including
 the purchase order file to customer and notify admin or superadmin via email
@@ -24,7 +62,7 @@ every generated file an hour after it is written.
 **Still to come in this set:** Phase 38, order confirmation and the expected
 delivery date (`docs/specs/38-order-confirmation.md`).
 
-## Notes
+### Phase 37 notes
 
 - **`@react-pdf/renderer` has never run on Vercel's linux runtime.** It loads
   a WebAssembly layout engine, which is the same shape of risk as the sharp

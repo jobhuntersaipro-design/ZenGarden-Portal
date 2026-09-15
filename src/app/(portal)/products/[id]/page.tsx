@@ -7,6 +7,7 @@ import { PageHeader } from "@/components/portal/PageHeader";
 import { KpiTile } from "@/components/dashboard/KpiTile";
 import { CountUp } from "@/components/portal/CountUp";
 import { FamilyCard } from "@/components/products/FamilyCard";
+import { OpenShopOrders } from "@/components/products/OpenShopOrders";
 import { OrderHistoryTable } from "@/components/products/OrderHistoryTable";
 import {
   PriceTrendChart,
@@ -400,6 +401,9 @@ export default async function ProductPage({
           )}
         </section>
       </div>
+
+      {/* Before the history, because it is the part that needs doing. */}
+      <OpenShopOrders rows={data.openShopOrders} />
 
       <section className="mt-lg">
         <p className="mb-sm font-mono text-[length:var(--text-eyebrow)] text-ink-tertiary">
