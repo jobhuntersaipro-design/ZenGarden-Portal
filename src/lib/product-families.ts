@@ -21,6 +21,7 @@
 
 import { groupName } from "@/lib/product-groups";
 import { generateFamilyCode, sizeInName } from "@/lib/sku";
+import type { FamilyOption } from "@/lib/queries/product-families";
 import type { ProductFamilyInput } from "@/lib/validation/product-families";
 
 /** What the create form and the edit drawer collect for a family made inline. */
@@ -49,6 +50,28 @@ export function familyFromDraft(
     category: product.category,
     size,
   };
+}
+
+/**
+ * The family a drafted code would collide with, if any — knowable the moment
+ * a code is typed, since a code is built from brand + category + size alone
+ * (Phase 36) and a different family *name* cannot disambiguate it. Surfacing
+ * this before submit, rather than only from the server's own rejection, is
+ * what Phase 39 added: the reader could otherwise type a fresh name over an
+ * existing family's exact code and only learn why at the end.
+ *
+ * Case-insensitive because the database's own uniqueness is not: `code` is
+ * always generated upper-case, but comparing loosely here means a family
+ * created any other way still gets caught before the server's own P2002
+ * rejection, rather than only sometimes.
+ */
+export function findFamilyCodeCollision(
+  code: string,
+  families: FamilyOption[],
+): FamilyOption | null {
+  const target = code.trim().toLowerCase();
+  if (!target) return null;
+  return families.find((family) => family.code.toLowerCase() === target) ?? null;
 }
 
 export type FamilyCandidate = {

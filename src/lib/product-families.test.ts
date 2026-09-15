@@ -4,11 +4,13 @@ import {
   collisions,
   familyFromDraft,
   familyReport,
+  findFamilyCodeCollision,
   groupFamilies,
   proposeFamilies,
   selectFamilies,
   type FamilyCandidate,
 } from "@/lib/product-families";
+import type { FamilyOption } from "@/lib/queries/product-families";
 
 let seq = 0;
 const product = (over: Partial<FamilyCandidate>): FamilyCandidate => ({
@@ -113,6 +115,38 @@ describe("familyFromDraft", () => {
     );
     expect(family.code).toBe("ZEN-HC");
     expect(family.size).toBeNull();
+  });
+});
+
+describe("findFamilyCodeCollision", () => {
+  const existing: FamilyOption = {
+    id: "fam1",
+    code: "ZEN-SC-2100",
+    name: "Zen Garden Shower Cream 2.1L",
+    brand: "Zen Garden",
+    category: "Shower cream & gel",
+    size: "2.1L",
+    products: 30,
+  };
+
+  it("finds the family a code belongs to — the case that produced the bug report", () => {
+    // A different name for the drafted family cannot disambiguate it: the
+    // code is built from brand + category + size alone (Phase 36), so this
+    // is exactly the collision the original report hit.
+    expect(findFamilyCodeCollision("ZEN-SC-2100", [existing])).toEqual(existing);
+  });
+
+  it("compares case-insensitively", () => {
+    expect(findFamilyCodeCollision("zen-sc-2100", [existing])).toEqual(existing);
+  });
+
+  it("returns null once a qualifier makes the code unique", () => {
+    expect(findFamilyCodeCollision("ZEN-SC-2100-SCRUB", [existing])).toBeNull();
+  });
+
+  it("returns null for a blank code rather than matching every family", () => {
+    expect(findFamilyCodeCollision("", [existing])).toBeNull();
+    expect(findFamilyCodeCollision("   ", [existing])).toBeNull();
   });
 });
 

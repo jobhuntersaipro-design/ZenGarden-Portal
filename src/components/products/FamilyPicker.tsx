@@ -34,12 +34,21 @@ export function FamilyPicker({
   value,
   brand,
   category,
+  collision = null,
   onChange,
 }: {
   families: FamilyOption[];
   value: FamilyChoice;
   brand: string | null;
   category: string;
+  /**
+   * The existing family the drafted code already belongs to, or null. Passed
+   * in rather than recomputed here so a caller that also gates a submit
+   * button on it — `ProductForm` does — and this caption can never disagree
+   * about whether one exists. Defaults to null for a caller that does not
+   * (yet) compute it, such as the edit drawer, so this stays additive there.
+   */
+  collision?: FamilyOption | null;
   onChange: (next: FamilyChoice) => void;
 }) {
   const options = families.map((family) => ({
@@ -49,6 +58,7 @@ export function FamilyPicker({
   }));
   const selected = value.draft ? NEW : (value.familyId ?? NONE);
   const proposed = value.draft ? familyFromDraft(value.draft, { brand, category }) : null;
+  const collisionId = "family-code-collision";
 
   const setDraft = (patch: Partial<FamilyDraft>) =>
     onChange({
@@ -106,6 +116,16 @@ export function FamilyPicker({
                 placeholder="Scrub"
                 value={value.draft.qualifier}
                 onChange={(event) => setDraft({ qualifier: event.target.value })}
+                // Qualifier is the one field that resolves a collision — Size
+                // and Family name are left alone even though the code is built
+                // from more than the qualifier, because typing into either of
+                // those changes what family this is, where a qualifier only
+                // tells two same-shaped families apart. `aria-invalid` alone
+                // gets the danger border and ring from the shared `Input`
+                // styles (`aria-invalid:border-destructive`), the same rule
+                // `Field` relies on for a review-screen error.
+                aria-invalid={collision ? true : undefined}
+                aria-describedby={collision ? collisionId : undefined}
               />
               <p className={caption}>Only when another family already has this code</p>
             </div>
@@ -117,6 +137,13 @@ export function FamilyPicker({
             {brand ?? "no brand"}, {category}
             {value.draft.size.trim() ? `, ${value.draft.size.trim()}` : ""}
           </p>
+          {collision ? (
+            <p id={collisionId} role="alert" className="text-[length:var(--text-caption)] text-accent-red">
+              <span className="font-mono">{collision.code}</span> is already{" "}
+              <strong className="font-semibold">{collision.name}</strong>. Pick that
+              family above, or add a qualifier to tell them apart.
+            </p>
+          ) : null}
         </div>
       ) : null}
     </div>

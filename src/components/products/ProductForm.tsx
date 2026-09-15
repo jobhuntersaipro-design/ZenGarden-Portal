@@ -16,7 +16,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { useImageUploadQueue } from "@/hooks/useImageUploadQueue";
 import { useUrlNavigation } from "@/hooks/useUrlNavigation";
 import { PRODUCT_CATEGORIES } from "@/lib/product-categories";
-import { familyFromDraft } from "@/lib/product-families";
+import { familyFromDraft, findFamilyCodeCollision } from "@/lib/product-families";
 import type { FamilyOption } from "@/lib/queries/product-families";
 import type { GrowingLabel } from "@/lib/queries/products";
 import { generateSku, generateVariantSku, sizeInName } from "@/lib/sku";
@@ -322,6 +322,12 @@ export function ProductForm({
   const newFamily = family.draft ? familyFromDraft(family.draft, productFacts) : null;
   const familyCode =
     families.find((entry) => entry.id === family.familyId)?.code ?? newFamily?.code ?? null;
+  /**
+   * A drafted family whose code already belongs to another one — computed
+   * here, once, rather than inside `FamilyPicker`, because the submit button
+   * below has to agree with the picker's own warning on exactly this value.
+   */
+  const familyCollision = newFamily ? findFamilyCodeCollision(newFamily.code, families) : null;
 
   /**
    * The code a row takes while nobody has typed one into it. Identical
@@ -372,6 +378,16 @@ export function ProductForm({
    */
   const everyRowCovered =
     staged.length > 0 || rows.every((row) => row.staged.length > 0);
+
+  /**
+   * The other reason Create can be blocked: the drafted family's code is
+   * already someone else's. Same shape as `everyRowCovered` — a boolean the
+   * button and its caption both read — because the server would refuse the
+   * submit anyway (the collision is a real unique constraint), and refusing
+   * it here means the reader finds out from the warning under Qualifier
+   * instead of from a round trip that discards nothing but their patience.
+   */
+  const blockedByFamilyCollision = familyCollision !== null;
 
   /**
    * Rows first, then pictures — Phase 27's order, because presign hangs a
@@ -532,7 +548,7 @@ export function ProductForm({
           ) : (
             <Button
               pending={busy}
-              disabled={!everyRowCovered}
+              disabled={!everyRowCovered || blockedByFamilyCollision}
               onClick={submit}
               className="self-start sm:self-auto"
             >
@@ -544,11 +560,13 @@ export function ProductForm({
               ? createdIds.length > 1
                 ? "Finish adding their images there"
                 : "Finish adding its images there"
-              : !everyRowCovered
-                ? "Add at least one image"
-                : staged.length > 0
-                  ? `${staged.length} shared ${staged.length === 1 ? "image" : "images"} ready`
-                  : "Each variant has its own images"}
+              : blockedByFamilyCollision
+                ? "That family code is already in use — see the note below"
+                : !everyRowCovered
+                  ? "Add at least one image"
+                  : staged.length > 0
+                    ? `${staged.length} shared ${staged.length === 1 ? "image" : "images"} ready`
+                    : "Each variant has its own images"}
           </p>
         </div>
       </header>
@@ -633,6 +651,7 @@ export function ProductForm({
                 value={family}
                 brand={form.brand ?? null}
                 category={form.category}
+                collision={familyCollision}
                 onChange={chooseFamily}
               />
               <p className="text-[length:var(--text-caption)] text-ink-tertiary">
