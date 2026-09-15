@@ -296,7 +296,7 @@ const BUYER_PARTY_SELECT = {
 } as const;
 
 /** "6 per carton · 36 pieces", from whatever the line actually knows. */
-function packCaptionFor(
+export function packCaptionFor(
   packSize: number | null,
   unit: string | null,
   cartons: number,
@@ -474,6 +474,84 @@ export async function loadBuyerOrder(
       unitPrice: line.unitPrice.toFixed(2),
       amount: line.amount.toFixed(2),
     })),
+  };
+}
+
+/**
+ * Everything the generated purchase order is drawn from (Phase 37).
+ *
+ * **Unscoped by buyer on purpose** — this is not a screen, it is the file we
+ * write for an order we have already accepted, and the one caller
+ * (`attachWebOrderDocument`) owns the order id it was handed. Every screen
+ * that shows a buyer their own order still goes through `loadBuyerOrder`.
+ *
+ * The shape of `order` is exactly what `buildPoDocumentFromOrder` takes, and
+ * the lines are read the same way `loadBuyerOrder`'s web branch reads them, so
+ * the file and the page cannot describe the order differently.
+ */
+export async function loadWebOrderDocumentSource(webOrderId: string) {
+  const order = await prisma.webOrder.findUnique({
+    where: { id: webOrderId },
+    select: {
+      id: true,
+      reference: true,
+      status: true,
+      placedById: true,
+      submittedAt: true,
+      requestedDate: true,
+      buyerReference: true,
+      notes: true,
+      currency: true,
+      subtotal: true,
+      documentId: true,
+      buyer: { select: BUYER_PARTY_SELECT },
+      lines: {
+        select: {
+          cartons: true,
+          packSize: true,
+          unit: true,
+          unitPrice: true,
+          amount: true,
+          product: { select: { sku: true, name: true } },
+        },
+      },
+    },
+  });
+  if (!order) return null;
+
+  return {
+    id: order.id,
+    reference: order.reference,
+    status: order.status,
+    placedById: order.placedById,
+    submittedAt: order.submittedAt,
+    requestedDate: order.requestedDate,
+    documentId: order.documentId,
+    order: {
+      reference: order.reference,
+      buyerReference: order.buyerReference,
+      currency: order.currency,
+      paymentTerms: order.buyer.paymentTerms,
+      notes: order.notes,
+      // The cart quotes no tax; the team settles it when they confirm.
+      tax: null as string | null,
+      buyer: {
+        name: order.buyer.name,
+        address: order.buyer.address,
+        contact: joinContact(order.buyer.contactName, order.buyer.email),
+      },
+      // A cart has no position column, so the numbering is the read order —
+      // the same rule `loadBuyerOrder` applies to the same rows.
+      lines: order.lines.map((line, index) => ({
+        position: index + 1,
+        sku: line.product.sku,
+        description: line.product.name,
+        packCaption: packCaptionFor(line.packSize, line.unit, line.cartons),
+        quantity: String(line.cartons),
+        unitPrice: line.unitPrice.toFixed(2),
+        amount: line.amount.toFixed(2),
+      })),
+    },
   };
 }
 

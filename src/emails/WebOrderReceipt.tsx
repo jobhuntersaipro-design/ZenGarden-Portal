@@ -7,6 +7,12 @@ export type WebOrderReceiptProps = {
   lineCount: number;
   total: string;
   orderUrl: string;
+  /**
+   * Whether the purchase order is on this email (Phase 37). Said only when
+   * true: a line promising an attachment that is not there is worse than no
+   * line, and the render can fail while the order is perfectly fine.
+   */
+  attached?: boolean;
 };
 
 /**
@@ -23,6 +29,7 @@ export function WebOrderReceipt({
   lineCount,
   total,
   orderUrl,
+  attached = false,
 }: WebOrderReceiptProps) {
   return (
     <Layout>
@@ -31,6 +38,9 @@ export function WebOrderReceipt({
         {`${lineCount} line${lineCount === 1 ? "" : "s"} · ${total}`}
         {buyerReference ? ` · your reference ${buyerReference}` : ""}
       </Paragraph>
+      {attached ? (
+        <Paragraph>Your purchase order is attached to this email.</Paragraph>
+      ) : null}
       <Paragraph>
         Our team reviews every order and will confirm the price and the delivery
         date with you. Nothing is charged and nothing ships until they do.
