@@ -110,6 +110,9 @@ export function ProductForm({
   const [form, setForm] = useState<SharedInput>(BLANK);
   const [rows, setRows] = useState<VariantRowState[]>([blankRow()]);
   const [family, setFamily] = useState<FamilyChoice>({ familyId: null, draft: null });
+  /** True while the open family draft is one `addRow` opened by itself and the
+      reader has not touched since — which is what makes it withdrawable. */
+  const [familyAutoOpened, setFamilyAutoOpened] = useState(false);
   const [saving, setSaving] = useState(false);
   const [staged, setStaged] = useState<(StagedImage & { file: File })[]>([]);
   const [rejected, setRejected] = useState<{ name: string; reason: string }[]>([]);
@@ -201,25 +204,49 @@ export function ProductForm({
     );
 
   /**
+   * The reader's own family choice, from the picker. It ends the draft's
+   * borrowed status: a family picked or typed into is theirs, and survives the
+   * row that happened to be on screen when it was opened.
+   */
+  const chooseFamily = (next: FamilyChoice) => {
+    setFamily(next);
+    setFamilyAutoOpened(false);
+  };
+
+  /**
    * A new row inherits the price above it: a range is usually priced alike.
    * The second row also opens the family disclosure with the product's name in
    * it, because two variants need a family (§2 of the spec) and the moment a
-   * person adds the second row is the moment they need to describe one.
+   * person adds the second row is the moment they need to describe one. A
+   * family already picked or drafted is left exactly as it is, flag included —
+   * a third row must not re-open or re-claim a draft the reader has edited.
    */
   const addRow = () => {
     setRows((current) => [...current, blankRow(current.at(-1)?.listPrice ?? "")]);
     if (!many && !family.familyId && !family.draft) {
       setFamily({ familyId: null, draft: { name: form.name, size: "", qualifier: "" } });
+      setFamilyAutoOpened(true);
     }
   };
 
-  const removeRow = (key: string) =>
+  const removeRow = (key: string) => {
     setRows((current) => {
       if (current.length === 1) return current;
       const going = current.find((row) => row.key === key);
       for (const image of going?.staged ?? []) URL.revokeObjectURL(image.url);
       return current.filter((row) => row.key !== key);
     });
+
+    // The draft `addRow` opened by itself goes when the last extra row goes.
+    // Undoing an action must not leave a `ProductFamily` behind that nobody
+    // asked for — and only the return to a single row withdraws it, because at
+    // two rows the family is still required.
+    const removing = rows.some((row) => row.key === key);
+    if (removing && rows.length === 2 && familyAutoOpened) {
+      setFamily({ familyId: null, draft: null });
+      setFamilyAutoOpened(false);
+    }
+  };
 
   const addRowFiles = (key: string, files: File[]) => {
     const row = rows.find((candidate) => candidate.key === key);
@@ -543,7 +570,7 @@ export function ProductForm({
                 value={family}
                 brand={form.brand ?? null}
                 category={form.category}
-                onChange={setFamily}
+                onChange={chooseFamily}
               />
               <p className="text-[length:var(--text-caption)] text-ink-tertiary">
                 {many
