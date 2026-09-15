@@ -8,7 +8,11 @@ import { deleteObject } from "@/lib/r2";
 import { registerLabels } from "@/lib/catalog-label-registry";
 import { productBlockedMessage } from "@/lib/product-delete-message";
 import { NEEDS_AN_IMAGE } from "@/lib/validation/product-images";
-import { productSchema, type ProductInput } from "@/lib/validation/products";
+import {
+  productSchema,
+  type ProductInput,
+  type ProductParsed,
+} from "@/lib/validation/products";
 import {
   productVariantsSchema,
   type ProductVariantsInput,
@@ -67,6 +71,43 @@ function revalidate(productId?: string) {
   if (productId) revalidatePath(`/products/${productId}`);
 }
 
+/** The fields a `Product.create` shares whether it is one row or a batch of them. */
+type ProductRowShared = Omit<
+  ProductParsed,
+  "sku" | "listPrice" | "variant" | "familyId" | "newFamily"
+>;
+
+/** The fields that are genuinely per-row: `createProduct` has exactly one. */
+type ProductRowVariant = { sku: string; variant: string | null; listPrice: string };
+
+/**
+ * The thirteen-field `Product.create` payload, assembled once so
+ * `createProduct` and `createProductVariants` cannot drift on which shared
+ * fields a row carries — a column added to one write reaches both, whether
+ * there is one row or several.
+ */
+function productRowData(
+  shared: ProductRowShared,
+  familyId: string | null,
+  row: ProductRowVariant,
+) {
+  return {
+    name: shared.name,
+    sku: row.sku,
+    familyId,
+    category: shared.category,
+    unit: shared.unit,
+    brand: shared.brand,
+    variant: row.variant,
+    packSize: shared.packSize,
+    cartonsPerPallet: shared.cartonsPerPallet,
+    market: shared.market,
+    listPrice: new Prisma.Decimal(row.listPrice),
+    description: shared.description,
+    active: shared.active,
+  };
+}
+
 export async function createProduct(
   input: ProductInput,
 ): Promise<ActionResult<{ id: string }>> {
@@ -90,21 +131,7 @@ export async function createProduct(
         ? (await tx.productFamily.create({ data: data.newFamily, select: { id: true } })).id
         : data.familyId;
       const created = await tx.product.create({
-        data: {
-          name: data.name,
-          sku: data.sku,
-          familyId,
-          category: data.category,
-          unit: data.unit,
-          brand: data.brand,
-          variant: data.variant,
-          packSize: data.packSize,
-          cartonsPerPallet: data.cartonsPerPallet,
-          market: data.market,
-          listPrice: new Prisma.Decimal(data.listPrice),
-          description: data.description,
-          active: data.active,
-        },
+        data: productRowData(data, familyId, data),
         select: { id: true },
       });
       // The first price is history too; without it the trend has no origin.
@@ -177,21 +204,7 @@ export async function createProductVariants(
       const variants: { id: string; sku: string }[] = [];
       for (const row of data.variants) {
         const created = await tx.product.create({
-          data: {
-            name: data.name,
-            sku: row.sku,
-            familyId,
-            category: data.category,
-            unit: data.unit,
-            brand: data.brand,
-            variant: row.variant,
-            packSize: data.packSize,
-            cartonsPerPallet: data.cartonsPerPallet,
-            market: data.market,
-            listPrice: new Prisma.Decimal(row.listPrice),
-            description: data.description,
-            active: data.active,
-          },
+          data: productRowData(data, familyId, row),
           select: { id: true, sku: true },
         });
         // The first price is history too, exactly as in `createProduct`:

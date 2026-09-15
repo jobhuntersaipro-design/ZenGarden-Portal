@@ -558,9 +558,19 @@ describe("createProductVariants", () => {
 
   it("registers each variant's own label", async () => {
     await createProductVariants({ ...shared, familyId: "fam-1", variants: threeRows });
-    // Phase 28's registry is called per variant, with that variant's flavour.
-    expect(labelFindFirst).toHaveBeenCalled();
-    expect(labelFindFirst.mock.calls.length).toBeGreaterThanOrEqual(3);
+
+    // Phase 28's registry is called per variant, with *that* variant's own
+    // flavour — not the shared fields registered once. Reading the VARIANT
+    // lookups back by their actual `where.value.equals` is what tells the two
+    // apart: a regression that hoisted `row.variant` out of the loop would
+    // still call `registerLabels` three times (once per product created) but
+    // every lookup would carry the same flavour instead of three distinct
+    // ones.
+    const variantLookups = labelFindFirst.mock.calls
+      .map((call) => (call[0] as { where: { kind: string; value: { equals: string } } }).where)
+      .filter((where) => where.kind === "VARIANT")
+      .map((where) => where.value.equals);
+    expect(variantLookups).toEqual(["Goat's Milk", "Papaya", "Lavender"]);
   });
 
   it("writes nothing when a SKU is repeated in the batch", async () => {
