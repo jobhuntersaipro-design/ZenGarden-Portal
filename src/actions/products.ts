@@ -14,6 +14,9 @@ import {
   productThumbKey,
 } from "@/lib/r2";
 import { registerLabels } from "@/lib/catalog-label-registry";
+import { listingCandidates } from "@/lib/queries/product-families";
+import { resolveListing } from "@/lib/listings";
+import { generateFamilyCode, sizeInName } from "@/lib/sku";
 import { productBlockedMessage } from "@/lib/product-delete-message";
 import {
   MAX_IMAGES_PER_PRODUCT,
@@ -80,6 +83,66 @@ function duplicateMessage(cause: Prisma.PrismaClientKnownRequestError): string {
 function revalidate(productId?: string) {
   revalidatePath("/products");
   if (productId) revalidatePath(`/products/${productId}`);
+}
+
+const TWO_LISTINGS = "That product matches two listings — choose a family.";
+
+/** Thrown inside a transaction so the rollback is Postgres's, then caught
+ *  and returned as the action's own refusal. */
+class ListingConflict extends Error {}
+
+/**
+ * The family a write should use when the reader chose none (Phase 40).
+ *
+ * Returns the family id to stamp on the row, or a refusal. A derived group
+ * becomes a real family here — created once, with **every** member moved
+ * into it — because a listing that exists only as a coincidence of names is
+ * one nobody can curate, and the moment a second variant arrives is the
+ * moment to fix that.
+ *
+ * Reads through `tx`, so a batch creating three variants sees the family its
+ * own first row just created rather than making three.
+ */
+async function joinListing(
+  tx: Prisma.TransactionClient,
+  product: {
+    brand: string | null;
+    name: string;
+    variant: string | null;
+    market: string | null;
+    category: string;
+  },
+  excludeId?: string,
+): Promise<{ familyId: string | null } | { error: string }> {
+  const candidates = await listingCandidates(
+    { brand: product.brand, market: product.market },
+    tx,
+  );
+  const match = resolveListing(product, candidates, excludeId);
+
+  if (match.kind === "ambiguous") return { error: TWO_LISTINGS };
+  if (match.kind === "new") return { familyId: null };
+  if (match.kind === "family") return { familyId: match.familyId };
+
+  const family = await tx.productFamily.create({
+    data: {
+      code: generateFamilyCode({
+        brand: product.brand,
+        category: product.category,
+        size: sizeInName(product.name),
+      }),
+      name: match.title,
+      brand: product.brand,
+      category: product.category,
+      size: sizeInName(product.name),
+    },
+    select: { id: true },
+  });
+  await tx.product.updateMany({
+    where: { id: { in: match.memberIds } },
+    data: { familyId: family.id },
+  });
+  return { familyId: family.id };
 }
 
 /** The fields a `Product.create` shares whether it is one row or a batch of them. */
@@ -217,9 +280,25 @@ export async function createProductVariants(
   try {
     const result = await prisma.$transaction(
       async (tx) => {
-        const familyId = data.newFamily
+        let familyId = data.newFamily
           ? (await tx.productFamily.create({ data: data.newFamily, select: { id: true } })).id
           : data.familyId;
+
+        // Nothing chosen: join the listing this product describes, creating
+        // it from the products already in it where it is not a family yet.
+        // Run once for the whole batch — the loop below shares this same
+        // familyId across every row, rather than resolving it per variant.
+        if (!familyId) {
+          const joined = await joinListing(tx, {
+            brand: data.brand,
+            name: data.name,
+            variant: data.variants[0]?.variant ?? null,
+            market: data.market,
+            category: data.category,
+          });
+          if ("error" in joined) throw new ListingConflict(joined.error);
+          familyId = joined.familyId;
+        }
 
         const variants: { id: string; sku: string }[] = [];
         for (const row of data.variants) {
@@ -269,6 +348,9 @@ export async function createProductVariants(
     revalidate();
     return { success: true, data: result };
   } catch (cause) {
+    if (cause instanceof ListingConflict) {
+      return { success: false, error: cause.message };
+    }
     if (duplicate(cause)) {
       return { success: false, error: duplicateMessage(cause) };
     }
@@ -521,9 +603,28 @@ export async function updateProduct(
     const priceChanged = !existing.listPrice.equals(nextPrice);
 
     await prisma.$transaction(async (tx) => {
-      const familyId = data.newFamily
+      let familyId = data.newFamily
         ? (await tx.productFamily.create({ data: data.newFamily, select: { id: true } })).id
         : data.familyId;
+
+      // Nothing chosen: join the listing this product describes, excluding
+      // the row being edited so it is never read as its own sibling.
+      if (!familyId) {
+        const joined = await joinListing(
+          tx,
+          {
+            brand: data.brand,
+            name: data.name,
+            variant: data.variant,
+            market: data.market,
+            category: data.category,
+          },
+          productId,
+        );
+        if ("error" in joined) throw new ListingConflict(joined.error);
+        familyId = joined.familyId;
+      }
+
       await tx.product.update({
         where: { id: productId },
         data: {
@@ -563,6 +664,9 @@ export async function updateProduct(
     revalidate(productId);
     return { success: true, data: undefined };
   } catch (cause) {
+    if (cause instanceof ListingConflict) {
+      return { success: false, error: cause.message };
+    }
     if (duplicate(cause)) {
       return { success: false, error: duplicateMessage(cause) };
     }

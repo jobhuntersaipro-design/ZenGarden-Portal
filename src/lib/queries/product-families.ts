@@ -1,4 +1,6 @@
 import { prisma } from "@/lib/prisma";
+import type { ListingCandidate } from "@/lib/listings";
+import type { Prisma } from "@/generated/prisma/client";
 
 export type FamilyOption = {
   id: string;
@@ -30,5 +32,49 @@ export async function listFamilies(): Promise<FamilyOption[]> {
   return families.map((family) => ({
     ...family,
     products: byFamily.get(family.id) ?? 0,
+  }));
+}
+
+/**
+ * The products a listing lookup has to consider: same brand, same market.
+ *
+ * Narrowed in the database on the two fields that are exact, and left to
+ * `resolveListing` to compare the third — the name, which needs
+ * `groupName`'s variant-suffix rule and cannot be expressed in a `where`.
+ *
+ * Ordered by family name — a list shown to someone should not be ordered by
+ * whatever the database happened to return — even though only the
+ * `ambiguous` branch, which reads the ones that have a family, is ever shown
+ * to a person; products with no family sort together, which is fine, since
+ * that branch never reads them.
+ *
+ * Takes the client to read through, so a write can run the same lookup
+ * inside its own transaction and see its own uncommitted rows.
+ */
+export async function listingCandidates(
+  input: { brand: string | null; market: string | null },
+  client: Prisma.TransactionClient | typeof prisma = prisma,
+): Promise<ListingCandidate[]> {
+  const rows = await client.product.findMany({
+    where: { brand: input.brand, market: input.market },
+    orderBy: { family: { name: "asc" } },
+    select: {
+      id: true,
+      brand: true,
+      name: true,
+      variant: true,
+      market: true,
+      familyId: true,
+      family: { select: { name: true } },
+    },
+  });
+  return rows.map((row) => ({
+    id: row.id,
+    brand: row.brand,
+    name: row.name,
+    variant: row.variant,
+    market: row.market,
+    familyId: row.familyId,
+    familyName: row.family?.name ?? null,
   }));
 }

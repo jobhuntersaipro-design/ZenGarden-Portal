@@ -2,7 +2,9 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 
 const productCreate = vi.fn();
 const productUpdate = vi.fn();
+const productUpdateMany = vi.fn();
 const productFindUnique = vi.fn();
+const productFindMany = vi.fn();
 const productDelete = vi.fn();
 const priceCreate = vi.fn();
 // Phase 28: a product write registers whatever it was given in the catalogue's
@@ -21,7 +23,12 @@ const imageUpdate = vi.fn();
 const imageDelete = vi.fn();
 
 const tx = {
-  product: { create: productCreate, update: productUpdate },
+  product: {
+    create: productCreate,
+    update: productUpdate,
+    updateMany: productUpdateMany,
+    findMany: productFindMany,
+  },
   productPrice: { create: priceCreate },
   catalogLabel: { findFirst: labelFindFirst, create: labelCreate },
   productFamily: { create: familyCreate },
@@ -31,7 +38,9 @@ vi.mock("@/lib/prisma", () => ({
   prisma: {
     product: {
       findUnique: productFindUnique,
+      findMany: productFindMany,
       update: productUpdate,
+      updateMany: productUpdateMany,
       delete: productDelete,
     },
     productImage: {
@@ -119,6 +128,11 @@ beforeEach(() => {
   productCreate.mockResolvedValue({ id: "prod-1" });
   familyCreate.mockResolvedValue({ id: "fam-1" });
   productUpdate.mockResolvedValue({});
+  productUpdateMany.mockResolvedValue({ count: 0 });
+  // No candidates by default, so a write that carries neither a family id nor
+  // a new one resolves to "new" (Phase 40) rather than joining something a
+  // test never set up — the existing familyId-null assertions rely on this.
+  productFindMany.mockResolvedValue([]);
   productDelete.mockResolvedValue({});
   deleteObject.mockResolvedValue(undefined);
   priceCreate.mockResolvedValue({});
@@ -724,6 +738,111 @@ describe("createProductVariants", () => {
       error: "This action needs super admin access.",
     });
     expect(productCreate).not.toHaveBeenCalled();
+  });
+});
+
+describe("createProductVariants joining a listing", () => {
+  const shared = {
+    name: "Zen Garden Shower Cream 2.1L",
+    category: "Shower cream & gel",
+    unit: "carton",
+    brand: "Zen Garden",
+    packSize: 6,
+    cartonsPerPallet: 60,
+    market: "Indonesia",
+    description: null,
+    active: true,
+    familyId: null,
+    newFamily: null,
+  };
+  const oneRow = [{ variant: "Carrot", sku: "ZS-SC-2100-CR-ID", listPrice: "10.00" }];
+
+  beforeEach(() => {
+    requireSuperAdmin.mockResolvedValue(admin);
+    labelFindFirst.mockResolvedValue({ id: "label-1" });
+    productCreate.mockResolvedValue({ id: "prd-new", sku: "ZS-SC-2100-CR-ID" });
+    priceCreate.mockResolvedValue({ id: "price-1" });
+    familyCreate.mockResolvedValue({ id: "fam-new" });
+    productUpdateMany.mockResolvedValue({ count: 0 });
+  });
+
+  it("joins the family a matching product already carries", async () => {
+    productFindMany.mockResolvedValue([
+      {
+        id: "prd-gm",
+        brand: "Zen Garden",
+        name: "Zen Garden Shower Cream 2.1L",
+        variant: "Goat's Milk",
+        market: "Indonesia",
+        familyId: "fam-1",
+        family: { name: "Zen Garden Shower Cream 2.1L" },
+      },
+    ]);
+
+    const result = await createProductVariants({ ...shared, variants: oneRow });
+
+    expect(result).toMatchObject({ success: true, data: { familyId: "fam-1" } });
+    expect(familyCreate).not.toHaveBeenCalled();
+    expect(productCreate.mock.calls[0]?.[0]?.data?.familyId).toBe("fam-1");
+  });
+
+  it("creates one family for a derived group and assigns every member", async () => {
+    productFindMany.mockResolvedValue([
+      {
+        id: "prd-gm",
+        brand: "Zen Garden",
+        name: "Zen Garden Shower Cream 2.1L",
+        variant: "Goat's Milk",
+        market: "Indonesia",
+        familyId: null,
+        family: null,
+      },
+    ]);
+
+    const result = await createProductVariants({ ...shared, variants: oneRow });
+
+    expect(result).toMatchObject({ success: true, data: { familyId: "fam-new" } });
+    expect(familyCreate).toHaveBeenCalledTimes(1);
+    // The members nobody opened are moved into it too — that is what turns
+    // a coincidence of names into a curated listing.
+    expect(productUpdateMany).toHaveBeenCalledWith({
+      where: { id: { in: ["prd-gm"] } },
+      data: { familyId: "fam-new" },
+    });
+  });
+
+  it("creates no family when nothing matches", async () => {
+    productFindMany.mockResolvedValue([]);
+    const result = await createProductVariants({ ...shared, variants: oneRow });
+    expect(result).toMatchObject({ success: true, data: { familyId: null } });
+    expect(familyCreate).not.toHaveBeenCalled();
+    expect(productUpdateMany).not.toHaveBeenCalled();
+  });
+
+  it("refuses rather than guess when two families match", async () => {
+    productFindMany.mockResolvedValue([
+      { id: "a", brand: "Zen Garden", name: shared.name, variant: "Goat's Milk", market: "Indonesia", familyId: "fam-1", family: { name: "One" } },
+      { id: "b", brand: "Zen Garden", name: shared.name, variant: "Papaya", market: "Indonesia", familyId: "fam-2", family: { name: "Two" } },
+    ]);
+
+    const result = await createProductVariants({ ...shared, variants: oneRow });
+
+    expect(result).toEqual({
+      success: false,
+      error: "That product matches two listings — choose a family.",
+    });
+    expect(productCreate).not.toHaveBeenCalled();
+  });
+
+  it("leaves an explicitly chosen family alone", async () => {
+    const result = await createProductVariants({
+      ...shared,
+      familyId: "fam-chosen",
+      variants: oneRow,
+    });
+    expect(result).toMatchObject({ success: true, data: { familyId: "fam-chosen" } });
+    // No lookup at all: the reader already answered the question.
+    expect(productFindMany).not.toHaveBeenCalled();
   });
 });
 
