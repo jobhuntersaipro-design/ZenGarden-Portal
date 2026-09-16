@@ -168,10 +168,17 @@ export function PoTable({
       // are still on the detail page and in the desktop table.
       mobileHidden: true,
       cell: (row) =>
-        row.uploadedByName ? (
+        // Asked of `source`, not inferred from a missing uploader. Since
+        // Phase 37 a confirmed shop order *has* an uploader — the buyer's own
+        // contact, who is who the generated file was filed against — and
+        // printing their name here would say a customer uploaded a scan. The
+        // Source column says where the order came from, so this cell reads
+        // the same as a genuinely missing uploader rather than repeating it.
+        row.source === "web" ? (
+          <span className="text-ink-disabled">—</span>
+        ) : row.uploadedByName ? (
           <PersonChip name={row.uploadedByName} image={row.uploadedByImage} />
         ) : (
-          // A shop order has no uploader. Source says where it came from.
           <span className="text-ink-disabled">—</span>
         ),
     },
