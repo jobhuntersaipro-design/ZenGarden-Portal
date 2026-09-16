@@ -27,7 +27,8 @@ export const dynamic = "force-dynamic";
 
 // Must stay in step with StatusChip and with CHIPS in PoFilters. A chip whose
 // value is missing here changes the URL and is then silently ignored by the
-// page — the defect Phase 11 hit on /products.
+// page — the defect Phase 11 hit on /products. `shop-open` has no chip, but
+// the dashboard links to it, so it must be here all the same.
 const STATUSES: StatusChip[] = [
   "all",
   "confirmed",
@@ -36,6 +37,7 @@ const STATUSES: StatusChip[] = [
   "extracting",
   "failed",
   "web",
+  "shop-open",
 ];
 
 const asDate = (value: string | undefined) => {

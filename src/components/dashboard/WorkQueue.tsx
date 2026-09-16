@@ -34,7 +34,9 @@ export function WorkQueue({ intake }: { intake: IntakeCounts }) {
       many: "uploads failed to extract",
     },
     {
-      key: "web",
+      // Not `web`: that chip also holds every shop order ever confirmed, and
+      // this count is only the ones still waiting (SUBMITTED or RECEIVED).
+      key: "shop-open",
       count: intake.webOrders,
       tone: INTAKE_STATUS.NEEDS_REVIEW,
       one: "order from the shop to confirm",

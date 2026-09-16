@@ -153,8 +153,13 @@ export async function confirmWebOrder(
         deliveryDate,
       });
 
-      await tx.webOrder.update({
-        where: { id: order.id },
+      // Guarded on the status read above, not only on the id. Under READ
+      // COMMITTED a decline can commit between that read and this write; an
+      // unguarded update would then write CONFIRMED over DECLINED and commit
+      // a purchase order for an order the buyer was told is declined.
+      // Throwing here rolls back the purchase order written just above.
+      const { count } = await tx.webOrder.updateMany({
+        where: { id: order.id, status: WebOrderStatus.RECEIVED },
         data: {
           status: WebOrderStatus.CONFIRMED,
           purchaseOrderId: written,
@@ -162,6 +167,7 @@ export async function confirmWebOrder(
           reviewedAt: new Date(),
         },
       });
+      if (count === 0) throw new Error("ALREADY_REVIEWED");
 
       return { poId: written, order };
     });

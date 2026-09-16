@@ -72,7 +72,8 @@ export type PoListFilters = {
     | "received"
     | "extracting"
     | "failed"
-    | "web";
+    | "web"
+    | "shop-open";
   stage?: string;
   from?: Date;
   to?: Date;
@@ -169,8 +170,16 @@ const includesWebOrders = (status: PoListFilters["status"]) =>
   status === "all" ||
   status === "needs-review" ||
   status === "received" ||
-  status === "web";
+  status === "web" ||
+  status === "shop-open";
 
+/**
+ * `shop-open` is not a chip. It is what the dashboard's "orders from the shop
+ * to confirm" line links to, and it must be exactly the rows that line counts
+ * (`openWebOrderCount`: SUBMITTED or RECEIVED) — no scan drafts, and no
+ * confirmed shop purchase orders, which `web` has taken in since Phase 41.
+ * It therefore reaches the web branch alone, through the last arm below.
+ */
 const webStatusCondition = (status: PoListFilters["status"]) =>
   status === "needs-review"
     ? Prisma.sql`wo."status" = 'SUBMITTED'`

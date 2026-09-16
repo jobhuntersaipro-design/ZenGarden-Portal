@@ -4,11 +4,16 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 const webFindUnique = vi.fn();
 const webUpdate = vi.fn();
 const webUpdateMany = vi.fn();
+const txWebUpdateMany = vi.fn();
 const requireUser = vi.fn();
 const writePurchaseOrder = vi.fn();
 
 const tx = {
-  webOrder: { findUnique: webFindUnique, update: webUpdate },
+  webOrder: {
+    findUnique: webFindUnique,
+    update: webUpdate,
+    updateMany: txWebUpdateMany,
+  },
 };
 
 const webFindUniqueOuter = vi.fn();
@@ -106,6 +111,7 @@ beforeEach(() => {
   });
   webUpdate.mockResolvedValue({});
   webUpdateMany.mockResolvedValue({ count: 1 });
+  txWebUpdateMany.mockResolvedValue({ count: 1 });
   webFindUniqueOuter.mockResolvedValue({
     reference: "W-2609-00001",
     placedBy: { email: "buyer@acme.test" },
@@ -149,10 +155,54 @@ describe("confirmWebOrder", () => {
   it("links the web order to the purchase order it became", async () => {
     const result = await confirmWebOrder("wo1", draft(), OPTIONS);
     expect(result).toEqual({ success: true, data: { poId: "po-new" } });
-    const data = webUpdate.mock.calls[0][0].data;
+    const data = txWebUpdateMany.mock.calls[0][0].data;
     expect(data.status).toBe("CONFIRMED");
     expect(data.purchaseOrderId).toBe("po-new");
     expect(data.reviewedById).toBe("u1");
+  });
+
+  /**
+   * The write is guarded on the status confirm read. Under READ COMMITTED a
+   * decline committing between that read and this write would otherwise be
+   * overwritten with CONFIRMED, and a purchase order committed for an order
+   * the buyer has already been told was declined.
+   */
+  it("writes CONFIRMED only over the RECEIVED order it read", async () => {
+    webFindUnique.mockResolvedValue({
+      id: "w1",
+      status: "RECEIVED",
+      buyerId: "b1",
+      buyerReference: null,
+      reference: "W-2609-00001",
+      placedBy: { email: "buyer@example.com" },
+      _count: { lines: 1 },
+    });
+    await confirmWebOrder("w1", draft(), OPTIONS);
+    expect(txWebUpdateMany).toHaveBeenCalledTimes(1);
+    const call = txWebUpdateMany.mock.calls[0][0];
+    expect(call.where).toEqual({ id: "w1", status: "RECEIVED" });
+    expect(call.data).toEqual({
+      status: "CONFIRMED",
+      purchaseOrderId: "po-new",
+      reviewedById: "u1",
+      reviewedAt: expect.any(Date),
+    });
+    // No unguarded write beside it.
+    expect(webUpdate).not.toHaveBeenCalled();
+  });
+
+  it("rolls back when the order was declined after it was read", async () => {
+    // The guarded write matches nothing: somebody declined it in between.
+    txWebUpdateMany.mockResolvedValue({ count: 0 });
+    const result = await confirmWebOrder("w1", draft(), OPTIONS);
+    await flushAfter();
+    expect(result).toEqual({
+      success: false,
+      error: "This one has already been reviewed.",
+    });
+    // Thrown inside the transaction, so the purchase order written in it is
+    // rolled back — and the buyer is not told their declined order is on.
+    expect(sendEmail).not.toHaveBeenCalled();
   });
 
   it("applies the totals gate, and writes nothing when it fails", async () => {

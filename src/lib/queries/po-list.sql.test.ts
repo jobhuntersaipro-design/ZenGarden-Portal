@@ -191,6 +191,35 @@ describe("the received state", () => {
     expect(confirmed).not.toContain(restriction);
   });
 
+  /**
+   * The dashboard's "orders from the shop to confirm" line counts web orders
+   * in SUBMITTED or RECEIVED and nothing else (`openWebOrderCount`). Since
+   * `web` widened to every confirmed shop purchase order, that line cannot
+   * link to it: "1 order to confirm" would land on that order plus every shop
+   * order ever confirmed. `shop-open` is the filter it links to instead — the
+   * web branch alone, so the number and the table under it agree
+   * (00-master.md §4).
+   */
+  it("shop-open is exactly the unconfirmed shop orders the dashboard counts", () => {
+    const text = sqlOf(
+      poListQuery({ status: "shop-open" }, { key: "poDate", dir: "desc" }, 0, 10) as never,
+    );
+    expect(text).toContain(`'WEB' AS "kind"`);
+    expect(text).toContain("WHERE wo.\"status\" IN ('SUBMITTED', 'RECEIVED')");
+    // No scan drafts — the dashboard counts those on their own line.
+    expect(text).not.toContain('"Extraction"');
+    // No purchase orders — a confirmed shop order is nothing left to confirm.
+    expect(text).not.toContain('FROM "PurchaseOrder" po');
+    expect(text).not.toContain(`'PO' AS "kind"`);
+  });
+
+  it("shop-open counts the same rows its summary does", () => {
+    const text = sqlOf(poListSummaryQuery({ status: "shop-open" }) as never);
+    expect(text).toContain("WHERE wo.\"status\" IN ('SUBMITTED', 'RECEIVED')");
+    expect(text).not.toContain('"Extraction"');
+    expect(text).not.toContain('FROM "PurchaseOrder" po');
+  });
+
   it("sorts on source without leaving the allow-list", () => {
     const sql = sqlOf(poListQuery(ALL, { key: "source", dir: "asc" }, 0, 10) as never);
     expect(sql).toContain('merged."source"');

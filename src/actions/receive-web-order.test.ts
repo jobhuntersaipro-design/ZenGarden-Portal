@@ -66,6 +66,12 @@ describe("receiveWebOrder", () => {
     expect(call.data.status).toBe("RECEIVED");
     expect(call.data.receivedById).toBe("u1");
     expect(call.data.receivedAt).toBeInstanceOf(Date);
+    // By equality, so a stray write — a reviewedById, say — fails here.
+    expect(call.data).toEqual({
+      status: "RECEIVED",
+      receivedById: "u1",
+      receivedAt: expect.any(Date),
+    });
   });
 
   it("refuses an order somebody else already received, and writes nothing else", async () => {

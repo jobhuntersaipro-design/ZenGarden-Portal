@@ -74,13 +74,16 @@ export type BuyerOrderSortKey = (typeof BUYER_ORDER_SORT_KEYS)[number];
  */
 const STATUS_RANK: Record<string, number> = {
   submitted: 0,
-  ORDER_PLACED: 1,
-  IN_PRODUCTION: 2,
-  QC_PASSED: 3,
-  IN_WAREHOUSE: 4,
-  DELIVERING: 5,
-  DELIVERED: 6,
-  declined: 7,
+  // Received by the team, not yet confirmed (Phase 41): one step further on
+  // than submitted, still short of a stage.
+  received: 1,
+  ORDER_PLACED: 2,
+  IN_PRODUCTION: 3,
+  QC_PASSED: 4,
+  IN_WAREHOUSE: 5,
+  DELIVERING: 6,
+  DELIVERED: 7,
+  declined: 8,
 };
 
 const statusRank = (order: ClientOrder) =>
