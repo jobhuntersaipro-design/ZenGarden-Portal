@@ -154,12 +154,37 @@ export async function loadListing(id: string): Promise<Listing | null> {
   return { ...facts, markets: [...byMarket.values()] };
 }
 
-/** Candidates for "add a product": everything not already in this family. */
+/**
+ * Candidates for "add a product": everything not already in this family.
+ *
+ * Carries the candidate's *current* family name, if it has one — a product
+ * already placed elsewhere looks exactly like an unplaced one without it,
+ * and choosing it silently moves it out of that other listing. Naming the
+ * family here is what lets the picker say so before the reader chooses,
+ * rather than after.
+ */
 export async function productsOutsideFamily(familyId: string) {
-  return prisma.product.findMany({
+  const rows = await prisma.product.findMany({
     where: { NOT: { familyId } },
-    select: { id: true, sku: true, name: true, brand: true, variant: true, market: true },
+    select: {
+      id: true,
+      sku: true,
+      name: true,
+      brand: true,
+      variant: true,
+      market: true,
+      family: { select: { name: true } },
+    },
     orderBy: { sku: "asc" },
     take: 500,
   });
+  return rows.map((row) => ({
+    id: row.id,
+    sku: row.sku,
+    name: row.name,
+    brand: row.brand,
+    variant: row.variant,
+    market: row.market,
+    familyName: row.family?.name ?? null,
+  }));
 }

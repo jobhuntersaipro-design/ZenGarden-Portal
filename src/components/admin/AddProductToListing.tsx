@@ -23,16 +23,19 @@ export function AddProductToListing({
     brand: string | null;
     variant: string | null;
     market: string | null;
+    /** The listing it is in today, if any — said up front so choosing it
+     *  here is never a silent move out of that one. */
+    familyName: string | null;
   }[];
 }) {
   const refresh = useAwaitableRefresh();
   const [pending, setPending] = useState(false);
 
-  const options = candidates.map((product) => ({
-    id: product.id,
-    label: `${product.sku} · ${product.name}`,
-    hint: [product.brand, product.variant, product.market].filter(Boolean).join(" · "),
-  }));
+  const options = candidates.map((product) => {
+    const facts = [product.brand, product.variant, product.market].filter(Boolean).join(" · ");
+    const parts = [facts, product.familyName ? `in ${product.familyName}` : null].filter(Boolean);
+    return { id: product.id, label: `${product.sku} · ${product.name}`, hint: parts.join(" · ") };
+  });
 
   return (
     <div className="flex flex-col gap-xxs">
