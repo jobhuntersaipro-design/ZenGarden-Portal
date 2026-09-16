@@ -6,6 +6,7 @@ import { toast } from "sonner";
 import { updateProduct } from "@/actions/products";
 import { FamilyPicker, type FamilyChoice } from "@/components/products/FamilyPicker";
 import { GrowingListPicker } from "@/components/products/GrowingListPicker";
+import { ListingNotice } from "@/components/products/ListingNotice";
 import { ManageLabelsLink } from "@/components/products/ManageLabelsLink";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -116,6 +117,18 @@ export function ProductSheet({
 
           <div className="flex flex-col gap-xxs">
             <span className={label}>Family</span>
+            <ListingNotice
+              brand={form.brand ?? null}
+              name={form.name}
+              variant={form.variant ?? null}
+              market={form.market ?? null}
+              excludeId={product.id}
+              chosenFamilyName={
+                family.familyId
+                  ? (families.find((entry) => entry.id === family.familyId)?.name ?? null)
+                  : (family.draft?.name.trim() || null)
+              }
+            />
             <FamilyPicker
               families={families}
               value={family}

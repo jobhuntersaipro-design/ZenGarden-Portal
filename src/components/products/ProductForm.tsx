@@ -6,6 +6,7 @@ import { toast } from "sonner";
 import { copyImagesToVariants, createProductVariants } from "@/actions/products";
 import { FamilyPicker, type FamilyChoice } from "@/components/products/FamilyPicker";
 import { GrowingListPicker } from "@/components/products/GrowingListPicker";
+import { ListingNotice } from "@/components/products/ListingNotice";
 import { ManageLabelsLink } from "@/components/products/ManageLabelsLink";
 import { StagedImages, type StagedImage } from "@/components/products/StagedImages";
 import { VariantRows, type VariantRowState } from "@/components/products/VariantRows";
@@ -663,6 +664,17 @@ export function ProductForm({
                 variant of, and it decides the SKU proposed below. */}
             <div className="flex flex-col gap-xxs sm:col-span-2">
               <span className={label}>Family</span>
+              <ListingNotice
+                brand={form.brand ?? null}
+                name={form.name}
+                variant={rows[0]?.variant ?? null}
+                market={form.market ?? null}
+                chosenFamilyName={
+                  family.familyId
+                    ? (families.find((entry) => entry.id === family.familyId)?.name ?? null)
+                    : (family.draft?.name.trim() || null)
+                }
+              />
               <FamilyPicker
                 families={families}
                 value={family}
