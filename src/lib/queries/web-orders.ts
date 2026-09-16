@@ -17,7 +17,7 @@ export type ClientOrderLine = {
 };
 
 export type ClientOrder = {
-  kind: "confirmed" | "submitted" | "declined";
+  kind: "confirmed" | "submitted" | "received" | "declined";
   id: string;
   /** The PO number once confirmed, otherwise the shop reference. */
   reference: string;
@@ -138,6 +138,14 @@ function compareOrders(
   }
 }
 
+/** One mapping, so the list and the detail page cannot disagree. */
+const webOrderKind = (status: WebOrderStatus) =>
+  status === WebOrderStatus.DECLINED
+    ? ("declined" as const)
+    : status === WebOrderStatus.RECEIVED
+      ? ("received" as const)
+      : ("submitted" as const);
+
 export async function listBuyerOrders(
   buyerId: string,
   page = 1,
@@ -171,7 +179,13 @@ export async function listBuyerOrders(
     prisma.webOrder.findMany({
       where: {
         buyerId,
-        status: { in: [WebOrderStatus.SUBMITTED, WebOrderStatus.DECLINED] },
+        status: {
+          in: [
+            WebOrderStatus.SUBMITTED,
+            WebOrderStatus.RECEIVED,
+            WebOrderStatus.DECLINED,
+          ],
+        },
       },
       select: {
         id: true,
@@ -201,10 +215,7 @@ export async function listBuyerOrders(
       buyerReference: po.buyerReference,
     })),
     ...web.map((order) => ({
-      kind:
-        order.status === WebOrderStatus.DECLINED
-          ? ("declined" as const)
-          : ("submitted" as const),
+      kind: webOrderKind(order.status),
       id: order.id,
       reference: order.reference,
       date: order.submittedAt,
@@ -444,7 +455,13 @@ export async function loadBuyerOrder(
     where: {
       id,
       buyerId,
-      status: { in: [WebOrderStatus.SUBMITTED, WebOrderStatus.DECLINED] },
+      status: {
+        in: [
+          WebOrderStatus.SUBMITTED,
+          WebOrderStatus.RECEIVED,
+          WebOrderStatus.DECLINED,
+        ],
+      },
     },
     select: {
       id: true,
@@ -474,7 +491,7 @@ export async function loadBuyerOrder(
   if (!web) return null;
 
   return {
-    kind: web.status === WebOrderStatus.DECLINED ? "declined" : "submitted",
+    kind: webOrderKind(web.status),
     id: web.id,
     reference: web.reference,
     buyerReference: web.buyerReference,

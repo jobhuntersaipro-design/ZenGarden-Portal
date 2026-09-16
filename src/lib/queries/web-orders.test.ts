@@ -78,8 +78,11 @@ describe("listBuyerOrders is a narrow select, never an include", () => {
 
   it("never offers a client's own DRAFT cart as an order", async () => {
     await listBuyerOrders("b1");
+    // Phase 41, a deliberate edit to this line: an order the team has
+    // received but not yet confirmed is still in flight, not gone.
     expect(webFindMany.mock.calls[0][0].where.status.in).toEqual([
       "SUBMITTED",
+      "RECEIVED",
       "DECLINED",
     ]);
   });

@@ -63,7 +63,13 @@ export async function loadSentOrder(
     where: {
       reference,
       buyerId,
-      status: { in: [WebOrderStatus.SUBMITTED, WebOrderStatus.CONFIRMED] },
+      status: {
+        in: [
+          WebOrderStatus.SUBMITTED,
+          WebOrderStatus.RECEIVED,
+          WebOrderStatus.CONFIRMED,
+        ],
+      },
     },
     select: {
       id: true,
