@@ -163,6 +163,18 @@ describe("attachWebOrderDocument", () => {
     expect(await attachWebOrderDocument("wo1")).not.toBeNull();
   });
 
+  /**
+   * `confirmWebOrder` calls this while the order is still RECEIVED — the
+   * team has picked it up but not yet confirmed it. Refusing that status
+   * would mean every confirmed shop order is written with no document at
+   * all, and the buyer's own copy never draws for the whole time the team
+   * holds the order.
+   */
+  it("draws one for an order the team has received but not yet confirmed", async () => {
+    loadWebOrderDocumentSource.mockResolvedValue(source({ status: "RECEIVED" }));
+    expect(await attachWebOrderDocument("wo1")).not.toBeNull();
+  });
+
   it("never throws — a failed render must not read back as a failed order", async () => {
     renderPurchaseOrderPdf.mockRejectedValue(new Error("yoga would not load"));
     expect(await attachWebOrderDocument("wo1")).toBeNull();

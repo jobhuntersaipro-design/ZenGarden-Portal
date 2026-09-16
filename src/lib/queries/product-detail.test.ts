@@ -55,16 +55,26 @@ describe("loadProduct — open shop orders", () => {
   /**
    * A DRAFT is a client's live cart. Showing one on an ops screen would put a
    * basket nobody has sent in front of the team, so the status is pinned.
+   * SUBMITTED and RECEIVED both count as open — a received order is still
+   * waiting on a person, not yet confirmed.
    */
-  it("reads submitted shop orders only, newest first", async () => {
+  it("reads submitted and received shop orders only, newest first", async () => {
     await loadProduct("p1", presign);
 
     const call = webOrderLineFindMany.mock.calls[0][0];
     expect(call.where).toEqual({
       productId: "p1",
-      webOrder: { status: "SUBMITTED" },
+      webOrder: { status: { in: ["SUBMITTED", "RECEIVED"] } },
     });
     expect(call.orderBy).toEqual({ webOrder: { submittedAt: "desc" } });
+  });
+
+  it("counts an order the team has received among a product's open shop orders", async () => {
+    await loadProduct("p1", presign);
+    const call = webOrderLineFindMany.mock.calls[0]![0];
+    expect(call.where.webOrder.status).toEqual({
+      in: ["SUBMITTED", "RECEIVED"],
+    });
   });
 
   it("returns one row per line, with the order behind it", async () => {

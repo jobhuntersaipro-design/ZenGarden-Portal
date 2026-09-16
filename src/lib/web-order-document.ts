@@ -49,8 +49,13 @@ export async function attachWebOrderDocument(
     if (!source) return null;
     // A DRAFT is a live cart. There is no purchase order to draw for one, and
     // drawing it would put prices on paper before they were snapshotted.
+    // RECEIVED is accepted because `confirmWebOrder` calls this while the
+    // order is still in that state, before its transaction moves it to
+    // CONFIRMED — and the buyer's own document must draw for the whole time
+    // the team holds the order, not just once it is confirmed.
     if (
       source.status !== WebOrderStatus.SUBMITTED &&
+      source.status !== WebOrderStatus.RECEIVED &&
       source.status !== WebOrderStatus.CONFIRMED
     ) {
       return null;

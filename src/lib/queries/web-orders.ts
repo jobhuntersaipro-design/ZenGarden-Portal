@@ -702,6 +702,13 @@ export async function loadWebOrderForReview(
   };
 }
 
-/** Submitted shop orders waiting on a person. Unscoped by date, like the queue. */
+/**
+ * Shop orders waiting on a person — submitted or received but not yet
+ * confirmed. Unscoped by date, like the queue.
+ */
 export const openWebOrderCount = () =>
-  prisma.webOrder.count({ where: { status: WebOrderStatus.SUBMITTED } });
+  prisma.webOrder.count({
+    where: {
+      status: { in: [WebOrderStatus.SUBMITTED, WebOrderStatus.RECEIVED] },
+    },
+  });
