@@ -94,7 +94,10 @@ One pure function, `resolveListing`, answers "which listing does a product
 with this brand, name and market belong to?" over a list of candidate rows:
 
 - if any candidate in the derived group (same brand + `groupName` + market)
-  carries a family → **that family**;
+  carries a family → **that family**; if the members carry **more than
+  one** family — possible after curation — the resolver returns them all,
+  the form says *"matches 2 families: pick one"*, and the write refuses
+  rather than guess;
 - else if the group has members → **the derived group**, named by its
   title and its member count, and flagged as *not yet a family*;
 - else → **a new listing**.
@@ -117,8 +120,9 @@ The line updates as brand, name or market change, debounced like the
 review screen's draft save. Choosing a family in the picker overrides it
 and the line says which family will be used instead.
 
-**In the writes.** `createProduct`, `createProductVariants` and
-`updateProduct` run the same resolver inside their transaction when the
+**In the writes.** `createProductVariants` and `updateProduct` — the two
+writers `/products/new` and the edit drawer actually call — run the same
+resolver inside their transaction when the
 input carries neither `familyId` nor `newFamily`: an existing family is
 assigned; a derived group with members gets a family created — code from
 `generateFamilyCode` over brand, category and the size in the name — and
@@ -259,6 +263,16 @@ everything this pass creates deleted by id — the standing rule.
 - **Not in v1:** ordering variants within a listing; a per-listing cover
   image (the card shows the selected variant's); quantity-per-variant on
   the catalogue card; merging two families; renaming a listing's market.
+- **A renamed family code makes its generated SKUs look hand-typed.** The
+  equality test in §6 recomputes from the family's *current* code, so a
+  product coded under `ZEN-SC-2100` whose family is later recoded to
+  `ZEN-SC-2100-SCRUB` fails the test and gets the Regenerate button rather
+  than an automatic rewrite. That is the safe side of the rule and is
+  left as it is.
+- **`createProduct` has had no caller since Phase 39** (`/products/new`
+  goes through `createProductVariants`, which with one row does the same
+  work). It is not taught the resolver; deleting it is a decision recorded
+  against Phase 39 and still the user's.
 - **`updateProduct` writing a new SKU** changes what extraction matches
   for that product from the next upload on. That is the point for a
   generated code; for a customer code the equality rule prevents it, and
