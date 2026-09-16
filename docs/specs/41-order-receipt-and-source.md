@@ -69,7 +69,7 @@ On `WebOrder`, beside the existing `reviewedBy`/`reviewedAt`:
 
 ```prisma
   receivedById String?
-  receivedBy   User?     @relation("webOrdersReceived", fields: [receivedById], references: [id])
+  receivedBy   User?     @relation("webOrdersReceived", fields: [receivedById], references: [id], onDelete: SetNull)
   receivedAt   DateTime?
 ```
 
@@ -139,6 +139,19 @@ and puts **Receive order** in its place as the primary action, in the same
 shape as the Phase 04 totals gate: the button is refused *and* the screen says
 why. The server check is the real gate; the disabled button is the courtesy.
 
+**The write is guarded too, not only the read** — found by the final
+whole-branch review. Confirm reads the order, checks it is `RECEIVED`, writes
+the purchase order, then marks the web order `CONFIRMED`. That last write was
+an `update` on the id alone. Under READ COMMITTED a decline committing between
+the read and the write would have been overwritten: the order `CONFIRMED`, a
+purchase order committed, and the buyer emailed both "not accepted" and
+"confirmed". The write is now `updateMany` on `{ id, status: RECEIVED }`, and a
+count of 0 throws `ALREADY_REVIEWED` inside the transaction, which rolls back
+the purchase order written a moment earlier and answers "This one has already
+been reviewed." The race predates this phase, but this phase widened decline
+to `RECEIVED`, the exact state confirm reads. `confirm-web-order.test.ts` pins
+the `where` and the `data` by equality and covers the count-0 case.
+
 **As built, two additions.** Receive and Confirm each scope their own spinner
 — a `receiving` flag beside the existing `declining` one — so pressing Receive
 spins Receive alone; the plan had them share one expression. And the order's
@@ -158,8 +171,11 @@ That file predates this phase; the page is one this phase names.
 - **`CheckoutSteps`** keeps its four steps. Its last step already renames
   itself from "We'll be in touch" to "Confirmed" when an order is confirmed;
   it now also reads **"Received"** at the received state. The boolean
-  `complete` prop becomes `state?: "pending" | "received" | "confirmed"` and
-  all four calling screens are updated. **No fifth step** — the bar is a
+  `complete` prop becomes `state?: "pending" | "received" | "confirmed"`. Of
+  the four calling screens only the buyer's order page, `orders/[id]`, passes
+  `state`; the cart, the checkout review and the sent screen render before the
+  team has touched the order, where the default `pending` is the truth.
+  **No fifth step** — the bar is a
   checkout progress indicator, and an ops queue state does not earn a column
   in the buyer's mental model of their own checkout.
 - **New email**, `src/emails/WebOrderReceived.tsx`, following
@@ -226,7 +242,25 @@ shop orders, because it selects the web-order branch of the union alone — a
 *confirmed* shop order has `source: "web"` in its own row and does not appear
 under the chip that claims to filter on exactly that. With a Source column on
 screen, that gap becomes visible and wrong. The chip now means **every row
-whose Source is Shop**, confirmed ones included.
+whose Source is Shop**, confirmed ones included. Its dot is `bg-ink-secondary`,
+the Source column's Shop colour — it filters on provenance, not on a state to
+act on — where it had borrowed the amber *Needs review* dot.
+
+**The dashboard links to `shop-open`, not to `web`** — found by the final
+whole-branch review. The dashboard's work queue says "N orders from the shop to
+confirm", counting `openWebOrderCount`: web orders in `SUBMITTED` or `RECEIVED`.
+It linked to `?status=web`, and once that chip took in confirmed shop purchase
+orders, "1 order from the shop to confirm" landed on that order plus every shop
+order ever confirmed — against `00-master.md` §4, which requires a number and
+the table under it to agree. The fix is a list filter with no chip,
+`status=shop-open`: the web-order branch of the union alone, with
+`wo."status" IN ('SUBMITTED', 'RECEIVED')`, and neither the draft branch nor
+the purchase-order branch. It is in `STATUSES` on the page and in the
+`StatusChip` type, but not in `CHIPS`, so while it is the filter no chip reads
+selected. Two reasons it is not a chip: a SUBMITTED-only chip cannot exist,
+because *Needs review* also holds scan drafts; and a visible chip was not asked
+for — it is a `CHIPS` entry away if it is wanted. `po-list.sql.test.ts` pins
+the branch and the status list for both the table query and its summary.
 
 ## 7. Every reader of SUBMITTED
 
@@ -418,7 +452,9 @@ submitted, for the overflow re-measure).
     `a9657eb`; after the fix commit `f8a76cd`, tests (1145/1145), `tsc` and
     lint re-run clean. Every §7 row has a test pinning its `where` except
     `buyer-activity.ts`, checked by the compiler, and `buyer-detail.ts`, which
-    is unpinned (§7).
+    is unpinned (§7). After the final review's fixes (§4, §6): **1149/1149
+    tests across 93 files**, `tsc --noEmit` clean, lint 0 errors and the same 2
+    warnings, `npm run build` exit 0.
 
 **Cleanup, counted both ends.** Two web orders and their two lines, one
 purchase order with its line item and stage event, one `Document`, one
@@ -436,7 +472,8 @@ login attempts 68 and purchase orders 400.
 ### Found during the build
 
 Each of these was caught before it merged — two by reading the plan before
-any code, four in review, two only in the browser. None was caught by a
+any code, six in review (two of them by the final whole-branch review), two
+only in the browser. None was caught by a
 failing test.
 
 - **A `tsc` failure baked into the first task.** The plan added `RECEIVED` to
@@ -475,6 +512,14 @@ failing test.
   by column's `source` branch as redundant; the live drive then read the
   buyer's contact as the uploader of a confirmed shop order. Restored, printing
   `—` (§6).
+- **Confirm could overwrite a decline.** Its final write guarded on the id
+  alone, so a decline committing mid-transaction would have left a
+  `CONFIRMED` order and a committed purchase order behind a buyer told "not
+  accepted". Found by the final whole-branch review; the write is guarded on
+  `RECEIVED` and rolls back on a miss (§4).
+- **The dashboard's shop line led to more rows than it counted**, once the
+  *From the shop* chip took in confirmed orders. Found by the final
+  whole-branch review; it links to the chip-less `shop-open` filter (§6).
 - **`/web-orders/[id]` overflowed at 390px**, 405 against 390, from a contact's
   name and email that would not shrink inside a grid item with
   `min-width: auto`. Pre-existing — the file was last changed in Phase 38 — but
@@ -507,6 +552,13 @@ failing test.
   harness and was not driven in a browser.
 - **The list and the buyer's page at every width after confirming.** The list
   was swept with the order received, the buyer's page only while received.
+- **The dashboard's `shop-open` link, live.** It renders only with an
+  unconfirmed shop order, and development holds none. The filter rests on
+  `po-list.sql.test.ts` and on reading `WorkQueue`, the page's `STATUSES` and
+  `baseSelect`; no browser or database was used for the final review's fixes.
+- **Confirm racing a decline**, live. The guarded write and its rollback rest
+  on `confirm-web-order.test.ts`, whose transaction mock cannot itself roll
+  anything back — that part rests on Prisma's interactive transaction.
 - **The buyer downloading the PDF's bytes.** The route answered 200 with a
   presigned URL and `HeadObject` proved the object, but the browser's own
   fetch of the R2 URL from `shop.localhost` was blocked by CORS.

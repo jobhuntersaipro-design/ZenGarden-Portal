@@ -32,8 +32,10 @@ reads "Received". On `/purchase-orders` a received order carries its own
 **Received** badge and chip, so the shop backlog splits between *Needs review*
 and *Received* instead of overlapping; a **Source** column after Status reads
 **Shop** or **Manual**, sorts over the whole list and replaces the `WEB` chip;
-*From the shop* now includes confirmed shop orders; and Uploaded by reads `—`
-for every shop row. The eleven readers of `SUBMITTED` were decided one by one
+*From the shop* now includes confirmed shop orders, so the dashboard's
+"orders from the shop to confirm" line links to a chip-less filter,
+`?status=shop-open`, holding only the unconfirmed ones it counts; and Uploaded
+by reads `—` for every shop row. The eleven readers of `SUBMITTED` were decided one by one
 (spec §7).
 
 One migration, `20260918090000_web_order_received` — the enum value and two
@@ -98,7 +100,9 @@ inboxes. Measurements in
   line items **1606**, stage events **2323**, audit events **5**, login
   attempts **68**.
 - **1145/1145 tests, `tsc --noEmit`, `npm run lint`** (the same 2 pre-existing
-  warnings, 0 errors) **and `npm run build` all clean.**
+  warnings, 0 errors) **and `npm run build` all clean.** After the final
+  review's fixes: **1149/1149 tests across 93 files**, `tsc`, lint (the same 2
+  warnings) and `build` clean again.
 
 ## Not verified
 
@@ -121,6 +125,12 @@ inboxes. Measurements in
   submitted row; the confirmed case is verified by reading the code.
 - **The buyer-detail page's open shop orders.** Its widened `where` has no test
   harness and was not driven.
+- **The dashboard's `shop-open` link, live.** The line renders only with an
+  unconfirmed shop order and development holds none; it rests on
+  `po-list.sql.test.ts` and on reading the code. No browser or database was
+  used for the final review's fixes.
+- **Confirm racing a decline**, live. Unit tests only, and their transaction
+  mock cannot roll back — the rollback itself is Prisma's.
 
 ## Notes
 
@@ -157,10 +167,40 @@ inboxes. Measurements in
   their behaviour deleted; Receive spinning Confirm; a status colour on the
   Source dot; the Uploaded by guard the plan deleted; and the 390px overflow.
   None was caught by a failing test.
+- **The final whole-branch review found two more, both fixed** (spec §4, §6):
+  - **Confirm could overwrite a decline.** Its last write, marking the web
+    order `CONFIRMED`, guarded on the id alone. A decline committing between
+    confirm's read and that write would have left a `CONFIRMED` order, a
+    committed purchase order and a buyer emailed both outcomes. The write is
+    now `updateMany` on `{ id, status: RECEIVED }`; a count of 0 throws inside
+    the transaction, rolling the purchase order back, and answers "This one has
+    already been reviewed."
+  - **The dashboard's shop line led to more rows than it counted.** "1 order
+    from the shop to confirm" linked to `?status=web`, which since this phase
+    also holds every confirmed shop order. It links to `?status=shop-open` —
+    the web branch alone, `SUBMITTED` or `RECEIVED`, exactly
+    `openWebOrderCount` — which is allow-listed on the page but has no chip.
+  - Folded in with them: the *From the shop* chip's dot is `bg-ink-secondary`
+    rather than the amber *Needs review* one; receive's written `data` is
+    pinned by equality; and the buyer's Status sort ranks `received` between
+    submitted and Order placed.
 - **Recorded, not fixed:**
-  - the buyer's `/orders` Status sort ranks "Received by the team" with
-    "Awaiting confirmation" (`STATUS_RANK` has no `received` entry), so the
-    two interleave by date;
+  - the buyer-sort `received` rank the final review added has no test — no
+    test covers sorting buyer orders by status at all;
+  - **emails that link to a page which stops existing.** The Received email,
+    like the receipt email from `cart.ts` before it, links
+    `/orders/{webOrderId}`. Once the order is confirmed that id answers 404,
+    because `loadBuyerOrder` then finds a purchase order under a different id
+    and no longer returns a `CONFIRMED` web order. The **Confirmed email does
+    not share the shape**: it links `/orders/{purchaseOrderId}`, as the stage
+    emails in `stages.ts` do. The Declined email links the web order's id, and
+    a declined web order stays readable there. A buyer-routing gap across the
+    email sequence, older than this phase;
+  - `receiveWebOrder` answers "This one has already been received." for a
+    `DRAFT` or a missing id — its guarded `updateMany` cannot tell those apart
+    from a real double receive;
+  - `/web-orders/[id]` renders the review form for a `DRAFT` id (pre-existing);
+  - a duplicated assertion in `product-detail.test.ts`;
   - `webOrderKind` maps every status that is not `DECLINED` or `RECEIVED` to
     `"submitted"` — unreachable under today's filters, but not exhaustive;
   - no test that `loadBuyerOrder` returns kind `"received"`, and two tests pin
