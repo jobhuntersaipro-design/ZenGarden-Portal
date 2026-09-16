@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import {
+  derivedKey,
   groupKey,
   groupName,
   groupProducts,
@@ -59,10 +60,12 @@ describe("groupKey", () => {
     expect(groupKey(goat)).toBe(groupKey(papaya));
   });
 
-  it("keeps two pack sizes of the same cream apart", () => {
+  it("puts two pack sizes of the same cream in one listing", () => {
+    // Phase 40: a buyer thinks of 6-per-carton and 12-per-carton as one
+    // product bought two ways. Pack size became a variant, not a listing.
     const small = product({ id: "a", packSize: 6 });
     const large = product({ id: "b", packSize: 12 });
-    expect(groupKey(small)).not.toBe(groupKey(large));
+    expect(groupKey(small)).toBe(groupKey(large));
   });
 
   it("keeps two markets of the same cream apart", () => {
@@ -85,12 +88,15 @@ describe("groupKey", () => {
     expect(groupKey(a)).toBe(groupKey(b));
   });
 
-  it("still keeps one family apart across two markets and two pack sizes", () => {
+  it("keeps one family apart across two markets, and together across two packs", () => {
+    // A listing is a family in ONE market: the same cream for Malaysia and
+    // for Vietnam carries different artwork and is a different thing to
+    // order. Two carton sizes for one market are one listing.
     const my = product({ id: "a", familyId: "fam1", market: "Malaysia" });
     const vn = product({ id: "b", familyId: "fam1", market: "Vietnam" });
     const big = product({ id: "c", familyId: "fam1", market: "Malaysia", packSize: 12 });
     expect(groupKey(my)).not.toBe(groupKey(vn));
-    expect(groupKey(my)).not.toBe(groupKey(big));
+    expect(groupKey(my)).toBe(groupKey(big));
   });
 
   it("falls back to the derived key for a product in no family", () => {
@@ -179,5 +185,101 @@ describe("variantLabels", () => {
   it("calls a product with no variant Standard", () => {
     const rows = [product({ id: "a", variant: null, sku: "ONE" })];
     expect(variantLabels(rows).get("a")).toBe("Standard");
+  });
+});
+
+describe("derivedKey", () => {
+  it("ignores the family, so a placed product still matches its unplaced twin", () => {
+    // What the resolver keys on: "which listing do these brand, name and
+    // market describe", whether or not anyone has curated it yet.
+    const placed = product({ id: "a", familyId: "fam1" });
+    const loose = product({ id: "b", familyId: null });
+    expect(derivedKey(placed)).toBe(derivedKey(loose));
+  });
+
+  it("separates two markets", () => {
+    expect(derivedKey(product({ id: "a", market: "Malaysia" }))).not.toBe(
+      derivedKey(product({ id: "b", market: "Indonesia" })),
+    );
+  });
+
+  it("ignores pack size, like the group key it backs", () => {
+    expect(derivedKey(product({ id: "a", packSize: 6 }))).toBe(
+      derivedKey(product({ id: "b", packSize: 12 })),
+    );
+  });
+});
+
+describe("ProductGroup.packSize", () => {
+  it("is the shared pack when every variant agrees", () => {
+    const [group] = groupProducts([
+      product({ id: "a", variant: "Papaya", packSize: 6 }),
+      product({ id: "b", variant: "Carrot", packSize: 6 }),
+    ]);
+    expect(group!.packSize).toBe(6);
+  });
+
+  it("is null when the listing mixes packs, so no caption can claim one", () => {
+    const [group] = groupProducts([
+      product({ id: "a", variant: "Papaya", packSize: 6 }),
+      product({ id: "b", variant: "Papaya", packSize: 12 }),
+    ]);
+    expect(group!.packSize).toBeNull();
+  });
+});
+
+describe("variantLabels with mixed packs", () => {
+  const variant = (id: string, flavour: string | null, packSize: number | null) => ({
+    id,
+    sku: `SKU-${id}`,
+    variant: flavour,
+    packSize,
+    unit: "carton",
+  });
+
+  it("names the flavour alone when every variant shares a pack", () => {
+    const labels = variantLabels([
+      variant("a", "Papaya", 6),
+      variant("b", "Carrot", 6),
+    ]);
+    expect(labels.get("a")).toBe("Papaya");
+    expect(labels.get("b")).toBe("Carrot");
+  });
+
+  it("appends the pack when the listing holds more than one", () => {
+    const labels = variantLabels([
+      variant("a", "Carrot", 6),
+      variant("b", "Carrot", 12),
+      variant("c", "Papaya", 6),
+    ]);
+    expect(labels.get("a")).toBe("Carrot · 6 per carton");
+    expect(labels.get("b")).toBe("Carrot · 12 per carton");
+    expect(labels.get("c")).toBe("Papaya · 6 per carton");
+  });
+
+  it("says 'per carton' for a variant whose pack size is unknown", () => {
+    const labels = variantLabels([variant("a", "Carrot", 6), variant("b", "Carrot", null)]);
+    expect(labels.get("b")).toBe("Carrot · per carton");
+  });
+
+  it("honours the product's own unit", () => {
+    const labels = variantLabels([
+      { ...variant("a", "Carrot", 6), unit: "box" },
+      { ...variant("b", "Carrot", 12), unit: "box" },
+    ]);
+    expect(labels.get("a")).toBe("Carrot · 6 per box");
+  });
+
+  it("still falls back to the SKU when two labels would read the same", () => {
+    // The Phase 13 importer's collision suffixes put two identical rows
+    // side by side; appending the pack does not separate them either.
+    const labels = variantLabels([variant("a", "Cherry", 6), variant("b", "Cherry", 6)]);
+    expect(labels.get("a")).toBe("Cherry (SKU-a)");
+    expect(labels.get("b")).toBe("Cherry (SKU-b)");
+  });
+
+  it("calls an unnamed variant Standard, as it always has", () => {
+    const labels = variantLabels([variant("a", null, 6)]);
+    expect(labels.get("a")).toBe("Standard");
   });
 });
