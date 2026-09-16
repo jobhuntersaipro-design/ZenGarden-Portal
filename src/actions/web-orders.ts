@@ -129,7 +129,11 @@ export async function confirmWebOrder(
         },
       });
       if (!order) throw new Error("MISSING_ORDER");
-      if (order.status !== WebOrderStatus.SUBMITTED) {
+      // Two different mistakes, and only one of them is the user's to fix.
+      if (order.status === WebOrderStatus.SUBMITTED) {
+        throw new Error("NOT_RECEIVED");
+      }
+      if (order.status !== WebOrderStatus.RECEIVED) {
         throw new Error("ALREADY_REVIEWED");
       }
 
@@ -195,6 +199,12 @@ export async function confirmWebOrder(
       return { success: false, error: "This buyer already has a PO with that number." };
     }
     const message = cause instanceof Error ? cause.message : "";
+    if (message === "NOT_RECEIVED") {
+      return {
+        success: false,
+        error: "Receive this order before confirming it.",
+      };
+    }
     if (message === "ALREADY_REVIEWED") {
       return { success: false, error: "This one has already been reviewed." };
     }
@@ -308,8 +318,13 @@ export async function declineWebOrder(
   try {
     const updated = await prisma.webOrder.updateMany({
       // Guarded on the status the caller last saw, the same shape as
-      // advanceStage: two people reviewing at once cannot both win.
-      where: { id: webOrderId, status: WebOrderStatus.SUBMITTED },
+      // advanceStage: two people reviewing at once cannot both win. Either
+      // SUBMITTED or RECEIVED may be declined — an order a person has looked
+      // at is exactly the one they may turn down.
+      where: {
+        id: webOrderId,
+        status: { in: [WebOrderStatus.SUBMITTED, WebOrderStatus.RECEIVED] },
+      },
       data: {
         status: WebOrderStatus.DECLINED,
         declinedReason: parsed.data.reason,

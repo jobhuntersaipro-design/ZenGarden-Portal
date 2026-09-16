@@ -95,7 +95,9 @@ beforeEach(() => {
   requireUser.mockResolvedValue({ id: "u1", role: "MEMBER" });
   webFindUnique.mockResolvedValue({
     id: "wo1",
-    status: "SUBMITTED",
+    // Confirmable: a shop order must be received before it can be
+    // confirmed, so this is the state a default confirm fixture is in.
+    status: "RECEIVED",
     buyerId: "b1",
     buyerReference: "ACME-PO-771",
     reference: "W-2609-00001",
@@ -260,6 +262,47 @@ describe("confirmWebOrder", () => {
       error: "This is not a portal account.",
     });
   });
+
+  it("refuses an order nobody has received yet, and says which mistake it is", async () => {
+    webFindUnique.mockResolvedValue({
+      id: "w1",
+      status: "SUBMITTED",
+      buyerId: "b1",
+      buyerReference: null,
+      reference: "W-2609-00001",
+      placedBy: { email: "buyer@example.com" },
+      _count: { lines: 1 },
+    });
+
+    const result = await confirmWebOrder("w1", draft(), {
+      deliveryDate: "2026-10-02",
+    });
+
+    expect(result).toEqual({
+      success: false,
+      error: "Receive this order before confirming it.",
+    });
+    expect(writePurchaseOrder).not.toHaveBeenCalled();
+  });
+
+  it("confirms an order that has been received", async () => {
+    webFindUnique.mockResolvedValue({
+      id: "w1",
+      status: "RECEIVED",
+      buyerId: "b1",
+      buyerReference: null,
+      reference: "W-2609-00001",
+      placedBy: { email: "buyer@example.com" },
+      _count: { lines: 1 },
+    });
+    writePurchaseOrder.mockResolvedValue("po1");
+
+    const result = await confirmWebOrder("w1", draft(), {
+      deliveryDate: "2026-10-02",
+    });
+
+    expect(result.success).toBe(true);
+  });
 });
 
 describe("declineWebOrder", () => {
@@ -273,7 +316,7 @@ describe("declineWebOrder", () => {
     await declineWebOrder("wo1", { reason: "Out of stock until October." });
     expect(webUpdateMany.mock.calls[0][0].where).toEqual({
       id: "wo1",
-      status: "SUBMITTED",
+      status: { in: ["SUBMITTED", "RECEIVED"] },
     });
   });
 
@@ -311,5 +354,22 @@ describe("declineWebOrder", () => {
     await declineWebOrder("wo1", { reason: "Out of stock." });
     await flushAfter();
     expect(sendEmail).not.toHaveBeenCalled();
+  });
+
+  it("declines an order that has already been received", async () => {
+    webUpdateMany.mockResolvedValue({ count: 1 });
+    webFindUniqueOuter.mockResolvedValue({
+      reference: "W-2609-00001",
+      placedBy: { email: "buyer@example.com" },
+    });
+
+    const result = await declineWebOrder("w1", { reason: "Out of stock" });
+
+    expect(result.success).toBe(true);
+    // An order a person has looked at is exactly the one they may turn down.
+    expect(webUpdateMany.mock.calls[0]![0].where).toEqual({
+      id: "w1",
+      status: { in: ["SUBMITTED", "RECEIVED"] },
+    });
   });
 });
