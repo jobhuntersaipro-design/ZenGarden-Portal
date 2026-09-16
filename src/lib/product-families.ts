@@ -286,7 +286,12 @@ export function groupFamilies<P extends FamilyMember>(
     group.row.variants += 1;
     if (product.active) group.row.active += 1;
     if (product.flags.length > 0) group.row.toFix += 1;
-    if (product.market) group.markets.add(product.market);
+    // A null market is still one listing on the shop (`loadListing` groups it
+    // into its own "No market" section) — not "no market", so it must count
+    // as one rather than being dropped, or this column and that page disagree
+    // on the same family. `""` is the same sentinel `loadListing` keys its
+    // no-market section on.
+    group.markets.add(product.market ?? "");
     for (const sale of rowsByProduct.get(product.id) ?? []) {
       group.row.units += sale.quantity;
       group.row.revenue += sale.amount;

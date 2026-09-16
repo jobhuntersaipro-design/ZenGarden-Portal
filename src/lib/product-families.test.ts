@@ -190,6 +190,24 @@ describe("groupFamilies", () => {
     const rows = groupFamilies(members.slice(0, 3), sales);
     expect(rows.map((r) => r.id)).toEqual(["f1"]);
   });
+
+  it("counts a null market as one market — a listing with no market is still one listing", () => {
+    const noMarket = [
+      { id: "e", market: null, active: true, flags: [], family: fam },
+      { id: "f", market: null, active: true, flags: [], family: fam },
+    ];
+    const [family] = groupFamilies(noMarket, new Map());
+    expect(family.markets).toBe(1);
+  });
+
+  it("counts null and a real market as two markets", () => {
+    const mixed = [
+      { id: "e", market: null, active: true, flags: [], family: fam },
+      { id: "f", market: "Vietnam", active: true, flags: [], family: fam },
+    ];
+    const [family] = groupFamilies(mixed, new Map());
+    expect(family.markets).toBe(2);
+  });
 });
 
 describe("selectFamilies", () => {
