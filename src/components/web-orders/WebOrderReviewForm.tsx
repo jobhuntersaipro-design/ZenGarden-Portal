@@ -33,6 +33,12 @@ export function WebOrderReviewForm({ order }: { order: OpsWebOrder }) {
   const [pending, startTransition] = useTransition();
   const [acknowledged, setAcknowledged] = useState(false);
   const [declining, setDeclining] = useState(false);
+  // Scopes the Receive button's own spinner, the same shape as `declining`
+  // scopes Decline's — so clicking one button never makes another look busy
+  // too. Reset in a `finally` rather than only on the happy path, so a
+  // thrown action (not just a `{success:false}` result) cannot leave it
+  // stuck true and the spinner stuck on Receive forever.
+  const [receiving, setReceiving] = useState(false);
   const [reason, setReason] = useState("");
   /**
    * The day the team commits to (Phase 38), prefilled with the day the buyer
@@ -203,15 +209,20 @@ export function WebOrderReviewForm({ order }: { order: OpsWebOrder }) {
       <div className="mt-md flex flex-wrap items-center gap-sm">
         {received ? null : (
           <Button
-            pending={pending && !declining}
+            pending={pending && receiving}
             onClick={() =>
               startTransition(async () => {
                 setDeclining(false);
-                const result = await receiveWebOrder(order.id);
-                if (result.success) {
-                  toast.success("Order received. The buyer has been told.");
-                } else {
-                  toast.error(result.error);
+                setReceiving(true);
+                try {
+                  const result = await receiveWebOrder(order.id);
+                  if (result.success) {
+                    toast.success("Order received. The buyer has been told.");
+                  } else {
+                    toast.error(result.error);
+                  }
+                } finally {
+                  setReceiving(false);
                 }
               })
             }
@@ -221,11 +232,12 @@ export function WebOrderReviewForm({ order }: { order: OpsWebOrder }) {
         )}
         <Button
           variant={received ? "default" : "secondary"}
-          pending={pending && !declining}
+          pending={pending && !declining && !receiving}
           disabled={blockedByTotals || !deliveryDate || !received}
           onClick={() =>
             startTransition(async () => {
               setDeclining(false);
+              setReceiving(false);
               const result = await confirmWebOrder(order.id, submitted, {
                 totalsAcknowledged: acknowledged,
                 deliveryDate,
