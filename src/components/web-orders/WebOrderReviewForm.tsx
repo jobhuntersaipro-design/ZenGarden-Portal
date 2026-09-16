@@ -9,7 +9,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { draftReducer } from "@/components/review/draft-reducer";
-import { confirmWebOrder, declineWebOrder } from "@/actions/web-orders";
+import { confirmWebOrder, declineWebOrder, receiveWebOrder } from "@/actions/web-orders";
 import { todayISO } from "@/lib/dates";
 import { formatMYR } from "@/lib/money";
 import { checkTotals, type PoDraft } from "@/lib/validation/purchase-orders";
@@ -96,6 +96,7 @@ export function WebOrderReviewForm({ order }: { order: OpsWebOrder }) {
 
   const totals = useMemo(() => checkTotals(submitted), [submitted]);
   const blockedByTotals = !totals.matches && !acknowledged;
+  const received = order.status === "RECEIVED";
 
   return (
     <section className="rounded-lg border border-hairline bg-canvas p-lg">
@@ -200,9 +201,28 @@ export function WebOrderReviewForm({ order }: { order: OpsWebOrder }) {
       </div>
 
       <div className="mt-md flex flex-wrap items-center gap-sm">
+        {received ? null : (
+          <Button
+            pending={pending && !declining}
+            onClick={() =>
+              startTransition(async () => {
+                setDeclining(false);
+                const result = await receiveWebOrder(order.id);
+                if (result.success) {
+                  toast.success("Order received. The buyer has been told.");
+                } else {
+                  toast.error(result.error);
+                }
+              })
+            }
+          >
+            Receive order
+          </Button>
+        )}
         <Button
+          variant={received ? "default" : "secondary"}
           pending={pending && !declining}
-          disabled={blockedByTotals || !deliveryDate}
+          disabled={blockedByTotals || !deliveryDate || !received}
           onClick={() =>
             startTransition(async () => {
               setDeclining(false);
@@ -224,7 +244,11 @@ export function WebOrderReviewForm({ order }: { order: OpsWebOrder }) {
         <Button variant="secondary" onClick={() => setDeclining((v) => !v)}>
           {declining ? "Cancel" : "Decline"}
         </Button>
-        {blockedByTotals ? (
+        {!received ? (
+          <p className="text-[length:var(--text-caption)] text-ink-tertiary">
+            Receive this order before confirming it.
+          </p>
+        ) : blockedByTotals ? (
           <p className="text-[length:var(--text-caption)] text-ink-tertiary">
             Locked — totals don&rsquo;t match
           </p>
