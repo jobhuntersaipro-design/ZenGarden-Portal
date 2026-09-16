@@ -165,7 +165,15 @@ export async function loadListing(id: string): Promise<Listing | null> {
  */
 export async function productsOutsideFamily(familyId: string) {
   const rows = await prisma.product.findMany({
-    where: { NOT: { familyId } },
+    where: {
+      // Prisma's `NOT` drops NULL rows, so `NOT: { familyId }` would omit
+      // every product that is in no family — which on a catalogue before
+      // its family backfill (production, today) is all of them, and
+      // exactly the ones worth adding. Ask for "unplaced, or placed
+      // somewhere else" explicitly instead of relying on NOT's negation of
+      // a nullable column to cover the null case, because it does not.
+      OR: [{ familyId: null }, { familyId: { not: familyId } }],
+    },
     select: {
       id: true,
       sku: true,
