@@ -48,6 +48,25 @@ async function main() {
       role: Role.SUPER_ADMIN,
       disabledAt: null,
       emailVerified: before?.emailVerified ?? new Date(),
+      /**
+       * A promotion has to end the old sessions, the way disabling an account
+       * and setting a password already do (`src/actions/clients.ts`,
+       * `src/actions/profile.ts`).
+       *
+       * Every gate on the admin room reads `role` off the **session token** —
+       * `src/proxy.ts` rewrites `/admin` to a 404 on it, and the portal
+       * layout decides whether to show the Admin row from the same place.
+       * That token only re-reads the database every `REFRESH_INTERVAL_MS`
+       * (five minutes, `src/lib/auth.ts`), so without this a freshly promoted
+       * person keeps the role they had: the database says SUPER_ADMIN, their
+       * menu shows no Admin row, and the route 404s at them. Observed on
+       * 2026-09-16, on a phone that had signed in minutes earlier.
+       *
+       * Bumping `sessionVersion` invalidates every session they hold, so the
+       * next sign-in mints a token carrying the new role. Signing out is the
+       * correct price of a role change; silently holding the old one is not.
+       */
+      sessionVersion: { increment: 1 },
     },
     create: {
       email,
@@ -57,6 +76,11 @@ async function main() {
     },
   });
   console.log(`Now: ${user.email} — ${user.role}, verified, sign in with Google.`);
+  if (before) {
+    console.log(
+      "Their existing sessions are now invalid — they must sign in again to pick up the new role.",
+    );
+  }
 
   const admins = await prisma.user.findMany({
     where: { role: Role.SUPER_ADMIN, disabledAt: null },
