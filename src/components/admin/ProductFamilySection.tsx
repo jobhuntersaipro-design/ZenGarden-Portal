@@ -166,15 +166,19 @@ export function ProductFamilySection({ rows }: { rows: FamilyOption[] }) {
                     <span className="w-44 shrink-0 truncate font-mono text-[length:var(--text-body-sm)] text-ink">
                       {row.code}
                     </span>
-                    <span
+                    {/* The listing page (Phase 40) is otherwise reachable only
+                        from a product's own form — this is the one route into
+                        it from the room where families are managed. */}
+                    <Link
+                      href={`/admin/catalogue/families/${row.id}`}
                       title={row.name}
-                      className="min-w-0 flex-1 truncate text-[length:var(--text-body-sm)] text-ink"
+                      className="min-w-0 flex-1 truncate text-[length:var(--text-body-sm)] text-ink underline-offset-2 hover:underline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-focus"
                     >
                       {row.name}
                       {row.size ? (
                         <span className="text-ink-tertiary"> · {row.size}</span>
                       ) : null}
-                    </span>
+                    </Link>
                     {/* The count links into the catalog filtered to this family,
                         so "6 products" can be read rather than trusted. */}
                     {row.products > 0 ? (
