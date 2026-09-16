@@ -52,6 +52,13 @@ export type PoDocumentData = {
   orderDate: string;
   /** `null` prints as an em dash: the buyer asked for no particular day. */
   requestedDate: string | null;
+  /**
+   * The day the team committed to (Phase 38). Null on a cart and on an order
+   * still waiting, and then the cell is not drawn at all — an empty
+   * "Expected delivery" reads as a promise that has been forgotten rather
+   * than one not yet made.
+   */
+  deliveryDate: string | null;
   paymentTerms: string | null;
   currency: string;
   buyer: PoDocumentParty;
@@ -123,6 +130,8 @@ export function buildPoDocument(input: {
     ourReference: input.ourReference,
     orderDate: input.orderDate,
     requestedDate: input.requestedDate,
+    // A cart has nothing promised yet; the team settles it when they confirm.
+    deliveryDate: null,
     paymentTerms: input.paymentTerms?.trim() || null,
     currency: input.currency ?? "MYR",
     buyer: {
@@ -187,6 +196,8 @@ export function buildPoDocumentFromOrder(input: {
   /** Already formatted, so the page and the document agree on the day. */
   orderDate: string;
   requestedDate: string | null;
+  /** Already formatted too. Null until the team has confirmed the order. */
+  deliveryDate?: string | null;
 }): PoDocumentData {
   const { order } = input;
   const lines = order.lines.map((line) => ({
@@ -216,6 +227,7 @@ export function buildPoDocumentFromOrder(input: {
     ourReference: order.reference,
     orderDate: input.orderDate,
     requestedDate: input.requestedDate,
+    deliveryDate: input.deliveryDate ?? null,
     paymentTerms: order.paymentTerms?.trim() || null,
     currency: order.currency,
     buyer: order.buyer,

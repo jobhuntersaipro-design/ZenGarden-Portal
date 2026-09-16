@@ -6,6 +6,8 @@ import { BackLink } from "@/components/portal/BackLink";
 import { PageHeader } from "@/components/portal/PageHeader";
 import { KpiTile } from "@/components/dashboard/KpiTile";
 import { CountUp } from "@/components/portal/CountUp";
+import { FamilyCard } from "@/components/products/FamilyCard";
+import { OpenShopOrders } from "@/components/products/OpenShopOrders";
 import { OrderHistoryTable } from "@/components/products/OrderHistoryTable";
 import {
   PriceTrendChart,
@@ -23,6 +25,7 @@ import { formatDate, formatDateTime } from "@/lib/dates";
 import { formatMYR } from "@/lib/money";
 import { presignGet } from "@/lib/r2";
 import { loadProduct } from "@/lib/queries/product-detail";
+import { listFamilies } from "@/lib/queries/product-families";
 import { listAllLabels } from "@/lib/queries/products";
 import {
   firstParam,
@@ -68,10 +71,11 @@ export default async function ProductPage({
   const { id } = await params;
   const query = await searchParams;
 
-  const [data, user, labels] = await Promise.all([
+  const [data, user, labels, families] = await Promise.all([
     loadProduct(id, presignGet),
     getSessionUser(),
     listAllLabels(),
+    listFamilies(),
   ]);
   if (!data) notFound();
 
@@ -105,6 +109,7 @@ export default async function ProductPage({
 
   const eyebrow = [
     data.product.sku,
+    data.family?.code,
     data.product.category,
     data.product.packSize
       ? `${data.product.packSize} per ${data.product.unit}`
@@ -167,9 +172,12 @@ export default async function ProductPage({
                   description: data.product.description,
                   active: data.product.active,
                   needsReview: data.product.needsReview,
+                  familyId: data.product.familyId,
+                  newFamily: null,
                 }}
                 imageCount={data.images.length}
                 labels={labels}
+                families={families}
                 trigger={<Button>Edit product</Button>}
               />
             ) : (
@@ -280,6 +288,12 @@ export default async function ProductPage({
         </section>
       </div>
 
+      {data.family ? (
+        <div className="mt-lg">
+          <FamilyCard family={data.family} currentId={data.product.id} />
+        </div>
+      ) : null}
+
       <div className="mt-lg grid grid-cols-2 gap-md lg:grid-cols-6">
         {[
           {
@@ -387,6 +401,9 @@ export default async function ProductPage({
           )}
         </section>
       </div>
+
+      {/* Before the history, because it is the part that needs doing. */}
+      <OpenShopOrders rows={data.openShopOrders} />
 
       <section className="mt-lg">
         <p className="mb-sm font-mono text-[length:var(--text-eyebrow)] text-ink-tertiary">

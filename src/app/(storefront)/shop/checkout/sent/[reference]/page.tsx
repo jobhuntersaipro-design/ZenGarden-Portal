@@ -84,9 +84,25 @@ export default async function OrderSentPage({
         </div>
       </div>
 
+      {/* The document is drawn in the same background step that sends the
+          emails, so on the first paint it usually does not exist yet. Rather
+          than offer a link that would 404 for a second, the page says where
+          the file is — and links it once a reload finds it. */}
       <p className="mt-md rounded-lg bg-surface p-md text-center text-[length:var(--text-caption)] text-ink-tertiary">
-        The same purchase order is filed against your order in our system, so
-        when you call us we are both looking at the same document.
+        {order.documentId ? (
+          <>
+            {"Your purchase order is "}
+            <a
+              href={shopHref.documentDownload(order.documentId)}
+              className="font-medium text-brand-link hover:underline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-focus"
+            >
+              ready to download
+            </a>
+            {", and the same one is filed against your order in our system — so when you call us we are both looking at the same document."}
+          </>
+        ) : (
+          "Your purchase order is attached to the email we just sent, and the same one is filed against your order in our system — so when you call us we are both looking at the same document."
+        )}
       </p>
     </div>
   );

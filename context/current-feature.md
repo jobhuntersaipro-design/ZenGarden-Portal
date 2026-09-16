@@ -1,9 +1,274 @@
-# Current Feature: The buyer's orders, as a table and as documents
+# Current Feature: Product listings — one product, its variants, and the admin who decides
 
 ## Status
 
+**Phase 40 — product listings — built across seven tasks and driven in a
+browser on `feature/product-listings`, not yet committed** (2026-09-16). Spec
+`docs/specs/40-product-listings.md`, whose §8 is now what was measured rather
+than what was intended. Asked for as: "there's 2 same product … I want to put
+it under the same product, so when buyer click in they can choose the variant";
+"let superadmin list product and choose what variant they want to list under
+same product"; "group them automatically if it's the same listing, and let
+admin know the current listing existed and will be added a new variant"; "the
+product code should be auto regenerated when the product is edited".
+
+A shop listing is now **one product family in one market**, with flavour *and
+pack size* as the variants a buyer chooses between. Pack size left the grouping
+key; a variant's label carries its pack only where the listing holds more than
+one. Both forms print the listing a product will join before it is saved, and
+the same resolver runs inside the write, so the message and the outcome cannot
+disagree. A new admin page, `/admin/catalogue/families/[id]`, shows a listing
+one section per market and lets a super admin hide, show, remove or add a
+variant. The edit drawer's SKU follows the product's edits when the generator
+made the code, and holds still — offering Regenerate — when it did not.
+
+No migration and no new dependency.
+
+## Verified, with the figures
+
+Driven on the development database as a real super admin and a real MEMBER;
+full report in `.superpowers/sdd/2026-09-16-product-listings/task-8-report.md`.
+**Nine of the twelve criteria passed outright, one passed in part, two passed
+with a note, none failed.**
+
+- **Pack size really did leave the key.** Four products — Lemon and Lime, each
+  at 12 and at 6 per carton — drew **one** card reading "1 product", with four
+  picker labels each carrying its pack. Moving the two 6-carton rows to another
+  market split the same four into **two** cards, and each card's labels then
+  dropped the pack, because neither mixes one any more.
+- **A family in two markets is two cards**, both titled by the family: 8
+  products of *Zen Garden Promo Hand Wash 500ML* drew Arab with its 6 variants
+  and India with its 2, no variant on the wrong card.
+- **The write reaches rows the admin never opened.** Against a derived group of
+  two unplaced products, the create form said "2 products in no family yet.
+  Saving puts all of them in one family", and submitting moved
+  `productFamily.count()` **59 → 60** — one family, code `ZEN-SC-0500` — with
+  **all three** rows reading back that same id, the two older ones included.
+- **The SKU rule, both ways, with the codes.** A generated code followed a
+  variant edit live, `ZEN-SC-0750-GMAP-VN` → `ZEN-SC-0750-FL-VN`, and saved. A
+  code the generator did not make held still at `ZEN-SC-0500-GMAP-AE` while its
+  Regenerate proposal moved to `ZEN-HW-0500-PROMO-FL-AE`; pressing it filled the
+  field and the save wrote it. A regenerated code that collided was refused —
+  "That SKU is already in use." — with **both** the SKU and the variant read
+  back unchanged, so the rest of the edit did not slip through either.
+- **Every control on the listing page was driven and read back**: Hide set
+  `active` false and took the variant off the shop card without deleting the
+  row; Show restored it; Remove set `familyId` null and the shop drew that row
+  as its own derived card; Add set it back. Product count was 311 before and
+  after.
+- **The add-product picker offers unplaced products**, proven live rather than
+  by reading code — the late fix for Prisma's `NOT` dropping NULL rows. With a
+  row detached, the picker returned it; a placed candidate reads "· in Zen
+  Garden Promo Hand Wash 500ML" beside its market.
+- **The edit drawer does not match itself.** Opened on the only product with its
+  name, the line read "This will be a new listing." — without the exclusion it
+  would have claimed to join itself.
+- **A real MEMBER gets a real 404.** Demoted, signed out and signed in again so
+  the token carried the new role, `/admin`, `/admin/catalogue` and the listing
+  page each answered **404** with none of the listing's content in the body.
+- **Sweep:** the listing page, the create form with its listing line and a
+  mixed-pack shop card at 390 / 768 / 1440 — nine combinations,
+  `scrollWidth === innerWidth` on all nine. Console 0 errors on four pages.
+- **Cleanup, counted both ends.** Four throwaway products, one family, three
+  price rows and three image rows deleted **by id**; two detached products and
+  two changed markets restored; all three R2 keys answered NotFound, so nothing
+  was orphaned. Counts returned to the baseline exactly — products **308**,
+  families **59**, images **0**, prices **0**, web orders **0**, purchase orders
+  **400**, users **2**, labels **124**, unplaced **0**, inactive **0** — and
+  `aisha@lovinghandsportal.com` was **read back** as `MEMBER` after the
+  promotion.
+- **1117/1117 tests, `tsc --noEmit`, `npm run lint`** (the same 2 pre-existing
+  warnings, 0 errors) **and `npm run build` all clean.**
+
+## Not verified
+
+- **Anything on production.** This branch has never been deployed and no
+  production database was read or written. Production holds **zero families**,
+  so every card there is still derived — with pack size out of the key that
+  alone merges a line's 6- and 12-carton rows — and **§7's backfill has not been
+  run there**. It stands behind two other things: Phases 36–39 must deploy
+  first, and production's `DIRECT_URL` still points at the pooled Neon host.
+- **The two family actions' own super-admin refusal, live.** The route that
+  registers them is unreachable for a MEMBER, which was measured; the actions'
+  guard itself rests on its unit tests. A crafted Server-Action POST was tried
+  and is *not* a valid probe — it answers "Server action not found" for a super
+  admin too, so it proves nothing. Worth not re-deriving.
+- **The ambiguous branch** ("matches 2 listings — choose a family"), because no
+  product in development has siblings in two families. Covered by unit tests.
+- **A family-code collision on the derived-group create** — the one such create
+  in this pass produced a free code.
+
+## Notes
+
+- **The families table that points at the listing page is the `/products`
+  family view**, not the admin room's own families section. The admin section
+  still links its product count to the ops product list, has no Markets column,
+  and captions itself "A product joins or leaves a family from its own page" —
+  so a super admin standing in the admin room reaches a listing page only
+  through a create or edit form's line. Recorded, not fixed.
+- **The Markets column reads 0 where the listing page says 1.**
+  `groupFamilies` counts only non-null markets, so a family whose products carry
+  no market reads "0 markets" in the table while its own page says "4 variants
+  across 1 market" and the shop draws it one card. Phase 36's counting; Phase
+  40's column is what exposes it.
+- **The listing page shows the family's code, name, brand and size read-only.**
+  Editing them is still the admin catalogue's job.
+- **One new sub-44px control**, recorded rather than adopted into the accepted
+  list: the listing line's family link measures 281×33 at 390px. It is a text
+  link inside a caption, the same shape as the "Manage values" links beside it.
+- **Presigned product-image uploads answer 403 in development**, three of three.
+  The form toasts "Product created, but the images didn't upload"; every key
+  answered NotFound afterwards, so nothing is orphaned in R2, but the product
+  row and its image row are still written. The upload path is untouched by this
+  phase — pre-existing, and it means the create form cannot finish cleanly in
+  development until someone looks at it.
+- **A renamed family code makes its generated SKUs look hand-typed**, by
+  design: the equality test recomputes from the family's current code, so a
+  recoded family offers Regenerate rather than rewriting on its own. The safe
+  side of the rule.
+- **`createProduct` has had no caller since Phase 39** and was not taught the
+  resolver. Whether to delete it is still the user's decision.
+
+## Previous phase
+
+**Phase 39 — a product's variants at creation, and buying several at once —
+built on `feature/variant-creation`** (2026-09-16). Spec
+`docs/specs/39-variant-creation-and-multi-add.md`. `/products/new` enters a
+product and every flavour of it in one submit and one transaction, so a
+duplicate SKU on the seventh row leaves no half-entered catalogue behind.
+
+## Previous phase
+
+**Phase 38 — order confirmation and the expected delivery date — built,
+verified and committed on `feature/order-confirmation`** (2026-09-15).
+Spec `docs/specs/38-order-confirmation.md`. The last of the three phases
+planned together on 2026-09-15. Asked for as: "admin or superadmin should see
+the order placed under Purchase Order tab, pending approval and review the
+delivery date. Once the delivery date is confirmed, it should be reflected to
+shop and send email to buyer saying the order is confirmed and showing
+expected delivery date. Product page should note there's an associated
+Purchase Order."
+
+Confirming a shop order now requires an expected delivery date, prefilled from
+the day the buyer asked for — which the ops review screen could not previously
+show at all. The buyer is emailed when an order is confirmed, when it is
+declined, and when the date later moves; the date appears on their list, their
+order, and the purchase-order document. The ops product page lists the open
+shop orders containing a product.
+
+No migration: `PurchaseOrder.deliveryDate` has existed since Phase 01 with no
+reader or writer in application code.
+
+## Notes
+
+- **The delivery-date column was dead in code but not in data.** All 400
+  seeded purchase orders carry one, written by `prisma/seed.ts`, and Phase 11
+  kept the column on purpose when it removed delivery date from every screen.
+  That older data means *the date printed on the customer's PO*; this phase's
+  means *the date the team commits to*. Harmless in development, and invisible
+  on production, where no real order has ever had the column written — but
+  check it on the first deploy rather than assume.
+- **The decline path was driven end to end for the first time.** Every earlier
+  phase recorded it as unverified because no declined order existed in
+  development. The toast has said "and the buyer told" since Phase 16; that is
+  now true.
+- **Emails go through `after()` and never block the action.** A failed send
+  costs a nudge, not a confirmation.
+
+## Previous phase
+
+**Phase 37 — the purchase-order file — built, verified and committed on
+`feature/purchase-order-pdf`** (2026-09-15). Spec
+`docs/specs/37-purchase-order-pdf.md`. Asked for as: "send an email including
+the purchase order file to customer and notify admin or superadmin via email
+with purchase order file too."
+
+The moment a buyer sends an order, an A4 PDF of the purchase order is
+rendered from the same `PoDocumentData` the on-screen preview draws, stored in
+R2, filed as a `Document`, attached to both the buyer's receipt and the team's
+notification, and carried onto the `PurchaseOrder` when the team confirms it —
+so the ops document pane shows a real document for the first time. The buyer
+downloads their own copy through a buyer-scoped route; the ops-wide one stays
+closed, as Phase 35 recorded.
+
+One additive migration (`WebOrder.documentId`) and one new dependency
+(`@react-pdf/renderer`, plus the `server-only` marker). The orphan sweep was
+fixed in the same commit as the migration: without `webOrder: null` it deletes
+every generated file an hour after it is written.
+
+**Still to come in this set:** Phase 38, order confirmation and the expected
+delivery date (`docs/specs/38-order-confirmation.md`).
+
+### Phase 37 notes
+
+- **`@react-pdf/renderer` has never run on Vercel's linux runtime.** It loads
+  a WebAssembly layout engine, which is the same shape of risk as the sharp
+  failure of 2026-09-08 — a macOS build proves nothing about the deployed one.
+  Check the first deploy by sending one order and reading
+  `WebOrder.documentId`. It is kept out of the bundle by
+  `serverExternalPackages`, and the renderer is marked `server-only`.
+- **`server-only` throws under every export condition but `react-server`**, so
+  `vitest.config.mts` aliases it to the package's own `empty.js` — the very
+  file that condition resolves to. Running a script through `tsx` against the
+  renderer needs the same treatment; `--conditions react-server` does not work,
+  because it breaks `@react-pdf/hyphenate`'s own exports. Render samples
+  through vitest instead.
+- **The stored PDF is the order as sent**, drawn once at submit and not
+  redrawn at confirm. Regenerating it with the PO number and the agreed
+  delivery date belongs with Phase 38, where that date first exists.
+- **The supplier block still prints only a name** — no `OrgSettings` row — and
+  it now leaves the building as an email attachment, which raises the stakes
+  on filling it in at `/admin`.
+- **Two Prisma migrations are now pending on production**, Phase 36's and this
+  one, and `DIRECT_URL` still points at the pooled Neon host (Phase 30). Fix
+  that before either merge deploys.
+
+## Previous phase
+
+**Phase 36 — product families — built, verified and committed on
+`feature/product-families`** (2026-09-15). Spec
+`docs/specs/36-product-families.md`, whose §6–§9 record the backfill as it
+ran, what was verified, what is known and what is not. The first of three
+phases planned together on 2026-09-15 — 36 product families, 37 the
+purchase-order PDF (`docs/specs/37-purchase-order-pdf.md`), 38 order
+confirmation and the expected delivery date
+(`docs/specs/38-order-confirmation.md`). Asked for as: "design a human
+readable product code … smallest granularity should be until variant level,
+but later on I should be able to analyse by product level" and "revamp the
+product listing from admin or superadmin".
+
+A `ProductFamily` table — code, name, brand, category, size — with a nullable
+`Product.familyId`. Family code `ZEN-SC-2100`; a new product's SKU proposes
+itself as `ZEN-SC-2100-GM-VN` from the family. Existing SKUs are never
+rewritten; the 308 products get families through a propose → review → apply
+script. `/products` gains a family view; `/products/[id]` a family card;
+`/admin/catalogue` a families section; the shop groups by family where one
+exists.
+
+**Before this merges deploys:** production's `DIRECT_URL` still points at the
+pooled Neon host (carried since Phase 30) and this phase carries a migration.
+
+## Notes
+
+- **Development holds 59 families, every product placed**, from
+  `docs/imports/product-families-2026-09-15.json`. Two judgement calls in it
+  are the business's to confirm: *ZEN SIGNATURE* merged with *NORMAL/DIY*
+  into one 2.1L shower cream, and L.Hands' cap and pump dishwash kept as two
+  families. Either is a rename or a move in `/admin/catalogue` and the
+  product drawer, no code.
+- **The shop's card count is the cheapest check on a family decision.** The
+  first review run pulled AA Pharmacy's `H/WASH 500ML` into `ZEN-HW-0500`
+  because decisions were keyed on line text alone, and the shop went from 83
+  cards to 82. Fixed in the script and the data; the count is back at 83.
+- **A dev server started before `prisma generate` keeps the old client** and
+  answers "Unknown field `family`" for every new relation. Restart it after
+  a migration.
+- **Production's backfill must be proposed afresh there**, not replayed from
+  the development file: its catalogue is different (309 products, eight with
+  the customer's own codes) and the ids in the file are development ids.
+
 **Phase 35 — the buyer's order table, and the purchase order behind each
-order — built and verified on `feature/buyer-order-review`** (2026-09-15).
+order — built, verified and merged from `feature/buyer-order-review`** (2026-09-15).
 Asked for as: "revamp buyer order page, show a table with more infomation" and
 "when buyer clicked in each order, it must show the PO documents for them to
 review".
@@ -114,8 +379,6 @@ by producing a physical PDF, so pagination of a purchase order longer than one
 A4 page is untested — every order to hand fits on one. A declined order's
 wording on the document was not driven in a browser; no declined order exists
 in development.
-
-## Previous phase
 
 **Phase 34 — the Zen Garden rebrand, and Confirm order last — built and
 verified on `feature/zen-garden-rebrand`** (2026-09-15). Asked for as: "in the

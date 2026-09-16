@@ -18,7 +18,7 @@ vi.mock("@/lib/prisma", () => ({
 }));
 vi.mock("@/lib/r2", () => ({ presignGet }));
 
-const { listShopProducts, relatedShopProducts } = await import(
+const { listShopProducts, relatedShopProducts, variantsOfProduct } = await import(
   "@/lib/queries/shop-catalogue"
 );
 const { parseShopQuery } = await import("@/lib/shop-filters");
@@ -44,6 +44,7 @@ const row = (over: Record<string, unknown>) => ({
   id: "p1",
   sku: "SKU-1",
   name: "ZEN 2.1L",
+  family: null,
   brand: "ZEN GARDEN",
   variant: null,
   packSize: 6,
@@ -89,14 +90,34 @@ describe("listShopProducts — grouping", () => {
     ]);
   });
 
-  it("keeps two pack sizes of the same product as two cards", async () => {
+  it("draws one card, titled by the family, for two lines ops placed in one family", async () => {
+    // "ZEN 2.1L" and "2.1L ZEN SIGNATURE" derive to two cards; the family
+    // says they are one product, and its name is the card's title.
+    const family = { id: "fam1", name: "Zen Garden Shower Cream 2.1L" };
     serveRows([
-      variantRow("Papaya"),
+      variantRow("Papaya", { family }),
+      variantRow("Carrot", { name: "2.1L ZEN SIGNATURE — Carrot", family }),
+    ]);
+
+    const catalogue = await listShopProducts(parseShopQuery({}));
+    expect(catalogue.total).toBe(1);
+    expect(catalogue.groups[0].name).toBe("Zen Garden Shower Cream 2.1L");
+    expect(catalogue.groups[0].variants.map((v) => v.familyId)).toEqual(["fam1", "fam1"]);
+  });
+
+  it("draws one card for two pack sizes of the same product", async () => {
+    // Phase 40: pack size is a variant. The card's own caption drops the
+    // pack when the listing mixes them, because no single figure is true.
+    serveRows([
+      variantRow("Papaya", { id: "p-small", sku: "ZEN-PP-6", packSize: 6 }),
       variantRow("Papaya", { id: "p-big", sku: "ZEN-PP-12", packSize: 12 }),
     ]);
 
     const catalogue = await listShopProducts(parseShopQuery({}));
-    expect(catalogue.total).toBe(2);
+
+    expect(catalogue.groups).toHaveLength(1);
+    expect(catalogue.groups[0]!.variants).toHaveLength(2);
+    expect(catalogue.groups[0]!.packSize).toBeNull();
   });
 
   it("brackets a group's price and leaves the two equal when every flavour costs the same", async () => {
@@ -157,6 +178,21 @@ describe("listShopProducts — filters", () => {
     expect(catalogue.facets.brands).toEqual([{ value: "ZEN GARDEN", count: 1 }]);
   });
 
+  it("offers a pack chip for every carton size one card holds", async () => {
+    serveRows([variantRow("Lemon", { packSize: 12 }), variantRow("Lime", { packSize: 6 })]);
+
+    const catalogue = await listShopProducts(parseShopQuery({}));
+    // Pack size left `groupKey` in Phase 40, so these are one card — but both
+    // cartons are genuinely for sale and `?pack=6` returns this card, so both
+    // values must be offered. Still cards, not products: the card counts once
+    // against each.
+    expect(catalogue.total).toBe(1);
+    expect(catalogue.facets.packSizes).toEqual([
+      { value: 6, count: 1 },
+      { value: 12, count: 1 },
+    ]);
+  });
+
   it("leaves a facet's own filter out of its counts while keeping the others", async () => {
     serveRows([
       variantRow("Papaya"),
@@ -168,7 +204,10 @@ describe("listShopProducts — filters", () => {
       parseShopQuery({ brand: "Therapy Level", pack: "6" }),
     );
     // Brands ignore the brand tick, so both are still offered; but they do
-    // respect the pack tick, so the 24-pack Therapy Level card is excluded.
+    // respect the pack tick, which drops the 24-pack row before grouping.
+    // Kiwi and Peach are one Therapy Level card since Phase 40 took pack out
+    // of the key, so what the tick removes here is a variant, not a card —
+    // and the card still counts exactly once, on the variant that matched.
     expect(catalogue.facets.brands).toEqual([
       { value: "Therapy Level", count: 1 },
       { value: "ZEN GARDEN", count: 1 },
@@ -215,11 +254,61 @@ describe("listShopProducts — sort and paging", () => {
   });
 });
 
+describe("variantsOfProduct", () => {
+  const product = {
+    id: "prd_1",
+    sku: "ZEN-SC-2100-GM-VN",
+    name: "ZEN 2.1L — Goat's Milk",
+    familyId: "fam1",
+    brand: "ZEN GARDEN",
+    variant: "Goat's Milk",
+    packSize: 6,
+    market: "Vietnam",
+  };
+
+  it("asks the database for the family outright when the product has one", async () => {
+    await variantsOfProduct(product);
+    const where = productFindMany.mock.calls[0][0].where;
+    expect(where.familyId).toBe("fam1");
+    expect(where.brand).toBeUndefined();
+    // Pack size is deliberately absent (Phase 40) — it is a variant now.
+    expect(where).not.toHaveProperty("packSize");
+    expect(where.market).toBe("Vietnam");
+  });
+
+  it("falls back to brand and market for a product in no family", async () => {
+    await variantsOfProduct({ ...product, familyId: null });
+    const where = productFindMany.mock.calls[0][0].where;
+    expect(where.familyId).toBeUndefined();
+    expect(where.brand).toBe("ZEN GARDEN");
+  });
+
+  it("does not narrow a variant lookup by pack size", async () => {
+    // A buyer on the 6-carton page must be offered the 12-carton one.
+    productFindMany.mockResolvedValueOnce([]);
+    await variantsOfProduct({
+      id: "p-1",
+      sku: "ZEN-PP-6",
+      name: "ZEN 2.1L",
+      familyId: "fam-1",
+      brand: "Zen Garden",
+      variant: "Papaya",
+      packSize: 6,
+      market: "Malaysia",
+    });
+    const where = productFindMany.mock.calls.at(-1)?.[0]?.where;
+    expect(where).not.toHaveProperty("packSize");
+    expect(where).toMatchObject({ familyId: "fam-1", market: "Malaysia" });
+  });
+});
+
 describe("relatedShopProducts", () => {
   const product: ShopProductDetail = {
     id: "prd_1",
     sku: "ZEN-SC-2100-GM-VN",
     name: "ZEN 2.1L — Goat's Milk",
+    familyId: null,
+    familyName: null,
     brand: "ZEN GARDEN",
     variant: "Goat's Milk",
     category: "Shower cream & gel",

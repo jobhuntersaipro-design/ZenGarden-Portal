@@ -33,6 +33,9 @@ const ALLOWED_LIST_KEYS = [
   "poDate",
   "stage",
   "stageChangedAt",
+  // Phase 38, a deliberate edit to this line: the day the team committed to
+  // is the buyer's own fact, and the list now has a column for it.
+  "deliveryDate",
   "total",
   "buyerReference",
   "_count",
@@ -43,7 +46,15 @@ const ALLOWED_LIST_KEYS = [
  * style assertions — each names a real column that carries internal text or
  * identifies a member of staff.
  */
-const FORBIDDEN = ["notes", "confirmedBy", "confirmedById", "document"];
+const FORBIDDEN = [
+  "notes",
+  "confirmedBy",
+  "confirmedById",
+  "document",
+  // The scan a customer emailed and ops uploaded. A buyer's own generated
+  // purchase order is reached through `webOrder.documentId` instead.
+  "documentId",
+];
 
 describe("listBuyerOrders is a narrow select, never an include", () => {
   it("asks for no forbidden column on the purchase order", async () => {
@@ -144,11 +155,17 @@ describe("loadBuyerOrder", () => {
     await loadBuyerOrder("b1", "po1");
     const args = poFindFirst.mock.calls[0][0];
     expect(args.select.notes).toBeUndefined();
+    // `documentId` joined this list in Phase 37 — deliberately, and only
+    // here: it is the *shop order's* generated file, which belongs to the
+    // buyer. `PurchaseOrder.documentId` stays out of the top-level select,
+    // because on a scan-origin order that is the ops team's own upload.
     expect(Object.keys(args.select.webOrder.select).sort()).toEqual([
       "buyerReference",
+      "documentId",
       "notes",
       "requestedDate",
     ]);
+    expect(args.select.documentId).toBeUndefined();
   });
 });
 
@@ -160,6 +177,7 @@ describe("listBuyerOrders paging", () => {
     poDate: new Date(2026, 0, n),
     stage: "DELIVERED",
     stageChangedAt: new Date(2026, 0, n),
+    deliveryDate: null,
     total: { toFixed: () => "1.00" },
     _count: { lineItems: 1 },
   });
@@ -179,12 +197,13 @@ describe("listBuyerOrders paging", () => {
 });
 
 describe("listBuyerOrders sorting", () => {
-  const po = (n: number, total: string, ref: string | null) => ({
+  const po = (n: number, total: string, ref: string | null, delivery: Date | null = null) => ({
     id: `po${n}`,
     poNumber: `PO-${n}`,
     poDate: new Date(2026, 0, n),
     stage: "DELIVERED",
     stageChangedAt: new Date(2026, 0, n),
+    deliveryDate: delivery,
     total: { toFixed: () => total },
     buyerReference: ref,
     _count: { lineItems: n },
@@ -218,6 +237,41 @@ describe("listBuyerOrders sorting", () => {
       dir: "asc",
     });
     expect(orders.map((o) => o.total)).toEqual(["10.00", "20.00", "30.00"]);
+  });
+
+  /**
+   * The delivery date is blank on every order the team has not confirmed, so
+   * it is the column most likely to be half empty — and the blanks must sink
+   * in both directions like every other.
+   */
+  it("sinks orders with no delivery date, whichever way it is sorted", async () => {
+    const rows = [
+      po(1, "10.00", null, null),
+      po(2, "30.00", null, new Date(2026, 1, 20)),
+      po(3, "20.00", null, new Date(2026, 1, 10)),
+    ];
+    poFindMany.mockResolvedValue(rows);
+    const ascending = await listBuyerOrders("b1", 1, 10, {
+      key: "deliveryDate",
+      dir: "asc",
+    });
+    expect(ascending.orders.map((o) => o.reference)).toEqual([
+      "PO-3",
+      "PO-2",
+      "PO-1",
+    ]);
+
+    poFindMany.mockResolvedValue(rows);
+    const descending = await listBuyerOrders("b1", 1, 10, {
+      key: "deliveryDate",
+      dir: "desc",
+    });
+    // The two dated rows flip; the undated one stays at the bottom.
+    expect(descending.orders.map((o) => o.reference)).toEqual([
+      "PO-2",
+      "PO-3",
+      "PO-1",
+    ]);
   });
 
   /**

@@ -61,6 +61,7 @@ export function ProductCard({
         ) : null}
         <p className="font-mono text-[length:var(--text-caption)] text-ink-tertiary">
           {product.sku} ·{" "}
+          {product.family ? `${product.family.code} · ` : ""}
           {product.packSize
             ? `${product.packSize} per ${product.unit}`
             : `per ${product.unit}`}

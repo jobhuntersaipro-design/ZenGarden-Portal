@@ -10,11 +10,21 @@ import {
   type ProductSaleRow,
   type ProductStats,
 } from "@/lib/analytics/products";
+import { NO_FAMILY, groupFamilies, type FamilyRow } from "@/lib/product-families";
 
 export type ProductRow = {
   id: string;
   sku: string;
   name: string;
+  /** The product this is a variant of (Phase 36); null while unplaced. */
+  family: {
+    id: string;
+    code: string;
+    name: string;
+    brand: string | null;
+    category: string;
+    size: string | null;
+  } | null;
   category: string;
   unit: string;
   brand: string | null;
@@ -61,6 +71,8 @@ export async function listProducts(
   now: Date = new Date(),
 ): Promise<{
   products: ProductRow[];
+  /** The same products, one row per family, from the same rows and window. */
+  families: FamilyRow[];
   window: { from: Date; to: Date };
   totalOrders: number;
 }> {
@@ -72,6 +84,9 @@ export async function listProducts(
         id: true,
         sku: true,
         name: true,
+        family: {
+          select: { id: true, code: true, name: true, brand: true, category: true, size: true },
+        },
         category: true,
         unit: true,
         brand: true,
@@ -166,26 +181,30 @@ export async function listProducts(
     ).map((entry) => [entry.productId, entry.flags]),
   );
 
+  const rows: ProductRow[] = withStats.map(({ product, stats }) => ({
+    id: product.id,
+    sku: product.sku,
+    name: product.name,
+    family: product.family,
+    category: product.category,
+    unit: product.unit,
+    brand: product.brand,
+    variant: product.variant,
+    packSize: product.packSize,
+    market: product.market,
+    listPrice: product.listPrice.toNumber(),
+    active: product.active,
+    imageCount: product.images.length,
+    thumbKey: product.images[0]?.thumbKey ?? product.images[0]?.r2Key ?? null,
+    stats,
+    flags: flagsById.get(product.id) ?? [],
+  }));
+
   return {
     window,
     totalOrders,
-    products: withStats.map(({ product, stats }) => ({
-      id: product.id,
-      sku: product.sku,
-      name: product.name,
-      category: product.category,
-      unit: product.unit,
-      brand: product.brand,
-      variant: product.variant,
-      packSize: product.packSize,
-      market: product.market,
-      listPrice: product.listPrice.toNumber(),
-      active: product.active,
-      imageCount: product.images.length,
-      thumbKey: product.images[0]?.thumbKey ?? product.images[0]?.r2Key ?? null,
-      stats,
-      flags: flagsById.get(product.id) ?? [],
-    })),
+    products: rows,
+    families: groupFamilies(rows, rowsByProduct),
   };
 }
 
@@ -237,12 +256,15 @@ export function selectProducts(
     q,
     category,
     brand,
+    family,
     filter,
     sort,
   }: {
     q?: string;
     category?: string;
     brand?: string;
+    /** A family id, or `NO_FAMILY` for the products placed in none. */
+    family?: string;
     filter: ProductFilter;
     sort: { key: ProductSortKey; dir: "asc" | "desc" };
   },
@@ -250,12 +272,22 @@ export function selectProducts(
   const needle = q?.trim().toLowerCase();
 
   const filtered = products.filter((product) => {
+    if (family === NO_FAMILY && product.family !== null) return false;
+    if (family && family !== NO_FAMILY && product.family?.id !== family) return false;
     if (brand && product.brand !== brand) return false;
     // Brand, variant and market are searchable too: "lavender" or "vietnam"
     // is how the ops team refers to a product, not by its generated code.
     if (
       needle &&
-      ![product.name, product.sku, product.brand, product.variant, product.market]
+      ![
+        product.name,
+        product.sku,
+        product.brand,
+        product.variant,
+        product.market,
+        product.family?.code,
+        product.family?.name,
+      ]
         .filter((v): v is string => Boolean(v))
         .some((v) => v.toLowerCase().includes(needle))
     ) {

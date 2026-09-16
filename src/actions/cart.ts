@@ -15,9 +15,14 @@ import { formatMYR } from "@/lib/money";
 import { prisma } from "@/lib/prisma";
 import { shopPath } from "@/lib/shop-routes";
 import { loadCart, type Cart } from "@/lib/queries/cart";
+import {
+  attachWebOrderDocument,
+  type WebOrderDocument,
+} from "@/lib/web-order-document";
 import { webOrderReference } from "@/lib/web-order-number";
 import type { GuestCartLine } from "@/lib/guest-cart";
 import {
+  addManyToCartSchema,
   addToCartSchema,
   guestCartLinesSchema,
   setCartonsSchema,
@@ -172,6 +177,64 @@ export async function addToCart(input: {
   } catch (cause) {
     console.error("[cart] addToCart", cause);
     return { success: false, error: "We couldn't add that to your order." };
+  }
+}
+
+/**
+ * Several variants of one product, in one action (Phase 39).
+ *
+ * `mergeGuestCart`'s shape rather than a loop over `addToCart`: one query for
+ * every product instead of one per line, and one transaction, because a
+ * failure halfway through N sequential upserts would leave some flavours in
+ * the cart while the buyer's screen still showed the quantities they set — a
+ * retry would then double what had already landed.
+ *
+ * A line whose product has left the shop is skipped and counted, never
+ * silently dropped; the caller says so. Every line gone is a refusal, because
+ * "added to your order" would be false.
+ */
+export async function addManyToCart(input: {
+  lines: { productId: string; cartons: number }[];
+}): Promise<ActionResult<{ added: number; skipped: number }>> {
+  const { user, error } = await guard();
+  if (!user) return { success: false, error: error! };
+
+  const parsed = addManyToCartSchema.safeParse(input);
+  if (!parsed.success) {
+    return {
+      success: false,
+      error: parsed.error.issues[0]?.message ?? "Those quantities are not valid.",
+    };
+  }
+
+  try {
+    const productIds = [...new Set(parsed.data.lines.map((line) => line.productId))];
+    const products = await prisma.product.findMany({
+      where: { id: { in: productIds } },
+      select: ORDERABLE_PRODUCT_SELECT,
+    });
+    const orderableIds = new Set(
+      products.filter(isOrderable).map((product) => product.id),
+    );
+
+    const lines = parsed.data.lines.filter((line) => orderableIds.has(line.productId));
+    const skipped = parsed.data.lines.length - lines.length;
+    if (lines.length === 0) {
+      return { success: false, error: "Those products are not available to order." };
+    }
+
+    const cart = await openCart(user.id, user.buyerId);
+    await prisma.$transaction(async (tx) => {
+      for (const line of lines) {
+        await upsertLine(tx, cart.id, line.productId, line.cartons);
+      }
+    });
+
+    revalidateShop();
+    return { success: true, data: { added: lines.length, skipped } };
+  } catch (cause) {
+    console.error("[cart] addManyToCart", cause);
+    return { success: false, error: "We couldn't add those to your order." };
   }
 }
 
@@ -347,7 +410,7 @@ export async function submitWebOrder(
       };
     }
 
-    const reference = await prisma.$transaction(async (tx) => {
+    const placed = await prisma.$transaction(async (tx) => {
       const cart = await tx.webOrder.findFirst({
         where: { placedById: user.id, status: WebOrderStatus.DRAFT },
         select: {
@@ -415,7 +478,7 @@ export async function submitWebOrder(
         },
       });
 
-      return cart.reference;
+      return { id: cart.id, reference: cart.reference };
     });
 
     revalidateShop();
@@ -423,14 +486,16 @@ export async function submitWebOrder(
     revalidatePath("/purchase-orders");
     revalidatePath("/");
 
-    // After the response, so the client is not kept waiting on Resend, and
-    // through sendEmail, which never throws — a failed notification must not
-    // undo an order that is already saved.
+    // After the response, so the client is not kept waiting on a PDF render
+    // and on Resend. Both steps swallow their own failures — the order is
+    // already saved, and neither a missing file nor a missing email may read
+    // back to the buyer as an order that did not go.
     after(async () => {
-      await notify(reference);
+      const file = await attachWebOrderDocument(placed.id);
+      await notify(placed.reference, file);
     });
 
-    return { success: true, data: { reference } };
+    return { success: true, data: { reference: placed.reference } };
   } catch (cause) {
     const message = cause instanceof Error ? cause.message : "";
     if (message === "EMPTY") {
@@ -457,8 +522,16 @@ export async function submitWebOrder(
  *
  * Both go through `sendEmail`, which never throws, inside `after()`. A failed
  * notification is a missing nudge, not a lost order.
+ *
+ * Since Phase 37 both carry the purchase order itself. `file` is null when the
+ * render or the upload failed, and then both mails go **without** it rather
+ * than not at all: an order the buyer placed must produce a receipt whatever
+ * happened to its PDF.
  */
-async function notify(reference: string): Promise<void> {
+async function notify(
+  reference: string,
+  file: WebOrderDocument | null,
+): Promise<void> {
   try {
     const order = await prisma.webOrder.findUnique({
       where: { reference },
@@ -475,6 +548,9 @@ async function notify(reference: string): Promise<void> {
     if (!order) return;
 
     const total = formatMYR(order.subtotal.toNumber());
+    const attachments = file
+      ? [{ filename: file.filename, content: Buffer.from(file.bytes) }]
+      : undefined;
 
     const staff = await prisma.user.findMany({
       where: {
@@ -488,6 +564,7 @@ async function notify(reference: string): Promise<void> {
       await sendEmail({
         to: staff.map((person) => person.email),
         subject: webOrderPlacedSubject(order.buyer.name),
+        attachments,
         react: WebOrderPlaced({
           reference: order.reference,
           buyerName: order.buyer.name,
@@ -504,12 +581,16 @@ async function notify(reference: string): Promise<void> {
     await sendEmail({
       to: [order.placedBy.email],
       subject: webOrderReceiptSubject(order.reference),
+      attachments,
       react: WebOrderReceipt({
         reference: order.reference,
         buyerReference: order.buyerReference,
         lineCount: order._count.lines,
         total,
         orderUrl: `${env.SHOP_URL ?? env.APP_URL}/orders/${order.id}`,
+        // Said only when it is true, so the email never promises a file that
+        // is not on it.
+        attached: Boolean(file),
       }),
     });
   } catch (cause) {

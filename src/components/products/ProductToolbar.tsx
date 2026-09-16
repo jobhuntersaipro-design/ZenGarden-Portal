@@ -2,8 +2,9 @@
 
 import { useEffect, useRef, useState } from "react";
 import { usePathname, useSearchParams } from "next/navigation";
-import { LayoutGrid, List, Search } from "lucide-react";
+import { LayoutGrid, List, Search, X } from "lucide-react";
 import { Input } from "@/components/ui/input";
+import { FAMILY_SORT_KEYS, type FamilySortKey } from "@/lib/product-families";
 import type { ProductFilter, ProductSortKey } from "@/lib/queries/products";
 import { ChoiceButton } from "@/components/portal/ChoiceButton";
 import { SegmentGroup } from "@/components/portal/SegmentGroup";
@@ -12,6 +13,9 @@ import { usePendingChoice } from "@/hooks/usePendingChoice";
 import { useUrlNavigation } from "@/hooks/useUrlNavigation";
 
 export type ProductView = "grid" | "list";
+
+/** Rows are products, or rows are families (Phase 36). */
+export type ProductBy = "product" | "family";
 
 const VIEW_STORAGE_KEY = "products.view";
 
@@ -38,6 +42,8 @@ const SEARCH_DEBOUNCE_MS = 200;
 
 export function ProductToolbar({
   view,
+  by,
+  familyChip,
   filter,
   sortKey,
   summary,
@@ -45,8 +51,11 @@ export function ProductToolbar({
   categories,
 }: {
   view: ProductView;
+  by: ProductBy;
+  /** Set while the product view is filtered to one family: what it says. */
+  familyChip: string | null;
   filter: ProductFilter;
-  sortKey: ProductSortKey;
+  sortKey: ProductSortKey | FamilySortKey;
   summary: string;
   /** Every brand on a product, for the filter; the page derives it from the rows. */
   brands: string[];
@@ -56,8 +65,14 @@ export function ProductToolbar({
   const { replace } = useUrlNavigation();
   // One transition per group, so a chip click never spins the sort strip.
   const filters = usePendingChoice<ProductFilter>(filter);
-  const sorts = usePendingChoice<ProductSortKey>(sortKey);
+  const sorts = usePendingChoice<ProductSortKey | FamilySortKey>(sortKey);
   const views = usePendingChoice<ProductView>(view);
+  const bys = usePendingChoice<ProductBy>(by);
+  const byFamily = by === "family";
+  // The family rows sort on fewer things: no list price, no drift.
+  const sortOptions = byFamily
+    ? SORTS.filter((option) => (FAMILY_SORT_KEYS as readonly string[]).includes(option.value))
+    : SORTS;
   const pathname = usePathname();
   const searchParams = useSearchParams();
   const [query, setQuery] = useState(searchParams.get("q") ?? "");
@@ -148,8 +163,43 @@ export function ProductToolbar({
           ))}
         </select>
 
+        {/* Products or families — the two things the catalog can be a list
+            of. The sort is dropped on the way across, since the keys differ;
+            the family filter too, because it only means something to rows
+            that are products. */}
+        <SegmentGroup label="By" busy={bys.pending}>
+          {(
+            [
+              ["product", "Products"],
+              ["family", "Families"],
+            ] as const
+          ).map(([value, text]) => (
+            <ChoiceButton
+              key={value}
+              look="segment"
+              selected={bys.value === value}
+              pending={bys.isPending(value)}
+              dimmed={bys.pending && !bys.isPending(value)}
+              onClick={() =>
+                bys.choose(
+                  value,
+                  hrefFor({
+                    by: value === "family" ? "family" : null,
+                    sort: null,
+                    dir: null,
+                    family: null,
+                    filter: null,
+                  }),
+                )
+              }
+            >
+              {text}
+            </ChoiceButton>
+          ))}
+        </SegmentGroup>
+
         <SegmentGroup label="Sort" busy={sorts.pending}>
-          {SORTS.map((option) => (
+          {sortOptions.map((option) => (
             <ChoiceButton
               key={option.value}
               look="segment"
@@ -173,6 +223,7 @@ export function ProductToolbar({
           ))}
         </SegmentGroup>
 
+        {byFamily ? null : (
         <SegmentGroup
           label="View"
           hideLabel
@@ -198,6 +249,7 @@ export function ProductToolbar({
             </ChoiceButton>
           ))}
         </SegmentGroup>
+        )}
       </div>
 
       <div className="flex flex-wrap items-center justify-between gap-sm">
@@ -205,7 +257,21 @@ export function ProductToolbar({
           className="flex flex-wrap items-center gap-xxs"
           aria-busy={filters.pending || undefined}
         >
-          {CHIPS.map((chip) => (
+          {/* The family the product view is narrowed to, with the one way
+              out. It reads as a filter because it is one; it is not among
+              the chips because it is never chosen from here. */}
+          {familyChip ? (
+            <button
+              type="button"
+              onClick={() => write({ family: null, page: null })}
+              className="inline-flex min-h-control-md items-center gap-xxs rounded-pill border border-ink bg-ink px-sm text-[length:var(--text-body-sm)] text-canvas focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-focus sm:min-h-control-sm"
+            >
+              {familyChip}
+              <X className="size-3.5" aria-hidden />
+              <span className="sr-only">Clear the family filter</span>
+            </button>
+          ) : null}
+          {byFamily ? null : CHIPS.map((chip) => (
             <ChoiceButton
               key={chip.label}
               look="pill"

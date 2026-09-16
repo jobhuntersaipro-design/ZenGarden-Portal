@@ -1,5 +1,6 @@
 "use server";
 
+import { after } from "next/server";
 import { revalidatePath } from "next/cache";
 import { Prisma } from "@/generated/prisma/client";
 import { WebOrderStatus } from "@/generated/prisma/enums";
@@ -7,12 +8,25 @@ import { writePurchaseOrder } from "@/actions/purchase-orders";
 import { UnauthorizedError, requireUser } from "@/lib/auth-guards";
 import { prisma } from "@/lib/prisma";
 import { shopPath } from "@/lib/shop-routes";
+import { attachWebOrderDocument } from "@/lib/web-order-document";
 import {
   PoDraftSchema,
   checkTotals,
-  confirmOptionsSchema,
+  webOrderConfirmOptionsSchema,
   type PoDraft,
 } from "@/lib/validation/purchase-orders";
+import {
+  WebOrderConfirmed,
+  webOrderConfirmedSubject,
+} from "@/emails/WebOrderConfirmed";
+import {
+  WebOrderDeclined,
+  webOrderDeclinedSubject,
+} from "@/emails/WebOrderDeclined";
+import { sendEmail } from "@/lib/email";
+import { env } from "@/lib/env";
+import { formatDate } from "@/lib/dates";
+import { formatMYR } from "@/lib/money";
 import { z } from "zod";
 
 export type ActionResult<T = undefined> =
@@ -42,7 +56,7 @@ const declineSchema = z.object({
 export async function confirmWebOrder(
   webOrderId: string,
   draft: PoDraft,
-  options: { totalsAcknowledged?: boolean } = {},
+  options: { totalsAcknowledged?: boolean; deliveryDate?: string },
 ): Promise<ActionResult<{ poId: string }>> {
   const { user, error } = await guard();
   if (!user) return { success: false, error: error! };
@@ -54,12 +68,21 @@ export async function confirmWebOrder(
       error: parsedDraft.error.issues[0]?.message ?? "That order could not be saved.",
     };
   }
-  const parsedOptions = confirmOptionsSchema.safeParse(options);
+  // The web-order schema, not the shared one: a delivery date is required
+  // here and nowhere else. An uploaded purchase order may carry none, and
+  // `confirmPurchaseOrder` still confirms without it.
+  const parsedOptions = webOrderConfirmOptionsSchema.safeParse(options);
   if (!parsedOptions.success) {
-    return { success: false, error: "That order could not be saved." };
+    return {
+      success: false,
+      error:
+        parsedOptions.error.issues[0]?.path[0] === "deliveryDate"
+          ? "An expected delivery date is required."
+          : "That order could not be saved.",
+    };
   }
   const data = parsedDraft.data;
-  const { totalsAcknowledged } = parsedOptions.data;
+  const { totalsAcknowledged, deliveryDate } = parsedOptions.data;
 
   const totals = checkTotals(data);
   if (!totals.matches && totalsAcknowledged !== true) {
@@ -80,10 +103,26 @@ export async function confirmWebOrder(
   }
 
   try {
-    const poId = await prisma.$transaction(async (tx) => {
+    // Outside the transaction, because it renders a PDF and writes to R2.
+    // Usually this is a read: the file was drawn when the order was sent, and
+    // `attachWebOrderDocument` hands back the one that exists. It only draws
+    // where that failed, which is how an order whose render hiccupped still
+    // reaches its purchase order with a document attached. Null is fine —
+    // `documentId` has been nullable since Phase 16 for exactly this.
+    const file = await attachWebOrderDocument(webOrderId);
+
+    const confirmed = await prisma.$transaction(async (tx) => {
       const order = await tx.webOrder.findUnique({
         where: { id: webOrderId },
-        select: { id: true, status: true, buyerId: true, buyerReference: true },
+        select: {
+          id: true,
+          status: true,
+          buyerId: true,
+          buyerReference: true,
+          reference: true,
+          placedBy: { select: { email: true } },
+          _count: { select: { lines: true } },
+        },
       });
       if (!order) throw new Error("MISSING_ORDER");
       if (order.status !== WebOrderStatus.SUBMITTED) {
@@ -93,15 +132,17 @@ export async function confirmWebOrder(
       const written = await writePurchaseOrder(tx, {
         data,
         buyerId: order.buyerId,
-        // No scan behind it. Nullable since Phase 16 precisely so this does
-        // not have to invent a Document naming an object nobody uploaded.
-        documentId: null,
+        // The purchase order we generated ourselves, where there is one. This
+        // is what puts a shop order's document on the ops detail page beside
+        // an uploaded scan's.
+        documentId: file?.documentId ?? null,
         confirmedById: user.id,
         revision: 1,
         revisionOfId: null,
         totals,
         totalsAcknowledged: totalsAcknowledged === true,
         buyerReference: order.buyerReference,
+        deliveryDate,
       });
 
       await tx.webOrder.update({
@@ -114,13 +155,34 @@ export async function confirmWebOrder(
         },
       });
 
-      return written;
+      return { poId: written, order };
     });
 
     revalidatePath("/purchase-orders");
     revalidatePath("/");
     revalidatePath(shopPath.orders());
-    return { success: true, data: { poId } };
+
+    // The buyer hears that their order is on, and when. Until Phase 38 they
+    // heard nothing at all and had to come and look. After the response and
+    // through sendEmail, which never throws: a failed email is a missing
+    // nudge, not an unconfirmed order.
+    after(async () => {
+      await sendEmail({
+        to: [confirmed.order.placedBy.email],
+        subject: webOrderConfirmedSubject(confirmed.order.reference, formatDate(deliveryDate)),
+        react: WebOrderConfirmed({
+          reference: confirmed.order.reference,
+          buyerReference: confirmed.order.buyerReference,
+          poNumber: data.poNumber,
+          expectedDelivery: formatDate(deliveryDate),
+          lineCount: confirmed.order._count.lines,
+          total: formatMYR(Number(data.total)),
+          orderUrl: `${env.SHOP_URL ?? env.APP_URL}/orders/${confirmed.poId}`,
+        }),
+      });
+    });
+
+    return { success: true, data: { poId: confirmed.poId } };
   } catch (cause) {
     if (
       cause instanceof Prisma.PrismaClientKnownRequestError &&
@@ -187,6 +249,28 @@ export async function declineWebOrder(
     revalidatePath("/purchase-orders");
     revalidatePath("/");
     revalidatePath(shopPath.orders());
+
+    // The form has promised since Phase 16 that "the buyer sees this", and
+    // until now that was true only if they came looking. Read after the
+    // update so the recipient is whoever actually placed it.
+    const order = await prisma.webOrder.findUnique({
+      where: { id: webOrderId },
+      select: { reference: true, placedBy: { select: { email: true } } },
+    });
+    if (order) {
+      after(async () => {
+        await sendEmail({
+          to: [order.placedBy.email],
+          subject: webOrderDeclinedSubject(order.reference),
+          react: WebOrderDeclined({
+            reference: order.reference,
+            reason: parsed.data.reason,
+            orderUrl: `${env.SHOP_URL ?? env.APP_URL}/orders/${webOrderId}`,
+          }),
+        });
+      });
+    }
+
     return { success: true, data: undefined };
   } catch (cause) {
     console.error("[web-orders] declineWebOrder", cause);

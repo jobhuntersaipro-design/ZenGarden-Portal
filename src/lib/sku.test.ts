@@ -1,5 +1,12 @@
 import { describe, expect, it } from "vitest";
-import { generateSku, skuCode } from "@/lib/sku";
+import {
+  generateFamilyCode,
+  generateSku,
+  generateVariantSku,
+  isGeneratedSku,
+  sizeInName,
+  skuCode,
+} from "@/lib/sku";
 import { skuSchema } from "@/lib/validation/products";
 
 describe("skuCode", () => {
@@ -86,5 +93,142 @@ describe("generateSku", () => {
     ]) {
       expect(skuSchema.safeParse(sku).success, sku).toBe(true);
     }
+  });
+});
+
+describe("generateFamilyCode", () => {
+  const family = {
+    brand: "Zen Garden",
+    category: "Shower cream & gel",
+    size: "2.1L",
+  } as const;
+
+  it("builds BRAND-TYPE-SIZE — the product, across every market", () => {
+    expect(generateFamilyCode(family)).toBe("ZEN-SC-2100");
+  });
+
+  it("appends a qualifier as typed, because SCRUB reads and SS does not", () => {
+    expect(generateFamilyCode({ ...family, size: "1L", qualifier: "Scrub" })).toBe(
+      "ZEN-SC-1000-SCRUB",
+    );
+    expect(generateFamilyCode({ ...family, qualifier: "big ctn" })).toBe(
+      "ZEN-SC-2100-BIGCTN",
+    );
+  });
+
+  it("drops the size for a line the sheet gives none", () => {
+    expect(generateFamilyCode({ ...family, size: null })).toBe("ZEN-SC");
+  });
+
+  it("is the first three segments of the one-shot code", () => {
+    const code = generateFamilyCode(family);
+    expect(
+      generateSku({ ...family, variant: "Goat's Milk", market: "Vietnam" }),
+    ).toBe(`${code}-GM-VN`);
+  });
+
+  it("always satisfies the SKU schema, so a family code can be a SKU prefix", () => {
+    for (const code of [
+      generateFamilyCode(family),
+      generateFamilyCode({ ...family, brand: "L.Hands", qualifier: "Pump (Cap)" }),
+      generateFamilyCode({ ...family, brand: null, size: null }),
+    ]) {
+      expect(skuSchema.safeParse(code).success, code).toBe(true);
+    }
+  });
+});
+
+describe("generateVariantSku", () => {
+  it("extends the family code with the variant and the market", () => {
+    expect(
+      generateVariantSku("ZEN-SC-2100", { variant: "Goat's Milk", market: "Vietnam" }),
+    ).toBe("ZEN-SC-2100-GM-VN");
+  });
+
+  it("leaves out what the variant does not have", () => {
+    expect(generateVariantSku("ZEN-SC-2100", { variant: "Goat's Milk", market: null })).toBe(
+      "ZEN-SC-2100-GM",
+    );
+    expect(generateVariantSku("ZEN-SC-2100", { variant: null, market: null })).toBe(
+      "ZEN-SC-2100",
+    );
+  });
+
+  it("takes a pack suffix only when asked for one", () => {
+    expect(
+      generateVariantSku("ZEN-SC-2100", { variant: "Goat's Milk", market: null, packSize: 12 }),
+    ).toBe("ZEN-SC-2100-GM-X12");
+  });
+
+  it("keeps a hand-typed family code as it is", () => {
+    // A family code is stored, never re-derived, so whatever a person chose
+    // is what a variant extends.
+    expect(generateVariantSku("ZEN-SC-1000-SCRUB", { variant: "Papaya", market: null })).toBe(
+      "ZEN-SC-1000-SCRUB-PP",
+    );
+  });
+});
+
+describe("isGeneratedSku", () => {
+  const product = {
+    brand: "Zen Garden",
+    category: "Shower cream & gel",
+    name: "Zen Garden Shower Cream 2.1L",
+    variant: "Goat's Milk",
+    market: "Indonesia",
+    familyCode: "ZS-SC-2100",
+  };
+
+  it("recognises a code the family generator made", () => {
+    const sku = generateVariantSku("ZS-SC-2100", { variant: "Goat's Milk", market: "Indonesia" });
+    expect(isGeneratedSku({ ...product, sku })).toBe(true);
+  });
+
+  it("recognises a code the family-less generator made", () => {
+    const sku = generateSku({
+      brand: "Zen Garden",
+      category: "Shower cream & gel",
+      size: "2.1L",
+      variant: "Goat's Milk",
+      market: "Indonesia",
+    });
+    expect(isGeneratedSku({ ...product, familyCode: null, sku })).toBe(true);
+  });
+
+  it("refuses a customer's own printed code", () => {
+    // The eight production rows carrying these are what this rule protects:
+    // the purchase-order extraction matches lines to products by exact code.
+    expect(isGeneratedSku({ ...product, sku: "ZEN/SC/2100/CARROT" })).toBe(false);
+    expect(isGeneratedSku({ ...product, sku: "KE218441 68216" })).toBe(false);
+  });
+
+  it("refuses a hand-typed code that merely looks generated", () => {
+    expect(isGeneratedSku({ ...product, sku: "ZS-SC-2100-GM" })).toBe(false);
+  });
+
+  it("compares through normaliseSku, so case and spacing do not decide it", () => {
+    const sku = generateVariantSku("ZS-SC-2100", { variant: "Goat's Milk", market: "Indonesia" });
+    expect(isGeneratedSku({ ...product, sku: sku.toLowerCase() })).toBe(true);
+  });
+
+  it("is false once the product's family is recoded", () => {
+    // The safe side of the rule, recorded in the spec: the test recomputes
+    // from the family's *current* code, so a rename turns an automatic
+    // rewrite into an offered one.
+    const sku = generateVariantSku("ZS-SC-2100", { variant: "Goat's Milk", market: "Indonesia" });
+    expect(isGeneratedSku({ ...product, familyCode: "ZS-SC-2100-SCRUB", sku })).toBe(false);
+  });
+});
+
+describe("sizeInName", () => {
+  it("reads the size a name prints, in the form sizeCode wants", () => {
+    expect(sizeInName("ZEN Shower Cream 2.1L — Goat's Milk")).toBe("2.1L");
+    expect(sizeInName("H/WASH 500ML (7/LAYER X 8)")).toBe("500ML");
+    expect(sizeInName("ZEN D'LUX 2.9 kg LIQUID DETERGENT")).toBe("2.9KG");
+  });
+
+  it("does not mistake a variant's initials for grams", () => {
+    expect(sizeInName("ZEN GM")).toBeNull();
+    expect(sizeInName("HAIR GEL")).toBeNull();
   });
 });

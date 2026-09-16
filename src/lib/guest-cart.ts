@@ -86,6 +86,25 @@ export function addLine(cart: GuestCart, productId: string, cartons: number): Gu
   return withLines(lines);
 }
 
+/**
+ * Several lines in one move (Phase 39), for a buyer who picked quantities
+ * against three flavours of one product and pressed Add to cart once.
+ *
+ * Folded through `addLine` so the rules are the same ones a single click gets
+ * — an existing line increments, cartons clamp — with `MAX_GUEST_LINES`
+ * applied per new line rather than to the batch, so a full cart can still take
+ * an increment to something already on it.
+ */
+export function addLines(cart: GuestCart, lines: GuestCartLine[]): GuestCart {
+  let next = cart;
+  for (const line of lines) {
+    const known = next.lines.some((existing) => existing.productId === line.productId);
+    if (!known && next.lines.length >= MAX_GUEST_LINES) continue;
+    next = addLine(next, line.productId, line.cartons);
+  }
+  return next;
+}
+
 /** Replaces a line's cartons. `cartons <= 0` removes the line instead. */
 export function setLine(cart: GuestCart, productId: string, cartons: number): GuestCart {
   if (cartons <= 0) return removeLine(cart, productId);

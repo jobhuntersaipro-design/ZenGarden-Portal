@@ -67,9 +67,18 @@ export function PurchaseOrderPreview({
           </div>
         </header>
 
-        <dl className="grid grid-cols-4 gap-md border-b border-hairline py-md">
+        {/* Four cells, or five once the team has committed to a date. The
+            cell is not drawn while there is nothing to put in it: a blank
+            "Expected delivery" reads as a promise forgotten rather than one
+            not yet made. */}
+        <dl
+          className={`grid gap-md border-b border-hairline py-md ${document.deliveryDate ? "grid-cols-5" : "grid-cols-4"}`}
+        >
           <Meta label="Order date" value={document.orderDate} />
           <Meta label="Delivery requested" value={document.requestedDate ?? "—"} />
+          {document.deliveryDate ? (
+            <Meta label="Expected delivery" value={document.deliveryDate} />
+          ) : null}
           <Meta label="Payment terms" value={document.paymentTerms ?? "—"} />
           <Meta label="Currency" value={document.currency} />
         </dl>

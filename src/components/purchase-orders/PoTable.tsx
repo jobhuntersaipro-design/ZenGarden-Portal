@@ -33,6 +33,8 @@ export type PoRow = {
   confirmedByName: string | null;
   confirmedByImage: string | null;
   fileType: string;
+  /** Where the order came from, from the query rather than inferred. */
+  source: "web" | "scan";
   revision: number;
 };
 
@@ -40,8 +42,9 @@ const FILE_LABEL: Record<string, string> = {
   "application/pdf": "PDF",
   "image/png": "PNG",
   "image/jpeg": "JPG",
-  // An order placed on the shop has no file behind it, and saying so is
-  // better than the "FILE" fallback, which reads like a missing document.
+  // A shop order still waiting to be confirmed has no file of its own on this
+  // row, and saying so is better than the "FILE" fallback, which reads like a
+  // missing document.
   web: "WEB",
 };
 
@@ -70,6 +73,14 @@ export function PoTable({
           <span className="shrink-0 rounded-xxs bg-surface-soft px-xxs font-mono text-[length:var(--text-caption)] text-ink-tertiary">
             {FILE_LABEL[row.fileType] ?? "FILE"}
           </span>
+          {/* A confirmed shop order now carries a real PDF, so the file chip
+              says PDF like any other. This is the one that still says where
+              it came from. */}
+          {row.source === "web" && row.fileType !== "web" ? (
+            <span className="shrink-0 rounded-xxs bg-surface-soft px-xxs font-mono text-[length:var(--text-caption)] text-ink-tertiary">
+              WEB
+            </span>
+          ) : null}
           <span className="truncate font-medium" title={row.poNumber}>
             {row.poNumber}
           </span>
@@ -143,14 +154,14 @@ export function PoTable({
       // are still on the detail page and in the desktop table.
       mobileHidden: true,
       cell: (row) =>
-        row.uploadedByName ? (
-          <PersonChip name={row.uploadedByName} image={row.uploadedByImage} />
-        ) : row.kind === "WEB" ? (
-          // Nobody uploaded it — the buyer placed it themselves. Saying so
-          // reads better than the blank an empty column would leave, and the
-          // "Uploaded by" filter is built from users who have documents, so
-          // these rows are correctly outside it.
+        // Asked of `source`, not inferred from a missing uploader. Since
+        // Phase 37 a confirmed shop order *has* an uploader — the buyer's own
+        // contact, who is who the generated file was filed against — and
+        // printing their name here would say a customer uploaded a scan.
+        row.source === "web" ? (
           <span className="text-ink-tertiary">From the shop</span>
+        ) : row.uploadedByName ? (
+          <PersonChip name={row.uploadedByName} image={row.uploadedByImage} />
         ) : (
           <span className="text-ink-disabled">Not confirmed</span>
         ),

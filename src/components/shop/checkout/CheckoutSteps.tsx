@@ -16,6 +16,14 @@ import { Check } from "lucide-react";
 
 export const CHECKOUT_STEPS = ["Cart", "Review", "Confirm", "We'll be in touch"] as const;
 
+/**
+ * What the last step is called once it has happened (Phase 38). "We'll be in
+ * touch" is a promise, and on a confirmed order the promise has been kept —
+ * the buyer has the email and the delivery date. Leaving it in the future
+ * tense on an order already confirmed reads as a call still owed.
+ */
+const COMPLETED_LAST_STEP = "Confirmed";
+
 /** 1-based, matching how the steps read. */
 export type CheckoutStep = 1 | 2 | 3 | 4;
 
@@ -30,13 +38,17 @@ export function CheckoutSteps({
   return (
     <nav aria-label="Order progress">
       <ol className="flex flex-wrap items-center gap-xs">
-        {CHECKOUT_STEPS.map((label, index) => {
+        {CHECKOUT_STEPS.map((step, index) => {
           const position = index + 1;
           const isDone = complete || position < current;
           const isCurrent = !complete && position === current;
+          const label =
+            complete && position === CHECKOUT_STEPS.length
+              ? COMPLETED_LAST_STEP
+              : step;
 
           return (
-            <li key={label} className="flex items-center gap-xs">
+            <li key={step} className="flex items-center gap-xs">
               <span
                 aria-current={isCurrent ? "step" : undefined}
                 className={`flex h-8 items-center gap-xxs rounded-pill px-sm text-[length:var(--text-caption)] ${

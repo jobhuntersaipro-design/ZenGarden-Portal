@@ -23,7 +23,11 @@ const decimalString = (label: string) =>
       }
     }, `${label} must be a number`);
 
-const isoDate = z
+/**
+ * A calendar day, not an instant. Exported since Phase 38 so `stages.ts` and
+ * this module cannot drift on what a date looks like — they had a copy each.
+ */
+export const isoDate = z
   .string()
   .regex(/^\d{4}-\d{2}-\d{2}$/, "Use an ISO date, YYYY-MM-DD");
 
@@ -101,6 +105,21 @@ export type DraftLineItem = z.infer<typeof DraftLineItemSchema>;
 export const confirmOptionsSchema = z.object({
   revisedOf: z.string().nullable().optional(),
   totalsAcknowledged: z.boolean().optional(),
+});
+
+/**
+ * What confirming a **shop** order needs on top (Phase 38): the day the team
+ * commits to delivering.
+ *
+ * Deliberately not part of `PoDraftSchema` or of `confirmOptionsSchema`
+ * itself. A purchase order read off a customer's scan may carry no delivery
+ * date at all, and `confirmPurchaseOrder` must keep confirming without one;
+ * an order placed on the shop is a promise the team is making, and the buyer
+ * is told the date by email the moment it is made. Requiring it here and
+ * nowhere else is what keeps those two true at once.
+ */
+export const webOrderConfirmOptionsSchema = confirmOptionsSchema.extend({
+  deliveryDate: isoDate,
 });
 
 const decimalOrZero = (value: string | null | undefined) => {

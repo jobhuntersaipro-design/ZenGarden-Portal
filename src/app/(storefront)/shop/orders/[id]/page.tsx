@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 import Link from "next/link";
-import { ArrowLeft } from "lucide-react";
+import { ArrowLeft, Download } from "lucide-react";
 import { CheckoutSteps } from "@/components/shop/checkout/CheckoutSteps";
 import { PurchaseOrderPreview } from "@/components/shop/checkout/PurchaseOrderPreview";
 import { PrintOrderButton } from "@/components/shop/orders/PrintOrderButton";
@@ -57,6 +57,7 @@ export default async function OrderDetailPage({
     supplier,
     orderDate: order.date ? formatDate(order.date) : "—",
     requestedDate: order.requestedDate ? formatDate(order.requestedDate) : null,
+    deliveryDate: order.deliveryDate ? formatDate(order.deliveryDate) : null,
   });
   // A confirmed purchase order carries its own total, and a scan-origin one can
   // carry tax on top of its lines. Where the document's own arithmetic does not
@@ -83,13 +84,32 @@ export default async function OrderDetailPage({
             {[
               order.date ? formatDate(order.date) : "Not yet dated",
               buyerOrderStatus(order),
+              order.deliveryDate
+                ? `Expected delivery ${formatDate(order.deliveryDate)}`
+                : null,
               order.buyerReference ? `Your ref ${order.buyerReference}` : null,
             ]
               .filter(Boolean)
               .join(" · ")}
           </p>
         </div>
-        {documentIsSound ? <PrintOrderButton /> : null}
+        <div className="flex flex-wrap items-center gap-xs">
+          {/* A real link, not a fetch: the route answers a 302 to a
+              short-lived presigned URL, so no key is ever rendered into the
+              page and the browser does the rest. Offered only when the file
+              exists — an order placed before Phase 37, or one whose render
+              failed, still has Print. */}
+          {order.documentId ? (
+            <a
+              href={shopHref.documentDownload(order.documentId)}
+              className="flex h-control-md items-center gap-xs rounded-pill border border-hairline-strong px-md text-[length:var(--text-button-md)] font-semibold text-ink hover:border-ink focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-focus"
+            >
+              <Download className="size-4 shrink-0" aria-hidden />
+              Download PDF
+            </a>
+          ) : null}
+          {documentIsSound ? <PrintOrderButton /> : null}
+        </div>
       </div>
 
       {order.kind === "confirmed" && order.stage ? (
@@ -101,6 +121,11 @@ export default async function OrderDetailPage({
               is complete and the fulfilment stages below carry the story on
               (Phase 33). */}
           <CheckoutSteps current={4} complete />
+          {order.deliveryDate ? (
+            <p className="mt-sm text-[length:var(--text-body-md)] text-ink">
+              {`Confirmed by our team. Expected delivery ${formatDate(order.deliveryDate)}.`}
+            </p>
+          ) : null}
           <div className="mt-lg border-t border-hairline pt-lg">
             <StageStepper current={order.stage} events={order.events} />
           </div>

@@ -44,6 +44,19 @@ const SHARP_ROUTES = [
 const nextConfig: NextConfig = {
   reactCompiler: true,
   devIndicators: false,
+  /**
+   * `@react-pdf/renderer` ships a WebAssembly layout engine (yoga) and
+   * fontkit, neither of which survives being bundled into a route chunk.
+   * Left to Turbopack it resolves `node:module` and the chunking fails
+   * outright — the same class of failure the Prisma runtime caused when it
+   * reached a client component in Phase 33. Kept external, it loads from
+   * node_modules at runtime as a plain CommonJS dependency.
+   *
+   * `src/lib/pdf/purchase-order.tsx` is `import "server-only"` for the other
+   * half of the rule: nothing may pull it toward the browser in the first
+   * place.
+   */
+  serverExternalPackages: ["@react-pdf/renderer"],
   // Phase 26 renamed the admin room's second section. `:path*` matches zero
   // segments too, so the bare /admin/customers is covered by the one rule.
   async redirects() {

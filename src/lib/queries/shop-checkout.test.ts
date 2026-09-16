@@ -80,8 +80,17 @@ describe("loadSentOrder", () => {
       buyerReference: true,
       subtotal: true,
       submittedAt: true,
+      // Phase 37, and a deliberate edit to this line. It is the *shop
+      // order's* own generated purchase order — the buyer's document, served
+      // by a buyer-scoped route — not `PurchaseOrder.documentId`, which on a
+      // scan-origin order is the ops team's upload and stays unreachable.
+      documentId: true,
       placedBy: { select: { email: true } },
     });
+    // Still nothing of the ops trail.
+    expect(select.reviewedById).toBeUndefined();
+    expect(select.declinedReason).toBeUndefined();
+    expect(select.notes).toBeUndefined();
   });
 
   it("returns the order with its total as a fixed string", async () => {

@@ -12,12 +12,21 @@ const CLEANUP_BATCH = 25;
  * A row is created before the browser uploads, so a tab closed mid-upload
  * leaves a Document with no bytes behind it and no Extraction ever. Both the
  * row and any object that did land are removed here.
+ *
+ * **`webOrder: null` is load-bearing, and was added in the same commit as the
+ * migration that made it possible to be false.** Since Phase 37 a third kind
+ * of document exists: the purchase order generated for a shop order, which has
+ * no extraction and no purchase order of its own until the ops team confirms
+ * it — days later. Without this clause every one of them is swept an hour
+ * after it is written, the buyer's Download PDF 404s, and nothing says so:
+ * this runs on one presign in twenty and logs a count nobody reads.
  */
 export async function deleteOrphans(): Promise<number> {
   const orphans = await prisma.document.findMany({
     where: {
       extraction: null,
       purchaseOrder: null,
+      webOrder: null,
       uploadedAt: { lt: new Date(Date.now() - ORPHAN_AGE_MS) },
     },
     select: { id: true, r2Key: true },
@@ -70,5 +79,24 @@ export function findOwnedDocument(documentId: string, userId: string) {
       originalName: true,
       extraction: { select: { id: true } },
     },
+  });
+}
+
+/**
+ * A document a *buyer* may read: the purchase order generated for one of
+ * their own shop orders, and nothing else (Phase 37).
+ *
+ * Scoped through `webOrder.buyerId` rather than `uploadedById`, because the
+ * uploader on a generated file is the contact who placed the order and a
+ * buyer's colleague must be able to read it too. **A scan the ops team
+ * uploaded can never match this `where`**, whatever id is guessed: it has no
+ * `webOrder`. That is the deliberate difference from `/api/documents/[id]/url`,
+ * which is ops-wide and unscoped by buyer — the hazard Phase 35 recorded and
+ * declined to expose.
+ */
+export function findClientDocument(buyerId: string, documentId: string) {
+  return prisma.document.findFirst({
+    where: { id: documentId, webOrder: { buyerId } },
+    select: { id: true, r2Key: true, mimeType: true, originalName: true },
   });
 }

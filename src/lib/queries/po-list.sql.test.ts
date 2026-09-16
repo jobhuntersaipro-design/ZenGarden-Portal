@@ -45,6 +45,20 @@ describe("the purchase-order list joins Document loosely", () => {
     const text = sqlOf(poListQuery(ALL, { key: "poDate", dir: "desc" }, 0, 10) as never);
     expect(text).toContain("COALESCE(doc.\"mimeType\", 'web')");
   });
+
+  /**
+   * Every branch must emit `source`, and not only because a UNION needs the
+   * same shape: since Phase 37 a confirmed shop order has a Document whose
+   * uploader is the buyer's own contact, so "from the shop" can no longer be
+   * inferred from a null uploader. Without this column the list prints a
+   * customer's name in the Uploaded by cell.
+   */
+  it("says where every row came from, in all three branches", () => {
+    const text = sqlOf(poListQuery(ALL, { key: "poDate", dir: "desc" }, 0, 10) as never);
+    expect(text.match(/AS "source"/g)).toHaveLength(3);
+    // The purchase-order branch asks the database rather than guessing.
+    expect(text).toContain('SELECT 1 FROM "WebOrder" wo2 WHERE wo2."purchaseOrderId" = po."id"');
+  });
 });
 
 describe("the branches a filter selects", () => {
@@ -63,6 +77,15 @@ describe("the shop branch", () => {
   const build = (status: Parameters<typeof poListQuery>[0]["status"]) =>
     sqlOf(poListQuery({ status }, { key: "poDate", dir: "desc" }, 0, 10) as never);
 
+  /**
+   * The branch is identified by the literal it selects, not by the table it
+   * reads. `FROM "WebOrder"` stopped distinguishing it in Phase 37: the
+   * purchase-order branch now reads that table too, in the `EXISTS` subquery
+   * that fills `source`. Asserting on the substring would have let a missing
+   * branch pass as present, and did fail here on the opposite case.
+   */
+  const SHOP_BRANCH = `'WEB' AS "kind"`;
+
   it("only ever selects SUBMITTED orders — a DRAFT is a client's live cart", () => {
     const text = build("web");
     expect(text).toContain("wo.\"status\" = 'SUBMITTED'");
@@ -70,21 +93,21 @@ describe("the shop branch", () => {
   });
 
   it("is included by needs-review, so the chip's count and its rows agree", () => {
-    expect(build("needs-review")).toContain('FROM "WebOrder" wo');
+    expect(build("needs-review")).toContain(SHOP_BRANCH);
   });
 
   it("is included by all", () => {
-    expect(build("all")).toContain('FROM "WebOrder" wo');
+    expect(build("all")).toContain(SHOP_BRANCH);
   });
 
   it("is the only branch when the shop chip is chosen", () => {
     const text = build("web");
-    expect(text).toContain('FROM "WebOrder" wo');
+    expect(text).toContain(SHOP_BRANCH);
     expect(text).not.toContain('FROM "Extraction" ext');
     expect(text).not.toContain('FROM "PurchaseOrder" po');
   });
 
   it("is excluded by confirmed, which is a sales record", () => {
-    expect(build("confirmed")).not.toContain('FROM "WebOrder" wo');
+    expect(build("confirmed")).not.toContain(SHOP_BRANCH);
   });
 });

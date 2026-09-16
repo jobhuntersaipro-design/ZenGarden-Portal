@@ -37,6 +37,14 @@ export const shopHref = {
   /** The shared sign-in card; `next` is a browser-relative path. */
   signIn: (next?: string) =>
     next ? `/signin?next=${encodeURIComponent(next)}` : "/signin",
+  /**
+   * The buyer's own copy of a purchase order (Phase 37). `redirect=1` makes
+   * this usable as a plain `<a href>`: the route answers a 302 to a
+   * short-lived presigned URL, so no key is ever rendered into the page and
+   * the browser does the download with no client JavaScript at all.
+   */
+  documentDownload: (documentId: string) =>
+    `/api/shop/documents/${documentId}/url?download=1&redirect=1`,
 } as const;
 
 /** What Next resolved. Use for every `revalidatePath` in storefront actions. */

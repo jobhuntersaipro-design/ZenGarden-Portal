@@ -1,4 +1,5 @@
 import {
+  CopyObjectCommand,
   DeleteObjectCommand,
   GetObjectCommand,
   HeadObjectCommand,
@@ -67,6 +68,57 @@ export function presignGet(key: string, filename?: string) {
 
 export function headObject(key: string) {
   return r2.send(new HeadObjectCommand({ Bucket: env.R2_BUCKET, Key: key }));
+}
+
+/**
+ * Write an object from the server (Phase 37).
+ *
+ * Every other upload in this app is presigned and performed by the browser,
+ * because the bytes start there. A generated purchase order is the opposite
+ * case: the bytes exist only on the server, and presigning a URL for
+ * ourselves would be a round trip to sign a request we are about to make.
+ */
+export function putObject(
+  key: string,
+  body: Uint8Array,
+  contentType: string,
+) {
+  return r2.send(
+    new PutObjectCommand({
+      Bucket: env.R2_BUCKET,
+      Key: key,
+      Body: body,
+      ContentType: contentType,
+      ContentLength: body.byteLength,
+    }),
+  );
+}
+
+/**
+ * Server-side copy, so one uploaded photograph can serve every variant of a
+ * product without the browser sending the bytes again (Phase 39). Eight
+ * flavours of a 5 MB photograph is 40 MB up a phone's connection; this is one
+ * upload and seven copies inside the bucket.
+ *
+ * `CopySource` is `{bucket}/{key}` and S3 requires it URI-encoded — the keys
+ * this app writes are cuid-based and hold nothing that needs escaping, so
+ * `encodeURI` is a no-op today and correct if that ever changes.
+ */
+export function copyObject(fromKey: string, toKey: string) {
+  return r2.send(
+    new CopyObjectCommand({
+      Bucket: env.R2_BUCKET,
+      CopySource: encodeURI(`${env.R2_BUCKET}/${fromKey}`),
+      Key: toKey,
+    }),
+  );
+}
+
+/** `jpg` from `products/{productId}/{imageId}.jpg`; `jpg` as the fallback. */
+export function extensionOfKey(key: string): string {
+  const last = key.split("/").pop() ?? "";
+  const dot = last.lastIndexOf(".");
+  return dot > 0 ? last.slice(dot + 1).toLowerCase() : "jpg";
 }
 
 /** Whole object into memory — used to hand PDF bytes to Claude. */

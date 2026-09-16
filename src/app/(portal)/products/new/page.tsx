@@ -5,21 +5,31 @@ import { Role } from "@/generated/prisma/enums";
 import { BackLink } from "@/components/portal/BackLink";
 import { ProductForm } from "@/components/products/ProductForm";
 import { getSessionUser } from "@/lib/auth-guards";
+import { listFamilies } from "@/lib/queries/product-families";
 import { listAllLabels } from "@/lib/queries/products";
 
 export const metadata: Metadata = {
   title: "New product · Zen Garden Portal",
 };
 export const dynamic = "force-dynamic";
+// A Server Action runs in the function of the page that called it, and this
+// one's `copyImagesToVariants` can run to tens of seconds on a large submit
+// (Phase 39 browser pass, task-7-report.md §4) even with bounded concurrency.
+// 120s matches the ceiling `vercel.json` already grants
+// `src/app/api/upload/complete/route.ts` for the same shape of work — R2
+// copies and sharp-processed uploads — rather than inventing a new one. A
+// route handler takes this through `vercel.json`; a page segment takes it as
+// its own export instead.
+export const maxDuration = 120;
 
 export default async function NewProductPage() {
   const user = await getSessionUser();
   // The catalog only offers this link to a super admin, but the link is a URL
-  // and anyone can type it. `createProduct` refuses either way; this is so a
-  // member sees the catalog rather than a form that can never save.
+  // and anyone can type it. `createProductVariants` refuses either way; this
+  // is so a member sees the catalog rather than a form that can never save.
   if (user?.role !== Role.SUPER_ADMIN) redirect("/products");
 
-  const labels = await listAllLabels();
+  const [labels, families] = await Promise.all([listAllLabels(), listFamilies()]);
 
   return (
     <>
@@ -37,7 +47,7 @@ export default async function NewProductPage() {
         </span>
       </nav>
 
-      <ProductForm labels={labels} />
+      <ProductForm labels={labels} families={families} />
     </>
   );
 }

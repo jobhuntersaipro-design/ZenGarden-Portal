@@ -14,6 +14,8 @@ const valid = {
   market: "Malaysia",
   description: "Flamed finish.",
   active: true,
+  familyId: null,
+  newFamily: null,
 };
 
 describe("skuSchema", () => {

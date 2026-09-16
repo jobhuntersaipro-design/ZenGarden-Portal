@@ -30,6 +30,11 @@ export type ClientOrder = {
   date: Date | null;
   stage: PoStage | null;
   stageChangedAt: Date | null;
+  /**
+   * The day the team committed to (Phase 38). Null on an order still waiting
+   * to be confirmed, and on one confirmed before that phase.
+   */
+  deliveryDate: Date | null;
   total: string;
   lineCount: number;
   declinedReason?: string | null;
@@ -54,6 +59,7 @@ export const BUYER_ORDER_SORT_KEYS = [
   "reference",
   "buyerReference",
   "date",
+  "deliveryDate",
   "status",
   "lineCount",
   "total",
@@ -90,6 +96,8 @@ const statusRank = (order: ClientOrder) =>
 function isBlank(order: ClientOrder, key: BuyerOrderSortKey): boolean {
   if (key === "buyerReference") return !order.buyerReference;
   if (key === "date") return order.date === null;
+  // An order the team has not confirmed has no delivery date to sort on.
+  if (key === "deliveryDate") return order.deliveryDate === null;
   return false;
 }
 
@@ -120,6 +128,10 @@ function compareOrders(
       return a.lineCount - b.lineCount;
     case "total":
       return Number(a.total) - Number(b.total);
+    case "deliveryDate":
+      return (
+        (a.deliveryDate?.getTime() ?? 0) - (b.deliveryDate?.getTime() ?? 0)
+      );
     case "date":
     default:
       return (a.date?.getTime() ?? 0) - (b.date?.getTime() ?? 0);
@@ -149,6 +161,7 @@ export async function listBuyerOrders(
         poDate: true,
         stage: true,
         stageChangedAt: true,
+        deliveryDate: true,
         total: true,
         buyerReference: true,
         _count: { select: { lineItems: true } },
@@ -182,6 +195,7 @@ export async function listBuyerOrders(
       date: po.poDate,
       stage: po.stage,
       stageChangedAt: po.stageChangedAt,
+      deliveryDate: po.deliveryDate,
       total: po.total.toFixed(2),
       lineCount: po._count.lineItems,
       buyerReference: po.buyerReference,
@@ -196,6 +210,8 @@ export async function listBuyerOrders(
       date: order.submittedAt,
       stage: null,
       stageChangedAt: null,
+      // Nothing is promised until the team confirms it.
+      deliveryDate: null,
       total: order.subtotal.toFixed(2),
       lineCount: order._count.lines,
       declinedReason: order.declinedReason,
@@ -272,6 +288,13 @@ export type ClientOrderDetail = ClientOrder & {
   /** Null where the order has none — a shop order never does. */
   tax: string | null;
   buyer: ClientOrderParty;
+  /**
+   * The purchase order we generated for this order, if it has one (Phase 37).
+   * Null for an order placed before that phase, and for one whose render
+   * failed — the page offers Print either way, and Download only when there
+   * is something to download.
+   */
+  documentId: string | null;
 };
 
 const joinContact = (name: string | null, email: string | null): string | null => {
@@ -296,7 +319,7 @@ const BUYER_PARTY_SELECT = {
 } as const;
 
 /** "6 per carton · 36 pieces", from whatever the line actually knows. */
-function packCaptionFor(
+export function packCaptionFor(
   packSize: number | null,
   unit: string | null,
   cartons: number,
@@ -324,6 +347,7 @@ export async function loadBuyerOrder(
       poDate: true,
       stage: true,
       stageChangedAt: true,
+      deliveryDate: true,
       subtotal: true,
       tax: true,
       total: true,
@@ -336,7 +360,12 @@ export async function loadBuyerOrder(
       // unlike `PurchaseOrder.notes`, which ops may have typed or edited, and
       // which is deliberately not selected anywhere in this file.
       webOrder: {
-        select: { buyerReference: true, requestedDate: true, notes: true },
+        select: {
+          buyerReference: true,
+          requestedDate: true,
+          notes: true,
+          documentId: true,
+        },
       },
       lineItems: {
         orderBy: { position: "asc" },
@@ -369,6 +398,7 @@ export async function loadBuyerOrder(
       date: po.poDate,
       stage: po.stage,
       stageChangedAt: po.stageChangedAt,
+      deliveryDate: po.deliveryDate,
       subtotal: po.subtotal.toFixed(2),
       tax: po.tax.toFixed(2),
       total: po.total.toFixed(2),
@@ -376,6 +406,10 @@ export async function loadBuyerOrder(
       paymentTerms: po.paymentTerms ?? po.buyer.paymentTerms,
       requestedDate: po.webOrder?.requestedDate ?? null,
       notes: po.webOrder?.notes ?? null,
+      // Deliberately the *shop order's* document, not `PurchaseOrder.documentId`:
+      // on a scan-origin purchase order that column is the customer's own
+      // emailed file, which is ops-only and must not be served to a buyer.
+      documentId: po.webOrder?.documentId ?? null,
       lineCount: po.lineItems.length,
       buyer: {
         name: po.buyer.name,
@@ -423,6 +457,7 @@ export async function loadBuyerOrder(
       requestedDate: true,
       notes: true,
       currency: true,
+      documentId: true,
       buyer: { select: BUYER_PARTY_SELECT },
       lines: {
         select: {
@@ -446,6 +481,7 @@ export async function loadBuyerOrder(
     date: web.submittedAt,
     stage: null,
     stageChangedAt: null,
+    deliveryDate: null,
     subtotal: web.subtotal.toFixed(2),
     // The cart quotes no tax; the team settles it when they confirm.
     tax: null,
@@ -454,6 +490,7 @@ export async function loadBuyerOrder(
     paymentTerms: web.buyer.paymentTerms,
     requestedDate: web.requestedDate,
     notes: web.notes,
+    documentId: web.documentId,
     lineCount: web.lines.length,
     declinedReason: web.declinedReason,
     buyer: {
@@ -477,6 +514,84 @@ export async function loadBuyerOrder(
   };
 }
 
+/**
+ * Everything the generated purchase order is drawn from (Phase 37).
+ *
+ * **Unscoped by buyer on purpose** — this is not a screen, it is the file we
+ * write for an order we have already accepted, and the one caller
+ * (`attachWebOrderDocument`) owns the order id it was handed. Every screen
+ * that shows a buyer their own order still goes through `loadBuyerOrder`.
+ *
+ * The shape of `order` is exactly what `buildPoDocumentFromOrder` takes, and
+ * the lines are read the same way `loadBuyerOrder`'s web branch reads them, so
+ * the file and the page cannot describe the order differently.
+ */
+export async function loadWebOrderDocumentSource(webOrderId: string) {
+  const order = await prisma.webOrder.findUnique({
+    where: { id: webOrderId },
+    select: {
+      id: true,
+      reference: true,
+      status: true,
+      placedById: true,
+      submittedAt: true,
+      requestedDate: true,
+      buyerReference: true,
+      notes: true,
+      currency: true,
+      subtotal: true,
+      documentId: true,
+      buyer: { select: BUYER_PARTY_SELECT },
+      lines: {
+        select: {
+          cartons: true,
+          packSize: true,
+          unit: true,
+          unitPrice: true,
+          amount: true,
+          product: { select: { sku: true, name: true } },
+        },
+      },
+    },
+  });
+  if (!order) return null;
+
+  return {
+    id: order.id,
+    reference: order.reference,
+    status: order.status,
+    placedById: order.placedById,
+    submittedAt: order.submittedAt,
+    requestedDate: order.requestedDate,
+    documentId: order.documentId,
+    order: {
+      reference: order.reference,
+      buyerReference: order.buyerReference,
+      currency: order.currency,
+      paymentTerms: order.buyer.paymentTerms,
+      notes: order.notes,
+      // The cart quotes no tax; the team settles it when they confirm.
+      tax: null as string | null,
+      buyer: {
+        name: order.buyer.name,
+        address: order.buyer.address,
+        contact: joinContact(order.buyer.contactName, order.buyer.email),
+      },
+      // A cart has no position column, so the numbering is the read order —
+      // the same rule `loadBuyerOrder` applies to the same rows.
+      lines: order.lines.map((line, index) => ({
+        position: index + 1,
+        sku: line.product.sku,
+        description: line.product.name,
+        packCaption: packCaptionFor(line.packSize, line.unit, line.cartons),
+        quantity: String(line.cartons),
+        unitPrice: line.unitPrice.toFixed(2),
+        amount: line.amount.toFixed(2),
+      })),
+    },
+  };
+}
+
 export type OpsWebOrder = {
   id: string;
   reference: string;
@@ -487,6 +602,12 @@ export type OpsWebOrder = {
   placedByName: string;
   placedByEmail: string;
   submittedAt: Date | null;
+  /**
+   * The day the buyer asked for (Phase 38). Written since Phase 32 and shown
+   * on no ops screen until now — the person confirming the order could not
+   * see what had been asked of them.
+   */
+  requestedDate: Date | null;
   buyerReference: string | null;
   notes: string | null;
   subtotal: string;
@@ -517,6 +638,7 @@ export async function loadWebOrderForReview(
       notes: true,
       subtotal: true,
       submittedAt: true,
+      requestedDate: true,
       buyer: { select: { name: true, paymentTerms: true } },
       placedBy: { select: { name: true, email: true } },
       lines: {
@@ -544,6 +666,7 @@ export async function loadWebOrderForReview(
     placedByName: order.placedBy.name,
     placedByEmail: order.placedBy.email,
     submittedAt: order.submittedAt,
+    requestedDate: order.requestedDate,
     buyerReference: order.buyerReference,
     notes: order.notes,
     subtotal: order.subtotal.toFixed(2),

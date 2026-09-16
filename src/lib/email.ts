@@ -12,6 +12,14 @@ export type SendEmailArgs = {
   to: string | string[];
   subject: string;
   react: ReactElement;
+  /**
+   * Files to attach (Phase 37). `content` is the raw bytes; Resend takes a
+   * Buffer or a base64 string and does the encoding itself.
+   *
+   * Kept optional so every existing caller is unchanged, and passed straight
+   * through — this module decides nothing about what an attachment is for.
+   */
+  attachments?: { filename: string; content: Buffer }[];
 };
 
 /**
@@ -22,6 +30,7 @@ export async function sendEmail({
   to,
   subject,
   react,
+  attachments,
 }: SendEmailArgs): Promise<{ sent: boolean; error?: string }> {
   if (isPlaceholderKey) {
     if (process.env.NODE_ENV !== "production") {
@@ -37,6 +46,7 @@ export async function sendEmail({
       to,
       subject,
       react,
+      ...(attachments?.length ? { attachments } : {}),
     });
     if (error) {
       console.error(`[email] ${subject} → ${String(to)}: ${error.message}`);

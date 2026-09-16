@@ -168,6 +168,40 @@ describe("confirmPurchaseOrder — the totals gate", () => {
   });
 });
 
+/**
+ * Phase 38 required a delivery date when confirming a *shop* order. This file
+ * covers the other path — a purchase order read off a customer's scan — and
+ * these two tests are the proof that the gate did not spread to it. A scanned
+ * document may name no delivery date at all, and the team must still be able
+ * to confirm it.
+ */
+describe("confirmPurchaseOrder — the delivery date is a shop-order rule", () => {
+  it("confirms an uploaded purchase order with no delivery date at all", async () => {
+    const result = await confirmPurchaseOrder("ext-1", draft());
+    expect(result.success).toBe(true);
+    expect(poCreate.mock.calls[0][0].data.deliveryDate).toBeNull();
+  });
+
+  it("stores one as the calendar day, when the writer is given it", async () => {
+    const { writePurchaseOrder } = await import("@/actions/purchase-orders");
+    await writePurchaseOrder(tx as never, {
+      data: draft() as never,
+      buyerId: "b1",
+      documentId: null,
+      confirmedById: "u1",
+      revision: 1,
+      revisionOfId: null,
+      totals: { computed: "0", document: "0", difference: "0", matches: true, lineItemsMatchSubtotal: true, lineItemSum: "0" },
+      totalsAcknowledged: false,
+      deliveryDate: "2026-10-02",
+    });
+    // UTC midnight, so a `@db.Date` column keeps the 2nd and not the 1st.
+    expect(poCreate.mock.calls.at(-1)![0].data.deliveryDate.toISOString()).toBe(
+      "2026-10-02T00:00:00.000Z",
+    );
+  });
+});
+
 describe("confirmPurchaseOrder — revisions", () => {
   it("saves a first confirmation as revision 1 with no parent", async () => {
     await confirmPurchaseOrder("ext-1", draft());
