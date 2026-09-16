@@ -178,6 +178,21 @@ describe("listShopProducts — filters", () => {
     expect(catalogue.facets.brands).toEqual([{ value: "ZEN GARDEN", count: 1 }]);
   });
 
+  it("offers a pack chip for every carton size one card holds", async () => {
+    serveRows([variantRow("Lemon", { packSize: 12 }), variantRow("Lime", { packSize: 6 })]);
+
+    const catalogue = await listShopProducts(parseShopQuery({}));
+    // Pack size left `groupKey` in Phase 40, so these are one card — but both
+    // cartons are genuinely for sale and `?pack=6` returns this card, so both
+    // values must be offered. Still cards, not products: the card counts once
+    // against each.
+    expect(catalogue.total).toBe(1);
+    expect(catalogue.facets.packSizes).toEqual([
+      { value: 6, count: 1 },
+      { value: 12, count: 1 },
+    ]);
+  });
+
   it("leaves a facet's own filter out of its counts while keeping the others", async () => {
     serveRows([
       variantRow("Papaya"),
@@ -189,7 +204,10 @@ describe("listShopProducts — filters", () => {
       parseShopQuery({ brand: "Therapy Level", pack: "6" }),
     );
     // Brands ignore the brand tick, so both are still offered; but they do
-    // respect the pack tick, so the 24-pack Therapy Level card is excluded.
+    // respect the pack tick, which drops the 24-pack row before grouping.
+    // Kiwi and Peach are one Therapy Level card since Phase 40 took pack out
+    // of the key, so what the tick removes here is a variant, not a card —
+    // and the card still counts exactly once, on the variant that matched.
     expect(catalogue.facets.brands).toEqual([
       { value: "Therapy Level", count: 1 },
       { value: "ZEN GARDEN", count: 1 },

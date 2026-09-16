@@ -306,9 +306,16 @@ function facetCounts<T extends string | number>(
   for (const group of groupProducts(
     rows.filter((row) => matchesFacets(row, query, omit)).map(groupable),
   )) {
-    const value = valueOf(group.variants[0]);
-    if (value === null) continue;
-    counts.set(value, (counts.get(value) ?? 0) + 1);
+    // Once per **distinct** value across the group's variants, not once for
+    // its first. Since Phase 40 dropped pack size from `groupKey` one card
+    // can hold a 6 and a 12, and reading `variants[0]` offered a chip for
+    // whichever sorted first while `?pack=6` still returned the card — a
+    // carton the shop sells that no filter could reach. Cards, not products,
+    // is preserved by the Set: three 6-packs in one group still count 1.
+    for (const value of new Set(group.variants.map(valueOf))) {
+      if (value === null) continue;
+      counts.set(value, (counts.get(value) ?? 0) + 1);
+    }
   }
   return [...counts.entries()]
     .map(([value, count]) => ({ value, count }))
