@@ -50,6 +50,7 @@ model User {
   productPrices      ProductPrice[]
   webOrdersPlaced    WebOrder[]           @relation("webOrdersPlaced")
   webOrdersReviewed  WebOrder[]           @relation("webOrdersReviewed")
+  webOrdersReceived  WebOrder[]           @relation("webOrdersReceived")
   orgSettingsUpdates OrgSettings[]        @relation("orgSettingsUpdatedBy")
   auditActions       AuditEvent[]         @relation("auditActor")
   auditSubjects      AuditEvent[]         @relation("auditSubject")
@@ -427,6 +428,13 @@ model WebOrder {
   /// Snapshotted at submit. Zero while DRAFT — a cart's total is computed.
   subtotal        Decimal        @default(0) @db.Decimal(14, 2)
   submittedAt     DateTime?
+  /// Who acknowledged the order, and when (Phase 41). Deliberately not
+  /// `reviewedBy`: that means *who decided*, and receiving and deciding can
+  /// be two different people — collapsing them would make "Received by" lie
+  /// the moment a second person confirms.
+  receivedById    String?
+  receivedBy      User?          @relation("webOrdersReceived", fields: [receivedById], references: [id], onDelete: SetNull)
+  receivedAt      DateTime?
   reviewedById    String?
   reviewedBy      User?          @relation("webOrdersReviewed", fields: [reviewedById], references: [id])
   reviewedAt      DateTime?
@@ -450,6 +458,9 @@ model WebOrder {
 enum WebOrderStatus {
   DRAFT
   SUBMITTED
+  /// A person has acknowledged the order. Not yet a purchase order — the
+  /// team has not committed to a delivery date. Phase 41.
+  RECEIVED
   CONFIRMED
   DECLINED
 }
