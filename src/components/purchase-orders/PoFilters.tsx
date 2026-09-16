@@ -15,6 +15,7 @@ export type StatusChip =
   | "all"
   | "confirmed"
   | "needs-review"
+  | "received"
   | "extracting"
   | "failed"
   | "web";
@@ -30,6 +31,11 @@ const CHIPS: { value: StatusChip; label: string; dot: string }[] = [
     value: "needs-review",
     label: "Needs review",
     dot: INTAKE_STATUS.NEEDS_REVIEW.dot,
+  },
+  {
+    value: "received",
+    label: "Received",
+    dot: INTAKE_STATUS.RECEIVED.dot,
   },
   {
     value: "extracting",
@@ -50,10 +56,12 @@ export function PoFilters({
   buyers,
   uploaders,
   needsReview,
+  received,
 }: {
   buyers: { id: string; name: string }[];
   uploaders: { id: string; name: string }[];
   needsReview: number;
+  received: number;
 }) {
   const { replace } = useUrlNavigation();
   const pathname = usePathname();
@@ -186,7 +194,9 @@ export function PoFilters({
             const count =
               chip.value === "needs-review" && needsReview > 0
                 ? needsReview
-                : null;
+                : chip.value === "received" && received > 0
+                  ? received
+                  : null;
             return (
               <ChoiceButton
                 key={chip.value}

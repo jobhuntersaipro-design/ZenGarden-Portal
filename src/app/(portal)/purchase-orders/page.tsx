@@ -32,6 +32,7 @@ const STATUSES: StatusChip[] = [
   "all",
   "confirmed",
   "needs-review",
+  "received",
   "extracting",
   "failed",
   "web",
@@ -69,7 +70,7 @@ export default async function PurchaseOrdersPage({
   });
   const { page, size, skip, take } = parsePagination(params);
 
-  const { rows, total, sum, needsReview } = await listPurchaseOrders(
+  const { rows, total, sum, needsReview, received } = await listPurchaseOrders(
     filters,
     sort,
     take,
@@ -96,6 +97,7 @@ export default async function PurchaseOrdersPage({
         buyers={buyers}
         uploaders={uploaders}
         needsReview={needsReview}
+        received={received}
       />
 
       {/* Counts and sums the same filtered set the table shows, so the number

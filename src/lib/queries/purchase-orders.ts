@@ -4,6 +4,7 @@ import { prisma } from "@/lib/prisma";
 import {
   poListNeedsReviewQuery,
   poListQuery,
+  poListReceivedQuery,
   poListSummaryQuery,
   type PoListFilters,
   type PoListRow,
@@ -15,12 +16,14 @@ export type ListResult = {
   total: number;
   sum: string;
   needsReview: number;
+  received: number;
 };
 
 /**
  * One round trip per question: the page of rows, the summary over the same
- * filtered set, and the "Needs review" count with the status filter lifted.
- * The chip's number therefore always matches the rows it filters to.
+ * filtered set, and the "Needs review" and "Received" counts with the status
+ * filter lifted. Each chip's number therefore always matches the rows it
+ * filters to.
  */
 export async function listPurchaseOrders(
   filters: PoListFilters,
@@ -28,12 +31,13 @@ export async function listPurchaseOrders(
   take: number,
   skip: number,
 ): Promise<ListResult> {
-  const [rows, summary, needsReview] = await Promise.all([
+  const [rows, summary, needsReview, received] = await Promise.all([
     prisma.$queryRaw<PoListRow[]>(poListQuery(filters, sort, take, skip)),
     prisma.$queryRaw<{ count: number; total: Prisma.Decimal }[]>(
       poListSummaryQuery(filters),
     ),
     prisma.$queryRaw<{ count: number }[]>(poListNeedsReviewQuery(filters)),
+    prisma.$queryRaw<{ count: number }[]>(poListReceivedQuery(filters)),
   ]);
 
   return {
@@ -41,6 +45,7 @@ export async function listPurchaseOrders(
     total: summary[0]?.count ?? 0,
     sum: (summary[0]?.total ?? new Prisma.Decimal(0)).toString(),
     needsReview: needsReview[0]?.count ?? 0,
+    received: received[0]?.count ?? 0,
   };
 }
 
