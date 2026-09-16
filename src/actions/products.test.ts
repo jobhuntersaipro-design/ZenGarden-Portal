@@ -5,6 +5,11 @@ const productUpdate = vi.fn();
 const productUpdateMany = vi.fn();
 const productFindUnique = vi.fn();
 const productFindMany = vi.fn();
+// The fresh, in-transaction read `updateProduct` uses to tell apart the two
+// meanings of `familyId: null` — kept separate from `productFindUnique`
+// (the pre-transaction read for the image-count gate), which returns a
+// different shape and is asserted on by its own tests.
+const productFindUniqueTx = vi.fn();
 const productDelete = vi.fn();
 const priceCreate = vi.fn();
 // Phase 28: a product write registers whatever it was given in the catalogue's
@@ -28,6 +33,7 @@ const tx = {
     update: productUpdate,
     updateMany: productUpdateMany,
     findMany: productFindMany,
+    findUnique: productFindUniqueTx,
   },
   productPrice: { create: priceCreate },
   catalogLabel: { findFirst: labelFindFirst, create: labelCreate },
@@ -133,6 +139,9 @@ beforeEach(() => {
   // a new one resolves to "new" (Phase 40) rather than joining something a
   // test never set up — the existing familyId-null assertions rely on this.
   productFindMany.mockResolvedValue([]);
+  // The product being edited has no family by default, so `familyId: null`
+  // reads as "resolve one" rather than "detach" unless a test says otherwise.
+  productFindUniqueTx.mockResolvedValue({ familyId: null });
   productDelete.mockResolvedValue({});
   deleteObject.mockResolvedValue(undefined);
   priceCreate.mockResolvedValue({});
@@ -298,9 +307,31 @@ describe("createProduct — the family it is a variant of", () => {
     expect(productUpdate.mock.calls[0][0].data.familyId).toBe("fam-2");
   });
 
-  it("takes a product out of its family when told none", async () => {
+  it("takes a product out of its family when told none, even with a matching sibling", async () => {
+    // `familyId: null` is what the drawer's "No family" option sends whether
+    // the product had one or not — the only way to tell "detach" from
+    // "resolve one for me" is the product's own current row. A sibling that
+    // would otherwise make the resolver rejoin the same family is here on
+    // purpose: without the Fix 1 read-current-first check, this product
+    // would come back in the very family it was just told to leave.
+    productFindUniqueTx.mockResolvedValue({ familyId: "fam-current" });
+    productFindMany.mockResolvedValue([
+      {
+        id: "prd-sibling",
+        brand: input.brand,
+        name: input.name,
+        variant: "Papaya",
+        market: input.market,
+        familyId: "fam-current",
+        family: { name: "Current family" },
+      },
+    ]);
+
     await updateProduct("prod-1", { ...input, familyId: null });
+
     expect(productUpdate.mock.calls[0][0].data.familyId).toBeNull();
+    // No resolver ran: the sibling lookup above is never even read.
+    expect(productFindMany).not.toHaveBeenCalled();
   });
 });
 
@@ -425,6 +456,103 @@ describe("updateProduct — price history", () => {
       success: false,
       error: "That product is gone.",
     });
+  });
+});
+
+describe("updateProduct joining a listing", () => {
+  // `input` already carries familyId: null, and the default `productFindUniqueTx`
+  // mock (set in the top-level beforeEach) says this product has no family yet
+  // — so every case below is the "resolve one for me" half of Fix 1. The
+  // "detach even with a matching sibling" half is covered by its own test
+  // above ("takes a product out of its family when told none, even with a
+  // matching sibling"), which sets `productFindUniqueTx` to a family instead.
+
+  it("joins the family a matching product already carries", async () => {
+    productFindMany.mockResolvedValue([
+      {
+        id: "prd-sibling",
+        brand: input.brand,
+        name: input.name,
+        variant: "Papaya",
+        market: input.market,
+        familyId: "fam-1",
+        family: { name: input.name },
+      },
+    ]);
+
+    const result = await updateProduct("prod-1", { ...input, familyId: null });
+
+    expect(result.success).toBe(true);
+    expect(familyCreate).not.toHaveBeenCalled();
+    expect(productUpdate.mock.calls[0][0].data.familyId).toBe("fam-1");
+  });
+
+  it("creates a family for a derived group and moves every member into it", async () => {
+    productFindMany.mockResolvedValue([
+      {
+        id: "prd-sibling",
+        brand: input.brand,
+        name: input.name,
+        variant: "Papaya",
+        market: input.market,
+        familyId: null,
+        family: null,
+      },
+    ]);
+
+    const result = await updateProduct("prod-1", { ...input, familyId: null });
+
+    expect(result.success).toBe(true);
+    expect(familyCreate).toHaveBeenCalledTimes(1);
+    // The member nobody opened is moved into it too, exactly as in the
+    // create path — one call for the whole derived group.
+    expect(productUpdateMany).toHaveBeenCalledWith({
+      where: { id: { in: ["prd-sibling"] } },
+      data: { familyId: "fam-1" },
+    });
+    expect(productUpdate.mock.calls[0][0].data.familyId).toBe("fam-1");
+  });
+
+  it("refuses on an ambiguous match, writing nothing", async () => {
+    productFindMany.mockResolvedValue([
+      {
+        id: "a",
+        brand: input.brand,
+        name: input.name,
+        variant: "Papaya",
+        market: input.market,
+        familyId: "fam-1",
+        family: { name: "One" },
+      },
+      {
+        id: "b",
+        brand: input.brand,
+        name: input.name,
+        variant: "Lime",
+        market: input.market,
+        familyId: "fam-2",
+        family: { name: "Two" },
+      },
+    ]);
+
+    const result = await updateProduct("prod-1", { ...input, familyId: null });
+
+    expect(result).toEqual({
+      success: false,
+      error: "That product matches two listings — choose a family.",
+    });
+    expect(productUpdate).not.toHaveBeenCalled();
+  });
+
+  it("leaves an explicitly chosen family alone", async () => {
+    const result = await updateProduct("prod-1", { ...input, familyId: "fam-chosen" });
+
+    expect(result.success).toBe(true);
+    expect(productUpdate.mock.calls[0][0].data.familyId).toBe("fam-chosen");
+    // No lookup at all: the reader already answered the question, so there
+    // is nothing to detach from and nothing to resolve.
+    expect(productFindMany).not.toHaveBeenCalled();
+    expect(productFindUniqueTx).not.toHaveBeenCalled();
   });
 });
 

@@ -607,22 +607,41 @@ export async function updateProduct(
         ? (await tx.productFamily.create({ data: data.newFamily, select: { id: true } })).id
         : data.familyId;
 
-      // Nothing chosen: join the listing this product describes, excluding
-      // the row being edited so it is never read as its own sibling.
       if (!familyId) {
-        const joined = await joinListing(
-          tx,
-          {
-            brand: data.brand,
-            name: data.name,
-            variant: data.variant,
-            market: data.market,
-            category: data.category,
-          },
-          productId,
-        );
-        if ("error" in joined) throw new ListingConflict(joined.error);
-        familyId = joined.familyId;
+        // `familyId: null` is overloaded on an edit: it is both what a
+        // product with no family yet carries by default *and* what the
+        // drawer's own "No family" option sends when a person is asking to
+        // take a product **out** of one. Read fresh, through this
+        // transaction rather than trusted from outside it (the row is being
+        // updated here anyway): a product that already has a family read
+        // `null` on the form because it was told to have none, and running
+        // the resolver on it would silently rejoin it to the very family it
+        // was just taken out of.
+        const current = await tx.product.findUnique({
+          where: { id: productId },
+          select: { familyId: true },
+        });
+        if (current?.familyId) {
+          // An explicit detach: honour it and run no resolver.
+          familyId = null;
+        } else {
+          // No family to leave, so null can only mean "resolve one" — join
+          // the listing this product describes, excluding the row being
+          // edited so it is never read as its own sibling.
+          const joined = await joinListing(
+            tx,
+            {
+              brand: data.brand,
+              name: data.name,
+              variant: data.variant,
+              market: data.market,
+              category: data.category,
+            },
+            productId,
+          );
+          if ("error" in joined) throw new ListingConflict(joined.error);
+          familyId = joined.familyId;
+        }
       }
 
       await tx.product.update({
