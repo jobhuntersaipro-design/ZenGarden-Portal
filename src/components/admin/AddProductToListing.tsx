@@ -49,10 +49,27 @@ export function AddProductToListing({
         options={options}
         onSelect={async (option) => {
           setPending(true);
-          const result = await addProductToFamily(option.id, familyId);
-          if (!result.success) toast.error(result.error);
-          await refresh();
-          setPending(false);
+          try {
+            const result = await addProductToFamily(option.id, familyId);
+            if (!result.success) {
+              toast.error(result.error);
+              return;
+            }
+            const added = candidates.find((product) => product.id === option.id);
+            toast.success(
+              added
+                ? `${added.sku} added to this listing`
+                : "Product added to this listing",
+            );
+            await refresh();
+          } catch {
+            // An unguarded await here is what left the avatar picker
+            // permanently disabled on 2026-09-08 — the same trap, guarded the
+            // same way. Without the `finally` the picker sticks on "Adding…".
+            toast.error("We couldn't reach the server. Try again.");
+          } finally {
+            setPending(false);
+          }
         }}
       />
       <p className="text-[length:var(--text-caption)] text-ink-tertiary">

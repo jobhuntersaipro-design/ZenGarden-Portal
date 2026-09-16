@@ -31,12 +31,27 @@ export function ListingMembers({
   const refresh = useAwaitableRefresh();
   const [busy, setBusy] = useState<string | null>(null);
 
-  const run = async (id: string, work: () => Promise<{ success: boolean; error?: string }>) => {
+  const run = async (
+    id: string,
+    work: () => Promise<{ success: boolean; error?: string }>,
+    done: string,
+  ) => {
     setBusy(id);
-    const result = await work();
-    if (!result.success) toast.error(result.error ?? "That didn't work.");
-    await refresh();
-    setBusy(null);
+    try {
+      const result = await work();
+      if (!result.success) {
+        toast.error(result.error ?? "That didn't work.");
+        return;
+      }
+      toast.success(done);
+      await refresh();
+    } catch {
+      // An unguarded await here is what left the avatar picker permanently
+      // disabled on 2026-09-08 — the same trap, guarded the same way.
+      toast.error("We couldn't reach the server. Try again.");
+    } finally {
+      setBusy(null);
+    }
   };
 
   const shown = members.filter((member) => member.active).length;
@@ -53,55 +68,71 @@ export function ListingMembers({
       </div>
 
       <ul className="mt-sm flex flex-col divide-y divide-hairline border-y border-hairline">
-        {members.map((member) => (
-          <li key={member.id} className="flex flex-wrap items-center gap-sm py-sm">
-            <div className="min-w-0 flex-1">
-              <Link
-                href={`/products/${member.id}`}
-                className="text-[length:var(--text-body-sm)] font-semibold text-ink hover:underline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-focus"
-              >
-                {member.variant ?? "Standard"}
-              </Link>
-              <p className="font-mono text-[length:var(--text-caption)] text-ink-tertiary">
-                {member.sku} · {unitLabel(member.packSize, member.unit)} ·{" "}
-                {formatMYR(member.listPrice)}
-              </p>
-            </div>
+        {members.map((member) => {
+          const flavour = member.variant ?? "Standard";
+          return (
+            <li key={member.id} className="flex flex-wrap items-center gap-sm py-sm">
+              <div className="min-w-0 flex-1">
+                <Link
+                  href={`/products/${member.id}`}
+                  className="text-[length:var(--text-body-sm)] font-semibold text-ink hover:underline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-focus"
+                >
+                  {flavour}
+                </Link>
+                <p className="font-mono text-[length:var(--text-caption)] text-ink-tertiary">
+                  {member.sku} · {unitLabel(member.packSize, member.unit)} ·{" "}
+                  {formatMYR(member.listPrice)}
+                </p>
+              </div>
 
-            <span
-              className={`rounded-pill px-sm py-xxs text-[length:var(--text-caption)] font-semibold ${
-                member.active
-                  ? "bg-surface-success text-ink"
-                  : "bg-surface text-ink-secondary"
-              }`}
-            >
-              {member.active ? "Shown" : "Hidden"}
-            </span>
+              {/* `PublishToggle`'s treatment exactly: this pill and that one
+                  draw the same `Product.active`, and one status may only have
+                  one colour. The words stay the spec's. */}
+              <span
+                className={`rounded-full bg-surface-soft px-sm py-xxs text-[length:var(--text-caption)] ${
+                  member.active ? "text-accent-green" : "text-ink-tertiary"
+                }`}
+              >
+                {member.active ? "Shown" : "Hidden"}
+              </span>
 
-            <div className="flex items-center gap-xs">
-              <Button
-                type="button"
-                variant="outline"
-                pending={busy === member.id}
-                onClick={() =>
-                  run(member.id, () => setProductPublished(member.id, !member.active))
-                }
-                className="h-control-md px-md sm:h-control-sm"
-              >
-                {member.active ? "Hide from shop" : "Show"}
-              </Button>
-              <Button
-                type="button"
-                variant="outline"
-                pending={busy === member.id}
-                onClick={() => run(member.id, () => removeProductFromFamily(member.id))}
-                className="h-control-md px-md sm:h-control-sm"
-              >
-                Remove
-              </Button>
-            </div>
-          </li>
-        ))}
+              <div className="flex items-center gap-xs">
+                <Button
+                  type="button"
+                  variant="outline"
+                  pending={busy === member.id}
+                  onClick={() =>
+                    run(
+                      member.id,
+                      () => setProductPublished(member.id, !member.active),
+                      member.active
+                        ? `${flavour} hidden from the shop`
+                        : `${flavour} shown on the shop`,
+                    )
+                  }
+                  className="h-control-md px-md sm:h-control-sm"
+                >
+                  {member.active ? "Hide from shop" : "Show"}
+                </Button>
+                <Button
+                  type="button"
+                  variant="outline"
+                  pending={busy === member.id}
+                  onClick={() =>
+                    run(
+                      member.id,
+                      () => removeProductFromFamily(member.id),
+                      `${flavour} removed from this listing`,
+                    )
+                  }
+                  className="h-control-md px-md sm:h-control-sm"
+                >
+                  Remove
+                </Button>
+              </div>
+            </li>
+          );
+        })}
       </ul>
     </section>
   );
