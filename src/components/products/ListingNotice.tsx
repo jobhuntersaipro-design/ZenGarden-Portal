@@ -29,6 +29,7 @@ export function ListingNotice({
   market,
   excludeId,
   chosenFamilyName = null,
+  leavingFamilyName = null,
 }: {
   brand: string | null;
   name: string;
@@ -38,6 +39,13 @@ export function ListingNotice({
   /** Set while the reader has chosen a family themselves; the notice then
    *  says which one will be used instead of looking one up. */
   chosenFamilyName?: string | null;
+  /**
+   * Set while the reader has chosen "No family" on a product that is in one
+   * — the drawer's detach. Without it this line fell through to the lookup
+   * and printed "Joins the existing listing X", naming the very family the
+   * save was about to take the product out of.
+   */
+  leavingFamilyName?: string | null;
 }) {
   const [match, setMatch] = useState<ListingMatch | null>(null);
 
@@ -58,6 +66,18 @@ export function ListingNotice({
       clearTimeout(timer);
     };
   }, [brand, name, variant, market, excludeId]);
+
+  // Leaving is checked before joining: a detach is also a state in which no
+  // family is chosen, and the lookup below would otherwise describe the one
+  // being left as the one being joined.
+  if (leavingFamilyName) {
+    return (
+      <p className={`${caption} text-ink-secondary`}>
+        Leaves <strong className="font-semibold text-ink">{leavingFamilyName}</strong> —
+        it goes back to being grouped by its name.
+      </p>
+    );
+  }
 
   // A family the reader picked themselves overrides whatever the lookup
   // found; saying otherwise would contradict the control right below.

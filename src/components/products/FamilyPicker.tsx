@@ -16,6 +16,15 @@ export type FamilyChoice = {
   familyId: string | null;
   /** Non-null while a new family is being described on this form. */
   draft: FamilyDraft | null;
+  /**
+   * The reader picked "No family", as opposed to never having picked
+   * anything. `familyId: null` alone cannot tell the two apart, and on an
+   * edit they mean opposite things — "work out which listing this joins"
+   * against "take it out of the one it is in" — so a caller that has to say
+   * which is happening reads this. Optional and meaningless on the create
+   * form, where a product is in nothing to leave.
+   */
+  detach?: boolean;
 };
 
 /**
@@ -64,6 +73,7 @@ export function FamilyPicker({
     onChange({
       familyId: null,
       draft: { name: "", size: "", qualifier: "", ...value.draft, ...patch },
+      detach: false,
     });
 
   return (
@@ -76,7 +86,11 @@ export function FamilyPicker({
         pinned={[{ id: NEW, label: "+ Create a family…" }]}
         onSelect={(option) => {
           if (option.id === NEW) setDraft({});
-          else onChange({ familyId: option.id === NONE ? null : option.id, draft: null });
+          else if (option.id === NONE)
+            // The only place `detach` is set: this row is a person saying
+            // "no family", not the absence of a choice.
+            onChange({ familyId: null, draft: null, detach: true });
+          else onChange({ familyId: option.id, draft: null, detach: false });
         }}
       />
 

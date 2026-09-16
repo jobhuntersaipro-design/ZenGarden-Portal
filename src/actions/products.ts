@@ -611,12 +611,15 @@ export async function updateProduct(
         // `familyId: null` is overloaded on an edit: it is both what a
         // product with no family yet carries by default *and* what the
         // drawer's own "No family" option sends when a person is asking to
-        // take a product **out** of one. Read fresh, through this
-        // transaction rather than trusted from outside it (the row is being
-        // updated here anyway): a product that already has a family read
-        // `null` on the form because it was told to have none, and running
-        // the resolver on it would silently rejoin it to the very family it
-        // was just taken out of.
+        // take a product **out** of one. The drawer now knows which it is —
+        // `FamilyChoice.detach`, so its own line can say "Leaves X" rather
+        // than "Joins X" — but that flag is deliberately not sent here and
+        // must not become the authority: the row is read fresh through this
+        // transaction instead (it is being updated here anyway), so a stale
+        // client cannot decide the question. A product that already has a
+        // family read `null` on the form because it was told to have none,
+        // and running the resolver on it would silently rejoin it to the
+        // very family it was just taken out of.
         const current = await tx.product.findUnique({
           where: { id: productId },
           select: { familyId: true },
