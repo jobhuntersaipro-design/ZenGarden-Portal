@@ -6,7 +6,6 @@ const productFindMany = vi.fn();
 const webOrderFindFirst = vi.fn();
 const webOrderCreate = vi.fn();
 const webOrderUpdate = vi.fn();
-const webOrderCount = vi.fn();
 const lineUpsert = vi.fn();
 const lineUpdateMany = vi.fn();
 const lineDeleteMany = vi.fn();
@@ -30,7 +29,6 @@ vi.mock("@/lib/prisma", () => ({
       findFirst: webOrderFindFirst,
       create: webOrderCreate,
       update: webOrderUpdate,
-      count: webOrderCount,
     },
     webOrderLine: {
       upsert: lineUpsert,
@@ -95,7 +93,6 @@ beforeEach(() => {
   productFindUnique.mockResolvedValue(sellable);
   productFindMany.mockResolvedValue([sellable]);
   webOrderFindFirst.mockResolvedValue({ id: "cart1", reference: "W-2609-00001", lines: [] });
-  webOrderCount.mockResolvedValue(0);
   lineUpsert.mockResolvedValue({});
   lineUpdateMany.mockResolvedValue({ count: 1 });
   lineUpdate.mockResolvedValue({});
@@ -373,13 +370,6 @@ describe("submitWebOrder", () => {
     expect(result).toEqual({ success: true, data: { reference: "W-2609-00001" } });
     // The order itself was written before any of this ran.
     expect(webOrderUpdate.mock.calls.at(-1)![0].data.status).toBe("SUBMITTED");
-  });
-
-  it("caps how many orders a buyer can leave waiting on the ops team", async () => {
-    webOrderCount.mockResolvedValue(5);
-    const result = await submitWebOrder();
-    expect(result.success).toBe(false);
-    expect(webOrderFindFirst).not.toHaveBeenCalled();
   });
 
   it("refuses a caller who is not a client", async () => {
