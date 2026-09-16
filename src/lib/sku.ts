@@ -31,6 +31,8 @@
  * editable, and matched exactly like any other.
  */
 
+import { normaliseSku } from "@/lib/validation/products";
+
 export type SkuField = "brand" | "variant" | "market" | "category";
 
 const BRANDS: Record<string, string> = {
@@ -248,4 +250,43 @@ export function generateSku(product: {
   market: string | null;
 }): string {
   return generateVariantSku(generateFamilyCode(product), product);
+}
+
+/**
+ * Whether a product's code is one this module made (Phase 40).
+ *
+ * The edit drawer asks so it knows whether it may rewrite the code when the
+ * variant, market or family changes. It recomputes what the code *would* be
+ * from the product's current values and compares: equal means the generator
+ * made it and may remake it; different means a person or a customer chose
+ * it, and it is never rewritten without being asked.
+ *
+ * That difference is not cosmetic. Eight products on production carry the
+ * customer's own printed codes — `ZEN/SC/2100/CARROT`, `KE218441 68216` —
+ * and `resolveProducts` matches purchase-order lines to products by exact
+ * code. Rewriting one silently would stop every future document matching
+ * that line.
+ */
+export function isGeneratedSku(product: {
+  sku: string;
+  brand: string | null;
+  category: string;
+  name: string;
+  variant: string | null;
+  market: string | null;
+  familyCode: string | null;
+}): boolean {
+  const generated = product.familyCode
+    ? generateVariantSku(product.familyCode, {
+        variant: product.variant,
+        market: product.market,
+      })
+    : generateSku({
+        brand: product.brand,
+        category: product.category,
+        size: sizeInName(product.name),
+        variant: product.variant,
+        market: product.market,
+      });
+  return normaliseSku(product.sku) === generated;
 }

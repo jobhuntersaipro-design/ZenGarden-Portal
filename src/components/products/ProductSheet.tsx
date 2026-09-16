@@ -23,7 +23,8 @@ import { NEEDS_AN_IMAGE } from "@/lib/validation/product-images";
 import { familyFromDraft, findFamilyCodeCollision } from "@/lib/product-families";
 import type { FamilyOption } from "@/lib/queries/product-families";
 import type { GrowingLabel } from "@/lib/queries/products";
-import type { ProductInput } from "@/lib/validation/products";
+import { generateSku, generateVariantSku, isGeneratedSku, sizeInName } from "@/lib/sku";
+import { normaliseSku, type ProductInput } from "@/lib/validation/products";
 
 /**
  * Editing an existing product. Creating one is `/products/new` — a page, not a
@@ -59,6 +60,25 @@ export function ProductSheet({
   });
   const [pending, setPending] = useState(false);
 
+  /**
+   * Whether the SKU field follows the other fields, decided once from the
+   * values the drawer opened with. A generated code may be regenerated; a
+   * customer's or a hand-typed one is offered a button instead, never moved
+   * on its own.
+   */
+  const [skuFollows] = useState(() =>
+    isGeneratedSku({
+      sku: product.sku,
+      brand: product.brand ?? null,
+      category: product.category,
+      name: product.name,
+      variant: product.variant ?? null,
+      market: product.market ?? null,
+      familyCode: families.find((entry) => entry.id === product.familyId)?.code ?? null,
+    }),
+  );
+  const [skuTouched, setSkuTouched] = useState(false);
+
   const set = <K extends keyof ProductInput>(key: K, value: ProductInput[K]) =>
     setForm((current) => ({ ...current, [key]: value }));
 
@@ -76,6 +96,25 @@ export function ProductSheet({
     ? findFamilyCodeCollision(newFamily.code, families)
     : null;
   const blockedByFamilyCollision = familyCollision !== null;
+
+  // The code the current form values would produce — recomputed on every
+  // keystroke, unlike `skuFollows` above, which is decided once. Identical
+  // arithmetic to `ProductForm`'s own proposal.
+  const familyCode =
+    families.find((entry) => entry.id === family.familyId)?.code ?? newFamily?.code ?? null;
+  const proposedSku = familyCode
+    ? generateVariantSku(familyCode, { variant: form.variant ?? null, market: form.market ?? null })
+    : generateSku({
+        brand: form.brand ?? null,
+        category: form.category,
+        size: sizeInName(form.name),
+        variant: form.variant ?? null,
+        market: form.market ?? null,
+      });
+
+  // A generated code follows the edit until the reader types in the field;
+  // any other code holds still and is offered the button below.
+  const sku = skuTouched || !skuFollows ? form.sku : proposedSku;
 
   return (
     <Sheet open={open} onOpenChange={setOpen}>
@@ -149,16 +188,37 @@ export function ProductSheet({
               </label>
               <Input
                 id="product-sku"
-                value={form.sku}
+                value={sku}
                 // Upper-cased as typed, so two people cannot enter the same SKU
                 // two ways and create a duplicate the schema would reject.
-                onChange={(event) =>
-                  set("sku", event.target.value.toUpperCase())
-                }
+                onChange={(event) => {
+                  setSkuTouched(true);
+                  set("sku", event.target.value.toUpperCase());
+                }}
               />
-              <p className="text-[length:var(--text-caption)] text-ink-tertiary">
-                Capitals, digits and dashes
-              </p>
+              {skuFollows || skuTouched ? (
+                <p className="text-[length:var(--text-caption)] text-ink-tertiary">
+                  {skuTouched
+                    ? "Capitals, digits and dashes"
+                    : "Follows the family, variant and market — type to override"}
+                </p>
+              ) : proposedSku !== normaliseSku(form.sku) ? (
+                <div className="flex flex-wrap items-center gap-xs">
+                  <p className="text-[length:var(--text-caption)] text-ink-tertiary">
+                    Not a generated code, so it stays as it is.
+                  </p>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setSkuTouched(true);
+                      set("sku", proposedSku);
+                    }}
+                    className="h-control-md rounded-pill border border-hairline-strong px-sm text-[length:var(--text-caption)] font-semibold text-ink hover:border-ink focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-focus sm:h-control-sm"
+                  >
+                    Regenerate → {proposedSku}
+                  </button>
+                </div>
+              ) : null}
             </div>
 
             <div className="flex flex-col gap-xxs">
@@ -298,6 +358,7 @@ export function ProductSheet({
                 setPending(true);
                 const result = await updateProduct(product.id, {
                   ...form,
+                  sku,
                   familyId: family.familyId,
                   newFamily,
                 });

@@ -3,6 +3,7 @@ import {
   generateFamilyCode,
   generateSku,
   generateVariantSku,
+  isGeneratedSku,
   sizeInName,
   skuCode,
 } from "@/lib/sku";
@@ -165,6 +166,57 @@ describe("generateVariantSku", () => {
     expect(generateVariantSku("ZEN-SC-1000-SCRUB", { variant: "Papaya", market: null })).toBe(
       "ZEN-SC-1000-SCRUB-PP",
     );
+  });
+});
+
+describe("isGeneratedSku", () => {
+  const product = {
+    brand: "Zen Garden",
+    category: "Shower cream & gel",
+    name: "Zen Garden Shower Cream 2.1L",
+    variant: "Goat's Milk",
+    market: "Indonesia",
+    familyCode: "ZS-SC-2100",
+  };
+
+  it("recognises a code the family generator made", () => {
+    const sku = generateVariantSku("ZS-SC-2100", { variant: "Goat's Milk", market: "Indonesia" });
+    expect(isGeneratedSku({ ...product, sku })).toBe(true);
+  });
+
+  it("recognises a code the family-less generator made", () => {
+    const sku = generateSku({
+      brand: "Zen Garden",
+      category: "Shower cream & gel",
+      size: "2.1L",
+      variant: "Goat's Milk",
+      market: "Indonesia",
+    });
+    expect(isGeneratedSku({ ...product, familyCode: null, sku })).toBe(true);
+  });
+
+  it("refuses a customer's own printed code", () => {
+    // The eight production rows carrying these are what this rule protects:
+    // the purchase-order extraction matches lines to products by exact code.
+    expect(isGeneratedSku({ ...product, sku: "ZEN/SC/2100/CARROT" })).toBe(false);
+    expect(isGeneratedSku({ ...product, sku: "KE218441 68216" })).toBe(false);
+  });
+
+  it("refuses a hand-typed code that merely looks generated", () => {
+    expect(isGeneratedSku({ ...product, sku: "ZS-SC-2100-GM" })).toBe(false);
+  });
+
+  it("compares through normaliseSku, so case and spacing do not decide it", () => {
+    const sku = generateVariantSku("ZS-SC-2100", { variant: "Goat's Milk", market: "Indonesia" });
+    expect(isGeneratedSku({ ...product, sku: sku.toLowerCase() })).toBe(true);
+  });
+
+  it("is false once the product's family is recoded", () => {
+    // The safe side of the rule, recorded in the spec: the test recomputes
+    // from the family's *current* code, so a rename turns an automatic
+    // rewrite into an offered one.
+    const sku = generateVariantSku("ZS-SC-2100", { variant: "Goat's Milk", market: "Indonesia" });
+    expect(isGeneratedSku({ ...product, familyCode: "ZS-SC-2100-SCRUB", sku })).toBe(false);
   });
 });
 
