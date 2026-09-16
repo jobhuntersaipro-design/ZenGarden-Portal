@@ -28,7 +28,10 @@ admin page per listing, and two membership actions.
 - **No `any`.** TypeScript strict; `unknown` plus narrowing.
 - **Design system is mandatory.** Colours, type, radii and spacing come from the
   `@theme` tokens in `src/app/globals.css`. No raw hex, no px font size, no
-  arbitrary Tailwind value. `text-[length:var(--text-*)]` IS the house idiom.
+  arbitrary Tailwind value — the `text-[length:var(--text-body-sm)]` form IS
+  the house idiom, and a real token name is used here on purpose: Tailwind v4
+  scans markdown too, and a wildcard inside `var()` compiles to invalid CSS and
+  takes the whole stylesheet down.
   Read `context/design-system.md` before writing markup.
 - **Sentence-case labels.** Touch targets **≥44px at 390px**.
 - **Every product and family write is `requireSuperAdmin()`**, checked on the
