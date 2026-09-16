@@ -147,10 +147,14 @@ export function PoTable({
       // exists to say.
       cell: (row) => (
         <span className="inline-flex shrink-0 items-center gap-xxs rounded-full bg-surface-soft px-sm py-xxs text-[length:var(--text-caption)]">
+          {/* Neutral tones only: provenance is a permanent fact, not a
+              process in flight, and 00-master.md §4 reserves the "something
+              is happening" colour for the latter. The text carries the
+              meaning here. */}
           <span
             aria-hidden
             className={`size-1.5 rounded-full ${
-              row.source === "web" ? "bg-accent-blue" : "bg-ink-tertiary"
+              row.source === "web" ? "bg-ink-secondary" : "bg-ink-tertiary"
             }`}
           />
           {row.source === "web" ? "Shop" : "Manual"}
