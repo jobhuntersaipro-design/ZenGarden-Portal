@@ -125,8 +125,15 @@ describe("the received state", () => {
     const sql = sqlOf(poListQuery(ALL, { key: "poDate", dir: "desc" }, 0, 10) as never);
     expect(sql).toContain("'SUBMITTED'");
     expect(sql).toContain("'RECEIVED'");
-    // The row must say which it is, or the badge cannot differ.
-    expect(sql).toContain('wo."status"');
+    // The row must say which it is, or the badge cannot differ. Asserted as
+    // the whole CASE, not just the substrings above: 'SUBMITTED' and
+    // 'RECEIVED' and wo."status" are all already supplied by the WHERE
+    // clause (wo."status" IN ('SUBMITTED', 'RECEIVED')), so those alone would
+    // still pass if the status column were reverted to a flat
+    // 'NEEDS_REVIEW' — the label every received row must actually carry.
+    expect(sql).toContain(
+      'CASE WHEN wo."status" = \'RECEIVED\' THEN \'RECEIVED\' ELSE \'NEEDS_REVIEW\' END AS "status"',
+    );
   });
 
   it("partitions the shop backlog across the two chips", () => {
@@ -157,11 +164,31 @@ describe("the received state", () => {
   });
 
   it("the shop chip means every shop-sourced row, confirmed ones included", () => {
-    const sql = sqlOf(
+    // Not just "PurchaseOrder" and "WebOrder" appearing somewhere in the
+    // text: "WebOrder" is always present (the web branch itself, plus the
+    // wo2 subquery inside the Source CASE every branch carries), and
+    // "PurchaseOrder" also shows up in orderRows' own NOT EXISTS ... newer
+    // revision check. What actually has to be true for "web" is that
+    // orderRows is restricted to orders that came from the shop — asserted
+    // by the exact EXISTS condition that does that restricting, present only
+    // for "web" and absent for "all" and "confirmed" (checked not to collide
+    // with the Source CASE's own EXISTS, which uses the alias wo2, not w).
+    const restriction =
+      'EXISTS (SELECT 1 FROM "WebOrder" w WHERE w."purchaseOrderId" = po."id")';
+    const web = sqlOf(
       poListQuery({ status: "web" }, { key: "poDate", dir: "desc" }, 0, 10) as never,
     );
-    expect(sql).toContain('"PurchaseOrder"');
-    expect(sql).toContain('"WebOrder"');
+    expect(web).toContain('"PurchaseOrder"');
+    expect(web).toContain('"WebOrder"');
+    expect(web).toContain(restriction);
+
+    const all = sqlOf(poListQuery(ALL, { key: "poDate", dir: "desc" }, 0, 10) as never);
+    expect(all).not.toContain(restriction);
+
+    const confirmed = sqlOf(
+      poListQuery({ status: "confirmed" }, { key: "poDate", dir: "desc" }, 0, 10) as never,
+    );
+    expect(confirmed).not.toContain(restriction);
   });
 
   it("sorts on source without leaving the allow-list", () => {
