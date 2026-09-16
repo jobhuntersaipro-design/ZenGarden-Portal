@@ -1,9 +1,146 @@
-# Current Feature: Order confirmation and the expected delivery date
+# Current Feature: Product listings — one product, its variants, and the admin who decides
 
 ## Status
 
-**Phase 38 — order confirmation and the expected delivery date — built and
-verified on `feature/order-confirmation`, not yet committed** (2026-09-15).
+**Phase 40 — product listings — built across seven tasks and driven in a
+browser on `feature/product-listings`, not yet committed** (2026-09-16). Spec
+`docs/specs/40-product-listings.md`, whose §8 is now what was measured rather
+than what was intended. Asked for as: "there's 2 same product … I want to put
+it under the same product, so when buyer click in they can choose the variant";
+"let superadmin list product and choose what variant they want to list under
+same product"; "group them automatically if it's the same listing, and let
+admin know the current listing existed and will be added a new variant"; "the
+product code should be auto regenerated when the product is edited".
+
+A shop listing is now **one product family in one market**, with flavour *and
+pack size* as the variants a buyer chooses between. Pack size left the grouping
+key; a variant's label carries its pack only where the listing holds more than
+one. Both forms print the listing a product will join before it is saved, and
+the same resolver runs inside the write, so the message and the outcome cannot
+disagree. A new admin page, `/admin/catalogue/families/[id]`, shows a listing
+one section per market and lets a super admin hide, show, remove or add a
+variant. The edit drawer's SKU follows the product's edits when the generator
+made the code, and holds still — offering Regenerate — when it did not.
+
+No migration and no new dependency.
+
+## Verified, with the figures
+
+Driven on the development database as a real super admin and a real MEMBER;
+full report in `.superpowers/sdd/2026-09-16-product-listings/task-8-report.md`.
+**Nine of the twelve criteria passed outright, one passed in part, two passed
+with a note, none failed.**
+
+- **Pack size really did leave the key.** Four products — Lemon and Lime, each
+  at 12 and at 6 per carton — drew **one** card reading "1 product", with four
+  picker labels each carrying its pack. Moving the two 6-carton rows to another
+  market split the same four into **two** cards, and each card's labels then
+  dropped the pack, because neither mixes one any more.
+- **A family in two markets is two cards**, both titled by the family: 8
+  products of *Zen Garden Promo Hand Wash 500ML* drew Arab with its 6 variants
+  and India with its 2, no variant on the wrong card.
+- **The write reaches rows the admin never opened.** Against a derived group of
+  two unplaced products, the create form said "2 products in no family yet.
+  Saving puts all of them in one family", and submitting moved
+  `productFamily.count()` **59 → 60** — one family, code `ZEN-SC-0500` — with
+  **all three** rows reading back that same id, the two older ones included.
+- **The SKU rule, both ways, with the codes.** A generated code followed a
+  variant edit live, `ZEN-SC-0750-GMAP-VN` → `ZEN-SC-0750-FL-VN`, and saved. A
+  code the generator did not make held still at `ZEN-SC-0500-GMAP-AE` while its
+  Regenerate proposal moved to `ZEN-HW-0500-PROMO-FL-AE`; pressing it filled the
+  field and the save wrote it. A regenerated code that collided was refused —
+  "That SKU is already in use." — with **both** the SKU and the variant read
+  back unchanged, so the rest of the edit did not slip through either.
+- **Every control on the listing page was driven and read back**: Hide set
+  `active` false and took the variant off the shop card without deleting the
+  row; Show restored it; Remove set `familyId` null and the shop drew that row
+  as its own derived card; Add set it back. Product count was 311 before and
+  after.
+- **The add-product picker offers unplaced products**, proven live rather than
+  by reading code — the late fix for Prisma's `NOT` dropping NULL rows. With a
+  row detached, the picker returned it; a placed candidate reads "· in Zen
+  Garden Promo Hand Wash 500ML" beside its market.
+- **The edit drawer does not match itself.** Opened on the only product with its
+  name, the line read "This will be a new listing." — without the exclusion it
+  would have claimed to join itself.
+- **A real MEMBER gets a real 404.** Demoted, signed out and signed in again so
+  the token carried the new role, `/admin`, `/admin/catalogue` and the listing
+  page each answered **404** with none of the listing's content in the body.
+- **Sweep:** the listing page, the create form with its listing line and a
+  mixed-pack shop card at 390 / 768 / 1440 — nine combinations,
+  `scrollWidth === innerWidth` on all nine. Console 0 errors on four pages.
+- **Cleanup, counted both ends.** Four throwaway products, one family, three
+  price rows and three image rows deleted **by id**; two detached products and
+  two changed markets restored; all three R2 keys answered NotFound, so nothing
+  was orphaned. Counts returned to the baseline exactly — products **308**,
+  families **59**, images **0**, prices **0**, web orders **0**, purchase orders
+  **400**, users **2**, labels **124**, unplaced **0**, inactive **0** — and
+  `aisha@lovinghandsportal.com` was **read back** as `MEMBER` after the
+  promotion.
+- **1114/1114 tests, `tsc --noEmit`, `npm run lint`** (the same 2 pre-existing
+  warnings, 0 errors) **and `npm run build` all clean.**
+
+## Not verified
+
+- **Anything on production.** This branch has never been deployed and no
+  production database was read or written. Production holds **zero families**,
+  so every card there is still derived — with pack size out of the key that
+  alone merges a line's 6- and 12-carton rows — and **§7's backfill has not been
+  run there**. It stands behind two other things: Phases 36–39 must deploy
+  first, and production's `DIRECT_URL` still points at the pooled Neon host.
+- **The two family actions' own super-admin refusal, live.** The route that
+  registers them is unreachable for a MEMBER, which was measured; the actions'
+  guard itself rests on its unit tests. A crafted Server-Action POST was tried
+  and is *not* a valid probe — it answers "Server action not found" for a super
+  admin too, so it proves nothing. Worth not re-deriving.
+- **The ambiguous branch** ("matches 2 listings — choose a family"), because no
+  product in development has siblings in two families. Covered by unit tests.
+- **A family-code collision on the derived-group create** — the one such create
+  in this pass produced a free code.
+
+## Notes
+
+- **The families table that points at the listing page is the `/products`
+  family view**, not the admin room's own families section. The admin section
+  still links its product count to the ops product list, has no Markets column,
+  and captions itself "A product joins or leaves a family from its own page" —
+  so a super admin standing in the admin room reaches a listing page only
+  through a create or edit form's line. Recorded, not fixed.
+- **The Markets column reads 0 where the listing page says 1.**
+  `groupFamilies` counts only non-null markets, so a family whose products carry
+  no market reads "0 markets" in the table while its own page says "4 variants
+  across 1 market" and the shop draws it one card. Phase 36's counting; Phase
+  40's column is what exposes it.
+- **The listing page shows the family's code, name, brand and size read-only.**
+  Editing them is still the admin catalogue's job.
+- **One new sub-44px control**, recorded rather than adopted into the accepted
+  list: the listing line's family link measures 281×33 at 390px. It is a text
+  link inside a caption, the same shape as the "Manage values" links beside it.
+- **Presigned product-image uploads answer 403 in development**, three of three.
+  The form toasts "Product created, but the images didn't upload"; every key
+  answered NotFound afterwards, so nothing is orphaned in R2, but the product
+  row and its image row are still written. The upload path is untouched by this
+  phase — pre-existing, and it means the create form cannot finish cleanly in
+  development until someone looks at it.
+- **A renamed family code makes its generated SKUs look hand-typed**, by
+  design: the equality test recomputes from the family's current code, so a
+  recoded family offers Regenerate rather than rewriting on its own. The safe
+  side of the rule.
+- **`createProduct` has had no caller since Phase 39** and was not taught the
+  resolver. Whether to delete it is still the user's decision.
+
+## Previous phase
+
+**Phase 39 — a product's variants at creation, and buying several at once —
+built on `feature/variant-creation`** (2026-09-16). Spec
+`docs/specs/39-variant-creation-and-multi-add.md`. `/products/new` enters a
+product and every flavour of it in one submit and one transaction, so a
+duplicate SKU on the seventh row leaves no half-entered catalogue behind.
+
+## Previous phase
+
+**Phase 38 — order confirmation and the expected delivery date — built,
+verified and committed on `feature/order-confirmation`** (2026-09-15).
 Spec `docs/specs/38-order-confirmation.md`. The last of the three phases
 planned together on 2026-09-15. Asked for as: "admin or superadmin should see
 the order placed under Purchase Order tab, pending approval and review the

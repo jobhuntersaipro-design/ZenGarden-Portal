@@ -203,39 +203,113 @@ That is an operations step with its own checklist, not a code task, and it
 stands behind two others: Phases 36–39 must deploy first, and production's
 `DIRECT_URL` still points at the pooled Neon host.
 
-## 8. Acceptance criteria
+## 8. Acceptance criteria — as measured
 
-1. Two active products with the same brand, name and market and **different
-   pack sizes** draw **one** card on the shop, with two picker labels
-   carrying their packs; the same two in different markets draw two cards.
-2. A family's products in two markets draw two cards, each titled by the
-   family, each holding only that market's variants.
-3. On `/products/new`, typing the brand, name and market of an existing
-   listing shows the "joins the existing listing" line naming it and its
-   variant count; submitting puts the new row in that family — read back.
-4. The same against a derived group with no family shows the "no family
-   yet" line; submitting creates **one** family and assigns **every** member
-   of the group plus the new row — `productFamily.count()` rises by one,
-   every member's `familyId` equal.
-5. The same with nothing matching shows "new listing" and creates no family.
-6. The edit drawer shows the same line, updating as brand, name or market
-   change; saving joins as in 3–5.
-7. `/admin/catalogue/families/[id]` renders a section per market with the
-   right rows; Hide removes a variant from the shop card without deleting
-   it; Show restores it; Remove from family returns the row to derived
-   grouping; Add a product sets `familyId` — each read back.
-8. A MEMBER gets the admin room's 404 on the listing page and its actions
-   refuse them.
-9. Editing the variant of a product whose SKU equals its generated code
-   rewrites the SKU on save; editing one whose SKU does not equal it leaves
-   the SKU unchanged and offers Regenerate; pressing Regenerate then saves
-   the generated code.
-10. A regenerated code that collides is refused with the named message and
-    nothing is written.
-11. The product page's chips and quantity rows and the card's picker all
-    print the same label for the same variant.
-12. No horizontal overflow at 390 / 768 / 1440 on the listing page and on a
-    card with mixed pack sizes; every control ≥44px at 390.
+Driven in a browser on the development database on 2026-09-16 as a real super
+admin and a real MEMBER, with every write read back from the database. Report:
+`.superpowers/sdd/2026-09-16-product-listings/task-8-report.md`.
+
+Baseline before and after, identical: products **308**, families **59**,
+product images **0**, product prices **0**, web orders **0**, purchase orders
+**400**, users **2**, catalogue labels **124**, products with no family **0**,
+inactive products **0**.
+
+**Nine passed outright, one passed in part, two passed with a note. None
+failed.**
+
+1. **Pass.** Family `MRK-DW-1500` (Lemon and Lime, each at 12 and at 6 per
+   carton, no market) drew **one** card — header "1 product" — with four picker
+   labels each carrying its pack: *Lemon · 12 per carton*, *Lemon · 6 per
+   carton*, *Lime · 12 per carton*, *Lime · 6 per carton*, and no pack in the
+   card's caption. With the two 6-carton rows moved to market *Vietnam*, the
+   same search drew **two** cards ("2 products · showing 1–2"), captioned *6
+   per carton · Vietnam* and *12 per carton*, each labelling its variants
+   *Lemon* / *Lime* with the pack dropped, since neither card mixes packs any
+   more. Both rows were restored.
+2. **Pass.** `ZEN-HW-0500-PROMO` — 8 products across Arab and India, whose own
+   names read `PROMO H/WASH 500ML — …` — drew **two** cards, both titled by the
+   family, *Zen Garden Promo Hand Wash 500ML*: Arab with its 6 variants, India
+   with its 2. No variant on the wrong card.
+3. **Pass.** On the create form, brand *Zen Garden* · name `PROMO H/WASH 500ML`
+   · market *Arab* printed "Joins the existing listing **Zen Garden Promo Hand
+   Wash 500ML** (6 variants)", linked to that family's page — 6 being the Arab
+   count, not the family's 8. The submitted row read back with that family's id
+   and `productFamily.count()` stayed 59.
+4. **Pass, and the write really does reach rows nobody opened.** With the two
+   India members detached (`productsWithNoFamily` 0 → 2), the form printed
+   "Joins **PROMO H/WASH 500ML** — 2 products in no family yet. Saving puts all
+   of them in one family." Submitting moved `productFamily.count()` **59 → 60**
+   — one family, code `ZEN-SC-0500`, named by the derived title — and **all
+   three** rows read back carrying it: the new row and both older ones, whose
+   `createdAt` is six days earlier. `productsWithNoFamily` back to 0.
+5. **Pass.** Brand *Zen Garden* · a name held by nothing · market *Vietnam*
+   printed "This will be a new listing."; the row was written with no family,
+   `productFamily.count()` unchanged, catalogue labels unchanged at 124.
+6. **Pass.** The drawer's line moved with the fields on one uninterrupted
+   screen — "new listing" at market Vietnam, then "Joins the existing listing
+   **Zen Garden Promo Hand Wash 500ML** (7 variants)" at market Arab — and
+   saving wrote exactly that family id onto a row that had none.
+7. **Pass, all four controls read back.** The page rendered a section per
+   market with flavour, SKU, pack and price per row. Hide set `active` false and
+   the shop card went from four labels to three without losing the row; Show set
+   it true again; Remove set `familyId` null and the shop then drew that row as
+   its own derived card (one card became two); Add set `familyId` back. Product
+   count was 311 before and after — nothing on the page deletes.
+8. **Pass on the page; the actions' own refusal not driven.** Demoted, signed
+   out and signed in again so the token carried MEMBER, `curl` on that session
+   read **404** for `/admin`, `/admin/catalogue` and the listing page, with zero
+   occurrences of the listing's content in any body. A crafted Server-Action
+   POST was **not** a valid probe — it answered "Server action not found" for a
+   super admin too — so the actions' `requireSuperAdmin` refusal stands on its
+   unit tests plus the fact that the route registering them is unreachable.
+9. **Pass, both directions, with the codes.** A product whose SKU equalled its
+   generated code showed "Follows the family, variant and market" and no
+   Regenerate; changing its variant moved the field live
+   `ZEN-SC-0750-GMAP-VN` → `ZEN-SC-0750-FL-VN`, and the save wrote it. A
+   product whose SKU did not — `ZEN-SC-0500-GMAP-AE` in family
+   `ZEN-HW-0500-PROMO` — read "Not a generated code, so it stays as it is."
+   beside **Regenerate → `ZEN-HW-0500-PROMO-GMAP-AE`**; changing its variant
+   left the field untouched and moved only the proposal, to
+   `ZEN-HW-0500-PROMO-FL-AE`. Pressing Regenerate filled the field and the save
+   wrote that code.
+10. **Pass.** With a throwaway product holding `ZEN-HW-0500-PROMO-FL-AE`,
+    Regenerate then Save toasted exactly "That SKU is already in use.", the
+    drawer stayed open, and the row read back unchanged on **both** fields — the
+    variant edit did not slip through either.
+11. **Pass.** Card picker, product-page chips and product-page quantity rows all
+    printed the same four strings for the mixed-pack listing, character for
+    character.
+12. **Pass, with one new sub-44px element recorded.** All nine combinations
+    measured `scrollWidth === innerWidth`: the listing page, the create form
+    with its listing line, and the mixed-pack shop card at 390 / 768 / 1440.
+    At 390 the listing page's six sub-44px elements are all plain-text links
+    (Hide / Show / Remove / Add all clear 44px), and the shop card's 22 are the
+    already-accepted classes (the variant radios are not among them). The create
+    form adds one that is genuinely new: the listing line's family link, 281×33
+    — a text link in a caption, the same shape as the "Manage values" links
+    beside it, but new and therefore recorded rather than adopted. Console: 0
+    errors on a fresh load of all four pages driven.
+
+Found in passing, outside this phase's files and unfixed here:
+
+- **The families table's Markets column reads 0 where the listing page says
+  1.** `groupFamilies` counts only non-null markets, so a family whose products
+  carry no market reads "0 markets" while its own page says "4 variants across
+  1 market" and the shop draws it one card. Phase 36's counting; Phase 40's
+  column is what exposes it.
+- **The admin room's own families section still links to the ops product list**
+  and has no Markets column. Spec §5's "families table" was built as the
+  `/products` family view, correctly; the admin section was left as it was, so a
+  super admin standing in the admin room reaches a listing page only through a
+  form's line.
+- **The listing page shows the family's code, name, brand and size read-only**;
+  editing them is still the admin catalogue's job, which §5's first bullet
+  arguably allows and the page does not do.
+- **Presigned product-image uploads answer 403 in development.** Three of three
+  browser PUTs to R2 failed; the form toasted "Product created, but the images
+  didn't upload" and every key answered NotFound afterwards, so no orphan was
+  left — but a product row and its image row are still written. The upload path
+  is untouched by this phase.
 
 ## 9. Testing
 
