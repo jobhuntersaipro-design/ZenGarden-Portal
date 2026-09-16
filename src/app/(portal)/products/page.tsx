@@ -260,7 +260,11 @@ export default async function ProductsPage({
       />
 
       {by === "family" ? (
-        <FamiliesList rows={pagedFamilies} sort={sort} />
+        <FamiliesList
+          rows={pagedFamilies}
+          sort={sort}
+          canManage={user?.role === Role.SUPER_ADMIN}
+        />
       ) : view === "grid" ? (
         paged.length === 0 ? (
           <p className="rounded-lg border border-hairline bg-canvas p-xl text-center text-[length:var(--text-body-sm)] text-ink-secondary">
