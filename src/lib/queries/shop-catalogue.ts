@@ -470,7 +470,8 @@ export async function variantsOfProduct(product: {
     where: {
       ...SHOP_VISIBLE,
       ...(product.familyId ? { familyId: product.familyId } : { brand: product.brand }),
-      packSize: product.packSize,
+      // Pack size is deliberately absent (Phase 40): it is a variant now, so
+      // the 12-carton row must be offered on the 6-carton row's page.
       market: product.market,
     },
     select: VARIANT_SELECT,

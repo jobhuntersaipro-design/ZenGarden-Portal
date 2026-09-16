@@ -41,9 +41,13 @@ export function ShopProductCard({
   const subtitle = [group.brand, hasChoice ? null : selected.variant]
     .filter(Boolean)
     .join(" · ");
-  // "12 per carton · Malaysia" — the pack half is always there; the market
-  // half only when the catalogue actually names one.
-  const packCaption = [unitLabel(group.packSize, group.unit), group.market]
+  // "12 per carton · Malaysia". The pack half is dropped where the listing
+  // mixes packs (Phase 40) — the picker carries it per variant there, and
+  // "per carton" alone would read as a claim about all of them.
+  const packCaption = [
+    group.packSize === null ? null : unitLabel(group.packSize, group.unit),
+    group.market,
+  ]
     .filter(Boolean)
     .join(" · ");
   // Identical prices across flavours is the catalogue's own reality today, so

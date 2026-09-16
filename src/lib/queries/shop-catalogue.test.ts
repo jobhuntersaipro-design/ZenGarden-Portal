@@ -105,14 +105,19 @@ describe("listShopProducts — grouping", () => {
     expect(catalogue.groups[0].variants.map((v) => v.familyId)).toEqual(["fam1", "fam1"]);
   });
 
-  it("keeps two pack sizes of the same product as two cards", async () => {
+  it("draws one card for two pack sizes of the same product", async () => {
+    // Phase 40: pack size is a variant. The card's own caption drops the
+    // pack when the listing mixes them, because no single figure is true.
     serveRows([
-      variantRow("Papaya"),
+      variantRow("Papaya", { id: "p-small", sku: "ZEN-PP-6", packSize: 6 }),
       variantRow("Papaya", { id: "p-big", sku: "ZEN-PP-12", packSize: 12 }),
     ]);
 
     const catalogue = await listShopProducts(parseShopQuery({}));
-    expect(catalogue.total).toBe(2);
+
+    expect(catalogue.groups).toHaveLength(1);
+    expect(catalogue.groups[0]!.variants).toHaveLength(2);
+    expect(catalogue.groups[0]!.packSize).toBeNull();
   });
 
   it("brackets a group's price and leaves the two equal when every flavour costs the same", async () => {
@@ -248,17 +253,34 @@ describe("variantsOfProduct", () => {
     const where = productFindMany.mock.calls[0][0].where;
     expect(where.familyId).toBe("fam1");
     expect(where.brand).toBeUndefined();
-    expect({ packSize: where.packSize, market: where.market }).toEqual({
-      packSize: 6,
-      market: "Vietnam",
-    });
+    // Pack size is deliberately absent (Phase 40) — it is a variant now.
+    expect(where).not.toHaveProperty("packSize");
+    expect(where.market).toBe("Vietnam");
   });
 
-  it("falls back to brand, pack size and market for a product in no family", async () => {
+  it("falls back to brand and market for a product in no family", async () => {
     await variantsOfProduct({ ...product, familyId: null });
     const where = productFindMany.mock.calls[0][0].where;
     expect(where.familyId).toBeUndefined();
     expect(where.brand).toBe("ZEN GARDEN");
+  });
+
+  it("does not narrow a variant lookup by pack size", async () => {
+    // A buyer on the 6-carton page must be offered the 12-carton one.
+    productFindMany.mockResolvedValueOnce([]);
+    await variantsOfProduct({
+      id: "p-1",
+      sku: "ZEN-PP-6",
+      name: "ZEN 2.1L",
+      familyId: "fam-1",
+      brand: "Zen Garden",
+      variant: "Papaya",
+      packSize: 6,
+      market: "Malaysia",
+    });
+    const where = productFindMany.mock.calls.at(-1)?.[0]?.where;
+    expect(where).not.toHaveProperty("packSize");
+    expect(where).toMatchObject({ familyId: "fam-1", market: "Malaysia" });
   });
 });
 
