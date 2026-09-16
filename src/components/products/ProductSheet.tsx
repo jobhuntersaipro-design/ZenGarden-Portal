@@ -61,12 +61,16 @@ export function ProductSheet({
   const [pending, setPending] = useState(false);
 
   /**
-   * Whether the SKU field follows the other fields, decided once from the
-   * values the drawer opened with. A generated code may be regenerated; a
-   * customer's or a hand-typed one is offered a button instead, never moved
-   * on its own.
+   * Whether the SKU field follows the other fields, from the values the
+   * drawer opened with. A generated code may be regenerated; a customer's or
+   * a hand-typed one is offered a button instead, never moved on its own.
+   *
+   * Evaluated in `reset` below and nowhere else, so the decision is still
+   * made exactly once per opening: a code that was a customer's when the
+   * drawer opened cannot start following edits halfway through a session,
+   * and one that was generated cannot stop.
    */
-  const [skuFollows] = useState(() =>
+  const decideSkuFollows = () =>
     isGeneratedSku({
       sku: product.sku,
       brand: product.brand ?? null,
@@ -75,9 +79,29 @@ export function ProductSheet({
       variant: product.variant ?? null,
       market: product.market ?? null,
       familyCode: families.find((entry) => entry.id === product.familyId)?.code ?? null,
-    }),
-  );
+    });
+  const [skuFollows, setSkuFollows] = useState(decideSkuFollows);
   const [skuTouched, setSkuTouched] = useState(false);
+
+  /**
+   * Everything the drawer edits, back to the product as it is stored now.
+   *
+   * `ProductSheet` itself stays mounted when the Sheet closes — only
+   * `SheetContent` unmounts — so without this a drawer closed *without*
+   * saving keeps its edits, and the next Save writes them. Merely surprising
+   * for the price field; dangerous for the SKU, because pressing
+   * "Regenerate →" to see what a code would be and then closing would leave
+   * the regenerated code in the field with nothing saying the stored code
+   * differs — and a later save to change the price would rewrite one of the
+   * customers' own printed codes that purchase-order extraction matches
+   * exactly.
+   */
+  const reset = () => {
+    setForm(product);
+    setFamily({ familyId: product.familyId, draft: null });
+    setSkuTouched(false);
+    setSkuFollows(decideSkuFollows());
+  };
 
   const set = <K extends keyof ProductInput>(key: K, value: ProductInput[K]) =>
     setForm((current) => ({ ...current, [key]: value }));
@@ -117,7 +141,14 @@ export function ProductSheet({
   const sku = skuTouched || !skuFollows ? form.sku : proposedSku;
 
   return (
-    <Sheet open={open} onOpenChange={setOpen}>
+    <Sheet
+      open={open}
+      // Re-initialised as it opens, not only at mount — see `reset`.
+      onOpenChange={(next) => {
+        if (next) reset();
+        setOpen(next);
+      }}
+    >
       <SheetTrigger asChild>{trigger}</SheetTrigger>
       <SheetContent className="w-full overflow-y-auto sm:max-w-panel-lg">
         <SheetHeader>
@@ -166,6 +197,15 @@ export function ProductSheet({
                 family.familyId
                   ? (families.find((entry) => entry.id === family.familyId)?.name ?? null)
                   : (family.draft?.name.trim() || null)
+              }
+              // "No family" on a product that has one is a detach, and
+              // `updateProduct` honours it by re-reading the row inside its
+              // own transaction. The line has to say the same thing, which
+              // it cannot infer from `familyId: null` alone.
+              leavingFamilyName={
+                family.detach && product.familyId
+                  ? (families.find((entry) => entry.id === product.familyId)?.name ?? null)
+                  : null
               }
             />
             <FamilyPicker
