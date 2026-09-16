@@ -376,9 +376,6 @@ export async function clearCart(): Promise<ActionResult> {
   }
 }
 
-/** How many open orders a buyer may have waiting on the ops team at once. */
-const MAX_OPEN_ORDERS_PER_BUYER = 5;
-
 /**
  * Turn the cart into an order the ops team can see.
  *
@@ -398,18 +395,6 @@ export async function submitWebOrder(
   }
 
   try {
-    // src/lib/rate-limit.ts covers sign-in and password reset only, so the cap
-    // lives here: a client cannot flood the review queue or the ops mailbox.
-    const open = await prisma.webOrder.count({
-      where: { buyerId: user.buyerId, status: WebOrderStatus.SUBMITTED },
-    });
-    if (open >= MAX_OPEN_ORDERS_PER_BUYER) {
-      return {
-        success: false,
-        error: `You have ${open} orders waiting to be confirmed. The team will be in touch before you can send another.`,
-      };
-    }
-
     const placed = await prisma.$transaction(async (tx) => {
       const cart = await tx.webOrder.findFirst({
         where: { placedById: user.id, status: WebOrderStatus.DRAFT },
