@@ -128,8 +128,11 @@ assigned; a derived group with members gets a family created — code from
 `generateFamilyCode` over brand, category and the size in the name — and
 **every member of the group is assigned to it** along with the new or
 edited row; an empty group gets no family, as today. A family-code
-collision on that create is refused with the named message Phase 39 added,
-and the form's line already showed the code it would take.
+collision on that create is refused with the named message Phase 39 added.
+The form's line names the listing, not its code — `ListingNotice` prints a
+family's *name*, which is what a reader recognises; the code a derived group
+would take is `generateFamilyCode`'s to decide at write time, and printing a
+prediction of it would be a second place for the two to disagree.
 
 ## 5. The admin listing page
 
@@ -138,8 +141,10 @@ and the form's line already showed the code it would take.
 forms' "joins the existing listing" link. Super admin only, behind the
 existing `(admin)` guard.
 
-- The family's code, name, brand, size — editable, through `updateFamily`
-  as today.
+- The family's code, name, brand, size — **read-only here**, as a masthead.
+  They are edited in `/admin/catalogue`'s families section, through
+  `updateFamily`, so a rename still happens in exactly one place; this page
+  is about membership.
 - **One section per market**, each being exactly what the shop draws as
   one card, headed *Zen Garden Shower Cream 2.1L · Indonesia*, with a row
   per variant: flavour · SKU · pack · price · **shown** or **hidden**.
@@ -217,6 +222,10 @@ inactive products **0**.
 **Nine passed outright, one passed in part, two passed with a note. None
 failed.**
 
+**1117/1117 tests, `tsc --noEmit`, `npm run lint`** (the same 2 pre-existing
+warnings, 0 errors) **and `npm run build` all clean**, after the final review's
+fix wave.
+
 1. **Pass.** Family `MRK-DW-1500` (Lemon and Lime, each at 12 and at 6 per
    carton, no market) drew **one** card — header "1 product" — with four picker
    labels each carrying its pack: *Lemon · 12 per carton*, *Lemon · 6 per
@@ -292,19 +301,14 @@ failed.**
 
 Found in passing, outside this phase's files and unfixed here:
 
-- **The families table's Markets column reads 0 where the listing page says
-  1.** `groupFamilies` counts only non-null markets, so a family whose products
-  carry no market reads "0 markets" while its own page says "4 variants across
-  1 market" and the shop draws it one card. Phase 36's counting; Phase 40's
-  column is what exposes it.
-- **The admin room's own families section still links to the ops product list**
-  and has no Markets column. Spec §5's "families table" was built as the
-  `/products` family view, correctly; the admin section was left as it was, so a
-  super admin standing in the admin room reaches a listing page only through a
-  form's line.
+- **The admin room's own families section has no Markets column.** Spec §5's
+  "families table" was built as the `/products` family view, correctly; the
+  admin section carries no market count of its own. Its rows do reach the
+  listing page (commit `b41cf9e`), so it is no longer true that a super admin
+  standing in the admin room can reach one only through a form's line.
 - **The listing page shows the family's code, name, brand and size read-only**;
-  editing them is still the admin catalogue's job, which §5's first bullet
-  arguably allows and the page does not do.
+  editing them is still the admin catalogue's job. §5 now says so rather than
+  describing them as editable here.
 - **Presigned product-image uploads answer 403 in development.** Three of three
   browser PUTs to R2 failed; the form toasted "Product created, but the images
   didn't upload" and every key answered NotFound afterwards, so no orphan was

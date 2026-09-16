@@ -77,7 +77,7 @@ with a note, none failed.**
   **400**, users **2**, labels **124**, unplaced **0**, inactive **0** — and
   `aisha@lovinghandsportal.com` was **read back** as `MEMBER` after the
   promotion.
-- **1114/1114 tests, `tsc --noEmit`, `npm run lint`** (the same 2 pre-existing
+- **1117/1117 tests, `tsc --noEmit`, `npm run lint`** (the same 2 pre-existing
   warnings, 0 errors) **and `npm run build` all clean.**
 
 ## Not verified

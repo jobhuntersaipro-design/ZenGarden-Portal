@@ -15,9 +15,12 @@ import {
  * the three things that genuinely differ: the flavour, its code and its price.
  * Everything else — brand, category, pack size, cartons per pallet, unit,
  * market, description, family, active — is entered once and applied to every
- * row, which is also what keeps them in one group: `groupKey` keys on family,
- * pack size and market, so variants that disagree on those would draw separate
- * cards.
+ * row, which is also what keeps them in one group: `groupKey` keys on the
+ * family (or brand and name where there is none) and the market, so variants
+ * that disagree on those would draw separate cards. Pack size left the key in
+ * Phase 40 and became a variant, so rows may differ on it and still share a
+ * card — this form applies one anyway, because a batch entered together is
+ * one carton size.
  *
  * Two rules beyond the field-level ones:
  *

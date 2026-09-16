@@ -7,10 +7,11 @@
  * Royal Jelly as eight unrelated products.
  *
  * **Nothing here reads or writes the database, and no column was added.** A
- * group is derived from what a product already carries: its brand, its pack
- * size, its market and its name. Each variant keeps its own row, its own SKU,
- * its own price and its own purchase-order matching, so ops and the extraction
- * path are untouched.
+ * group is derived from what a product already carries: its brand, its market
+ * and its name — and, since Phase 36, its family where it has one. Pack size
+ * is deliberately *not* among them since Phase 40; see `groupKey`. Each
+ * variant keeps its own row, its own SKU, its own price and its own
+ * purchase-order matching, so ops and the extraction path are untouched.
  *
  * The one wrinkle is that the catalogue holds two naming conventions:
  *
