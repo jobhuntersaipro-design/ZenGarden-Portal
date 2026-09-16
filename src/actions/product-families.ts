@@ -18,10 +18,10 @@ export type ActionResult<T = undefined> =
  * room's Families section (Phase 36 §4). Super admin only, checked here: the
  * room being 404'd for everyone else is the outer door, this is the lock.
  *
- * A family's *membership* is not edited here. A product joins or leaves a
- * family from its own form and drawer, and the propose → apply script places
- * the imported ones; that keeps "which family is this product in" a decision
- * made while looking at the product.
+ * A family's *membership* can also be edited here (Phase 40): a product
+ * joins or leaves a family from its own form and drawer, from the propose →
+ * apply script that places the imported ones, and now from the listing's own
+ * page too — the only place the whole set is visible at once.
  */
 const guard = async () => {
   try {
@@ -37,6 +37,9 @@ const guard = async () => {
 
 const duplicate = (cause: unknown) =>
   cause instanceof Prisma.PrismaClientKnownRequestError && cause.code === "P2002";
+
+const missing = (cause: unknown) =>
+  cause instanceof Prisma.PrismaClientKnownRequestError && cause.code === "P2025";
 
 const TAKEN = (code: string) => `There is already a family coded “${code}”.`;
 
@@ -106,5 +109,57 @@ export async function removeFamily(id: string): Promise<ActionResult> {
   } catch (cause) {
     console.error("[product-families] removeFamily", cause);
     return { success: false, error: "We couldn't remove that family." };
+  }
+}
+
+/**
+ * Membership, from the listing's own page (Phase 40).
+ *
+ * Phase 36 put this decision on the product's form on purpose: "which family
+ * is this product in" was a judgement made while looking at the product. It
+ * is now also a judgement made while looking at the *listing*, which is the
+ * only place the whole set is visible, so both ends can make it.
+ *
+ * Neither of these deletes anything. A product removed from a family keeps
+ * every column it had and returns to the grouping the shop derives from its
+ * brand, name and market.
+ */
+export async function addProductToFamily(
+  productId: string,
+  familyId: string,
+): Promise<ActionResult> {
+  const { user, error } = await guard();
+  if (!user) return { success: false, error: error! };
+
+  try {
+    await prisma.product.update({
+      where: { id: productId },
+      data: { familyId },
+    });
+    revalidate();
+    revalidatePath(`/admin/catalogue/families/${familyId}`);
+    return { success: true, data: undefined };
+  } catch (cause) {
+    if (missing(cause)) return { success: false, error: "That product is gone." };
+    console.error("[families] addProductToFamily", cause);
+    return { success: false, error: "We couldn't add that product." };
+  }
+}
+
+export async function removeProductFromFamily(productId: string): Promise<ActionResult> {
+  const { user, error } = await guard();
+  if (!user) return { success: false, error: error! };
+
+  try {
+    await prisma.product.update({
+      where: { id: productId },
+      data: { familyId: null },
+    });
+    revalidate();
+    return { success: true, data: undefined };
+  } catch (cause) {
+    if (missing(cause)) return { success: false, error: "That product is gone." };
+    console.error("[families] removeProductFromFamily", cause);
+    return { success: false, error: "We couldn't remove that product." };
   }
 }

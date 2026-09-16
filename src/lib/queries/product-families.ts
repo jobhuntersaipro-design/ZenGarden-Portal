@@ -2,6 +2,28 @@ import { prisma } from "@/lib/prisma";
 import type { ListingCandidate } from "@/lib/listings";
 import type { Prisma } from "@/generated/prisma/client";
 
+export type ListingMember = {
+  id: string;
+  sku: string;
+  name: string;
+  variant: string | null;
+  packSize: number | null;
+  unit: string;
+  market: string | null;
+  listPrice: string;
+  active: boolean;
+};
+
+export type Listing = {
+  id: string;
+  code: string;
+  name: string;
+  brand: string | null;
+  category: string;
+  size: string | null;
+  markets: { market: string | null; members: ListingMember[] }[];
+};
+
 export type FamilyOption = {
   id: string;
   code: string;
@@ -77,4 +99,67 @@ export async function listingCandidates(
     familyId: row.familyId,
     familyName: row.family?.name ?? null,
   }));
+}
+
+/**
+ * One listing as the admin manages it: the family's own facts, and its
+ * products grouped by market — because a family in two markets is two
+ * listings on the shop, and the page has to show them as the buyer sees
+ * them rather than as one undifferentiated list.
+ *
+ * Archived products are included. This is the screen where a hidden variant
+ * is made visible again, so hiding one must not remove it from view.
+ */
+export async function loadListing(id: string): Promise<Listing | null> {
+  const family = await prisma.productFamily.findUnique({
+    where: { id },
+    select: {
+      id: true,
+      code: true,
+      name: true,
+      brand: true,
+      category: true,
+      size: true,
+      products: {
+        select: {
+          id: true,
+          sku: true,
+          name: true,
+          variant: true,
+          packSize: true,
+          unit: true,
+          market: true,
+          listPrice: true,
+          active: true,
+        },
+        orderBy: [{ market: "asc" }, { variant: "asc" }, { sku: "asc" }],
+      },
+    },
+  });
+  if (!family) return null;
+
+  const byMarket = new Map<string, { market: string | null; members: ListingMember[] }>();
+  for (const product of family.products) {
+    const key = product.market ?? "";
+    let section = byMarket.get(key);
+    if (!section) {
+      section = { market: product.market, members: [] };
+      byMarket.set(key, section);
+    }
+    section.members.push({ ...product, listPrice: product.listPrice.toFixed(2) });
+  }
+
+  const { products: _products, ...facts } = family;
+  void _products;
+  return { ...facts, markets: [...byMarket.values()] };
+}
+
+/** Candidates for "add a product": everything not already in this family. */
+export async function productsOutsideFamily(familyId: string) {
+  return prisma.product.findMany({
+    where: { NOT: { familyId } },
+    select: { id: true, sku: true, name: true, brand: true, variant: true, market: true },
+    orderBy: { sku: "asc" },
+    take: 500,
+  });
 }

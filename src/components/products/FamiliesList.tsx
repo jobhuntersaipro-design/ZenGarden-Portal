@@ -8,10 +8,12 @@ import type { SortDirection } from "@/lib/queries/pagination";
 
 /**
  * The catalog by family (Phase 36 §4). A row is a product across every
- * market; its link opens the product view filtered to that family, which is
- * the "expand" — URL as state, and `DataTable`'s card mode below `md` for
- * free. The last row is the products in no family, so they are countable and
- * reachable from here rather than invisible.
+ * market; its link opens the listing page (Phase 40), sectioned by market,
+ * where membership can be seen and changed as a whole — and `DataTable`'s
+ * card mode below `md` comes for free either way. The last row is the
+ * products in no family, which has no listing of its own: it still opens the
+ * product view filtered to "no family", so they stay countable and reachable
+ * from here rather than invisible.
  */
 export function FamiliesList({
   rows,
@@ -47,6 +49,16 @@ export function FamiliesList({
       defaultDir: "desc",
       cell: (row) =>
         row.markets > 1 ? `${row.variants} · ${row.markets} markets` : row.variants,
+    },
+    {
+      key: "markets",
+      header: "Markets",
+      align: "right",
+      // Not one of `FAMILY_SORT_KEYS`: the list is already ordered on the
+      // figures that matter, and a market count has no independent ordering
+      // to offer.
+      sortable: false,
+      cell: (row) => row.markets,
     },
     {
       key: "units",
@@ -97,7 +109,14 @@ export function FamiliesList({
       sort={sort}
       onSortChange={onSortChange}
       emptyText="No families match."
-      rowHref={(row) => `/products?family=${encodeURIComponent(row.id)}`}
+      // The remainder row (products in no family) is a filter, not a
+      // listing, and has no page of its own — it keeps its old link into
+      // the product view. Every real family opens the listing page instead.
+      rowHref={(row) =>
+        row.id === NO_FAMILY
+          ? `/products?family=${encodeURIComponent(row.id)}`
+          : `/admin/catalogue/families/${row.id}`
+      }
     />
   );
 }
