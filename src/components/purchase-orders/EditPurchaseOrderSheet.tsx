@@ -4,6 +4,7 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
 import { formatDate } from "@/lib/dates";
+import type { OrderIdentity } from "@/lib/order-identity";
 import { updatePurchaseOrder, type PurchaseOrderPatch } from "@/actions/stages";
 import { ReadOnlyField } from "@/components/review/Field";
 import { Button } from "@/components/ui/button";
@@ -19,9 +20,10 @@ import {
 import { Textarea } from "@/components/ui/textarea";
 
 /**
- * PO number and PO date are shown, not edited (2026-09-17): they are what the
- * order was confirmed under. They still travel in the patch unchanged, which
- * is what the delivery-date check (not before the PO date) compares against.
+ * Order ID, PO number and PO date are shown, not edited (2026-09-17): they are
+ * what the order was confirmed under. The PO date still travels in the patch
+ * unchanged, which is what the delivery-date check (not before the PO date)
+ * compares against.
  */
 const LABELS: { key: keyof PurchaseOrderPatch; label: string; type?: string }[] = [
   // Phase 38. Editable after the fact, and a change here emails the buyer
@@ -38,9 +40,11 @@ const LABELS: { key: keyof PurchaseOrderPatch; label: string; type?: string }[] 
  */
 export function EditPurchaseOrderSheet({
   poId,
+  identity,
   initial,
 }: {
   poId: string;
+  identity: OrderIdentity;
   initial: PurchaseOrderPatch;
 }) {
   const router = useRouter();
@@ -60,14 +64,15 @@ export function EditPurchaseOrderSheet({
         <SheetHeader>
           <SheetTitle>Edit purchase order</SheetTitle>
           <SheetDescription>
-            PO number, PO date, totals and line items are set at review and
-            are not editable here.
+            Order ID, PO number, PO date, totals and line items are set at
+            review and are not editable here.
           </SheetDescription>
         </SheetHeader>
 
         <div className="flex flex-col gap-md p-md">
           <div className="grid gap-md sm:grid-cols-2">
-            <ReadOnlyField id="edit-poNumber" label="PO number" value={initial.poNumber} />
+            <ReadOnlyField id="edit-orderId" label="Order ID" value={identity.orderId ?? ""} />
+            <ReadOnlyField id="edit-poNumber" label="PO number" value={identity.poNumber ?? ""} />
             <ReadOnlyField
               id="edit-poDate"
               label="PO date"

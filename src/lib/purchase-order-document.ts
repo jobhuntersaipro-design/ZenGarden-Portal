@@ -73,10 +73,17 @@ export type PoDocumentParty = {
 };
 
 export type PoDocumentData = {
-  /** What the buyer will quote: their own PO number, else our reference. */
-  reference: string;
-  /** Always shown in the footer, even when `reference` is the buyer's own. */
-  ourReference: string | null;
+  /**
+   * Our Order ID (`W-2609-00014`), printed under the title and in the footer.
+   * Null on a purchase order uploaded as a scan, which has none.
+   */
+  orderId: string | null;
+  /**
+   * The buyer's own PO number, in its own cell; "—" when they gave none.
+   * Never filled from the Order ID (2026-09-17) — until then the masthead
+   * printed the Order ID wherever the buyer had no number of their own.
+   */
+  poNumber: string | null;
   orderDate: string;
   /**
    * The day the team committed to (Phase 38). Null on a cart and on an order
@@ -182,9 +189,9 @@ export function buildPoDocument(input: {
   buyer: ReviewBuyer | null;
   supplier: SupplierDetails;
   /** The client's own PO number, when they typed one. */
-  buyerReference: string | null;
-  /** Our `W-…`, minted when the cart was opened. */
-  ourReference: string | null;
+  poNumber: string | null;
+  /** Our Order ID, `W-…`, minted when the cart was opened. */
+  orderId: string | null;
   notes: string | null;
   paymentTerms: string | null;
   orderDate: string;
@@ -206,8 +213,8 @@ export function buildPoDocument(input: {
     .toFixed(2);
 
   return {
-    reference: input.buyerReference?.trim() || input.ourReference || "—",
-    ourReference: input.ourReference,
+    orderId: input.orderId,
+    poNumber: input.poNumber?.trim() || null,
     orderDate: input.orderDate,
     // A cart has nothing promised yet; the team settles it when they confirm.
     deliveryDate: null,
@@ -250,8 +257,10 @@ export function buildPoDocument(input: {
  */
 export function buildPoDocumentFromOrder(input: {
   order: {
-    reference: string;
-    buyerReference: string | null;
+    /** Our Order ID; null for a purchase order uploaded as a scan. */
+    orderId: string | null;
+    /** The buyer's own PO number; null where they gave none. */
+    poNumber: string | null;
     currency: string;
     paymentTerms: string | null;
     notes: string | null;
@@ -305,11 +314,8 @@ export function buildPoDocumentFromOrder(input: {
   const taxed = tax === null || tax.isZero() ? null : tax;
 
   return {
-    // `reference` on a confirmed order is already the PO number, which may be
-    // the buyer's own. Preferring `buyerReference` where there is one keeps the
-    // masthead reading the same number it did at checkout.
-    reference: order.buyerReference?.trim() || order.reference,
-    ourReference: order.reference,
+    orderId: order.orderId,
+    poNumber: order.poNumber?.trim() || null,
     orderDate: input.orderDate,
     deliveryDate: input.deliveryDate ?? null,
     awaitingConfirmation: input.awaitingConfirmation,

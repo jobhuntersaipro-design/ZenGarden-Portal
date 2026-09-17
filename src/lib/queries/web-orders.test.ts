@@ -42,6 +42,10 @@ const ALLOWED_LIST_KEYS = [
   "deliveryDate",
   "total",
   "buyerReference",
+  // 2026-09-17, a deliberate edit to this line: the Order ID lives on the
+  // shop order, and a confirmed shop order must show it as its own column
+  // rather than in place of the buyer's PO number. Only `reference` is read.
+  "webOrder",
   "_count",
 ];
 
@@ -67,6 +71,7 @@ describe("listBuyerOrders is a narrow select, never an include", () => {
     expect(args.include).toBeUndefined();
     expect(Object.keys(args.select).sort()).toEqual([...ALLOWED_LIST_KEYS].sort());
     for (const key of FORBIDDEN) expect(args.select[key]).toBeUndefined();
+    expect(args.select.webOrder).toEqual({ select: { reference: true } });
   });
 
   it("scopes to the caller's buyer", async () => {
@@ -171,10 +176,13 @@ describe("loadBuyerOrder", () => {
     // here: it is the *shop order's* generated file, which belongs to the
     // buyer. `PurchaseOrder.documentId` stays out of the top-level select,
     // because on a scan-origin order that is the ops team's own upload.
+    // `reference` joined on 2026-09-17: the shop order's Order ID, shown as
+    // its own field rather than as the buyer's PO number.
     expect(Object.keys(args.select.webOrder.select).sort()).toEqual([
       "buyerReference",
       "documentId",
       "notes",
+      "reference",
     ]);
     expect(args.select.documentId).toBeUndefined();
   });
@@ -197,26 +205,28 @@ describe("listBuyerOrders paging", () => {
     poFindMany.mockResolvedValue([po(1), po(5), po(3)]);
     const { orders, total } = await listBuyerOrders("b1", 1, 2);
     expect(total).toBe(3);
-    expect(orders.map((o) => o.reference)).toEqual(["PO-5", "PO-3"]);
+    expect(orders.map((o) => o.id)).toEqual(["po5", "po3"]);
   });
 
   it("walks to the next page", async () => {
     poFindMany.mockResolvedValue([po(1), po(5), po(3)]);
     const { orders } = await listBuyerOrders("b1", 2, 2);
-    expect(orders.map((o) => o.reference)).toEqual(["PO-1"]);
+    expect(orders.map((o) => o.id)).toEqual(["po1"]);
   });
 });
 
 describe("listBuyerOrders sorting", () => {
+  // A scanned order: its PO number is the one printed on the document.
   const po = (n: number, total: string, ref: string | null, delivery: Date | null = null) => ({
     id: `po${n}`,
-    poNumber: `PO-${n}`,
+    poNumber: ref,
     poDate: new Date(2026, 0, n),
     stage: "DELIVERED",
     stageChangedAt: new Date(2026, 0, n),
     deliveryDate: delivery,
     total: { toFixed: () => total },
-    buyerReference: ref,
+    buyerReference: null,
+    webOrder: null,
     _count: { lineItems: n },
   });
 
@@ -266,10 +276,10 @@ describe("listBuyerOrders sorting", () => {
       key: "deliveryDate",
       dir: "asc",
     });
-    expect(ascending.orders.map((o) => o.reference)).toEqual([
-      "PO-3",
-      "PO-2",
-      "PO-1",
+    expect(ascending.orders.map((o) => o.id)).toEqual([
+      "po3",
+      "po2",
+      "po1",
     ]);
 
     poFindMany.mockResolvedValue(rows);
@@ -278,10 +288,10 @@ describe("listBuyerOrders sorting", () => {
       dir: "desc",
     });
     // The two dated rows flip; the undated one stays at the bottom.
-    expect(descending.orders.map((o) => o.reference)).toEqual([
-      "PO-2",
-      "PO-3",
-      "PO-1",
+    expect(descending.orders.map((o) => o.id)).toEqual([
+      "po2",
+      "po3",
+      "po1",
     ]);
   });
 
@@ -300,10 +310,10 @@ describe("listBuyerOrders sorting", () => {
       key: "buyerReference",
       dir: "asc",
     });
-    expect(ascending.orders.map((o) => o.reference)).toEqual([
-      "PO-2",
-      "PO-3",
-      "PO-1",
+    expect(ascending.orders.map((o) => o.id)).toEqual([
+      "po2",
+      "po3",
+      "po1",
     ]);
 
     poFindMany.mockResolvedValue(rows);
@@ -313,11 +323,68 @@ describe("listBuyerOrders sorting", () => {
     });
     // The one row with a value stays on top; only the blanks' position is at
     // stake, and it does not move.
-    expect(descending.orders.map((o) => o.reference)).toEqual([
-      "PO-2",
-      "PO-3",
-      "PO-1",
+    expect(descending.orders.map((o) => o.id)).toEqual([
+      "po2",
+      "po3",
+      "po1",
     ]);
+  });
+});
+
+/**
+ * Order ID and PO number are two things (2026-09-17). Until then a confirmed
+ * shop order's "reference" was its PO number column, which confirm had filled
+ * with the Order ID.
+ */
+describe("listBuyerOrders keeps the Order ID and the PO number apart", () => {
+  const confirmed = (over: Record<string, unknown>) => ({
+    id: "po1",
+    poNumber: null,
+    poDate: new Date(2026, 8, 17),
+    stage: "ORDER_PLACED",
+    stageChangedAt: new Date(2026, 8, 17),
+    deliveryDate: null,
+    total: { toFixed: () => "1.00" },
+    buyerReference: null,
+    webOrder: { reference: "W-2609-00014" },
+    _count: { lineItems: 1 },
+    ...over,
+  });
+
+  it("shows a shop order's Order ID, and its PO number only when the buyer gave one", async () => {
+    poFindMany.mockResolvedValue([
+      confirmed({ id: "with", buyerReference: "ACME-771" }),
+      confirmed({ id: "without", webOrder: { reference: "W-2609-00015" } }),
+    ]);
+    const { orders } = await listBuyerOrders("b1");
+    const byId = Object.fromEntries(orders.map((o) => [o.id, o]));
+    expect(byId.with).toMatchObject({ orderId: "W-2609-00014", buyerReference: "ACME-771" });
+    expect(byId.without).toMatchObject({ orderId: "W-2609-00015", buyerReference: null });
+  });
+
+  it("gives a scanned order its printed PO number and no Order ID", async () => {
+    poFindMany.mockResolvedValue([
+      confirmed({ poNumber: "SVPPPO26090009", webOrder: null, buyerReference: "old field" }),
+    ]);
+    const { orders } = await listBuyerOrders("b1");
+    expect(orders[0]).toMatchObject({ orderId: null, buyerReference: "SVPPPO26090009" });
+  });
+
+  it("gives an order still waiting its Order ID, and no PO number the buyer did not type", async () => {
+    webFindMany.mockResolvedValue([
+      {
+        id: "w1",
+        reference: "W-2609-00016",
+        submittedAt: new Date(2026, 8, 17),
+        subtotal: { toFixed: () => "1.00" },
+        status: "SUBMITTED",
+        declinedReason: null,
+        buyerReference: null,
+        _count: { lines: 1 },
+      },
+    ]);
+    const { orders } = await listBuyerOrders("b1");
+    expect(orders[0]).toMatchObject({ orderId: "W-2609-00016", buyerReference: null });
   });
 });
 

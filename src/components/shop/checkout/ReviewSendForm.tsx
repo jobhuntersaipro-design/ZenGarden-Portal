@@ -58,8 +58,8 @@ export function ReviewSendForm({
     subtotal: cart.subtotal,
     buyer,
     supplier,
-    buyerReference: buyerReference || null,
-    ourReference: cart.reference,
+    poNumber: buyerReference || null,
+    orderId: cart.reference,
     notes: notes || null,
     paymentTerms: buyer?.paymentTerms ?? null,
     orderDate,
@@ -119,8 +119,8 @@ export function ReviewSendForm({
               label="Your own PO number (optional)"
               hint={
                 cart.reference
-                  ? `Printed at the top of your purchase order. Leave it blank and we'll use our reference, ${cart.reference}.`
-                  : "Printed at the top of your purchase order."
+                  ? `Printed on your purchase order as its PO number. Leave it blank if you don't have one — the order is still tracked by its Order ID, ${cart.reference}.`
+                  : "Printed on your purchase order as its PO number. Leave it blank if you don't have one."
               }
             >
               <Input

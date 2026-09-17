@@ -1,6 +1,7 @@
 import { ExtractionStatus } from "@/generated/prisma/enums";
 import { dateColumnRange, type Aggregation } from "@/lib/dates";
 import { openWebOrderCount } from "@/lib/queries/web-orders";
+import { ORDER_IDENTITY_SELECT, orderIdentity, type OrderIdentity } from "@/lib/order-identity";
 import { prisma } from "@/lib/prisma";
 import { buyerChurn, type BuyerChurn } from "@/lib/analytics/churn";
 import {
@@ -27,7 +28,6 @@ const LATEST_ONLY = { supersededBy: { is: null } } as const;
 
 const ORDER_SELECT = {
   id: true,
-  poNumber: true,
   buyerId: true,
   poDate: true,
   total: true,
@@ -37,7 +37,6 @@ const ORDER_SELECT = {
 
 type Row = {
   id: string;
-  poNumber: string;
   buyerId: string;
   poDate: Date;
   total: { toNumber(): number };
@@ -59,7 +58,6 @@ type Row = {
  */
 const toAnalytics = (row: Row): AnalyticsOrder => ({
   id: row.id,
-  poNumber: row.poNumber,
   buyerId: row.buyerId,
   buyerName: row.buyer.name,
   poDate: row.poDate,
@@ -102,7 +100,8 @@ export type DashboardData = {
   inRange: {
     largest: {
       id: string;
-      poNumber: string;
+      /** Our Order ID and the buyer's PO number, never one for the other. */
+      identity: OrderIdentity;
       buyerName: string;
       total: number;
     } | null;
@@ -130,6 +129,8 @@ export async function loadDashboard(
         where: { ...LATEST_ONLY, poDate: dateColumnRange(range) },
         select: {
           ...ORDER_SELECT,
+          // Only this range's orders: the "Largest PO" card names one of them.
+          ...ORDER_IDENTITY_SELECT,
           lineItems: {
             select: {
               productId: true,
@@ -258,7 +259,7 @@ export async function loadDashboard(
       largest: largest
         ? {
             id: largest.id,
-            poNumber: largest.poNumber,
+            identity: orderIdentity(current.find((row) => row.id === largest.id)!),
             buyerName: largest.buyerName,
             total: largest.total,
           }

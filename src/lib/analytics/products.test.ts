@@ -18,7 +18,6 @@ const row = (
   over: Omit<Partial<ProductSaleRow>, "poDate"> & { poDate: string },
 ): ProductSaleRow => ({
   purchaseOrderId: over.purchaseOrderId ?? `po-${over.poDate}`,
-  poNumber: "PO-1",
   poDate: new Date(`${over.poDate}T04:00:00Z`),
   buyerId: over.buyerId ?? "b1",
   buyerName: over.buyerName ?? "Acme",

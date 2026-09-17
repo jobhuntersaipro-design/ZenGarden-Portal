@@ -183,7 +183,7 @@ export function PurchaseOrderPdf({
 }) {
   return (
     <Document
-      title={`Purchase order ${document.reference}`}
+      title={`Purchase order ${document.orderId ?? document.poNumber ?? ""}`.trim()}
       author={document.supplier.name}
       subject={`Purchase order for ${document.buyer.name}`}
     >
@@ -192,12 +192,16 @@ export function PurchaseOrderPdf({
           <Text style={styles.company}>{DOCUMENT_COMPANY_NAME}</Text>
           <View>
             <Text style={styles.title}>PURCHASE ORDER</Text>
-            <Text style={styles.reference}>{document.reference}</Text>
+            {/* Our Order ID, named — never the buyer's PO (2026-09-17). */}
+            {document.orderId ? (
+              <Text style={styles.reference}>{`Order ID ${document.orderId}`}</Text>
+            ) : null}
           </View>
         </View>
 
         <View style={styles.metaStrip}>
           <View style={styles.metaCells}>
+            <Meta label="PO Number" value={document.poNumber ?? "—"} />
             <Meta label="Order Date" value={document.orderDate} />
             {/* "—" until the team confirms a date (Phase 44). */}
             <Meta label="Expected Delivery" value={document.deliveryDate ?? "—"} />
@@ -292,8 +296,8 @@ export function PurchaseOrderPdf({
 
         <View style={styles.footer} fixed>
           <Text style={styles.caption}>{footnote}</Text>
-          {document.ourReference ? (
-            <Text style={styles.caption}>{document.ourReference}</Text>
+          {document.orderId ? (
+            <Text style={styles.caption}>{`Order ID ${document.orderId}`}</Text>
           ) : null}
         </View>
       </Page>

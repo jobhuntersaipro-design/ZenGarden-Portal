@@ -10,7 +10,6 @@ const order = (
   total = 100,
 ): AnalyticsOrder => ({
   id: `${buyerId}-${poDate}`,
-  poNumber: "PO-1",
   buyerId,
   buyerName: buyerId.toUpperCase(),
   poDate: new Date(`${poDate}T04:00:00Z`),

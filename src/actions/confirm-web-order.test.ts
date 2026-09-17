@@ -125,6 +125,38 @@ beforeEach(() => {
   });
 });
 
+/**
+ * The defect of 2026-09-17: confirm wrote the shop's Order ID into
+ * `PurchaseOrder.poNumber`, and every screen then showed it as the buyer's
+ * PO. The fixture's draft still sends `W-2609-00001` as its PO number, which
+ * is exactly what an old client would do.
+ */
+describe("confirmWebOrder — Order ID is never the PO number", () => {
+  it("blanks the PO number whatever the draft sends, and passes the buyer's own", async () => {
+    const result = await confirmWebOrder("wo1", draft({ poNumber: "W-2609-00001" }), OPTIONS);
+    expect(result.success).toBe(true);
+    const input = writePurchaseOrder.mock.calls[0][1];
+    expect(input.data.poNumber).toBe("");
+    expect(input.buyerReference).toBe("ACME-PO-771");
+  });
+
+  it("confirms an order whose draft has no PO number at all", async () => {
+    const result = await confirmWebOrder("wo1", draft({ poNumber: "" }), OPTIONS);
+    expect(result.success).toBe(true);
+  });
+
+  it("names both in the email, each for what it is", async () => {
+    await confirmWebOrder("wo1", draft(), OPTIONS);
+    await flushAfter();
+    const body = mailBody();
+    expect(body).toContain("Order ID");
+    expect(body).toContain("W-2609-00001");
+    expect(body).toContain("your PO number");
+    expect(body).toContain("ACME-PO-771");
+    expect(body).not.toContain("our reference");
+  });
+});
+
 describe("confirmWebOrder", () => {
   /**
    * Phase 37 closes the `documentId: null` gap Phase 16 opened. Usually this

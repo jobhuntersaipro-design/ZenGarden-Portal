@@ -43,7 +43,7 @@ export default async function OrdersPage({
   // be handed neither a Date nor a Decimal.
   const rows: BuyerOrderRow[] = orders.map((order) => ({
     id: order.id,
-    reference: order.reference,
+    orderId: order.orderId,
     buyerReference: order.buyerReference,
     date: order.date ? formatDate(order.date) : null,
     deliveryDate: order.deliveryDate ? formatDate(order.deliveryDate) : null,

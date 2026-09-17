@@ -83,7 +83,7 @@ describe("deletePurchaseOrder", () => {
     );
     const result = await deletePurchaseOrder({
       id: "po1",
-      typedPoNumber: "PO-2026-0063",
+      typedReference: "PO-2026-0063",
     });
     expect(result.success).toBe(false);
     expect(poDelete).not.toHaveBeenCalled();
@@ -92,7 +92,7 @@ describe("deletePurchaseOrder", () => {
   it("refuses a mismatched PO number, without deleting", async () => {
     const result = await deletePurchaseOrder({
       id: "po1",
-      typedPoNumber: "PO-2026-006",
+      typedReference: "PO-2026-006",
     });
     expect(result.success).toBe(false);
     expect(poDelete).not.toHaveBeenCalled();
@@ -101,14 +101,14 @@ describe("deletePurchaseOrder", () => {
   it("accepts the number case-insensitively and trimmed", async () => {
     const result = await deletePurchaseOrder({
       id: "po1",
-      typedPoNumber: "  po-2026-0063 ",
+      typedReference: "  po-2026-0063 ",
     });
     expect(result.success).toBe(true);
     expect(poDelete).toHaveBeenCalledWith({ where: { id: "po1" } });
   });
 
   it("returns the document to the review queue", async () => {
-    await deletePurchaseOrder({ id: "po1", typedPoNumber: "PO-2026-0063" });
+    await deletePurchaseOrder({ id: "po1", typedReference: "PO-2026-0063" });
     expect(extractionUpdateMany).toHaveBeenCalledWith({
       where: { documentId: "doc1", status: "CONFIRMED" },
       data: { status: "SUCCEEDED" },
@@ -119,14 +119,14 @@ describe("deletePurchaseOrder", () => {
     poFindUnique.mockResolvedValue(null);
     const result = await deletePurchaseOrder({
       id: "po1",
-      typedPoNumber: "PO-2026-0063",
+      typedReference: "PO-2026-0063",
     });
     expect(result.success).toBe(false);
     expect(poDelete).not.toHaveBeenCalled();
   });
 
   it("rejects an empty typed number without reading the order", async () => {
-    const result = await deletePurchaseOrder({ id: "po1", typedPoNumber: "" });
+    const result = await deletePurchaseOrder({ id: "po1", typedReference: "" });
     expect(result.success).toBe(false);
     expect(poFindUnique).not.toHaveBeenCalled();
   });
@@ -244,17 +244,27 @@ describe("deletePurchaseOrder — orders placed on the shop", () => {
   beforeEach(() => {
     poFindUnique.mockResolvedValue({
       id: "po1",
-      poNumber: "PO-2026-0063",
+      // A confirmed shop order since 2026-09-17: no PO number of its own, the
+      // buyer's in `buyerReference`, and the Order ID on the web order.
+      poNumber: null,
+      buyerReference: "ACME-771",
+      webOrder: { reference: "PO-2026-0063" },
       // A web order has no document. A null here used to reach the extraction
       // update as `IS NULL`, which matches nothing.
       documentId: null,
     });
   });
 
+  it("is confirmed by the Order ID, not by the buyer's PO number", async () => {
+    const refused = await deletePurchaseOrder({ id: "po1", typedReference: "ACME-771" });
+    expect(refused).toEqual({ success: false, error: "That is not the Order ID." });
+    expect(poDelete).not.toHaveBeenCalled();
+  });
+
   it("does not try to revive an extraction that never existed", async () => {
     const result = await deletePurchaseOrder({
       id: "po1",
-      typedPoNumber: "PO-2026-0063",
+      typedReference: "PO-2026-0063",
     });
     // Asserted first, so "not called" cannot pass because nothing ran at all.
     expect(result.success).toBe(true);
@@ -263,7 +273,7 @@ describe("deletePurchaseOrder — orders placed on the shop", () => {
   });
 
   it("returns the web order to the queue rather than stranding it", async () => {
-    await deletePurchaseOrder({ id: "po1", typedPoNumber: "PO-2026-0063" });
+    await deletePurchaseOrder({ id: "po1", typedReference: "PO-2026-0063" });
     const call = webOrderUpdateMany.mock.calls[0][0];
     expect(call.where).toEqual({ purchaseOrderId: "po1" });
     expect(call.data.status).toBe("SUBMITTED");
@@ -279,7 +289,7 @@ describe("deletePurchaseOrder — orders placed on the shop", () => {
    * pinned.
    */
   it("resets the shop order before deleting the purchase order it points at", async () => {
-    await deletePurchaseOrder({ id: "po1", typedPoNumber: "PO-2026-0063" });
+    await deletePurchaseOrder({ id: "po1", typedReference: "PO-2026-0063" });
 
     expect(poDelete).toHaveBeenCalled();
     expect(webOrderUpdateMany.mock.invocationCallOrder[0]).toBeLessThan(
@@ -288,7 +298,7 @@ describe("deletePurchaseOrder — orders placed on the shop", () => {
   });
 
   it("returns the shop order to the queue with nobody named on it", async () => {
-    await deletePurchaseOrder({ id: "po1", typedPoNumber: "PO-2026-0063" });
+    await deletePurchaseOrder({ id: "po1", typedReference: "PO-2026-0063" });
 
     expect(webOrderUpdateMany).toHaveBeenCalled();
     const call = webOrderUpdateMany.mock.calls.at(-1)![0];

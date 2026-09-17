@@ -15,7 +15,7 @@ import { deleteObject, isPendingKey } from "@/lib/r2";
 import { shopPath } from "@/lib/shop-routes";
 import { attachWebOrderDocument } from "@/lib/web-order-document";
 import {
-  PoDraftSchema,
+  WebOrderDraftSchema,
   checkTotals,
   webOrderConfirmOptionsSchema,
   type PoDraft,
@@ -71,7 +71,11 @@ export async function confirmWebOrder(
   const { user, error } = await guard();
   if (!user) return { success: false, error: error! };
 
-  const parsedDraft = PoDraftSchema.safeParse(draft);
+  // The shop draft schema, and the PO number blanked whatever arrives: a
+  // shop order's PO number is the buyer's own (`buyerReference`, copied by the
+  // writer) and its Order ID stays on the WebOrder — never in `poNumber`
+  // (2026-09-17).
+  const parsedDraft = WebOrderDraftSchema.safeParse(draft);
   if (!parsedDraft.success) {
     return {
       success: false,
@@ -91,7 +95,7 @@ export async function confirmWebOrder(
           : "That order could not be saved.",
     };
   }
-  const data = parsedDraft.data;
+  const data = { ...parsedDraft.data, poNumber: "" };
   const { totalsAcknowledged, deliveryDate } = parsedOptions.data;
   // Also required here and nowhere else (2026-09-17): the team settles the
   // terms at confirm as it settles the date, and the buyer's purchase order
@@ -214,7 +218,6 @@ export async function confirmWebOrder(
         react: WebOrderConfirmed({
           reference: confirmed.order.reference,
           buyerReference: confirmed.order.buyerReference,
-          poNumber: data.poNumber,
           expectedDelivery: formatDate(deliveryDate),
           lineCount: confirmed.order._count.lines,
           total: formatMYR(Number(data.total)),
@@ -342,7 +345,7 @@ export async function deleteWebOrder(input: {
 }): Promise<ActionResult> {
   const parsed = deleteWebOrderSchema.safeParse(input);
   if (!parsed.success) {
-    return { success: false, error: "Type the order reference to confirm." };
+    return { success: false, error: "Type the Order ID to confirm." };
   }
 
   try {
@@ -362,7 +365,7 @@ export async function deleteWebOrder(input: {
       parsed.data.typedReference.trim().toLowerCase() !==
       order.reference.trim().toLowerCase()
     ) {
-      return { success: false, error: "That is not the order reference." };
+      return { success: false, error: "That is not the Order ID." };
     }
 
     const deleted = await prisma.$transaction(async (tx) => {

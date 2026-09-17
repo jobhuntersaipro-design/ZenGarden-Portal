@@ -64,7 +64,7 @@ export function DeleteWebOrderDialog({
             htmlFor="confirm-order-reference"
             className="font-mono text-[length:var(--text-eyebrow)] text-ink-tertiary"
           >
-            Confirm the order reference
+            Confirm the Order ID
           </label>
           <Input
             id="confirm-order-reference"

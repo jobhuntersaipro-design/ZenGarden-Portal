@@ -18,8 +18,10 @@ import { Input } from "@/components/ui/input";
 
 /**
  * Deleting is rare and deliberate, so the friction is the point: the button
- * stays disabled until the PO number is typed back. The action checks it
- * again — this is the friction, not the gate.
+ * stays disabled until the order's identifier is typed back — its Order ID
+ * for a shop order, the buyer's PO number for a scan, and the dialog says
+ * which (2026-09-17). The action checks it again — this is the friction, not
+ * the gate.
  *
  * The copy states the two consequences that are otherwise invisible: the
  * figures move, and deleting a revision brings the order it superseded back
@@ -31,6 +33,7 @@ import { Input } from "@/components/ui/input";
  */
 export function DeletePoDialog({
   poId,
+  orderId,
   poNumber,
   lineItemCount,
   monthLabel,
@@ -39,7 +42,10 @@ export function DeletePoDialog({
   variant = "button",
 }: {
   poId: string;
-  poNumber: string;
+  /** Our internal tracking ID; null on a scan. */
+  orderId: string | null;
+  /** The buyer's own PO number; null where they gave none. */
+  poNumber: string | null;
   lineItemCount: number;
   /** e.g. "September 2026" — the month whose totals change. */
   monthLabel: string;
@@ -65,13 +71,17 @@ export function DeletePoDialog({
   const [typed, setTyped] = useState("");
   const [pending, setPending] = useState(false);
 
-  const matches = typed.trim().toLowerCase() === poNumber.trim().toLowerCase();
+  // Whichever identifier the order has, named for what it is.
+  const reference = orderId ?? poNumber ?? "";
+  const referenceLabel = orderId ? "Order ID" : "PO number";
+  const matches =
+    reference !== "" && typed.trim().toLowerCase() === reference.trim().toLowerCase();
 
   return (
     <>
       {variant === "row" ? (
         <RowDeleteButton
-          label={`Delete ${poNumber}`}
+          label={`Delete ${reference}`}
           onOpen={() => setOpen(true)}
         />
       ) : (
@@ -83,7 +93,7 @@ export function DeletePoDialog({
       <Dialog open={open} onOpenChange={setOpen}>
         <DialogContent>
           <DialogHeader>
-            <DialogTitle>Delete {poNumber}?</DialogTitle>
+            <DialogTitle>Delete {reference}?</DialogTitle>
             <DialogDescription>
               Removes the order, its {lineItemCount}{" "}
               {lineItemCount === 1 ? "line item" : "line items"} and its stage
@@ -106,18 +116,18 @@ export function DeletePoDialog({
           </p>
 
           <label
-            htmlFor="confirm-po-number"
+            htmlFor="confirm-po-reference"
             className="font-mono text-[length:var(--text-eyebrow)] text-ink-tertiary"
           >
-            Confirm the PO number
+            Confirm the {referenceLabel}
           </label>
           <Input
-            id="confirm-po-number"
+            id="confirm-po-reference"
             value={typed}
             onChange={(event) => setTyped(event.target.value)}
           />
           <p className="text-[length:var(--text-caption)] text-ink-tertiary">
-            Type {poNumber} to confirm
+            Type {reference} to confirm
           </p>
 
           <DialogFooter>
@@ -133,7 +143,7 @@ export function DeletePoDialog({
                 setPending(true);
                 const result = await deletePurchaseOrder({
                   id: poId,
-                  typedPoNumber: typed,
+                  typedReference: typed,
                 });
                 setPending(false);
                 if (!result.success) {
@@ -141,7 +151,7 @@ export function DeletePoDialog({
                   return;
                 }
                 setOpen(false);
-                toast.success(`${poNumber} deleted`);
+                toast.success(`${reference} deleted`);
                 if (variant === "button") router.push("/purchase-orders");
               }}
             >

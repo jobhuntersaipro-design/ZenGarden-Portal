@@ -9,7 +9,6 @@ const order = (
   buyerName = "Acme Industrial Sdn Bhd",
 ): AnalyticsOrder => ({
   id: `po-${poDate}-${total}`,
-  poNumber: "PO-1",
   buyerId,
   buyerName,
   // Noon KL, so the date is unambiguous.

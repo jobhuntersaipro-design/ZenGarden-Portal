@@ -10,8 +10,8 @@ import type { PoDocumentData } from "@/lib/purchase-order-document";
  * what §7 of the spec records.
  */
 const document: PoDocumentData = {
-  reference: "ACME-PO-771",
-  ourReference: "W-2609-00015",
+  orderId: "W-2609-00015",
+  poNumber: "ACME-PO-771",
   orderDate: "15 Sep 2026",
   deliveryDate: null,
   awaitingConfirmation: true,

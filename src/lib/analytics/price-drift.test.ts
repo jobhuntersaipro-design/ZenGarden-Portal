@@ -6,7 +6,6 @@ const order = (
   lines: { productId: string | null; name?: string; quantity: number; amount: number }[],
 ): AnalyticsOrder => ({
   id: `po-${Math.random()}`,
-  poNumber: "PO-1",
   buyerId: "b1",
   buyerName: "Acme",
   poDate: new Date("2026-09-01T04:00:00Z"),

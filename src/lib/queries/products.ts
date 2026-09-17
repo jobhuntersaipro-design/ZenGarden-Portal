@@ -118,7 +118,6 @@ export async function listProducts(
         purchaseOrder: {
           select: {
             id: true,
-            poNumber: true,
             poDate: true,
             buyerId: true,
             buyer: { select: { name: true } },
@@ -137,7 +136,6 @@ export async function listProducts(
     const list = rowsByProduct.get(line.productId) ?? [];
     list.push({
       purchaseOrderId: line.purchaseOrder.id,
-      poNumber: line.purchaseOrder.poNumber,
       poDate: line.purchaseOrder.poDate,
       buyerId: line.purchaseOrder.buyerId,
       buyerName: line.purchaseOrder.buyer.name,

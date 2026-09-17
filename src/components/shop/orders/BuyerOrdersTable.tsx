@@ -21,7 +21,9 @@ import type { SortDirection } from "@/lib/queries/pagination";
  */
 export type BuyerOrderRow = {
   id: string;
-  reference: string;
+  /** Our Order ID; null for an order that came in as a scanned document. */
+  orderId: string | null;
+  /** The buyer's own PO number; null where they gave none. */
   buyerReference: string | null;
   /** Already formatted, or null where the order has no date yet. */
   date: string | null;
@@ -51,21 +53,28 @@ export function BuyerOrdersTable({
   const onSortChange = useTableSort();
 
   const columns: Column<BuyerOrderRow>[] = [
+    // Our Order ID and the buyer's PO number, each in its own column and
+    // neither ever standing in for the other (2026-09-17).
     {
-      key: "reference",
-      header: "Order",
-      cell: (row) => (
-        <span className="truncate font-medium" title={row.reference}>
-          {row.reference}
-        </span>
-      ),
+      key: "orderId",
+      header: "Order ID",
+      cell: (row) =>
+        row.orderId ? (
+          <span className="truncate font-medium" title={`Order ID ${row.orderId}`}>
+            {row.orderId}
+          </span>
+        ) : (
+          <span className="text-ink-tertiary" title="Sent to us as a document, so it has no Order ID">
+            —
+          </span>
+        ),
     },
     {
       key: "buyerReference",
-      header: "Your PO no.",
+      header: "Your PO number",
       cell: (row) =>
         row.buyerReference ? (
-          <span className="truncate font-mono" title={row.buyerReference}>
+          <span className="truncate font-mono" title={`Your PO number ${row.buyerReference}`}>
             {row.buyerReference}
           </span>
         ) : (

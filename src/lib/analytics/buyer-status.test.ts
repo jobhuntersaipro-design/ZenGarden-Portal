@@ -12,7 +12,6 @@ const OLD_RECORD = new Date("2024-01-01T00:00:00Z");
 
 const order = (poDate: string): AnalyticsOrder => ({
   id: `po-${poDate}`,
-  poNumber: "PO-1",
   buyerId: "b1",
   buyerName: "Acme",
   poDate: new Date(`${poDate}T04:00:00Z`),

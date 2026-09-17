@@ -19,14 +19,17 @@ export function SubmittedOrderPane({ order }: { order: OpsWebOrder }) {
       <p className="font-mono text-[length:var(--text-eyebrow)] text-ink-tertiary">
         What the buyer sent
       </p>
-      <h2 className="mt-xxs font-display text-[length:var(--text-heading-sm)] text-ink">
+      <h2
+        title={`Order ID ${order.reference}`}
+        className="mt-xxs font-display text-[length:var(--text-heading-sm)] text-ink"
+      >
         {order.reference}
       </h2>
 
       <dl className="mt-md grid gap-sm @md:grid-cols-2">
         {[
           ["Buyer", order.buyerName],
-          ["Their reference", order.buyerReference],
+          ["PO number", order.buyerReference],
           ["Payment terms", order.buyerPaymentTerms],
           [
             "Placed",

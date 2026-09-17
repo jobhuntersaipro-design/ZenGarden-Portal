@@ -116,7 +116,7 @@ export function PoFilters({
           />
           <Input
             aria-label="Search purchase orders"
-            placeholder="PO number or item…"
+            placeholder="Order ID, PO number or item…"
             value={query}
             onChange={(event) => onSearchChange(event.target.value)}
             className="h-control-md sm:h-control-sm w-72 pl-xl"

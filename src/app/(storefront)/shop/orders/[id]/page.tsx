@@ -15,6 +15,7 @@ import {
   buildPoDocumentFromOrder,
   documentAgreesWithOrder,
 } from "@/lib/purchase-order-document";
+import { orderLabel } from "@/lib/order-identity";
 import { loadBuyerOrder } from "@/lib/queries/web-orders";
 import { shopHref } from "@/lib/shop-routes";
 
@@ -33,7 +34,9 @@ export async function generateMetadata({
   const { id } = await params;
   const { buyerId } = await requireClient();
   const order = await loadBuyerOrder(buyerId, id);
-  return { title: `${order?.reference ?? "Order"} · Zen Garden` };
+  return {
+    title: `${order ? orderLabel({ orderId: order.orderId, poNumber: order.buyerReference }) : "Order"} · Zen Garden`,
+  };
 }
 
 export default async function OrderDetailPage({
@@ -53,7 +56,7 @@ export default async function OrderDetailPage({
   // screens, so a checkout version and a history version cannot drift apart.
   const supplier = await loadSupplierDetails();
   const document = buildPoDocumentFromOrder({
-    order,
+    order: { ...order, poNumber: order.buyerReference },
     supplier,
     orderDate: order.date ? formatDate(order.date) : "—",
     deliveryDate: order.deliveryDate ? formatDate(order.deliveryDate) : null,
@@ -78,8 +81,11 @@ export default async function OrderDetailPage({
 
       <div className="flex flex-wrap items-start justify-between gap-sm">
         <div className="min-w-0">
+          {/* Named, so an Order ID and a PO number are never read as each
+              other: "Order ID W-2609-00014", or "PO number …" for a scanned
+              order. */}
           <h1 className="font-display text-[length:var(--text-heading-md)] text-ink">
-            {order.reference}
+            {orderLabel({ orderId: order.orderId, poNumber: order.buyerReference })}
           </h1>
           <p className="text-[length:var(--text-body-sm)] text-ink-tertiary">
             {[
@@ -88,7 +94,9 @@ export default async function OrderDetailPage({
               order.deliveryDate
                 ? `Expected delivery ${formatDate(order.deliveryDate)}`
                 : null,
-              order.buyerReference ? `Your ref ${order.buyerReference}` : null,
+              order.orderId && order.buyerReference
+                ? `Your PO number ${order.buyerReference}`
+                : null,
             ]
               .filter(Boolean)
               .join(" · ")}

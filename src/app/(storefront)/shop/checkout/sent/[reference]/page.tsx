@@ -53,7 +53,7 @@ export default async function OrderSentPage({
 
         <dl className="mt-lg grid grid-cols-1 gap-md border-y border-hairline py-md sm:grid-cols-3">
           <Cell label="Your PO number" value={order.buyerReference ?? "—"} mono />
-          <Cell label="Our reference" value={order.reference} mono />
+          <Cell label="Order ID" value={order.reference} mono />
           <Cell label="Total" value={formatMYR(order.total)} />
         </dl>
 
