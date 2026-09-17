@@ -56,7 +56,6 @@ export default async function OrderDetailPage({
     order,
     supplier,
     orderDate: order.date ? formatDate(order.date) : "—",
-    requestedDate: order.requestedDate ? formatDate(order.requestedDate) : null,
     deliveryDate: order.deliveryDate ? formatDate(order.deliveryDate) : null,
   });
   // A confirmed purchase order carries its own total, and a scan-origin one can

@@ -132,7 +132,9 @@ describe("confirmWebOrder", () => {
    */
   it("carries the generated purchase order onto the confirmed order", async () => {
     await confirmWebOrder("wo1", draft(), OPTIONS);
-    expect(attachWebOrderDocument).toHaveBeenCalledExactlyOnceWith("wo1");
+    // The first call is the read before the transaction; the second is the
+    // redraw after it (Phase 42).
+    expect(attachWebOrderDocument.mock.calls[0]).toEqual(["wo1"]);
     expect(writePurchaseOrder.mock.calls[0][1].documentId).toBe("doc1");
   });
 
@@ -292,6 +294,42 @@ describe("confirmWebOrder", () => {
     expect(body).toContain("Order W-2609-00001 is confirmed");
     // Not the "date has moved" wording: this is the first confirmation.
     expect(body).not.toContain("has moved");
+  });
+
+  /**
+   * Phase 42: the file sent at submit has no expected delivery date, so it is
+   * redrawn after the confirmation commits and the redrawn file rides on the
+   * email that announces the date.
+   */
+  it("redraws the purchase order after confirming and attaches it to the email", async () => {
+    await confirmWebOrder("wo1", draft(), OPTIONS);
+    await flushAfter();
+
+    expect(attachWebOrderDocument.mock.calls).toEqual([
+      ["wo1"],
+      ["wo1", { redraw: true }],
+    ]);
+    const call = sendEmail.mock.calls[0][0];
+    expect(call.attachments).toEqual([
+      { filename: "W-2609-00001 purchase order.pdf", content: expect.any(Buffer) },
+    ]);
+    expect(mailBody()).toContain("is attached to");
+  });
+
+  it("still emails the buyer, without an attachment, when the redraw fails", async () => {
+    attachWebOrderDocument
+      .mockResolvedValueOnce({
+        documentId: "doc1",
+        filename: "W-2609-00001 purchase order.pdf",
+        bytes: new Uint8Array([37, 80]),
+      })
+      .mockResolvedValueOnce(null);
+    await confirmWebOrder("wo1", draft(), OPTIONS);
+    await flushAfter();
+
+    const call = sendEmail.mock.calls[0][0];
+    expect(call.attachments).toBeUndefined();
+    expect(mailBody()).not.toContain("is attached to");
   });
 
   it("confirms even when the email cannot be sent", async () => {

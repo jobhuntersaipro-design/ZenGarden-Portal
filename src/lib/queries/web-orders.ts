@@ -1,6 +1,6 @@
 import { PoEventKind, WebOrderStatus } from "@/generated/prisma/enums";
 import { prisma } from "@/lib/prisma";
-import { unitLabel } from "@/lib/cartons";
+import { documentPackCaption } from "@/lib/purchase-order-document";
 import type { PoStage } from "@/generated/prisma/enums";
 
 export type ClientOrderLine = {
@@ -8,6 +8,9 @@ export type ClientOrderLine = {
   /** The seller's product code. Empty where the line carries none. */
   sku: string;
   description: string;
+  /** The linked product's variant and market, for the document's caption. */
+  variant: string | null;
+  market: string | null;
   /** "6 per carton · 36 pieces". Empty where the pack size is unknown. */
   packCaption: string;
   quantity: string;
@@ -288,8 +291,6 @@ export type ClientOrderParty = {
 export type ClientOrderDetail = ClientOrder & {
   lines: ClientOrderLine[];
   events: ClientStageEvent[];
-  /** Everything the purchase-order document prints that the list does not. */
-  requestedDate: Date | null;
   /**
    * The buyer's **own** note, from the order they placed. Never
    * `PurchaseOrder.notes`, which an ops user may have typed or edited — see
@@ -333,20 +334,7 @@ const BUYER_PARTY_SELECT = {
 } as const;
 
 /** "6 per carton · 36 pieces", from whatever the line actually knows. */
-export function packCaptionFor(
-  packSize: number | null,
-  unit: string | null,
-  cartons: number,
-): string {
-  if (!unit) return "";
-  const pieces = packSize === null ? null : packSize * cartons;
-  return [
-    unitLabel(packSize, unit),
-    pieces === null ? null : `${pieces} pieces`,
-  ]
-    .filter(Boolean)
-    .join(" · ");
-}
+export const packCaptionFor = documentPackCaption;
 
 /** One order, scoped to the caller's buyer. A guessed id returns null. */
 export async function loadBuyerOrder(
@@ -370,13 +358,12 @@ export async function loadBuyerOrder(
       buyerReference: true,
       buyer: { select: BUYER_PARTY_SELECT },
       // The order the buyer placed on the shop, where this PO came from one.
-      // Its reference, requested date and note are the buyer's own words —
+      // Its reference and note are the buyer's own words —
       // unlike `PurchaseOrder.notes`, which ops may have typed or edited, and
       // which is deliberately not selected anywhere in this file.
       webOrder: {
         select: {
           buyerReference: true,
-          requestedDate: true,
           notes: true,
           documentId: true,
         },
@@ -391,7 +378,9 @@ export async function loadBuyerOrder(
           unit: true,
           unitPrice: true,
           amount: true,
-          product: { select: { sku: true, packSize: true } },
+          product: {
+            select: { sku: true, packSize: true, variant: true, market: true },
+          },
         },
       },
       stageEvents: {
@@ -418,7 +407,6 @@ export async function loadBuyerOrder(
       total: po.total.toFixed(2),
       currency: po.currency,
       paymentTerms: po.paymentTerms ?? po.buyer.paymentTerms,
-      requestedDate: po.webOrder?.requestedDate ?? null,
       notes: po.webOrder?.notes ?? null,
       // Deliberately the *shop order's* document, not `PurchaseOrder.documentId`:
       // on a scan-origin purchase order that column is the customer's own
@@ -441,6 +429,8 @@ export async function loadBuyerOrder(
         // otherwise the catalogue's own, which is what they would quote back.
         sku: line.sku ?? line.product?.sku ?? "",
         description: line.description,
+        variant: line.product?.variant ?? null,
+        market: line.product?.market ?? null,
         packCaption: packCaptionFor(
           line.product?.packSize ?? null,
           line.unit,
@@ -474,7 +464,6 @@ export async function loadBuyerOrder(
       status: true,
       declinedReason: true,
       buyerReference: true,
-      requestedDate: true,
       notes: true,
       currency: true,
       documentId: true,
@@ -486,7 +475,9 @@ export async function loadBuyerOrder(
           unit: true,
           unitPrice: true,
           amount: true,
-          product: { select: { sku: true, name: true } },
+          product: {
+            select: { sku: true, name: true, variant: true, market: true },
+          },
         },
       },
     },
@@ -508,7 +499,6 @@ export async function loadBuyerOrder(
     total: web.subtotal.toFixed(2),
     currency: web.currency,
     paymentTerms: web.buyer.paymentTerms,
-    requestedDate: web.requestedDate,
     notes: web.notes,
     documentId: web.documentId,
     lineCount: web.lines.length,
@@ -525,6 +515,8 @@ export async function loadBuyerOrder(
       position: index + 1,
       sku: line.product.sku,
       description: line.product.name,
+      variant: line.product.variant,
+      market: line.product.market,
       packCaption: packCaptionFor(line.packSize, line.unit, line.cartons),
       quantity: String(line.cartons),
       unit: line.unit,
@@ -555,12 +547,14 @@ export async function loadWebOrderDocumentSource(webOrderId: string) {
       status: true,
       placedById: true,
       submittedAt: true,
-      requestedDate: true,
       buyerReference: true,
       notes: true,
       currency: true,
       subtotal: true,
       documentId: true,
+      // The day the team committed to, once they have (Phase 42): the file is
+      // redrawn at confirm and whenever that date moves.
+      purchaseOrder: { select: { deliveryDate: true } },
       buyer: { select: BUYER_PARTY_SELECT },
       lines: {
         select: {
@@ -569,7 +563,9 @@ export async function loadWebOrderDocumentSource(webOrderId: string) {
           unit: true,
           unitPrice: true,
           amount: true,
-          product: { select: { sku: true, name: true } },
+          product: {
+            select: { sku: true, name: true, variant: true, market: true },
+          },
         },
       },
     },
@@ -582,7 +578,7 @@ export async function loadWebOrderDocumentSource(webOrderId: string) {
     status: order.status,
     placedById: order.placedById,
     submittedAt: order.submittedAt,
-    requestedDate: order.requestedDate,
+    deliveryDate: order.purchaseOrder?.deliveryDate ?? null,
     documentId: order.documentId,
     order: {
       reference: order.reference,
@@ -603,6 +599,8 @@ export async function loadWebOrderDocumentSource(webOrderId: string) {
         position: index + 1,
         sku: line.product.sku,
         description: line.product.name,
+        variant: line.product.variant,
+        market: line.product.market,
         packCaption: packCaptionFor(line.packSize, line.unit, line.cartons),
         quantity: String(line.cartons),
         unitPrice: line.unitPrice.toFixed(2),
@@ -622,12 +620,6 @@ export type OpsWebOrder = {
   placedByName: string;
   placedByEmail: string;
   submittedAt: Date | null;
-  /**
-   * The day the buyer asked for (Phase 38). Written since Phase 32 and shown
-   * on no ops screen until now — the person confirming the order could not
-   * see what had been asked of them.
-   */
-  requestedDate: Date | null;
   buyerReference: string | null;
   notes: string | null;
   subtotal: string;
@@ -658,7 +650,6 @@ export async function loadWebOrderForReview(
       notes: true,
       subtotal: true,
       submittedAt: true,
-      requestedDate: true,
       buyer: { select: { name: true, paymentTerms: true } },
       placedBy: { select: { name: true, email: true } },
       lines: {
@@ -686,7 +677,6 @@ export async function loadWebOrderForReview(
     placedByName: order.placedBy.name,
     placedByEmail: order.placedBy.email,
     submittedAt: order.submittedAt,
-    requestedDate: order.requestedDate,
     buyerReference: order.buyerReference,
     notes: order.notes,
     subtotal: order.subtotal.toFixed(2),

@@ -1,6 +1,106 @@
-# Current Feature: Receiving a shop order, and the Source column
+# Current Feature: The purchase-order file
 
 ## Status
+
+**Phase 42 — the purchase-order file — built and driven in a browser on
+`feature/po-document-revamp`, not yet committed** (2026-09-17). Asked for as:
+"Rename Zen Garden to ZEN GARDEN TRADING (M) SDN BHD; in the description, show
+the variant and market of the product; all numbers must be thousand separated
+by ,; remove 'Prepared for the buyer named below', 'Authorized by Buyer' and
+'Date'; remove Delivery requested (also from the shop); add Expected delivery
+date, only shown after admin confirms it."
+
+Decisions the user made before building:
+
+- **Description:** the bold line is the product name with its own
+  " — Variant" suffix taken off (`groupName`), and a caption under it reads
+  "Variant: Goat's Milk · Market: Vietnam", then the pack line. A missing
+  market is left out; a scanned PO line with no product keeps its printed text
+  and no caption.
+- **The stored PDF is redrawn** at confirm and whenever the expected delivery
+  date moves on the PO edit sheet (cleared included), into the **same
+  `Document` row and R2 key**, so the buyer's Download and the ops pane read
+  the new bytes. Until Phase 42 it was drawn once at submit and never again, so
+  it could never show a date.
+- **The confirmation email attaches the redrawn PDF**; so does the
+  "delivery date has moved" email (same template). A failed redraw sends the
+  email without it and without the "attached" sentence.
+- **`WebOrder.requestedDate` is kept, no migration** (preview builds migrate
+  production). Nothing writes or shows it: the shop's review form, the submit
+  schema, the ops "What the buyer sent" pane, the product page's
+  "wants <date>" and the document all dropped it. The confirm form's date field
+  now starts empty rather than prefilled.
+
+Decided without asking: **the new name is the document's only** — its
+masthead (plain ink text, replacing the gradient wordmark) and the supplier
+block's fallback. The shop and portal wordmarks still read "Zen Garden". A
+supplier name saved on `/admin` still wins in the supplier block, but not in
+the masthead (`DOCUMENT_COMPANY_NAME`).
+
+Numbers are grouped in both renderers through a new `formatGrouped` in
+`money.ts` (cartons, unit price, amount, subtotal, tax, total, pack size and
+pieces). `PoDocumentData` money stays ungrouped because
+`documentAgreesWithOrder` does arithmetic on it. The meta strip is three cells,
+four once confirmed; the signature rules are gone from both renderers.
+
+## Verified, with the figures
+
+Driven on the development database with a fixture shop order inserted directly
+(`W-2609-04201`, 1,200 + 3 cartons, RM 265,261.50), placed by a throwaway
+`CLIENT` at `delivered@resend.dev`, and confirmed in the browser as Aisha
+(super admin). The dev server ran on **port 3001**, because another project
+held 3000.
+
+- **The ops pane** read no "Delivery requested" row, and the confirm form's
+  date field read `""` before anything was typed.
+- **Confirm redraws the file.** After confirming with 2 Oct 2026, R2's
+  bytes (4,210, the same `Document` id on the web order and the purchase
+  order) extracted to: `ZEN GARDEN TRADING (M) SDN BHD`, meta cells Order date /
+  **Expected delivery 2 Oct 2026** / Payment terms / Currency, supplier
+  `ZEN GARDEN TRADING (M) SDN BHD`, line 1 `2.1L ZEN SIGNATURE` / `Variant:
+  Goat's Milk · Market: Super Indo` / `6 per carton · 7,200 pieces` /
+  `1,200` / `220.50` / `264,600.00`, total `265,261.50`, footer "Confirmed by
+  our team…", and no "Prepared for", "Authorised" or "Date" line.
+- **Moving the date redraws it again.** Edit sheet 2 Oct → 9 Oct: the same key
+  then read **Expected delivery 9 Oct 2026**, 4,211 bytes.
+- **The buyer sees it.** On `shop.localhost:3001/orders/{poId}` the document
+  read the same as the file, with 9 Oct 2026. On `/checkout/review` there was
+  **no date input** (0 `input[type=date]`), no "requested" anywhere in `main`,
+  and the preview carried no Expected delivery cell. `scrollWidth === innerWidth`
+  at 390 and 768 on the review page, and at 768 on the order page.
+- **Cleanup by id, counted both ends:** two web orders (the fixture and a DRAFT
+  cart the review check created) and their lines, one purchase order with its
+  line items and stage events, one `Document`, one audit row, two login
+  attempts and the client were deleted; the R2 key answered **NotFound**.
+  Users **2**, `CLIENT` **0**, web orders **0**, purchase orders **400**,
+  documents **406**, line items **1606**, stage events **2323**, audits **5**,
+  login attempts **68**, products **308**, the same as before.
+- **1158/1158 tests, `tsc --noEmit`, `npm run lint`** (the same 2 pre-existing
+  warnings, 0 errors) **and `npm run build`** clean.
+
+## Not verified
+
+- **Anything on production.** Not deployed.
+- **The emails arriving.** Both went to Resend's test inbox; no inbox was read.
+  The attachment is covered by unit tests only.
+- **The order page at 390px**, which was measured at 768 only.
+- **A confirmed order whose redraw fails.** Unit test only.
+- **The ops document pane rendering the redrawn PDF.** R2 CORS refused origin
+  `localhost:3001` (the port, not the change).
+
+## Notes
+
+- **Confirmed shop orders number their lines from 0 on the buyer's document.**
+  `loadBuyerOrder` passes `LineItem.position` straight through, and the
+  confirmed fixture read `0` and `1`. It is older than this phase and was not
+  fixed; a web order still numbers from 1.
+- **The redraw runs inside `after()`**, so for a moment after Confirm the
+  stored file is the undated one.
+- **PDFs already stored keep their old layout** until their order is confirmed
+  or its date moves. Production's one shop order, `W-2609-00001`, is
+  unconfirmed, so its confirm will redraw it.
+
+## Previous phase
 
 **Phase 41 — receiving a shop order, and the Source column — built across
 thirteen tasks and driven in a browser on `feature/order-receipt`, merged to
@@ -762,6 +862,13 @@ file: generating a PDF remains Phase 19, still unbuilt.
   purchase-order file, is also unbuilt.
 
 ## History
+- 2026-09-17: Phase 42 — the purchase-order file — built and driven on
+  `feature/po-document-revamp` (details under Status above). The document names
+  ZEN GARDEN TRADING (M) SDN BHD, captions each line with its variant and
+  market, groups every figure's thousands, drops the signature lines and the
+  "Prepared for" caption, and loses "Delivery requested" everywhere. The stored
+  PDF is now redrawn at confirm and when the date moves, and rides on both
+  delivery-date emails. No migration.
 - 2026-09-17: Phase 41 — receiving a shop order, and the Source column —
   built across thirteen tasks, merged from `feature/order-receipt` as
   `c983174` and deployed (spec `docs/specs/41-order-receipt-and-source.md`;

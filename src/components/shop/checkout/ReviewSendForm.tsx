@@ -9,7 +9,6 @@ import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { PurchaseOrderPreview } from "@/components/shop/checkout/PurchaseOrderPreview";
 import { submitWebOrder } from "@/actions/cart";
-import { formatDate } from "@/lib/dates";
 import { formatMYR } from "@/lib/money";
 import { buildPoDocument, documentAgreesWithOrder } from "@/lib/purchase-order-document";
 import { shopHref } from "@/lib/shop-routes";
@@ -20,11 +19,13 @@ import type { SupplierDetails } from "@/lib/org-settings";
 /**
  * Review and send (Phase 32, from the Phase 18 design).
  *
- * The order's own facts — the client's PO number, the date they want it, and
- * anything the team should know — are collected *here*, on a screen whose job
- * is to show what is about to be sent. They used to be two unlabelled inputs
- * beside the cart's Send button, and the requested date had nowhere to go at
- * all despite the column existing since Phase 16.
+ * The order's own facts — the client's PO number and anything the team
+ * should know — are collected *here*, on a screen whose job is to show what is
+ * about to be sent. They used to be two unlabelled inputs beside the cart's
+ * Send button.
+ *
+ * There is no requested delivery date (Phase 42): the team sets the expected
+ * date when they confirm, and the buyer is told it then.
  *
  * Nothing is written until Send. Local state only, one Server Action.
  */
@@ -32,29 +33,25 @@ export function ReviewSendForm({
   cart,
   buyer,
   supplier,
-  todayInKL,
   orderDate,
 }: {
   cart: Cart;
   buyer: ReviewBuyer | null;
   /** Printed on the purchase order, and behind "Ask us to change this". */
   supplier: SupplierDetails;
-  /** `yyyy-MM-dd` in Kuala Lumpur — the earliest date worth requesting. */
-  todayInKL: string;
   /** Today, already formatted, so the document and the server agree on it. */
   orderDate: string;
 }) {
   const router = useRouter();
   const [pending, startTransition] = useTransition();
   const [buyerReference, setBuyerReference] = useState("");
-  const [requestedDate, setRequestedDate] = useState("");
   const [notes, setNotes] = useState("");
 
   const cartonCount = cart.lines.reduce((sum, line) => sum + line.cartons, 0);
   const supplierEmail = supplier.email;
 
   // Rebuilt on every keystroke, which is the point: the document below is the
-  // one that will be filed, so the PO number, the date and the note appear on
+  // one that will be filed, so the PO number and the note appear on
   // it as they are typed rather than after the order is already sent.
   const document = buildPoDocument({
     lines: cart.lines,
@@ -63,7 +60,6 @@ export function ReviewSendForm({
     supplier,
     buyerReference: buyerReference || null,
     ourReference: cart.reference,
-    requestedDate: requestedDate ? formatDocumentDate(requestedDate) : null,
     notes: notes || null,
     paymentTerms: buyer?.paymentTerms ?? null,
     orderDate,
@@ -75,7 +71,6 @@ export function ReviewSendForm({
     startTransition(async () => {
       const result = await submitWebOrder({
         buyerReference: buyerReference.trim() || null,
-        requestedDate: requestedDate || null,
         notes: notes.trim() || null,
       });
       if (!result.success) {
@@ -95,37 +90,22 @@ export function ReviewSendForm({
       <div className={buyer ? "grid gap-lg md:grid-cols-2 md:items-start" : ""}>
         <div className="min-w-0">
           <Card title="Order details">
-            <div className="flex flex-col gap-md">
-              <Field
-                label="Your own PO number (optional)"
-                hint={
-                  cart.reference
-                    ? `Printed at the top of your purchase order. Leave it blank and we'll use our reference, ${cart.reference}.`
-                    : "Printed at the top of your purchase order."
-                }
-              >
-                <Input
-                  value={buyerReference}
-                  onChange={(event) => setBuyerReference(event.target.value)}
-                  maxLength={64}
-                  className="font-mono"
-                  aria-label="Your own PO number"
-                />
-              </Field>
-
-              <Field
-                label="Delivery requested (optional)"
-                hint="A request, not a promise — our team confirms the date with you."
-              >
-                <Input
-                  type="date"
-                  value={requestedDate}
-                  min={todayInKL}
-                  onChange={(event) => setRequestedDate(event.target.value)}
-                  aria-label="Delivery requested"
-                />
-              </Field>
-            </div>
+            <Field
+              label="Your own PO number (optional)"
+              hint={
+                cart.reference
+                  ? `Printed at the top of your purchase order. Leave it blank and we'll use our reference, ${cart.reference}.`
+                  : "Printed at the top of your purchase order."
+              }
+            >
+              <Input
+                value={buyerReference}
+                onChange={(event) => setBuyerReference(event.target.value)}
+                maxLength={64}
+                className="font-mono"
+                aria-label="Your own PO number"
+              />
+            </Field>
           </Card>
         </div>
 
@@ -255,21 +235,6 @@ export function ReviewSendForm({
       </section>
     </div>
   );
-}
-
-/**
- * `yyyy-MM-dd` from the date input, as the document prints it.
- *
- * Through the project's own `formatDate`, not a hand-rolled
- * `toLocaleDateString`: en-GB renders September as "Sept", so the document
- * printed "30 Sept 2026" beside an order date of "14 Sep 2026" — two formats
- * on one page. `formatDate` is the canvas's `d MMM yyyy` everywhere.
- *
- * The value is read as UTC midnight and formatted in Kuala Lumpur, which is
- * ahead of UTC, so the calendar day the buyer picked is the day printed.
- */
-function formatDocumentDate(value: string): string {
-  return formatDate(new Date(`${value}T00:00:00.000Z`));
 }
 
 function Card({ title, children }: { title: string; children: React.ReactNode }) {

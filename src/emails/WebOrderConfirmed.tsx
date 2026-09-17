@@ -18,6 +18,12 @@ export type WebOrderConfirmedProps = {
    * notice the difference.
    */
   updated?: boolean;
+  /**
+   * True when the redrawn purchase order is on the email (Phase 42). Said only
+   * when it is, like the receipt: a render can fail while the confirmation
+   * itself is fine.
+   */
+  attached?: boolean;
 };
 
 /**
@@ -38,6 +44,7 @@ export function WebOrderConfirmed({
   total,
   orderUrl,
   updated = false,
+  attached = false,
 }: WebOrderConfirmedProps) {
   return (
     <Layout>
@@ -57,6 +64,12 @@ export function WebOrderConfirmed({
         {buyerReference ? " · your reference " : ""}
         {buyerReference ? <Mono>{buyerReference}</Mono> : null}
       </Paragraph>
+      {attached ? (
+        <Paragraph>
+          Your purchase order, showing the expected delivery date, is attached to
+          this email.
+        </Paragraph>
+      ) : null}
       <ButtonLink href={orderUrl}>See your order</ButtonLink>
     </Layout>
   );

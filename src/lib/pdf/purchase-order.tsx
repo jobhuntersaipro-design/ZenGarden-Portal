@@ -7,8 +7,11 @@ import {
   View,
   renderToBuffer,
 } from "@react-pdf/renderer";
-import { formatMYR } from "@/lib/money";
-import type { PoDocumentData } from "@/lib/purchase-order-document";
+import { formatGrouped } from "@/lib/money";
+import {
+  DOCUMENT_COMPANY_NAME,
+  type PoDocumentData,
+} from "@/lib/purchase-order-document";
 
 /**
  * The purchase order as a file (Phase 37).
@@ -18,7 +21,7 @@ import type { PoDocumentData } from "@/lib/purchase-order-document";
  * purchase order says, and the screen and the file cannot disagree about it.
  * Section for section this mirrors that component — masthead, four-cell meta
  * strip, the two parties, the six-column line grid, the totals column, the
- * notes, two signature rules and the footer carrying our own reference.
+ * notes and the footer carrying our own reference.
  *
  * **This is the one file in the repository allowed raw hex.** A PDF has no
  * stylesheet and no CSS custom properties, so `text-ink` cannot resolve to
@@ -43,7 +46,6 @@ const COLORS = {
   inkTertiary: "#6f6f6f",
   hairline: "#e8e8e8",
   canvas: "#ffffff",
-  brand: "#7612fa",
 } as const;
 
 /** A4 at 72dpi is 595×842pt; 36pt is the 12mm margin the screen print uses. */
@@ -66,9 +68,7 @@ const styles = StyleSheet.create({
     borderBottomColor: COLORS.ink,
     paddingBottom: 12,
   },
-  wordmarkRow: { flexDirection: "row" },
-  wordmarkBrand: { fontFamily: "Helvetica-Bold", fontSize: 16, color: COLORS.brand },
-  wordmarkInk: { fontFamily: "Helvetica-Bold", fontSize: 16, color: COLORS.ink },
+  company: { fontFamily: "Helvetica-Bold", fontSize: 14, color: COLORS.ink },
   title: { fontFamily: "Helvetica-Bold", fontSize: 14, textAlign: "right" },
   reference: { fontSize: 10, marginTop: 3, textAlign: "right" },
   caption: { fontSize: 7, color: COLORS.inkTertiary },
@@ -102,7 +102,7 @@ const styles = StyleSheet.create({
   colUnit: { width: 66, textAlign: "right" },
   colAmount: { width: 72, textAlign: "right" },
   description: { fontFamily: "Helvetica-Bold", fontSize: 9 },
-  packCaption: { fontSize: 7, color: COLORS.inkTertiary, marginTop: 2 },
+  lineCaption: { fontSize: 7, color: COLORS.inkTertiary, marginTop: 2 },
   totalsWrap: { flexDirection: "row", justifyContent: "flex-end", paddingTop: 12 },
   totals: { width: 200 },
   totalsRow: { flexDirection: "row", justifyContent: "space-between", paddingVertical: 3 },
@@ -122,9 +122,6 @@ const styles = StyleSheet.create({
   notes: { paddingTop: 12 },
   notesHeading: { fontSize: 7, color: COLORS.inkTertiary, letterSpacing: 0.6 },
   notesBody: { fontSize: 9, color: COLORS.inkSecondary, marginTop: 3 },
-  signatures: { flexDirection: "row", paddingTop: 28 },
-  signature: { flexGrow: 1, flexBasis: 0, paddingRight: 24 },
-  signatureRule: { height: 1, backgroundColor: COLORS.ink },
   footer: {
     position: "absolute",
     left: 36,
@@ -180,15 +177,7 @@ export function PurchaseOrderPdf({
     >
       <Page size="A4" style={styles.page}>
         <View style={styles.masthead}>
-          <View>
-            <View style={styles.wordmarkRow}>
-              <Text style={styles.wordmarkBrand}>Zen</Text>
-              <Text style={styles.wordmarkInk}>Garden</Text>
-            </View>
-            <Text style={[styles.caption, { marginTop: 3 }]}>
-              Prepared for the buyer named below
-            </Text>
-          </View>
+          <Text style={styles.company}>{DOCUMENT_COMPANY_NAME}</Text>
           <View>
             <Text style={styles.title}>PURCHASE ORDER</Text>
             <Text style={styles.reference}>{document.reference}</Text>
@@ -197,7 +186,6 @@ export function PurchaseOrderPdf({
 
         <View style={styles.metaStrip}>
           <Meta label="Order date" value={document.orderDate} />
-          <Meta label="Delivery requested" value={document.requestedDate ?? "—"} />
           {document.deliveryDate ? (
             <Meta label="Expected delivery" value={document.deliveryDate} />
           ) : null}
@@ -237,13 +225,18 @@ export function PurchaseOrderPdf({
               <Text style={styles.colCode}>{line.sku}</Text>
               <View style={styles.colDescription}>
                 <Text style={styles.description}>{line.description}</Text>
+                {line.detailCaption ? (
+                  <Text style={styles.lineCaption}>{line.detailCaption}</Text>
+                ) : null}
                 {line.packCaption ? (
-                  <Text style={styles.packCaption}>{line.packCaption}</Text>
+                  <Text style={styles.lineCaption}>{line.packCaption}</Text>
                 ) : null}
               </View>
-              <Text style={styles.colCartons}>{line.cartons}</Text>
-              <Text style={styles.colUnit}>{line.unitPrice}</Text>
-              <Text style={[styles.colAmount, styles.description]}>{line.amount}</Text>
+              <Text style={styles.colCartons}>{formatGrouped(line.cartons, 0)}</Text>
+              <Text style={styles.colUnit}>{formatGrouped(line.unitPrice)}</Text>
+              <Text style={[styles.colAmount, styles.description]}>
+                {formatGrouped(line.amount)}
+              </Text>
             </View>
           ))}
         </View>
@@ -252,19 +245,17 @@ export function PurchaseOrderPdf({
           <View style={styles.totals}>
             <View style={styles.totalsRow}>
               <Text style={styles.totalsLabel}>Subtotal</Text>
-              <Text style={styles.totalsValue}>{document.subtotal}</Text>
+              <Text style={styles.totalsValue}>{formatGrouped(document.subtotal)}</Text>
             </View>
             {document.tax ? (
               <View style={styles.totalsRow}>
                 <Text style={styles.totalsLabel}>Tax</Text>
-                <Text style={styles.totalsValue}>{document.tax}</Text>
+                <Text style={styles.totalsValue}>{formatGrouped(document.tax)}</Text>
               </View>
             ) : null}
             <View style={styles.grandRow}>
               <Text style={styles.grandLabel}>{`Total (${document.currency})`}</Text>
-              <Text style={styles.grandValue}>
-                {formatMYR(document.total).replace("RM ", "")}
-              </Text>
+              <Text style={styles.grandValue}>{formatGrouped(document.total)}</Text>
             </View>
           </View>
         </View>
@@ -275,19 +266,6 @@ export function PurchaseOrderPdf({
             <Text style={styles.notesBody}>{document.notes}</Text>
           </View>
         ) : null}
-
-        <View style={styles.signatures} wrap={false}>
-          <View style={styles.signature}>
-            <View style={styles.signatureRule} />
-            <Text style={[styles.caption, { marginTop: 3 }]}>
-              Authorised by (buyer)
-            </Text>
-          </View>
-          <View style={styles.signature}>
-            <View style={styles.signatureRule} />
-            <Text style={[styles.caption, { marginTop: 3 }]}>Date</Text>
-          </View>
-        </View>
 
         <View style={styles.footer} fixed>
           <Text style={styles.caption}>{footnote}</Text>

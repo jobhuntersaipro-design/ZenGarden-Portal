@@ -251,26 +251,10 @@ describe("submitWebOrder", () => {
     expect(webOrderUpdate).not.toHaveBeenCalled();
   });
 
-  it("stores the requested date as the calendar day the client picked", async () => {
-    webOrderFindFirst.mockResolvedValue(cartWith([line()]));
-    await submitWebOrder({ requestedDate: "2026-09-20" });
-
-    const update = webOrderUpdate.mock.calls.at(-1)![0].data;
-    // UTC midnight, so a `@db.Date` column stores the 20th and not the 19th:
-    // a timestamp compared against a date column is truncated in UTC.
-    expect(update.requestedDate.toISOString()).toBe("2026-09-20T00:00:00.000Z");
-  });
-
-  it("stores no requested date when the client did not pick one", async () => {
+  it("writes no requested delivery date — the team sets the date at confirm", async () => {
     webOrderFindFirst.mockResolvedValue(cartWith([line()]));
     await submitWebOrder({});
-    expect(webOrderUpdate.mock.calls.at(-1)![0].data.requestedDate).toBeNull();
-  });
-
-  it("refuses a requested date that is not a calendar day", async () => {
-    const result = await submitWebOrder({ requestedDate: "next tuesday" });
-    expect(result.success).toBe(false);
-    expect(webOrderUpdate).not.toHaveBeenCalled();
+    expect(webOrderUpdate.mock.calls.at(-1)![0].data).not.toHaveProperty("requestedDate");
   });
 
   it("sends the client their own receipt, not just the ops notification", async () => {

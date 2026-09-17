@@ -41,16 +41,12 @@ export function WebOrderReviewForm({ order }: { order: OpsWebOrder }) {
   const [receiving, setReceiving] = useState(false);
   const [reason, setReason] = useState("");
   /**
-   * The day the team commits to (Phase 38), prefilled with the day the buyer
-   * asked for. It is not part of the draft: the draft is the purchase order
-   * as printed, and this is a promise the team is making now.
-   *
-   * `requestedDate` is stored as UTC midnight of the chosen day, so slicing
-   * the ISO string gives back that same day rather than the one before it.
+   * The day the team commits to (Phase 38). It is not part of the draft: the
+   * draft is the purchase order as printed, and this is a promise the team is
+   * making now. It starts empty since Phase 42 — buyers no longer ask for a
+   * day, so there is nothing to prefill it from.
    */
-  const [deliveryDate, setDeliveryDate] = useState(
-    order.requestedDate ? order.requestedDate.toISOString().slice(0, 10) : "",
-  );
+  const [deliveryDate, setDeliveryDate] = useState("");
 
   const [draft, dispatch] = useReducer(draftReducer, {
     // Defaults a reviewer can type over: the shop reference as the PO number,

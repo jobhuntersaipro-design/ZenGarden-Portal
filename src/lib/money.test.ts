@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { Prisma } from "@/generated/prisma/client";
-import { formatMYR, parseMYR, sumDecimals } from "@/lib/money";
+import { formatGrouped, formatMYR, parseMYR, sumDecimals } from "@/lib/money";
 
 describe("formatMYR", () => {
   it("always shows two decimals", () => {
@@ -19,6 +19,15 @@ describe("formatMYR", () => {
 
   it("does not lose precision the way a float would", () => {
     expect(formatMYR(new Prisma.Decimal("0.1").plus("0.2"))).toBe("RM 0.30");
+  });
+});
+
+describe("formatGrouped", () => {
+  it("groups the thousands without a currency", () => {
+    expect(formatGrouped("1420661.5")).toBe("1,420,661.50");
+    expect(formatGrouped("999.00")).toBe("999.00");
+    expect(formatGrouped(1200, 0)).toBe("1,200");
+    expect(formatGrouped("-12345.678")).toBe("-12,345.68");
   });
 });
 

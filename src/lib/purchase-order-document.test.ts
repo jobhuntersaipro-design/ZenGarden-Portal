@@ -15,6 +15,7 @@ const line = (over: Partial<CartLine> = {}): CartLine => ({
   name: "ZEN 2.1L — Goat's Milk",
   brand: "Zen Garden",
   variant: "Goat's Milk",
+  market: "Vietnam",
   packSize: 6,
   unit: "carton",
   cartons: 3,
@@ -49,7 +50,6 @@ const build = (over: Partial<Parameters<typeof buildPoDocument>[0]> = {}) =>
     supplier,
     buyerReference: null,
     ourReference: "W-2609-00007",
-    requestedDate: null,
     notes: null,
     paymentTerms: "30 days",
     orderDate: "14 Sep 2026",
@@ -96,6 +96,26 @@ describe("buildPoDocument", () => {
     expect(doc.lines[0].packCaption).toBe("6 per carton · 18 pieces");
   });
 
+  it("groups the thousands in the pack caption", () => {
+    const doc = build({ lines: [line({ packSize: 1200, cartons: 3, pieces: 3600 })] });
+    expect(doc.lines[0].packCaption).toBe("1,200 per carton · 3,600 pieces");
+  });
+
+  it("takes the variant off the name and prints it with the market underneath", () => {
+    const doc = build();
+    expect(doc.lines[0].description).toBe("ZEN 2.1L");
+    expect(doc.lines[0].detailCaption).toBe("Variant: Goat's Milk · Market: Vietnam");
+  });
+
+  it("prints only what the product knows of its variant and market", () => {
+    expect(build({ lines: [line({ market: null })] }).lines[0].detailCaption).toBe(
+      "Variant: Goat's Milk",
+    );
+    const bare = build({ lines: [line({ variant: null, market: null })] }).lines[0];
+    expect(bare.description).toBe("ZEN 2.1L — Goat's Milk");
+    expect(bare.detailCaption).toBe("");
+  });
+
   it("leaves the pieces off a line whose pack size is unknown", () => {
     const doc = build({ lines: [line({ packSize: null, pieces: null })] });
     expect(doc.lines[0].packCaption).toBe("per carton");
@@ -115,7 +135,7 @@ describe("buildPoDocument", () => {
 
   it("falls back to a supplier name when the org settings hold none", () => {
     const doc = build({ supplier: { ...supplier, name: null } });
-    expect(doc.supplier.name).toBe("Zen Garden");
+    expect(doc.supplier.name).toBe("ZEN GARDEN TRADING (M) SDN BHD");
   });
 
   it("treats blank notes and blank payment terms as absent", () => {
@@ -162,7 +182,6 @@ describe("buildPoDocumentFromOrder", () => {
       order: order(over),
       supplier,
       orderDate: "15 Sep 2026",
-      requestedDate: null,
     });
 
   it("totals from its own lines rather than from anything handed to it", () => {
@@ -219,6 +238,30 @@ describe("buildPoDocumentFromOrder", () => {
 
   it("refuses an order whose lines do not reach its own total", () => {
     expect(documentAgreesWithOrder(fromOrder(), "999.00")).toBe(false);
+  });
+
+  it("captions a stored line from its product, and a scanned line without one as printed", () => {
+    const linked = fromOrder({
+      lines: [storedLine({ variant: "Goat's Milk", market: "Iraq" })],
+    }).lines[0];
+    expect(linked.description).toBe("ZEN 2.1L");
+    expect(linked.detailCaption).toBe("Variant: Goat's Milk · Market: Iraq");
+
+    const scanned = fromOrder({ lines: [storedLine()] }).lines[0];
+    expect(scanned.description).toBe("ZEN 2.1L — Goat's Milk");
+    expect(scanned.detailCaption).toBe("");
+  });
+
+  it("carries the expected delivery date only when one is given", () => {
+    expect(fromOrder().deliveryDate).toBeNull();
+    expect(
+      buildPoDocumentFromOrder({
+        order: order(),
+        supplier,
+        orderDate: "15 Sep 2026",
+        deliveryDate: "2 Oct 2026",
+      }).deliveryDate,
+    ).toBe("2 Oct 2026");
   });
 
   it("keeps the order's own currency rather than assuming MYR", () => {

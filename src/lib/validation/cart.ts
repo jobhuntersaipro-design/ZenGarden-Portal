@@ -41,15 +41,6 @@ export const addManyToCartSchema = z.object({
 
 export const submitOrderSchema = z.object({
   buyerReference: z.string().trim().max(64).nullable().optional(),
-  /**
-   * `yyyy-MM-dd` as the client picked it in Kuala Lumpur, stored as that
-   * calendar day. A request, never a promise — ops confirms the date.
-   */
-  requestedDate: z
-    .string()
-    .regex(/^\d{4}-\d{2}-\d{2}$/, "Pick a date from the calendar")
-    .nullable()
-    .optional(),
   notes: z.string().trim().max(2000).nullable().optional(),
 });
 

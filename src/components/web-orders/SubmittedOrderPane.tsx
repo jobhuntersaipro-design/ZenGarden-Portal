@@ -1,6 +1,6 @@
 import { PersonChip } from "@/components/ui/person";
 import { quantityCaption } from "@/lib/cartons";
-import { formatDate, formatDateTime } from "@/lib/dates";
+import { formatDateTime } from "@/lib/dates";
 import { formatMYR } from "@/lib/money";
 import type { OpsWebOrder } from "@/lib/queries/web-orders";
 
@@ -30,13 +30,6 @@ export function SubmittedOrderPane({ order }: { order: OpsWebOrder }) {
           [
             "Placed",
             order.submittedAt ? formatDateTime(order.submittedAt) : null,
-          ],
-          // Always rendered, unlike its neighbours: "Not specified" is an
-          // answer the reviewer needs, and a row that vanishes reads as a
-          // date nobody thought to ask for.
-          [
-            "Delivery requested",
-            order.requestedDate ? formatDate(order.requestedDate) : "Not specified",
           ],
         ]
           .filter(([, value]) => Boolean(value))

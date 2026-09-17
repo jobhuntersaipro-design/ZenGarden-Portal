@@ -18,6 +18,7 @@ const product = (over: Partial<Record<string, unknown>> = {}) => ({
   name: "Zen Shower Cream 1L — Goat's Milk",
   brand: "ZEN GARDEN",
   variant: "Goat's Milk",
+  market: "Vietnam",
   packSize: 12,
   unit: "carton",
   listPrice: dec("189.00"),

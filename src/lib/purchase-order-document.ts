@@ -6,6 +6,8 @@
 // import is already used by the shop's product page.
 import { Prisma } from "@/generated/prisma/browser";
 import { unitLabel } from "@/lib/cartons";
+import { formatGrouped } from "@/lib/money";
+import { groupName } from "@/lib/product-groups";
 import type { CartLine } from "@/lib/queries/cart";
 import type { ReviewBuyer } from "@/lib/queries/shop-checkout";
 import type { SupplierDetails } from "@/lib/org-settings";
@@ -22,14 +24,28 @@ import type { SupplierDetails } from "@/lib/org-settings";
  * `subtotal` is passed in rather than trusted from a caller's own arithmetic:
  * it is what `submitWebOrder` will snapshot, and a test asserts the two match
  * to the cent.
+ *
+ * **Money stays unformatted here** (`"1234.50"`), because
+ * `documentAgreesWithOrder` does arithmetic on it. The two renderers group
+ * the thousands when they print (Phase 42).
  */
+
+/**
+ * The seller named on the document (Phase 42): its masthead, and the supplier
+ * block wherever `/admin` holds no name. The shop and the portal keep "Zen
+ * Garden" as their wordmark; a purchase order carries the registered company.
+ */
+export const DOCUMENT_COMPANY_NAME = "ZEN GARDEN TRADING (M) SDN BHD";
 
 export type PoDocumentLine = {
   position: number;
   /** The seller's code. A shop order has no buyer-printed code to show. */
   sku: string;
+  /** The product's name with its own " — Variant" suffix taken off. */
   description: string;
-  /** "6 per carton · 18 pieces", or just the pack where pieces are unknown. */
+  /** "Variant: Goat's Milk · Market: Vietnam". Empty where neither is known. */
+  detailCaption: string;
+  /** "6 per carton · 1,200 pieces", or just the pack where pieces are unknown. */
   packCaption: string;
   cartons: number;
   unitPrice: string;
@@ -50,8 +66,6 @@ export type PoDocumentData = {
   /** Always shown in the footer, even when `reference` is the buyer's own. */
   ourReference: string | null;
   orderDate: string;
-  /** `null` prints as an em dash: the buyer asked for no particular day. */
-  requestedDate: string | null;
   /**
    * The day the team committed to (Phase 38). Null on a cart and on an order
    * still waiting, and then the cell is not drawn at all — an empty
@@ -82,6 +96,57 @@ const joinContact = (name: string | null, email: string | null): string | null =
 };
 
 /**
+ * "6 per carton · 1,200 pieces", grouped the way every figure on the document
+ * is. Shared by both builders and by the buyer's order query, so a cart and a
+ * stored order caption their pack identically.
+ */
+export function documentPackCaption(
+  packSize: number | null,
+  unit: string | null,
+  cartons: number,
+): string {
+  if (!unit) return "";
+  if (packSize === null) return unitLabel(null, unit);
+  return [
+    `${formatGrouped(packSize, 0)} per ${unit}`,
+    `${formatGrouped(packSize * cartons, 0)} pieces`,
+  ]
+    .filter(Boolean)
+    .join(" · ");
+}
+
+/**
+ * The description cell's two text lines (Phase 42): the name without its
+ * variant suffix — the variant has a line of its own now, and printing it
+ * twice reads as two products — and "Variant: … · Market: …" under it. A line
+ * whose product is unknown (a scanned PO's unmatched row) keeps its printed
+ * description and no caption.
+ */
+export function describeLine(input: {
+  name: string;
+  variant: string | null | undefined;
+  market: string | null | undefined;
+}): { description: string; detailCaption: string } {
+  const variant = input.variant?.trim() || null;
+  const market = input.market?.trim() || null;
+  return {
+    description: groupName({ name: input.name, variant }),
+    detailCaption: [
+      variant ? `Variant: ${variant}` : null,
+      market ? `Market: ${market}` : null,
+    ]
+      .filter(Boolean)
+      .join(" · "),
+  };
+}
+
+const supplierParty = (supplier: SupplierDetails): PoDocumentParty => ({
+  name: supplier.name ?? DOCUMENT_COMPANY_NAME,
+  address: supplier.address ?? null,
+  contact: joinContact(supplier.email, supplier.phone),
+});
+
+/**
  * Builds the document from what the review screen already holds.
  *
  * Every argument is data the client has either chosen or been shown, so the
@@ -97,8 +162,6 @@ export function buildPoDocument(input: {
   buyerReference: string | null;
   /** Our `W-…`, minted when the cart was opened. */
   ourReference: string | null;
-  /** `yyyy-MM-dd`, or null when they asked for no particular day. */
-  requestedDate: string | null;
   notes: string | null;
   paymentTerms: string | null;
   orderDate: string;
@@ -107,13 +170,8 @@ export function buildPoDocument(input: {
   const lines = input.lines.map((line, index) => ({
     position: index + 1,
     sku: line.sku,
-    description: line.name,
-    packCaption: [
-      unitLabel(line.packSize, line.unit),
-      line.pieces === null ? null : `${line.pieces} pieces`,
-    ]
-      .filter(Boolean)
-      .join(" · "),
+    ...describeLine(line),
+    packCaption: documentPackCaption(line.packSize, line.unit, line.cartons),
     cartons: line.cartons,
     unitPrice: line.unitPrice,
     amount: line.amount,
@@ -129,7 +187,6 @@ export function buildPoDocument(input: {
     reference: input.buyerReference?.trim() || input.ourReference || "—",
     ourReference: input.ourReference,
     orderDate: input.orderDate,
-    requestedDate: input.requestedDate,
     // A cart has nothing promised yet; the team settles it when they confirm.
     deliveryDate: null,
     paymentTerms: input.paymentTerms?.trim() || null,
@@ -139,11 +196,7 @@ export function buildPoDocument(input: {
       address: input.buyer?.address ?? null,
       contact: joinContact(input.buyer?.contactName ?? null, input.buyer?.email ?? null),
     },
-    supplier: {
-      name: input.supplier.name ?? "Zen Garden",
-      address: input.supplier.address ?? null,
-      contact: joinContact(input.supplier.email, input.supplier.phone),
-    },
+    supplier: supplierParty(input.supplier),
     lines,
     subtotal: summed,
     // A cart quotes no tax. Delivery and any tax are settled when the team
@@ -186,6 +239,9 @@ export function buildPoDocumentFromOrder(input: {
       position: number;
       sku: string;
       description: string;
+      /** From the linked product. Absent or null prints no caption. */
+      variant?: string | null;
+      market?: string | null;
       packCaption: string;
       quantity: string;
       unitPrice: string;
@@ -195,7 +251,6 @@ export function buildPoDocumentFromOrder(input: {
   supplier: SupplierDetails;
   /** Already formatted, so the page and the document agree on the day. */
   orderDate: string;
-  requestedDate: string | null;
   /** Already formatted too. Null until the team has confirmed the order. */
   deliveryDate?: string | null;
 }): PoDocumentData {
@@ -203,7 +258,11 @@ export function buildPoDocumentFromOrder(input: {
   const lines = order.lines.map((line) => ({
     position: line.position,
     sku: line.sku,
-    description: line.description,
+    ...describeLine({
+      name: line.description,
+      variant: line.variant,
+      market: line.market,
+    }),
     packCaption: line.packCaption,
     cartons: Number(line.quantity),
     unitPrice: line.unitPrice,
@@ -226,16 +285,11 @@ export function buildPoDocumentFromOrder(input: {
     reference: order.buyerReference?.trim() || order.reference,
     ourReference: order.reference,
     orderDate: input.orderDate,
-    requestedDate: input.requestedDate,
     deliveryDate: input.deliveryDate ?? null,
     paymentTerms: order.paymentTerms?.trim() || null,
     currency: order.currency,
     buyer: order.buyer,
-    supplier: {
-      name: input.supplier.name ?? "Zen Garden",
-      address: input.supplier.address ?? null,
-      contact: joinContact(input.supplier.email, input.supplier.phone),
-    },
+    supplier: supplierParty(input.supplier),
     lines,
     subtotal: summed.toFixed(2),
     tax: taxed?.toFixed(2) ?? null,

@@ -10,6 +10,8 @@ export type CartLine = {
   name: string;
   brand: string | null;
   variant: string | null;
+  /** Its destination or retail customer. Printed on the purchase order. */
+  market: string | null;
   packSize: number | null;
   unit: string;
   cartons: number;
@@ -67,6 +69,7 @@ const PRICED_PRODUCT_FIELDS = {
   name: true,
   brand: true,
   variant: true,
+  market: true,
   packSize: true,
   unit: true,
   listPrice: true,
@@ -122,6 +125,7 @@ function priceLine(
     name: product.name,
     brand: product.brand,
     variant: product.variant,
+    market: product.market,
     packSize: product.packSize,
     unit: product.unit,
     cartons,
