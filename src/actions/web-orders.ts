@@ -97,6 +97,12 @@ export async function confirmWebOrder(
   }
   const data = parsedDraft.data;
   const { totalsAcknowledged, deliveryDate } = parsedOptions.data;
+  // Also required here and nowhere else (2026-09-17): the team settles the
+  // terms at confirm as it settles the date, and the buyer's purchase order
+  // reads "—" for both until it does.
+  if (!data.paymentTerms?.trim()) {
+    return { success: false, error: "Payment terms are required." };
+  }
 
   const totals = checkTotals(data);
   if (!totals.matches && totalsAcknowledged !== true) {

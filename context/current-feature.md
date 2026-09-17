@@ -1161,6 +1161,27 @@ file: generating a PDF remains Phase 19, still unbuilt.
   purchase-order file, is also unbuilt.
 
 ## History
+- 2026-09-17: Confirming a shop order requires payment terms as well as the
+  expected delivery date, and says which is missing — on
+  `feature/confirm-requires-delivery-and-terms`, merged to `main` and pushed. Until now
+  Confirm sat greyed out with "Locked — set an expected delivery date" and
+  payment terms could be left blank. Confirm is now pressable once the order
+  is received and the totals agree; pressed with either field empty it shows
+  "Set an expected delivery date." / "Enter the payment terms." under the
+  field (linked by `aria-describedby`, `aria-invalid` set), a red line under
+  the buttons, and focuses the first empty field, sending nothing.
+  `confirmWebOrder` refuses blank or whitespace-only terms with "Payment terms
+  are required."; uploaded purchase orders are unaffected (`confirm.test.ts`
+  passes unchanged). Decline now returns to /purchase-orders rather than the
+  "From the shop" chip, which holds confirmed orders only since Phase 46.
+  Driven on development with a received fixture order: untouched form no red;
+  Confirm with both empty → both messages, both inputs invalid, focus on the
+  date; date filled → its message cleared, next press focused terms;
+  whitespace terms refused; zero Server Action requests while blocked, one on
+  the real confirm, which stored "30 days" and 2 Oct 2026. Fixture, purchase
+  order, document, R2 object (NotFound), client, two login attempts (one left
+  by the badge screenshots) deleted by id; counts at baseline, login attempts
+  68. 1178/1178 tests, `tsc`, lint and build clean. Not verified on production.
 - 2026-09-17: Phase 46 — the review queue, and its count in the sidebar —
   built, driven and merged from `feature/po-needs-review-section` (details under Status
   above). Everything waiting on the team moved from the purchase-order table

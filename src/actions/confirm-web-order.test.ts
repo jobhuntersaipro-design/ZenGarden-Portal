@@ -74,7 +74,8 @@ const draft = (over: Record<string, unknown> = {}) =>
     buyerId: "b1",
     poDate: "2026-09-10",
     currency: "MYR",
-    paymentTerms: null,
+    // Required to confirm a shop order since 2026-09-17, like the date.
+    paymentTerms: "30 days",
     lineItems: [line()],
     subtotal: "676.50",
     tax: "0.00",
@@ -266,6 +267,23 @@ describe("confirmWebOrder", () => {
     });
     expect(writePurchaseOrder).not.toHaveBeenCalled();
   });
+
+  /**
+   * Asked for on 2026-09-17: the team settles the terms at confirm, as it does
+   * the date, and the buyer's document reads "—" until it does. The form shows
+   * the error under the field; this is the gate a direct call meets.
+   */
+  it.each([null, "", "   "])(
+    "refuses to confirm a shop order with no payment terms (%j)",
+    async (paymentTerms) => {
+      const result = await confirmWebOrder("wo1", draft({ paymentTerms }), OPTIONS);
+      expect(result).toEqual({
+        success: false,
+        error: "Payment terms are required.",
+      });
+      expect(writePurchaseOrder).not.toHaveBeenCalled();
+    },
+  );
 
   it("refuses a delivery date that is not a calendar day", async () => {
     const result = await confirmWebOrder("wo1", draft(), {
