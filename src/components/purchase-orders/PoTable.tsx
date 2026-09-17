@@ -8,10 +8,12 @@ import {
   StatusBadge,
   type IntakeStatus,
 } from "@/components/portal/StatusBadge";
+import { DeletePoDialog } from "@/components/purchase-orders/DeletePoDialog";
 import { DeleteUploadButton } from "@/components/purchase-orders/DeleteUploadButton";
+import { DeleteWebOrderDialog } from "@/components/purchase-orders/DeleteWebOrderDialog";
 import { PersonChip } from "@/components/ui/person";
 import { useTableSort } from "@/hooks/useTableSort";
-import { formatDate } from "@/lib/dates";
+import { TIME_ZONE, formatDate } from "@/lib/dates";
 import { formatMYR } from "@/lib/money";
 import type { PoStage } from "@/generated/prisma/enums";
 import type { SortDirection } from "@/lib/queries/pagination";
@@ -55,12 +57,18 @@ export function PoTable({
   page,
   size,
   total,
+  canDeleteOrders = false,
 }: {
   rows: PoRow[];
   sort: { key: string; dir: SortDirection };
   page: number;
   size: number;
   total: number;
+  /**
+   * Super admin only: confirmed purchase orders and shop orders. Only
+   * /purchase-orders passes it; the dashboard and buyer tables stay read-only.
+   */
+  canDeleteOrders?: boolean;
 }) {
   const onSortChange = useTableSort();
 
@@ -202,12 +210,47 @@ export function PoTable({
       // Nothing to sort, and nothing to say in a card either: the card's own
       // title already links to the row.
       sortable: false,
-      cell: (row) =>
-        // Uploads only. A confirmed order is a sales record and keeps the
-        // heavier super-admin delete on its detail page.
-        row.kind === "DRAFT" ? (
-          <DeleteUploadButton extractionId={row.id} fileName={row.poNumber} />
-        ) : null,
+      cell: (row) => {
+        // Anyone may clear an upload that never became an order. A purchase
+        // order is a sales record and a shop order is a buyer's, so both need
+        // a super admin and the reference typed back.
+        if (row.kind === "DRAFT") {
+          return (
+            <DeleteUploadButton extractionId={row.id} fileName={row.poNumber} />
+          );
+        }
+        if (!canDeleteOrders) return null;
+        if (row.kind === "WEB") {
+          return (
+            <DeleteWebOrderDialog
+              webOrderId={row.id}
+              reference={row.poNumber}
+              lineCount={row.itemCount}
+            />
+          );
+        }
+        return (
+          <DeletePoDialog
+            variant="row"
+            poId={row.id}
+            poNumber={row.poNumber}
+            lineItemCount={row.itemCount}
+            monthLabel={
+              row.poDate
+                ? new Date(row.poDate).toLocaleDateString("en-GB", {
+                    month: "long",
+                    year: "numeric",
+                    timeZone: TIME_ZONE,
+                  })
+                : "this order's month"
+            }
+            // Revisions number from their predecessor plus one
+            // (writePurchaseOrder), and the list shows the latest alone.
+            supersedesRevision={row.revision > 1 ? row.revision - 1 : null}
+            fromShop={row.source === "web"}
+          />
+        );
+      },
     },
   ];
 

@@ -1,9 +1,9 @@
 "use client";
 
 import { useState } from "react";
-import { Trash2 } from "lucide-react";
 import { toast } from "sonner";
 import { deleteUpload } from "@/actions/purchase-orders";
+import { RowDeleteButton } from "@/components/purchase-orders/RowDeleteButton";
 import { Button } from "@/components/ui/button";
 import {
   Dialog,
@@ -18,7 +18,7 @@ import {
  * Only ever rendered on an upload that never became an order. No typed
  * confirmation: an upload is work in progress, not a sales record, and the
  * file can be uploaded again. A confirmed order keeps the heavier,
- * super-admin-only delete on its detail page.
+ * super-admin-only delete in `DeletePoDialog`.
  */
 export function DeleteUploadButton({
   extractionId,
@@ -32,21 +32,10 @@ export function DeleteUploadButton({
 
   return (
     <>
-      <button
-        type="button"
-        aria-label={`Delete upload ${fileName}`}
-        title={`Delete upload ${fileName}`}
-        onClick={(event) => {
-          // The whole row is a link to the review screen; deleting must not
-          // navigate there on the way.
-          event.preventDefault();
-          event.stopPropagation();
-          setOpen(true);
-        }}
-        className="rounded-sm p-xxs text-ink-tertiary hover:text-accent-red focus-visible:outline-2 focus-visible:outline-focus"
-      >
-        <Trash2 className="size-4" aria-hidden />
-      </button>
+      <RowDeleteButton
+        label={`Delete upload ${fileName}`}
+        onOpen={() => setOpen(true)}
+      />
 
       <Dialog open={open} onOpenChange={setOpen}>
         <DialogContent>

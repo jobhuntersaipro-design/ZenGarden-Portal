@@ -1,6 +1,85 @@
-# Current Feature: The purchase-order file
+# Current Feature: The shop backlog on top, and deleting from the list
 
 ## Status
+
+**Phase 43 — built and driven in a browser on
+`feature/po-list-backlog-and-delete`, merged to `main` and pushed** (2026-09-17). Asked
+for as: "When buyer sent a PO through shop, the PO should show up in admin
+purchase-orders table even when its not confirm yet. It should marked as Needs
+Review. Also, allow admin to delete the PO from purchase-orders table".
+
+**Submitted shop orders were already in the list as Needs review — on its last
+page.** An unconfirmed row has no PO date, and the default sort is PO date
+descending `NULLS LAST`, so a shop order sent this morning filed behind all 400
+confirmed orders. Decisions the user made:
+
+- **Pin the backlog to the top** (not "use the order date"): on a PO-date sort,
+  in both directions, `sortStatus` orders first, so shop orders and scan drafts
+  lead and the PO date column still reads `—`. Other sorts are untouched.
+- **Delete is super admin only**, from a trash icon in the table's last column,
+  with the reference typed back. A member keeps only the existing scan-upload
+  delete. Dashboard and buyer-page tables stay read-only (`canDeleteOrders`).
+- **Deleting an unconfirmed shop order removes it without emailing the buyer**:
+  the order, its lines, its generated `Document` and the R2 object
+  (`deleteWebOrder`, guarded on SUBMITTED/RECEIVED). The dialog points at
+  Decline for when the buyer should know.
+- A confirmed purchase order uses the existing `deletePurchaseOrder` through
+  `DeletePoDialog`'s new `row` variant; a shop-sourced one says "The buyer's
+  order goes back to the queue as Needs review."
+
+**A pre-existing defect found in the browser and fixed:** `deletePurchaseOrder`
+deleted the purchase order before resetting its web order. The FK is
+`ON DELETE SET NULL`, so the reset's `where: { purchaseOrderId }` matched
+nothing and the shop order was left **CONFIRMED pointing at nothing**, in no
+chip at all. The reset now runs first, and a test pins the call order (watched
+failing before the fix). The mocked unit tests could never see it.
+
+## Verified, with the figures
+
+On the development database, port 3001, as Aisha (super admin), with two
+fixture shop orders (`W-2609-09901` / `-09902`) under a throwaway `CLIENT`.
+
+- **Order:** page 1 read the two shop orders first ("Needs review · Shop"),
+  then the six scan drafts, then confirmed orders; summary 408.
+- **Confirmed delete from the table:** `-09902` received and confirmed (PDF
+  stored), then deleted from its row: the button stayed disabled empty and for
+  `W-2609-0990`, enabled for ` w-2609-09902 `, the URL stayed on the list. The
+  first run (pre-fix) stranded the web order as CONFIRMED with
+  `purchaseOrderId null` and the count fell to 407; after the fix the same
+  journey held **408** and the row returned as Needs review, `status
+  SUBMITTED`, `receivedById null`.
+- **Shop-order delete:** disabled for the *other* order's reference; afterwards
+  407 rows, Needs review chip 4, and the web order, its lines and its
+  `Document` read `null`/0, R2 `HeadObject` **NotFound**.
+- **A member** (Aisha demoted, fresh sign-in, restored after) saw no delete on
+  shop or confirmed rows and kept "Delete upload" on the six drafts.
+- **Sweep:** `/purchase-orders` at 390 / 768 / 1440, `scrollWidth ===
+  innerWidth` on all three; the trash icon measures 44×44 at 390, 24×24 above.
+- **Cleanup by id:** the fixture web orders, the client and one login attempt;
+  counts back to users 2, `CLIENT` 0, web orders 0, POs 400, documents 406,
+  line items 1606, stage events 2323, audits 5, login attempts 68, products
+  308; Aisha read back `SUPER_ADMIN`.
+- **1168/1168 tests, `tsc`, lint (same 2 warnings) and `npm run build` clean.**
+
+## Not verified
+
+- **Anything on production.** Not deployed, and a read of production's shop
+  orders was refused by the permission classifier, so production's
+  `W-2609-00001` being on its last page is inferred from the code.
+- **Deleting a shop order that holds no PDF**, live (unit test only), and the
+  R2-failure path (unit test only).
+- **Deleting from a PO's own page** after the copy change (same component).
+
+## Notes
+
+- **Any shop order confirmed and later deleted on production before this
+  deploys is stranded** as CONFIRMED with no purchase order. Worth a read-only
+  query there: `WebOrder` where `status = 'CONFIRMED' AND "purchaseOrderId" IS
+  NULL`.
+- Within the backlog, rows tie-break on `poNumber` ascending, so shop orders
+  (`W-…`) lead scan drafts (`scan-…`), oldest reference first.
+
+## Previous phase
 
 **Phase 42 — the purchase-order file — built and driven in a browser on
 `feature/po-document-revamp`, not yet committed** (2026-09-17). Asked for as:
@@ -862,6 +941,12 @@ file: generating a PDF remains Phase 19, still unbuilt.
   purchase-order file, is also unbuilt.
 
 ## History
+- 2026-09-17: Phase 43 — the shop backlog on top, and deleting from the list —
+  built, driven and merged from `feature/po-list-backlog-and-delete` (details under
+  Status above). A PO-date sort pins unconfirmed rows first; super admins
+  delete confirmed and shop orders from the table with the reference typed
+  back. Fixed `deletePurchaseOrder` stranding a confirmed shop order as
+  CONFIRMED with no purchase order. No migration.
 - 2026-09-17: Phase 42 — the purchase-order file — built and driven on
   `feature/po-document-revamp` (details under Status above). The document names
   ZEN GARDEN TRADING (M) SDN BHD, captions each line with its variant and

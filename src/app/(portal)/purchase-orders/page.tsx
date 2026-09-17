@@ -1,9 +1,11 @@
 import type { Metadata } from "next";
+import { Role } from "@/generated/prisma/enums";
 import { PageHeader } from "@/components/portal/PageHeader";
 import { UpdatingHint } from "@/components/portal/UpdatingHint";
 import { UploadPoButton } from "@/components/portal/UploadPoButton";
 import { PoFilters, type StatusChip } from "@/components/purchase-orders/PoFilters";
 import { PoTable, type PoRow } from "@/components/purchase-orders/PoTable";
+import { getSessionUser } from "@/lib/auth-guards";
 import { formatMYR } from "@/lib/money";
 import {
   firstParam,
@@ -78,7 +80,10 @@ export default async function PurchaseOrdersPage({
     take,
     skip,
   );
-  const { buyers, uploaders } = await listFilterOptions();
+  const [{ buyers, uploaders }, user] = await Promise.all([
+    listFilterOptions(),
+    getSessionUser(),
+  ]);
 
   // Money and dates cross to the client as strings (00-master.md §4).
   const clientRows: PoRow[] = rows.map((row) => ({
@@ -117,6 +122,7 @@ export default async function PurchaseOrdersPage({
         page={page}
         size={size}
         total={total}
+        canDeleteOrders={user?.role === Role.SUPER_ADMIN}
       />
     </>
   );

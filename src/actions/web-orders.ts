@@ -5,8 +5,13 @@ import { revalidatePath } from "next/cache";
 import { Prisma } from "@/generated/prisma/client";
 import { WebOrderStatus } from "@/generated/prisma/enums";
 import { writePurchaseOrder } from "@/actions/purchase-orders";
-import { UnauthorizedError, requireUser } from "@/lib/auth-guards";
+import {
+  UnauthorizedError,
+  requireSuperAdmin,
+  requireUser,
+} from "@/lib/auth-guards";
 import { prisma } from "@/lib/prisma";
+import { deleteObject, isPendingKey } from "@/lib/r2";
 import { shopPath } from "@/lib/shop-routes";
 import { attachWebOrderDocument } from "@/lib/web-order-document";
 import {
@@ -45,6 +50,11 @@ async function guard() {
     throw cause;
   }
 }
+
+const deleteWebOrderSchema = z.object({
+  id: z.string().min(1),
+  typedReference: z.string().min(1),
+});
 
 const declineSchema = z.object({
   reason: z.string().trim().min(1, "Say why, so the buyer knows").max(500),
@@ -380,5 +390,90 @@ export async function declineWebOrder(
   } catch (cause) {
     console.error("[web-orders] declineWebOrder", cause);
     return { success: false, error: "We couldn't decline that order." };
+  }
+}
+
+/**
+ * Hard delete of a shop order nobody has confirmed yet, super admin only.
+ *
+ * The order, its lines and the purchase-order PDF generated for it all go,
+ * and the buyer is not told: it leaves their My orders too. Declining is the
+ * way to turn an order down with a reason the buyer sees; this is for
+ * clearing one that should never have been in the queue.
+ *
+ * A confirmed order is refused. It is a sales record now, and deleting it is
+ * `deletePurchaseOrder`'s job, which returns this row to the queue instead.
+ */
+export async function deleteWebOrder(input: {
+  id: string;
+  typedReference: string;
+}): Promise<ActionResult> {
+  const parsed = deleteWebOrderSchema.safeParse(input);
+  if (!parsed.success) {
+    return { success: false, error: "Type the order reference to confirm." };
+  }
+
+  try {
+    await requireSuperAdmin();
+
+    const order = await prisma.webOrder.findUnique({
+      where: { id: parsed.data.id },
+      select: {
+        reference: true,
+        documentId: true,
+        document: { select: { r2Key: true } },
+      },
+    });
+    if (!order) return { success: false, error: "That order no longer exists." };
+
+    if (
+      parsed.data.typedReference.trim().toLowerCase() !==
+      order.reference.trim().toLowerCase()
+    ) {
+      return { success: false, error: "That is not the order reference." };
+    }
+
+    const deleted = await prisma.$transaction(async (tx) => {
+      // Guarded on the order still being open, the same shape as
+      // declineWebOrder: a confirm committing between the read above and this
+      // write must not have its web order pulled out from under it.
+      const { count } = await tx.webOrder.deleteMany({
+        where: {
+          id: parsed.data.id,
+          status: { in: [WebOrderStatus.SUBMITTED, WebOrderStatus.RECEIVED] },
+        },
+      });
+      if (count === 0) return false;
+      // The relation is SetNull, so the file row would otherwise outlive the
+      // order it was drawn for, attached to nothing.
+      if (order.documentId) {
+        await tx.document.delete({ where: { id: order.documentId } });
+      }
+      return true;
+    });
+    if (!deleted) {
+      return { success: false, error: "This one has already been reviewed." };
+    }
+
+    // After the rows, and never fatal — the same trade as deleteUpload.
+    const r2Key = order.document?.r2Key;
+    if (r2Key && !isPendingKey(r2Key)) {
+      try {
+        await deleteObject(r2Key);
+      } catch (cause) {
+        console.error("[web-orders] deleteWebOrder could not remove the object", cause);
+      }
+    }
+
+    revalidatePath("/purchase-orders");
+    revalidatePath("/", "layout");
+    revalidatePath(shopPath.orders());
+    return { success: true, data: undefined };
+  } catch (cause) {
+    if (cause instanceof UnauthorizedError) {
+      return { success: false, error: cause.message };
+    }
+    console.error("[web-orders] deleteWebOrder", cause);
+    return { success: false, error: "We could not delete that order." };
   }
 }
