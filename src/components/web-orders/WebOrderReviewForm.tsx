@@ -98,7 +98,13 @@ export function WebOrderReviewForm({ order }: { order: OpsWebOrder }) {
   // Both are settled by the team at confirm and printed on the buyer's
   // purchase order, so neither may be left blank. The server says the same.
   const missing = {
-    deliveryDate: deliveryDate ? null : "Set an expected delivery date.",
+    // The picker greys out days before the PO date, but a date can still be
+    // typed, and the PO date can move after one was picked (2026-09-17).
+    deliveryDate: !deliveryDate
+      ? "Set an expected delivery date."
+      : draft.poDate && deliveryDate < draft.poDate
+        ? "Expected delivery can't be before the PO date."
+        : null,
     paymentTerms: draft.paymentTerms?.trim() ? null : "Enter the payment terms.",
   };
   const firstMissing = (Object.keys(missing) as (keyof typeof missing)[]).find(
@@ -131,6 +137,7 @@ export function WebOrderReviewForm({ order }: { order: OpsWebOrder }) {
           label="Expected delivery"
           type="date"
           value={deliveryDate}
+          min={draft.poDate || undefined}
           onChange={setDeliveryDate}
           error={attempted ? (missing.deliveryDate ?? undefined) : undefined}
         />
@@ -201,7 +208,7 @@ export function WebOrderReviewForm({ order }: { order: OpsWebOrder }) {
           </p>
         ) : attempted && firstMissing ? (
           <p role="alert" className="text-[length:var(--text-caption)] text-accent-red">
-            Fill in the expected delivery date and payment terms to confirm.
+            Check the expected delivery date and payment terms to confirm.
           </p>
         ) : deliveryDate && deliveryDate < todayISO() ? (
           // Allowed, not blocked: backdating a date the goods already went

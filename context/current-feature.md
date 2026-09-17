@@ -1161,6 +1161,28 @@ file: generating a PDF remains Phase 19, still unbuilt.
   purchase-order file, is also unbuilt.
 
 ## History
+- 2026-09-17: Expected delivery cannot be before the PO date when confirming a
+  shop order, and on the confirmed-PO edit sheet — merged from
+  `feature/delivery-not-before-po-date` and pushed.
+  The delivery date input's `min` is the PO date (so the picker greys out
+  earlier days, following the PO date when it changes), `Field` gained a `min`
+  prop, a typed or stranded earlier date shows "Expected delivery can't be
+  before the PO date." under the field on Confirm, and `confirmWebOrder`
+  refuses it with the same words; the same day is allowed. Driven on
+  development: min read 2026-09-17, then 2026-09-20 after the PO date moved;
+  a typed 16 Sep was refused, a PO date moved past an 18 Sep delivery was
+  refused, zero Server Action requests while invalid, and 20 Sep on a 20 Sep
+  PO date confirmed. The picker's greyed days follow the browser's handling
+  of `min` and were not screenshotted. **The edit sheet too**, at the user's
+  "do it all": its delivery input's `min` follows the PO date, and
+  `purchaseOrderPatchSchema` refuses an earlier delivery (a cleared one is
+  still allowed) — checked first that no order on development holds one (0 of
+  400 with a date), so no existing record is locked out. Driven on seeded
+  `PO-2026-0025`: min 2026-01-30, a typed 29 Jan toasted the error and kept
+  the sheet open, min moved to 2026-02-01 with the PO date, and the row read
+  back unchanged (same `updatedAt`). Fixtures and sign-ins deleted by id;
+  counts at baseline. 1175/1175 tests, `tsc`, lint and build clean. Not
+  verified on production, where existing orders were not checked.
 - 2026-09-17: The shop-order review drops its line inputs and total — on
   `feature/review-without-line-items`, merged to `main` and pushed. Asked for as "remove
   the part below tax, the line item below tax". `/web-orders/[id]`'s confirm

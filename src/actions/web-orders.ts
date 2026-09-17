@@ -99,6 +99,11 @@ export async function confirmWebOrder(
   if (!data.paymentTerms?.trim()) {
     return { success: false, error: "Payment terms are required." };
   }
+  // Goods cannot arrive before they were ordered (2026-09-17). Both are
+  // validated YYYY-MM-DD strings, so they compare as calendar days.
+  if (deliveryDate < data.poDate) {
+    return { success: false, error: "Expected delivery can't be before the PO date." };
+  }
 
   const totals = checkTotals(data);
   if (!totals.matches && totalsAcknowledged !== true) {
