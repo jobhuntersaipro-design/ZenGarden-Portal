@@ -1161,6 +1161,21 @@ file: generating a PDF remains Phase 19, still unbuilt.
   purchase-order file, is also unbuilt.
 
 ## History
+- 2026-09-17: The shop-order review drops its line inputs and total — on
+  `feature/review-without-line-items`, merged to `main` and pushed. Asked for as "remove
+  the part below tax, the line item below tax". `/web-orders/[id]`'s confirm
+  form now ends at Tax, then Confirm order and Decline; the confirmed purchase
+  order carries the buyer's lines exactly as sent, shown with their total in
+  the left pane. The user first chose both review screens, then — told that on
+  `/review/[id]` the line items sit above the totals and carry each line's
+  product match, without which Confirm & save cannot unlock and a misread
+  figure cannot be fixed — chose to leave uploaded purchase orders unchanged.
+  Driven on development: the form's inputs read PO number, PO date, Expected
+  delivery, Payment terms and Tax only, with no "Order total"; confirming a
+  two-line fixture stored 3 × 157.50 = 472.50 and 4 × 236.25 = 945.00, total
+  1,417.50, on the same two products. Fixture, purchase order, document, R2
+  object (NotFound), client and sign-in deleted by id; counts at baseline.
+  1170/1170 tests, `tsc`, lint and build clean. Not verified on production.
 - 2026-09-17: The Receive step removed — merged from
   `feature/remove-receive-step` and pushed. A shop order goes straight from
   sent to confirmed: `/web-orders/[id]` shows Confirm order and Decline only,

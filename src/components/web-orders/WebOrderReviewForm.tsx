@@ -6,12 +6,10 @@ import { toast } from "sonner";
 import { Field } from "@/components/review/Field";
 import { TotalsBanner } from "@/components/review/TotalsBanner";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { draftReducer } from "@/components/review/draft-reducer";
 import { confirmWebOrder, declineWebOrder } from "@/actions/web-orders";
 import { todayISO } from "@/lib/dates";
-import { formatMYR } from "@/lib/money";
 import { checkTotals, type PoDraft } from "@/lib/validation/purchase-orders";
 // The browser entry: this is a client component, and the `client` entry
 // drags PrismaClient into the bundle.
@@ -153,57 +151,9 @@ export function WebOrderReviewForm({ order }: { order: OpsWebOrder }) {
         />
       </div>
 
-      <ul className="mt-md flex flex-col gap-xs">
-        {draft.lineItems.map((line, index) => (
-          <li key={index} className="flex flex-wrap items-center gap-xs">
-            <span
-              className="min-w-0 flex-1 truncate text-[length:var(--text-body-sm)] text-ink"
-              title={line.description}
-            >
-              {line.description}
-            </span>
-            <Input
-              aria-label={`Quantity, line ${index + 1}`}
-              value={line.quantity}
-              className="w-20"
-              onChange={(event) =>
-                dispatch({
-                  type: "line",
-                  index,
-                  field: "quantity",
-                  value: event.target.value,
-                })
-              }
-            />
-            <Input
-              aria-label={`Unit price, line ${index + 1}`}
-              value={line.unitPrice}
-              className="w-28"
-              onChange={(event) =>
-                dispatch({
-                  type: "line",
-                  index,
-                  field: "unitPrice",
-                  value: event.target.value,
-                })
-              }
-            />
-            <span className="w-28 text-right text-[length:var(--text-body-sm)] tabular-nums text-ink">
-              {formatMYR(Number(line.amount))}
-            </span>
-          </li>
-        ))}
-      </ul>
-
-      <div className="mt-md flex items-baseline justify-between gap-sm border-t border-hairline pt-md">
-        <span className="text-[length:var(--text-body-sm)] text-ink-secondary">
-          Order total
-        </span>
-        <span className="text-[length:var(--text-heading-sm)] font-semibold tabular-nums text-ink">
-          {formatMYR(Number(submitted.total))}
-        </span>
-      </div>
-
+      {/* No line inputs and no total below Tax (2026-09-17, at the user's
+          request): the confirmed purchase order carries the lines exactly as
+          the buyer sent them, shown with their total in the left pane. */}
       <div className="mt-md">
         <TotalsBanner
           totals={totals}
