@@ -1,7 +1,6 @@
 import { Layout } from "@/emails/Layout";
 import { ButtonLink, Heading, Paragraph } from "@/emails/parts";
 import { PoFooter, PoMetaLine, PoPreview, PoSummary } from "@/emails/po-parts";
-import { formatMYR } from "@/lib/money";
 import type { PoDocumentData } from "@/lib/purchase-order-document";
 
 export type WebOrderDeclinedProps = {
@@ -42,15 +41,7 @@ export function WebOrderDeclined({
   return (
     <Layout>
       <Heading>{`About your order ${reference}`}</Heading>
-      {document ? (
-        <PoMetaLine
-          reference={reference}
-          lineCount={document.lines.length}
-          total={formatMYR(document.total)}
-          buyerReference={document.poNumber}
-          audience="buyer"
-        />
-      ) : null}
+      <PoMetaLine reference={reference} />
       <Paragraph>
         We are sorry — we cannot take this order on as it stands.
       </Paragraph>

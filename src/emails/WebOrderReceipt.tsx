@@ -5,9 +5,6 @@ import type { PoDocumentData } from "@/lib/purchase-order-document";
 
 export type WebOrderReceiptProps = {
   reference: string;
-  buyerReference: string | null;
-  lineCount: number;
-  total: string;
   orderUrl: string;
   /**
    * Whether the purchase order is on this email (Phase 37). Said only when
@@ -31,9 +28,6 @@ export type WebOrderReceiptProps = {
  */
 export function WebOrderReceipt({
   reference,
-  buyerReference,
-  lineCount,
-  total,
   orderUrl,
   attached = false,
   document = null,
@@ -42,13 +36,7 @@ export function WebOrderReceipt({
   return (
     <Layout>
       <Heading>{`We have your order ${reference}`}</Heading>
-      <PoMetaLine
-        reference={reference}
-        lineCount={lineCount}
-        total={total}
-        buyerReference={buyerReference}
-        audience="buyer"
-      />
+      <PoMetaLine reference={reference} />
       {attached ? (
         <Paragraph>Your purchase order is attached to this email.</Paragraph>
       ) : null}

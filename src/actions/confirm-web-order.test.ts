@@ -174,14 +174,18 @@ describe("confirmWebOrder — Order ID is never the PO number", () => {
     expect(result.success).toBe(true);
   });
 
-  it("names both in the email, each for what it is", async () => {
+  /**
+   * The line under the heading names the Order ID and nothing else
+   * (2026-09-18, at the user's request). The buyer's PO number is printed in
+   * the order summary, labelled "PO number" — see `po-email.test.tsx`.
+   */
+  it("names the Order ID in the email for what it is", async () => {
     await confirmWebOrder("wo1", draft(), OPTIONS);
     await flushAfter();
     const body = mailBody();
     expect(body).toContain("Order ID");
     expect(body).toContain("W-2609-00001");
-    expect(body).toContain("your PO number");
-    expect(body).toContain("ACME-PO-771");
+    expect(body).not.toContain("your PO number");
     expect(body).not.toContain("our reference");
   });
 });

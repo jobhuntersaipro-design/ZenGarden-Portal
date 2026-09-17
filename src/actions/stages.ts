@@ -246,9 +246,7 @@ export async function updatePurchaseOrder(
           select: {
             id: true,
             reference: true,
-            buyerReference: true,
             placedBy: { select: { email: true } },
-            _count: { select: { lines: true } },
           },
         },
       },
@@ -320,9 +318,7 @@ export async function updatePurchaseOrder(
           attachments: mail.attachments,
           react: WebOrderConfirmed({
             reference: order.reference,
-            buyerReference: order.buyerReference,
             expectedDelivery: when,
-            lineCount: order._count.lines,
             total: formatMYR(po.total.toNumber()),
             orderUrl: `${env.SHOP_URL ?? env.APP_URL}/orders/${poId}`,
             updated: true,

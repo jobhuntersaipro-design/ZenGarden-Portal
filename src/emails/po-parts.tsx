@@ -44,29 +44,13 @@ const label: CSSProperties = {
   color: inkTertiary,
 };
 
-const plural = (count: number, word: string) =>
-  `${count} ${word}${count === 1 ? "" : "s"}`;
-
 /**
- * "Order ID W-2609-00015 · 2 lines · RM 1,234.50 · your PO number ACME-771" —
- * under the heading, so the order is recognisable before any scrolling. Both
- * identifiers are named for what they are (2026-09-17: the Order ID is never
- * the PO number); the buyer's own only when they gave one.
+ * "Order ID W-2609-00015" under the heading, named for what it is (2026-09-17:
+ * the Order ID is never the PO number). Only the Order ID since 2026-09-18, at
+ * the user's request: the lines, total and the buyer's PO number are all in
+ * the summary below.
  */
-export function PoMetaLine({
-  reference,
-  lineCount,
-  total,
-  buyerReference,
-  audience,
-}: {
-  reference: string;
-  lineCount: number;
-  total: string;
-  buyerReference: string | null;
-  audience: "buyer" | "staff";
-}) {
-  const whose = audience === "buyer" ? "your" : "their";
+export function PoMetaLine({ reference }: { reference: string }) {
   return (
     <p
       style={{
@@ -79,13 +63,6 @@ export function PoMetaLine({
     >
       {"Order ID "}
       <span style={{ fontFamily: monoFont, color: ink, whiteSpace: "nowrap" }}>{reference}</span>
-      {` · ${plural(lineCount, "line")} · ${total}`}
-      {buyerReference ? ` · ${whose} PO number ` : ""}
-      {buyerReference ? (
-        <span style={{ fontFamily: monoFont, color: ink, whiteSpace: "nowrap" }}>
-          {buyerReference}
-        </span>
-      ) : null}
     </p>
   );
 }
