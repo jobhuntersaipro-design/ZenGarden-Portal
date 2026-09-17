@@ -17,6 +17,7 @@ const line = (over: Partial<CartLine> = {}): CartLine => ({
   variant: "Goat's Milk",
   market: "Vietnam",
   packSize: 6,
+  cartonsPerPallet: 52,
   unit: "carton",
   cartons: 3,
   unitPrice: "225.50",
@@ -93,23 +94,42 @@ describe("buildPoDocument", () => {
   it("numbers the lines from one and carries the pack caption", () => {
     const doc = build();
     expect(doc.lines[0].position).toBe(1);
-    expect(doc.lines[0].packCaption).toBe("6 per carton · 18 pieces");
+    // Pieces per carton, then cartons per pallet, then the line's pieces.
+    expect(doc.lines[0].packCaption).toBe(
+      "6 pieces/carton · 52 cartons/pallet · 18 pieces",
+    );
   });
 
   it("groups the thousands in the pack caption", () => {
-    const doc = build({ lines: [line({ packSize: 1200, cartons: 3, pieces: 3600 })] });
-    expect(doc.lines[0].packCaption).toBe("1,200 per carton · 3,600 pieces");
+    const doc = build({
+      lines: [line({ packSize: 1200, cartonsPerPallet: 1500, cartons: 3, pieces: 3600 })],
+    });
+    expect(doc.lines[0].packCaption).toBe(
+      "1,200 pieces/carton · 1,500 cartons/pallet · 3,600 pieces",
+    );
   });
 
-  it("takes the variant off the name and prints it with the market underneath", () => {
+  it("leaves the pallet figure out where the product has none", () => {
+    const doc = build({ lines: [line({ cartonsPerPallet: null })] });
+    expect(doc.lines[0].packCaption).toBe("6 pieces/carton · 18 pieces");
+  });
+
+  it("writes carton in lower case whatever the line's unit says", () => {
+    const doc = build({ lines: [line({ unit: "Carton" })] });
+    expect(doc.lines[0].packCaption).toBe(
+      "6 pieces/carton · 52 cartons/pallet · 18 pieces",
+    );
+  });
+
+  it("takes the variant off the name and prints it with the market underneath, unlabelled", () => {
     const doc = build();
     expect(doc.lines[0].description).toBe("ZEN 2.1L");
-    expect(doc.lines[0].detailCaption).toBe("Variant: Goat's Milk · Market: Vietnam");
+    expect(doc.lines[0].detailCaption).toBe("Goat's Milk · Vietnam");
   });
 
   it("prints only what the product knows of its variant and market", () => {
     expect(build({ lines: [line({ market: null })] }).lines[0].detailCaption).toBe(
-      "Variant: Goat's Milk",
+      "Goat's Milk",
     );
     const bare = build({ lines: [line({ variant: null, market: null })] }).lines[0];
     expect(bare.description).toBe("ZEN 2.1L — Goat's Milk");
@@ -118,7 +138,7 @@ describe("buildPoDocument", () => {
 
   it("leaves the pieces off a line whose pack size is unknown", () => {
     const doc = build({ lines: [line({ packSize: null, pieces: null })] });
-    expect(doc.lines[0].packCaption).toBe("per carton");
+    expect(doc.lines[0].packCaption).toBe("52 cartons/pallet");
   });
 
   it("joins each party's contact, and omits it when there is nothing to join", () => {
@@ -245,7 +265,7 @@ describe("buildPoDocumentFromOrder", () => {
       lines: [storedLine({ variant: "Goat's Milk", market: "Iraq" })],
     }).lines[0];
     expect(linked.description).toBe("ZEN 2.1L");
-    expect(linked.detailCaption).toBe("Variant: Goat's Milk · Market: Iraq");
+    expect(linked.detailCaption).toBe("Goat's Milk · Iraq");
 
     const scanned = fromOrder({ lines: [storedLine()] }).lines[0];
     expect(scanned.description).toBe("ZEN 2.1L — Goat's Milk");

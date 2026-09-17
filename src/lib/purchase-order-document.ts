@@ -5,7 +5,6 @@
 // Only `Decimal` is wanted here, and the browser entry carries it. The same
 // import is already used by the shop's product page.
 import { Prisma } from "@/generated/prisma/browser";
-import { unitLabel } from "@/lib/cartons";
 import { formatGrouped } from "@/lib/money";
 import { groupName } from "@/lib/product-groups";
 import type { CartLine } from "@/lib/queries/cart";
@@ -43,9 +42,12 @@ export type PoDocumentLine = {
   sku: string;
   /** The product's name with its own " — Variant" suffix taken off. */
   description: string;
-  /** "Variant: Goat's Milk · Market: Vietnam". Empty where neither is known. */
+  /** "Goat's Milk · Vietnam". Empty where neither is known. */
   detailCaption: string;
-  /** "6 per carton · 1,200 pieces", or just the pack where pieces are unknown. */
+  /**
+   * "6 pieces/carton · 52 cartons/pallet · 1,200 pieces". A figure the
+   * product does not carry is left out rather than printed as a blank.
+   */
   packCaption: string;
   cartons: number;
   unitPrice: string;
@@ -68,9 +70,9 @@ export type PoDocumentData = {
   orderDate: string;
   /**
    * The day the team committed to (Phase 38). Null on a cart and on an order
-   * still waiting, and then the cell is not drawn at all — an empty
-   * "Expected delivery" reads as a promise that has been forgotten rather
-   * than one not yet made.
+   * still waiting, and the cell then reads "—" (Phase 44, at the user's
+   * request — until then it was not drawn at all). The stored PDF is redrawn
+   * when the team confirms, so the date replaces the dash.
    */
   deliveryDate: string | null;
   paymentTerms: string | null;
@@ -96,20 +98,29 @@ const joinContact = (name: string | null, email: string | null): string | null =
 };
 
 /**
- * "6 per carton · 1,200 pieces", grouped the way every figure on the document
- * is. Shared by both builders and by the buyer's order query, so a cart and a
- * stored order caption their pack identically.
+ * "6 pieces/carton · 52 cartons/pallet · 1,200 pieces" (Phase 44), in that
+ * order, grouped the way every figure on the document is. Shared by both
+ * builders and by the buyer's order query, so a cart and a stored order
+ * caption their pack identically.
+ *
+ * "Carton" is written out rather than taken from `unit`: a product's pack size
+ * *is* its pieces per carton, and a scanned line's unit arrives however the
+ * customer typed it ("Carton", "CTN"). A figure the product does not carry is
+ * left out, as a missing market already is.
  */
 export function documentPackCaption(
   packSize: number | null,
   unit: string | null,
   cartons: number,
+  cartonsPerPallet: number | null = null,
 ): string {
   if (!unit) return "";
-  if (packSize === null) return unitLabel(null, unit);
   return [
-    `${formatGrouped(packSize, 0)} per ${unit}`,
-    `${formatGrouped(packSize * cartons, 0)} pieces`,
+    packSize === null ? null : `${formatGrouped(packSize, 0)} pieces/carton`,
+    cartonsPerPallet === null
+      ? null
+      : `${formatGrouped(cartonsPerPallet, 0)} cartons/pallet`,
+    packSize === null ? null : `${formatGrouped(packSize * cartons, 0)} pieces`,
   ]
     .filter(Boolean)
     .join(" · ");
@@ -118,7 +129,8 @@ export function documentPackCaption(
 /**
  * The description cell's two text lines (Phase 42): the name without its
  * variant suffix — the variant has a line of its own now, and printing it
- * twice reads as two products — and "Variant: … · Market: …" under it. A line
+ * twice reads as two products — and "Goat's Milk · Vietnam" under it, without
+ * the "Variant:" and "Market:" labels since Phase 44. A line
  * whose product is unknown (a scanned PO's unmatched row) keeps its printed
  * description and no caption.
  */
@@ -131,12 +143,7 @@ export function describeLine(input: {
   const market = input.market?.trim() || null;
   return {
     description: groupName({ name: input.name, variant }),
-    detailCaption: [
-      variant ? `Variant: ${variant}` : null,
-      market ? `Market: ${market}` : null,
-    ]
-      .filter(Boolean)
-      .join(" · "),
+    detailCaption: [variant, market].filter(Boolean).join(" · "),
   };
 }
 
@@ -171,7 +178,12 @@ export function buildPoDocument(input: {
     position: index + 1,
     sku: line.sku,
     ...describeLine(line),
-    packCaption: documentPackCaption(line.packSize, line.unit, line.cartons),
+    packCaption: documentPackCaption(
+      line.packSize,
+      line.unit,
+      line.cartons,
+      line.cartonsPerPallet,
+    ),
     cartons: line.cartons,
     unitPrice: line.unitPrice,
     amount: line.amount,

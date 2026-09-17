@@ -379,7 +379,13 @@ export async function loadBuyerOrder(
           unitPrice: true,
           amount: true,
           product: {
-            select: { sku: true, packSize: true, variant: true, market: true },
+            select: {
+              sku: true,
+              packSize: true,
+              cartonsPerPallet: true,
+              variant: true,
+              market: true,
+            },
           },
         },
       },
@@ -435,6 +441,7 @@ export async function loadBuyerOrder(
           line.product?.packSize ?? null,
           line.unit,
           Number(line.quantity),
+          line.product?.cartonsPerPallet ?? null,
         ),
         quantity: line.quantity.toFixed(0),
         unit: line.unit,
@@ -476,7 +483,13 @@ export async function loadBuyerOrder(
           unitPrice: true,
           amount: true,
           product: {
-            select: { sku: true, name: true, variant: true, market: true },
+            select: {
+              sku: true,
+              name: true,
+              variant: true,
+              market: true,
+              cartonsPerPallet: true,
+            },
           },
         },
       },
@@ -517,7 +530,14 @@ export async function loadBuyerOrder(
       description: line.product.name,
       variant: line.product.variant,
       market: line.product.market,
-      packCaption: packCaptionFor(line.packSize, line.unit, line.cartons),
+      packCaption: packCaptionFor(
+        line.packSize,
+        line.unit,
+        line.cartons,
+        // Not snapshotted like the pack size: a pallet figure is a shipping
+        // fact about the product, not a term of the order.
+        line.product.cartonsPerPallet,
+      ),
       quantity: String(line.cartons),
       unit: line.unit,
       unitPrice: line.unitPrice.toFixed(2),
@@ -564,7 +584,13 @@ export async function loadWebOrderDocumentSource(webOrderId: string) {
           unitPrice: true,
           amount: true,
           product: {
-            select: { sku: true, name: true, variant: true, market: true },
+            select: {
+              sku: true,
+              name: true,
+              variant: true,
+              market: true,
+              cartonsPerPallet: true,
+            },
           },
         },
       },
@@ -601,7 +627,14 @@ export async function loadWebOrderDocumentSource(webOrderId: string) {
         description: line.product.name,
         variant: line.product.variant,
         market: line.product.market,
-        packCaption: packCaptionFor(line.packSize, line.unit, line.cartons),
+        packCaption: packCaptionFor(
+        line.packSize,
+        line.unit,
+        line.cartons,
+        // Not snapshotted like the pack size: a pallet figure is a shipping
+        // fact about the product, not a term of the order.
+        line.product.cartonsPerPallet,
+      ),
         quantity: String(line.cartons),
         unitPrice: line.unitPrice.toFixed(2),
         amount: line.amount.toFixed(2),

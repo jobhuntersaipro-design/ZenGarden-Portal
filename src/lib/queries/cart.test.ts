@@ -20,6 +20,7 @@ const product = (over: Partial<Record<string, unknown>> = {}) => ({
   variant: "Goat's Milk",
   market: "Vietnam",
   packSize: 12,
+  cartonsPerPallet: 52,
   unit: "carton",
   listPrice: dec("189.00"),
   active: true,

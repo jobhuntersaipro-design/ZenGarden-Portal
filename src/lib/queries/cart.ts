@@ -13,6 +13,8 @@ export type CartLine = {
   /** Its destination or retail customer. Printed on the purchase order. */
   market: string | null;
   packSize: number | null;
+  /** Printed on the purchase order's pack line (Phase 44). */
+  cartonsPerPallet: number | null;
   unit: string;
   cartons: number;
   /** Today's price, read on every render. Never taken from the stored line. */
@@ -71,6 +73,7 @@ const PRICED_PRODUCT_FIELDS = {
   variant: true,
   market: true,
   packSize: true,
+  cartonsPerPallet: true,
   unit: true,
   listPrice: true,
   active: true,
@@ -127,6 +130,7 @@ function priceLine(
     variant: product.variant,
     market: product.market,
     packSize: product.packSize,
+    cartonsPerPallet: product.cartonsPerPallet,
     unit: product.unit,
     cartons,
     unitPrice: price,
