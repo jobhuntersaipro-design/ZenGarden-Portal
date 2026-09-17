@@ -1,6 +1,5 @@
 import { PoEventKind, WebOrderStatus } from "@/generated/prisma/enums";
 import { prisma } from "@/lib/prisma";
-import { documentPackCaption } from "@/lib/purchase-order-document";
 import type { PoStage } from "@/generated/prisma/enums";
 
 export type ClientOrderLine = {
@@ -11,8 +10,9 @@ export type ClientOrderLine = {
   /** The linked product's variant and market, for the document's caption. */
   variant: string | null;
   market: string | null;
-  /** "6 per carton · 36 pieces". Empty where the pack size is unknown. */
-  packCaption: string;
+  /** Pieces per carton and cartons per pallet, for the document's columns. */
+  packSize: number | null;
+  cartonsPerPallet: number | null;
   quantity: string;
   unit: string | null;
   unitPrice: string;
@@ -333,8 +333,6 @@ const BUYER_PARTY_SELECT = {
   paymentTerms: true,
 } as const;
 
-/** "6 per carton · 36 pieces", from whatever the line actually knows. */
-export const packCaptionFor = documentPackCaption;
 
 /** One order, scoped to the caller's buyer. A guessed id returns null. */
 export async function loadBuyerOrder(
@@ -437,12 +435,8 @@ export async function loadBuyerOrder(
         description: line.description,
         variant: line.product?.variant ?? null,
         market: line.product?.market ?? null,
-        packCaption: packCaptionFor(
-          line.product?.packSize ?? null,
-          line.unit,
-          Number(line.quantity),
-          line.product?.cartonsPerPallet ?? null,
-        ),
+        packSize: line.product?.packSize ?? null,
+        cartonsPerPallet: line.product?.cartonsPerPallet ?? null,
         quantity: line.quantity.toFixed(0),
         unit: line.unit,
         unitPrice: line.unitPrice.toFixed(2),
@@ -530,14 +524,10 @@ export async function loadBuyerOrder(
       description: line.product.name,
       variant: line.product.variant,
       market: line.product.market,
-      packCaption: packCaptionFor(
-        line.packSize,
-        line.unit,
-        line.cartons,
-        // Not snapshotted like the pack size: a pallet figure is a shipping
-        // fact about the product, not a term of the order.
-        line.product.cartonsPerPallet,
-      ),
+      packSize: line.packSize,
+      // Not snapshotted like the pack size: a pallet figure is a shipping
+      // fact about the product, not a term of the order.
+      cartonsPerPallet: line.product.cartonsPerPallet,
       quantity: String(line.cartons),
       unit: line.unit,
       unitPrice: line.unitPrice.toFixed(2),
@@ -627,14 +617,10 @@ export async function loadWebOrderDocumentSource(webOrderId: string) {
         description: line.product.name,
         variant: line.product.variant,
         market: line.product.market,
-        packCaption: packCaptionFor(
-        line.packSize,
-        line.unit,
-        line.cartons,
-        // Not snapshotted like the pack size: a pallet figure is a shipping
-        // fact about the product, not a term of the order.
-        line.product.cartonsPerPallet,
-      ),
+        packSize: line.packSize,
+      // Not snapshotted like the pack size: a pallet figure is a shipping
+      // fact about the product, not a term of the order.
+      cartonsPerPallet: line.product.cartonsPerPallet,
         quantity: String(line.cartons),
         unitPrice: line.unitPrice.toFixed(2),
         amount: line.amount.toFixed(2),

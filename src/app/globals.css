@@ -206,11 +206,15 @@
      headers collided and Amount was clipped off the card (measured
      2026-09-07). */
   --spacing-line-items: 952px;
-  /* A4 at 96dpi, and the totals block on it. The purchase order preview is
-     fixed at these and scrolls inside its own container: a document that
-     reflows is not the document (Phase 33). On the spacing scale because
-     that is where `w-*` reads from, as `min-w-line-items` above does. */
-  --spacing-po-page: 794px;
+  /* The purchase order sheet, landscape since Phase 45 for its ten-column
+     line grid, and the totals block on it. Not A4's own 1123px: the shop's
+     content column (container-page less its gutters, the frame's border and
+     padding) holds 1070px, and at 1123 the Amount column sat out of view on
+     a 1440px desktop (measured 1163 scroll / 1110 client). The preview is
+     fixed at this and scrolls inside its own container below it: a document
+     that reflows is not the document (Phase 33). On the spacing scale
+     because that is where `w-*` reads from, as `min-w-line-items` does. */
+  --spacing-po-page: 1070px;
   --spacing-po-totals: 300px;
   /* The cart row's product thumbnail (Phase 17 §5.5) — 88px via ProductThumb,
      shared by CartLines, GuestCart's loading rows and the cart loading.tsx
@@ -604,7 +608,7 @@
  * inherited but overridable, so the page can be hidden wholesale and the one
  * region turned back on inside it.
  *
- * The scroller is neutralised because A4 is 794px and an `overflow-x-auto`
+ * The scroller is neutralised because the sheet is 1070px and an `overflow-x-auto`
  * container clips at the paper's edge, printing a document with its right-hand
  * column cut off. The shadow goes because it is a screen affordance that
  * renders as a grey smear on paper.
@@ -638,6 +642,7 @@
   }
 
   @page {
+    size: A4 landscape;
     margin: 12mm;
   }
 }

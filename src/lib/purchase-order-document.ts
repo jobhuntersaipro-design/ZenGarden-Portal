@@ -5,7 +5,6 @@
 // Only `Decimal` is wanted here, and the browser entry carries it. The same
 // import is already used by the shop's product page.
 import { Prisma } from "@/generated/prisma/browser";
-import { formatGrouped } from "@/lib/money";
 import { groupName } from "@/lib/product-groups";
 import type { CartLine } from "@/lib/queries/cart";
 import type { ReviewBuyer } from "@/lib/queries/shop-checkout";
@@ -36,6 +35,10 @@ import type { SupplierDetails } from "@/lib/org-settings";
  */
 export const DOCUMENT_COMPANY_NAME = "ZEN GARDEN TRADING (M) SDN BHD";
 
+/** Printed under the dates while `awaitingConfirmation` (Phase 45). */
+export const AWAITING_CONFIRMATION_NOTE =
+  "Our team will confirm the expected delivery and payment terms as soon as possible.";
+
 export type PoDocumentLine = {
   position: number;
   /** The seller's code. A shop order has no buyer-printed code to show. */
@@ -45,11 +48,18 @@ export type PoDocumentLine = {
   /** "Goat's Milk · Vietnam". Empty where neither is known. */
   detailCaption: string;
   /**
-   * "6 pieces/carton · 52 cartons/pallet · 1,200 pieces". A figure the
-   * product does not carry is left out rather than printed as a blank.
+   * The line's quantity columns (Phase 45). Each is null where the product
+   * does not carry the figure it comes from, and the renderers print "—".
    */
-  packCaption: string;
+  piecesPerCarton: number | null;
+  cartonsPerPallet: number | null;
+  totalPieces: number | null;
   cartons: number;
+  /**
+   * Cartons ÷ cartons per pallet, rounded up to the pallets that ship: a
+   * part-filled pallet is still a pallet (Phase 45, at the user's request).
+   */
+  pallets: number | null;
   unitPrice: string;
   amount: string;
 };
@@ -75,6 +85,12 @@ export type PoDocumentData = {
    * when the team confirms, so the date replaces the dash.
    */
   deliveryDate: string | null;
+  /**
+   * True on a cart and on an order the team has not yet confirmed or declined:
+   * the document then says under its dates that the team will confirm the
+   * delivery and the payment terms (Phase 45).
+   */
+  awaitingConfirmation: boolean;
   paymentTerms: string | null;
   currency: string;
   buyer: PoDocumentParty;
@@ -98,32 +114,32 @@ const joinContact = (name: string | null, email: string | null): string | null =
 };
 
 /**
- * "6 pieces/carton · 52 cartons/pallet · 1,200 pieces" (Phase 44), in that
- * order, grouped the way every figure on the document is. Shared by both
- * builders and by the buyer's order query, so a cart and a stored order
- * caption their pack identically.
+ * A line's quantity columns (Phase 45), from the product's pack size and
+ * cartons per pallet and the line's cartons. Shared by both builders, so a
+ * cart and a stored order count identically.
  *
- * "Carton" is written out rather than taken from `unit`: a product's pack size
- * *is* its pieces per carton, and a scanned line's unit arrives however the
- * customer typed it ("Carton", "CTN"). A figure the product does not carry is
- * left out, as a missing market already is.
+ * Pallets are rounded up to what ships: 1,200 cartons at 52 a pallet is 24,
+ * and 25 cartons at 60 is 1. A product with no pallet figure has no pallet
+ * count, rather than a guessed one.
  */
-export function documentPackCaption(
+export function documentQuantities(
   packSize: number | null,
-  unit: string | null,
+  cartonsPerPallet: number | null,
   cartons: number,
-  cartonsPerPallet: number | null = null,
-): string {
-  if (!unit) return "";
-  return [
-    packSize === null ? null : `${formatGrouped(packSize, 0)} pieces/carton`,
-    cartonsPerPallet === null
-      ? null
-      : `${formatGrouped(cartonsPerPallet, 0)} cartons/pallet`,
-    packSize === null ? null : `${formatGrouped(packSize * cartons, 0)} pieces`,
-  ]
-    .filter(Boolean)
-    .join(" · ");
+): Pick<
+  PoDocumentLine,
+  "piecesPerCarton" | "cartonsPerPallet" | "totalPieces" | "cartons" | "pallets"
+> {
+  return {
+    piecesPerCarton: packSize,
+    cartonsPerPallet,
+    totalPieces: packSize === null ? null : packSize * cartons,
+    cartons,
+    pallets:
+      cartonsPerPallet === null || cartonsPerPallet <= 0
+        ? null
+        : Math.ceil(cartons / cartonsPerPallet),
+  };
 }
 
 /**
@@ -178,13 +194,7 @@ export function buildPoDocument(input: {
     position: index + 1,
     sku: line.sku,
     ...describeLine(line),
-    packCaption: documentPackCaption(
-      line.packSize,
-      line.unit,
-      line.cartons,
-      line.cartonsPerPallet,
-    ),
-    cartons: line.cartons,
+    ...documentQuantities(line.packSize, line.cartonsPerPallet, line.cartons),
     unitPrice: line.unitPrice,
     amount: line.amount,
   }));
@@ -201,6 +211,7 @@ export function buildPoDocument(input: {
     orderDate: input.orderDate,
     // A cart has nothing promised yet; the team settles it when they confirm.
     deliveryDate: null,
+    awaitingConfirmation: true,
     paymentTerms: input.paymentTerms?.trim() || null,
     currency: input.currency ?? "MYR",
     buyer: {
@@ -254,7 +265,9 @@ export function buildPoDocumentFromOrder(input: {
       /** From the linked product. Absent or null prints no caption. */
       variant?: string | null;
       market?: string | null;
-      packCaption: string;
+      /** From the linked product, or the line's own snapshot. */
+      packSize: number | null;
+      cartonsPerPallet: number | null;
       quantity: string;
       unitPrice: string;
       amount: string;
@@ -265,6 +278,8 @@ export function buildPoDocumentFromOrder(input: {
   orderDate: string;
   /** Already formatted too. Null until the team has confirmed the order. */
   deliveryDate?: string | null;
+  /** Submitted or received, not yet confirmed or declined. */
+  awaitingConfirmation: boolean;
 }): PoDocumentData {
   const { order } = input;
   const lines = order.lines.map((line) => ({
@@ -275,8 +290,7 @@ export function buildPoDocumentFromOrder(input: {
       variant: line.variant,
       market: line.market,
     }),
-    packCaption: line.packCaption,
-    cartons: Number(line.quantity),
+    ...documentQuantities(line.packSize, line.cartonsPerPallet, Number(line.quantity)),
     unitPrice: line.unitPrice,
     amount: line.amount,
   }));
@@ -298,6 +312,7 @@ export function buildPoDocumentFromOrder(input: {
     ourReference: order.reference,
     orderDate: input.orderDate,
     deliveryDate: input.deliveryDate ?? null,
+    awaitingConfirmation: input.awaitingConfirmation,
     paymentTerms: order.paymentTerms?.trim() || null,
     currency: order.currency,
     buyer: order.buyer,

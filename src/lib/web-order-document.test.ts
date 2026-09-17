@@ -59,7 +59,8 @@ const source = (over: Record<string, unknown> = {}) => ({
         position: 1,
         sku: "ZEN-SC-2100-GM-VN",
         description: "ZEN 2.1L — Goat's Milk",
-        packCaption: "6 per carton",
+        packSize: 6,
+        cartonsPerPallet: 52,
         quantity: "3",
         unitPrice: "220.50",
         amount: "661.50",
@@ -119,6 +120,8 @@ describe("attachWebOrderDocument", () => {
     expect(document.orderDate).toBe("15 Sep 2026");
     // Not confirmed yet, so no promise is printed even though a date is set.
     expect(document.deliveryDate).toBeNull();
+    // …and the note under the dates says the team will confirm them.
+    expect(document.awaitingConfirmation).toBe(true);
     expect(document).not.toHaveProperty("requestedDate");
     // Summed from the lines by the shared builder, never echoed.
     expect(document.total).toBe("661.50");
@@ -150,6 +153,7 @@ describe("attachWebOrderDocument", () => {
     await attachWebOrderDocument("wo1");
     const [document, footnote] = renderPurchaseOrderPdf.mock.calls[0];
     expect(document.deliveryDate).toBe("2 Oct 2026");
+    expect(document.awaitingConfirmation).toBe(false);
     expect(footnote).toMatch(/^Confirmed by our team/);
   });
 

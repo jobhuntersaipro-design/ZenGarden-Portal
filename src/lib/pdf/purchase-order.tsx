@@ -9,6 +9,7 @@ import {
 } from "@react-pdf/renderer";
 import { formatGrouped } from "@/lib/money";
 import {
+  AWAITING_CONFIRMATION_NOTE,
   DOCUMENT_COMPANY_NAME,
   type PoDocumentData,
 } from "@/lib/purchase-order-document";
@@ -20,8 +21,10 @@ import {
  * `PurchaseOrderPreview` draws in Tailwind: one builder decides what a
  * purchase order says, and the screen and the file cannot disagree about it.
  * Section for section this mirrors that component — masthead, four-cell meta
- * strip, the two parties, the six-column line grid, the totals column, the
- * notes and the footer carrying our own reference.
+ * strip, the two parties, the ten-column line grid, the totals column, the
+ * notes and the footer carrying our own reference. Landscape since Phase 45,
+ * when the line grid gained five quantity columns that portrait could not
+ * hold beside a readable description.
  *
  * **This is the one file in the repository allowed raw hex.** A PDF has no
  * stylesheet and no CSS custom properties, so `text-ink` cannot resolve to
@@ -48,7 +51,10 @@ const COLORS = {
   canvas: "#ffffff",
 } as const;
 
-/** A4 at 72dpi is 595×842pt; 36pt is the 12mm margin the screen print uses. */
+/**
+ * Landscape A4 at 72dpi is 842×595pt; 36pt is the 12mm margin the screen print
+ * uses, leaving 770pt of body.
+ */
 const styles = StyleSheet.create({
   page: {
     backgroundColor: COLORS.canvas,
@@ -73,11 +79,12 @@ const styles = StyleSheet.create({
   reference: { fontSize: 10, marginTop: 3, textAlign: "right" },
   caption: { fontSize: 7, color: COLORS.inkTertiary },
   metaStrip: {
-    flexDirection: "row",
     borderBottomWidth: 1,
     borderBottomColor: COLORS.hairline,
     paddingVertical: 12,
   },
+  metaCells: { flexDirection: "row" },
+  metaNote: { fontSize: 8, color: COLORS.inkSecondary, marginTop: 8 },
   metaCell: { flexGrow: 1, flexBasis: 0, paddingRight: 12 },
   metaValue: { fontFamily: "Helvetica-Bold", fontSize: 9, marginTop: 3 },
   parties: {
@@ -94,13 +101,14 @@ const styles = StyleSheet.create({
   headRow: { borderBottomWidth: 1, borderBottomColor: COLORS.ink },
   bodyRow: { borderBottomWidth: 1, borderBottomColor: COLORS.hairline },
   lastRow: { borderBottomWidth: 1, borderBottomColor: COLORS.ink },
-  // The preview's 34/132/1fr/64/96/104 grid, in points across 523pt of body.
+  // The preview's ten-column grid, in points across 770pt of body. The five
+  // quantity columns share one width so their two-line headers line up.
   colIndex: { width: 22, textAlign: "right", paddingRight: 6 },
   colCode: { width: 96, paddingRight: 6 },
   colDescription: { flexGrow: 1, flexBasis: 0, paddingRight: 6 },
-  colCartons: { width: 48, textAlign: "right" },
-  colUnit: { width: 66, textAlign: "right" },
-  colAmount: { width: 72, textAlign: "right" },
+  colQuantity: { width: 58, textAlign: "right", paddingLeft: 4 },
+  colUnit: { width: 64, textAlign: "right", paddingLeft: 4 },
+  colAmount: { width: 76, textAlign: "right", paddingLeft: 4 },
   description: { fontFamily: "Helvetica-Bold", fontSize: 9 },
   lineCaption: { fontSize: 7, color: COLORS.inkTertiary, marginTop: 2 },
   totalsWrap: { flexDirection: "row", justifyContent: "flex-end", paddingTop: 12 },
@@ -134,6 +142,10 @@ const styles = StyleSheet.create({
     paddingTop: 6,
   },
 });
+
+/** A whole number grouped, or "—" where the product does not carry it. */
+const count = (value: number | null) =>
+  value === null ? "—" : formatGrouped(value, 0);
 
 function Meta({ label, value }: { label: string; value: string }) {
   return (
@@ -175,7 +187,7 @@ export function PurchaseOrderPdf({
       author={document.supplier.name}
       subject={`Purchase order for ${document.buyer.name}`}
     >
-      <Page size="A4" style={styles.page}>
+      <Page size="A4" orientation="landscape" style={styles.page}>
         <View style={styles.masthead}>
           <Text style={styles.company}>{DOCUMENT_COMPANY_NAME}</Text>
           <View>
@@ -185,11 +197,16 @@ export function PurchaseOrderPdf({
         </View>
 
         <View style={styles.metaStrip}>
-          <Meta label="Order date" value={document.orderDate} />
-          {/* "—" until the team confirms a date (Phase 44). */}
-          <Meta label="Expected delivery" value={document.deliveryDate ?? "—"} />
-          <Meta label="Payment terms" value={document.paymentTerms ?? "—"} />
-          <Meta label="Currency" value={document.currency} />
+          <View style={styles.metaCells}>
+            <Meta label="Order Date" value={document.orderDate} />
+            {/* "—" until the team confirms a date (Phase 44). */}
+            <Meta label="Expected Delivery" value={document.deliveryDate ?? "—"} />
+            <Meta label="Payment Terms" value={document.paymentTerms ?? "—"} />
+            <Meta label="Currency" value={document.currency} />
+          </View>
+          {document.awaitingConfirmation ? (
+            <Text style={styles.metaNote}>{AWAITING_CONFIRMATION_NOTE}</Text>
+          ) : null}
         </View>
 
         <View style={styles.parties}>
@@ -201,10 +218,14 @@ export function PurchaseOrderPdf({
           {/* `fixed` repeats the header on every page of a long order. */}
           <View style={[styles.row, styles.headRow]} fixed>
             <Text style={[styles.colIndex, styles.caption]}>#</Text>
-            <Text style={[styles.colCode, styles.caption]}>Product code</Text>
+            <Text style={[styles.colCode, styles.caption]}>Product Code</Text>
             <Text style={[styles.colDescription, styles.caption]}>Description</Text>
-            <Text style={[styles.colCartons, styles.caption]}>Cartons</Text>
-            <Text style={[styles.colUnit, styles.caption]}>Unit price</Text>
+            <Text style={[styles.colQuantity, styles.caption]}>Pieces/Carton</Text>
+            <Text style={[styles.colQuantity, styles.caption]}>Cartons/Pallet</Text>
+            <Text style={[styles.colQuantity, styles.caption]}>Total Pieces</Text>
+            <Text style={[styles.colQuantity, styles.caption]}>Total Cartons</Text>
+            <Text style={[styles.colQuantity, styles.caption]}>Total Pallets</Text>
+            <Text style={[styles.colUnit, styles.caption]}>Unit Price</Text>
             <Text style={[styles.colAmount, styles.caption]}>Amount</Text>
           </View>
 
@@ -227,11 +248,14 @@ export function PurchaseOrderPdf({
                 {line.detailCaption ? (
                   <Text style={styles.lineCaption}>{line.detailCaption}</Text>
                 ) : null}
-                {line.packCaption ? (
-                  <Text style={styles.lineCaption}>{line.packCaption}</Text>
-                ) : null}
               </View>
-              <Text style={styles.colCartons}>{formatGrouped(line.cartons, 0)}</Text>
+              <Text style={styles.colQuantity}>{count(line.piecesPerCarton)}</Text>
+              <Text style={styles.colQuantity}>{count(line.cartonsPerPallet)}</Text>
+              <Text style={styles.colQuantity}>{count(line.totalPieces)}</Text>
+              <Text style={styles.colQuantity}>{formatGrouped(line.cartons, 0)}</Text>
+              <Text style={styles.colQuantity}>
+                {count(line.pallets)}
+              </Text>
               <Text style={styles.colUnit}>{formatGrouped(line.unitPrice)}</Text>
               <Text style={[styles.colAmount, styles.description]}>
                 {formatGrouped(line.amount)}
