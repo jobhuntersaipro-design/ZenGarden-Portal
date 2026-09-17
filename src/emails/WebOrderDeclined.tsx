@@ -1,11 +1,20 @@
 import { Layout } from "@/emails/Layout";
 import { ButtonLink, Heading, Paragraph } from "@/emails/parts";
+import { PoFooter, PoMetaLine, PoPreview, PoSummary } from "@/emails/po-parts";
+import { formatMYR } from "@/lib/money";
+import type { PoDocumentData } from "@/lib/purchase-order-document";
 
 export type WebOrderDeclinedProps = {
   reference: string;
   /** The reason the reviewer typed. Required of them, and shown verbatim. */
   reason: string;
   orderUrl: string;
+  /** What the buyer sent (2026-09-18). Null when it could not be read. */
+  document?: PoDocumentData | null;
+  /** Whether page 1 of the order as sent is on the email as `cid:po-preview`. */
+  preview?: boolean;
+  /** Whether the purchase order as sent is attached. */
+  attached?: boolean;
 };
 
 /**
@@ -16,6 +25,9 @@ export type WebOrderDeclinedProps = {
  * looking. The reason is the whole message, quoted as written rather than
  * paraphrased, so the ops team's own words are what arrives.
  *
+ * Below it, what the buyer sent (2026-09-18), so they can tell which order
+ * this is about without opening the shop.
+ *
  * The subject deliberately avoids "declined" or "rejected": a buyer scanning
  * an inbox should open this, not file it.
  */
@@ -23,10 +35,22 @@ export function WebOrderDeclined({
   reference,
   reason,
   orderUrl,
+  document = null,
+  preview = false,
+  attached = false,
 }: WebOrderDeclinedProps) {
   return (
     <Layout>
       <Heading>{`About your order ${reference}`}</Heading>
+      {document ? (
+        <PoMetaLine
+          reference={reference}
+          lineCount={document.lines.length}
+          total={formatMYR(document.total)}
+          buyerReference={document.poNumber}
+          audience="buyer"
+        />
+      ) : null}
       <Paragraph>
         We are sorry — we cannot take this order on as it stands.
       </Paragraph>
@@ -35,7 +59,10 @@ export function WebOrderDeclined({
         Nothing has been charged and nothing will be delivered against it. Reply
         to this email or call us and we will find a way through.
       </Paragraph>
+      {document ? <PoSummary document={document} heading="What you sent" declined /> : null}
+      <PoPreview reference={reference} orderUrl={orderUrl} preview={preview} attached={attached} />
       <ButtonLink href={orderUrl}>See your order</ButtonLink>
+      <PoFooter />
     </Layout>
   );
 }

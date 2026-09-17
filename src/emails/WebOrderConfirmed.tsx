@@ -1,5 +1,7 @@
 import { Layout } from "@/emails/Layout";
-import { ButtonLink, Heading, Mono, Paragraph } from "@/emails/parts";
+import { ButtonLink, Heading, Paragraph } from "@/emails/parts";
+import { PoFooter, PoMetaLine, PoPreview, PoSummary } from "@/emails/po-parts";
+import type { PoDocumentData } from "@/lib/purchase-order-document";
 
 export type WebOrderConfirmedProps = {
   /** Our Order ID, `W-2609-00014`. */
@@ -24,6 +26,13 @@ export type WebOrderConfirmedProps = {
    * itself is fine.
    */
   attached?: boolean;
+  /**
+   * The confirmed order's facts and lines (2026-09-18) — the price and the
+   * date this email confirms. Null when they could not be read.
+   */
+  document?: PoDocumentData | null;
+  /** Whether page 1 of the PDF is on the email as `cid:po-preview`. */
+  preview?: boolean;
 };
 
 /**
@@ -44,24 +53,27 @@ export function WebOrderConfirmed({
   orderUrl,
   updated = false,
   attached = false,
+  document = null,
+  preview = false,
 }: WebOrderConfirmedProps) {
   return (
     <Layout>
       <Heading>
         {updated
-          ? `Your delivery date has moved to ${expectedDelivery}`
+          ? `Delivery of order ${reference} has moved to ${expectedDelivery}`
           : `Order ${reference} is confirmed`}
       </Heading>
+      <PoMetaLine
+        reference={reference}
+        lineCount={lineCount}
+        total={total}
+        buyerReference={buyerReference}
+        audience="buyer"
+      />
       <Paragraph>
         {updated
-          ? `We have had to change the delivery date on order ${reference}. It is now expected on ${expectedDelivery}.`
-          : `We have accepted your order and expect to deliver it on ${expectedDelivery}.`}
-      </Paragraph>
-      <Paragraph muted>
-        {`${lineCount} line${lineCount === 1 ? "" : "s"} · ${total} · Order ID `}
-        <Mono>{reference}</Mono>
-        {buyerReference ? " · your PO number " : ""}
-        {buyerReference ? <Mono>{buyerReference}</Mono> : null}
+          ? `We have had to change the delivery date on order ${reference}. It is now expected on ${expectedDelivery}. Nothing else on the order has changed.`
+          : `We have accepted your order at ${total} and expect to deliver it on ${expectedDelivery}.`}
       </Paragraph>
       {attached ? (
         <Paragraph>
@@ -69,7 +81,15 @@ export function WebOrderConfirmed({
           this email.
         </Paragraph>
       ) : null}
+      {document ? (
+        <PoSummary
+          document={document}
+          heading={updated ? "Your order" : "What we confirmed"}
+        />
+      ) : null}
+      <PoPreview reference={reference} orderUrl={orderUrl} preview={preview} attached={attached} />
       <ButtonLink href={orderUrl}>See your order</ButtonLink>
+      <PoFooter />
     </Layout>
   );
 }

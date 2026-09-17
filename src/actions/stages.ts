@@ -18,6 +18,7 @@ import { env } from "@/lib/env";
 import { formatDate } from "@/lib/dates";
 import { formatMYR } from "@/lib/money";
 import { attachWebOrderDocument } from "@/lib/web-order-document";
+import { preparePoEmail } from "@/lib/po-email";
 
 export type ActionResult<T = undefined> =
   | { success: true; data: T }
@@ -312,12 +313,11 @@ export async function updatePurchaseOrder(
         // Formatted once and used for both, or the subject line and the body
         // print the same day two different ways.
         const when = formatDate(newDate);
+        const mail = await preparePoEmail(order.id, order.reference, redrawn);
         await sendEmail({
           to: [order.placedBy.email],
           subject: webOrderConfirmedSubject(order.reference, when, true),
-          attachments: redrawn
-            ? [{ filename: redrawn.filename, content: Buffer.from(redrawn.bytes) }]
-            : undefined,
+          attachments: mail.attachments,
           react: WebOrderConfirmed({
             reference: order.reference,
             buyerReference: order.buyerReference,
@@ -326,7 +326,9 @@ export async function updatePurchaseOrder(
             total: formatMYR(po.total.toNumber()),
             orderUrl: `${env.SHOP_URL ?? env.APP_URL}/orders/${poId}`,
             updated: true,
-            attached: Boolean(redrawn),
+            attached: mail.attached,
+            document: mail.document,
+            preview: mail.preview,
           }),
         });
       });

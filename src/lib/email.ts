@@ -8,6 +8,18 @@ export const resend = new Resend(env.RESEND_API_KEY);
 const isPlaceholderKey =
   !env.RESEND_API_KEY || env.RESEND_API_KEY.startsWith("PLACEHOLDER");
 
+/**
+ * One file on an email. Resend's own field names: `contentType` is always set
+ * by the PO helpers, and `contentId` makes the file inline, referenced from
+ * the body as `cid:<contentId>`.
+ */
+export type EmailAttachment = {
+  filename: string;
+  content: Buffer;
+  contentType?: string;
+  contentId?: string;
+};
+
 export type SendEmailArgs = {
   to: string | string[];
   subject: string;
@@ -18,8 +30,10 @@ export type SendEmailArgs = {
    *
    * Kept optional so every existing caller is unchanged, and passed straight
    * through — this module decides nothing about what an attachment is for.
+   * Sent one email at a time on purpose: Resend's batch endpoint drops
+   * attachments.
    */
-  attachments?: { filename: string; content: Buffer }[];
+  attachments?: EmailAttachment[];
 };
 
 /**

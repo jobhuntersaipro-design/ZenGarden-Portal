@@ -1,5 +1,7 @@
 import { Layout } from "@/emails/Layout";
 import { ButtonLink, Heading, Paragraph } from "@/emails/parts";
+import { PoFooter, PoMetaLine, PoPreview, PoSummary } from "@/emails/po-parts";
+import type { PoDocumentData } from "@/lib/purchase-order-document";
 
 export type WebOrderReceiptProps = {
   reference: string;
@@ -13,6 +15,10 @@ export type WebOrderReceiptProps = {
    * line, and the render can fail while the order is perfectly fine.
    */
   attached?: boolean;
+  /** The order's facts and lines (2026-09-18). Null when they could not be read. */
+  document?: PoDocumentData | null;
+  /** Whether page 1 of the PDF is on the email as `cid:po-preview`. */
+  preview?: boolean;
 };
 
 /**
@@ -30,14 +36,19 @@ export function WebOrderReceipt({
   total,
   orderUrl,
   attached = false,
+  document = null,
+  preview = false,
 }: WebOrderReceiptProps) {
   return (
     <Layout>
       <Heading>{`We have your order ${reference}`}</Heading>
-      <Paragraph>
-        {`${lineCount} line${lineCount === 1 ? "" : "s"} · ${total}`}
-        {buyerReference ? ` · your PO number ${buyerReference}` : ""}
-      </Paragraph>
+      <PoMetaLine
+        reference={reference}
+        lineCount={lineCount}
+        total={total}
+        buyerReference={buyerReference}
+        audience="buyer"
+      />
       {attached ? (
         <Paragraph>Your purchase order is attached to this email.</Paragraph>
       ) : null}
@@ -45,7 +56,10 @@ export function WebOrderReceipt({
         Our team reviews every order and will confirm the price and the delivery
         date with you. Nothing is charged and nothing ships until they do.
       </Paragraph>
+      {document ? <PoSummary document={document} heading="Your order" /> : null}
+      <PoPreview reference={reference} orderUrl={orderUrl} preview={preview} attached={attached} />
       <ButtonLink href={orderUrl}>See your order</ButtonLink>
+      <PoFooter />
     </Layout>
   );
 }

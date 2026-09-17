@@ -10,6 +10,7 @@ import { Role } from "@/generated/prisma/enums";
 import { WebOrderPlaced, webOrderPlacedSubject } from "@/emails/WebOrderPlaced";
 import { WebOrderReceipt, webOrderReceiptSubject } from "@/emails/WebOrderReceipt";
 import { sendEmail } from "@/lib/email";
+import { preparePoEmail } from "@/lib/po-email";
 import { env } from "@/lib/env";
 import { formatMYR } from "@/lib/money";
 import { prisma } from "@/lib/prisma";
@@ -526,9 +527,8 @@ async function notify(
     if (!order) return;
 
     const total = formatMYR(order.subtotal.toNumber());
-    const attachments = file
-      ? [{ filename: file.filename, content: Buffer.from(file.bytes) }]
-      : undefined;
+    // Rendered once and shared: the team and the buyer get the same preview.
+    const po = await preparePoEmail(order.id, order.reference, file);
 
     const staff = await prisma.user.findMany({
       where: {
@@ -541,8 +541,8 @@ async function notify(
     if (staff.length > 0) {
       await sendEmail({
         to: staff.map((person) => person.email),
-        subject: webOrderPlacedSubject(order.buyer.name),
-        attachments,
+        subject: webOrderPlacedSubject(order.buyer.name, order.reference),
+        attachments: po.attachments,
         react: WebOrderPlaced({
           reference: order.reference,
           buyerName: order.buyer.name,
@@ -550,6 +550,10 @@ async function notify(
           lineCount: order._count.lines,
           total,
           reviewUrl: `${env.APP_URL}/web-orders/${order.id}`,
+          buyerReference: order.buyerReference,
+          document: po.document,
+          preview: po.preview,
+          attached: po.attached,
         }),
       });
     }
@@ -559,7 +563,7 @@ async function notify(
     await sendEmail({
       to: [order.placedBy.email],
       subject: webOrderReceiptSubject(order.reference),
-      attachments,
+      attachments: po.attachments,
       react: WebOrderReceipt({
         reference: order.reference,
         buyerReference: order.buyerReference,
@@ -568,7 +572,9 @@ async function notify(
         orderUrl: `${env.SHOP_URL ?? env.APP_URL}/orders/${order.id}`,
         // Said only when it is true, so the email never promises a file that
         // is not on it.
-        attached: Boolean(file),
+        attached: po.attached,
+        document: po.document,
+        preview: po.preview,
       }),
     });
   } catch (cause) {

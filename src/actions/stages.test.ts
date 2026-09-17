@@ -43,7 +43,36 @@ const flushAfter = async () => {
 };
 // Phase 42: a moved date redraws the shop order's purchase-order file.
 const attachWebOrderDocument = vi.fn();
-vi.mock("@/lib/web-order-document", () => ({ attachWebOrderDocument }));
+const readStoredWebOrderDocument = vi.fn();
+vi.mock("@/lib/web-order-document", () => ({
+  attachWebOrderDocument,
+  readStoredWebOrderDocument,
+}));
+// The email's document half (2026-09-18): the real attachment builder, with a
+// stand-in preview so no test rasterises a PDF. `document` is null here — the
+// facts and line table are covered by `po-email.test.tsx`.
+vi.mock("@/lib/po-email", async (importOriginal) => {
+  const actual = await importOriginal<typeof import("@/lib/po-email")>();
+  return {
+    ...actual,
+    preparePoEmail: async (
+      _webOrderId: string,
+      reference: string,
+      file: { bytes: Uint8Array } | null,
+    ) => ({
+      document: null,
+      preview: Boolean(file),
+      attached: Boolean(file),
+      attachments: file
+        ? actual.poEmailAttachments({
+            poNumber: reference,
+            pdfBytes: file.bytes,
+            previewPng: Buffer.from("png"),
+          })
+        : undefined,
+    }),
+  };
+});
 
 const { advanceStage, revertStage, updatePurchaseOrder } = await import(
   "@/actions/stages"
@@ -275,7 +304,17 @@ describe("updatePurchaseOrder — the expected delivery date", () => {
     });
     const call = sendEmail.mock.calls[0][0];
     expect(call.attachments).toEqual([
-      { filename: "W-2609-00001 purchase order.pdf", content: expect.any(Buffer) },
+      {
+        filename: "W-2609-00001.pdf",
+        content: expect.any(Buffer),
+        contentType: "application/pdf",
+      },
+      {
+        filename: "W-2609-00001-preview.png",
+        content: expect.any(Buffer),
+        contentType: "image/png",
+        contentId: "po-preview",
+      },
     ]);
     expect(renderToStaticMarkup(call.react)).toContain("is attached to");
   });

@@ -5,6 +5,7 @@ const documentUpdate = vi.fn();
 const documentDelete = vi.fn();
 const documentFindUnique = vi.fn();
 const webOrderUpdate = vi.fn();
+const webOrderFindUnique = vi.fn();
 const loadWebOrderDocumentSource = vi.fn();
 const renderPurchaseOrderPdf = vi.fn();
 const putObject = vi.fn();
@@ -18,7 +19,7 @@ vi.mock("@/lib/prisma", () => ({
       delete: documentDelete,
       findUnique: documentFindUnique,
     },
-    webOrder: { update: webOrderUpdate },
+    webOrder: { update: webOrderUpdate, findUnique: webOrderFindUnique },
     // The final link is a two-statement transaction; the mock just runs them.
     $transaction: (ops: unknown[]) => Promise.all(ops),
   },
@@ -36,7 +37,8 @@ vi.mock("@/lib/r2", () => ({
   PENDING_KEY_PREFIX: "pending:",
 }));
 
-const { attachWebOrderDocument } = await import("@/lib/web-order-document");
+const { attachWebOrderDocument, loadWebOrderDocumentData, readStoredWebOrderDocument } =
+  await import("@/lib/web-order-document");
 
 const source = (over: Record<string, unknown> = {}) => ({
   id: "wo1",
@@ -231,5 +233,61 @@ describe("attachWebOrderDocument", () => {
   it("returns nothing for an order that is gone", async () => {
     loadWebOrderDocumentSource.mockResolvedValue(null);
     expect(await attachWebOrderDocument("gone")).toBeNull();
+  });
+});
+
+/** The emails' half (2026-09-18): the same data, and the stored file, with no render. */
+describe("loadWebOrderDocumentData", () => {
+  it("builds what the file prints, without rendering or writing", async () => {
+    const data = await loadWebOrderDocumentData("wo1");
+    expect(data?.buyer.name).toBe("Acme Industrial Sdn Bhd");
+    expect(data?.lines[0]?.sku).toBe("ZEN-SC-2100-GM-VN");
+    expect(data?.deliveryDate).toBeNull();
+    expect(renderPurchaseOrderPdf).not.toHaveBeenCalled();
+    expect(documentCreate).not.toHaveBeenCalled();
+  });
+
+  it("reads a declined order, which waits on nobody", async () => {
+    loadWebOrderDocumentSource.mockResolvedValue(source({ status: "DECLINED" }));
+    const data = await loadWebOrderDocumentData("wo1");
+    expect(data?.awaitingConfirmation).toBe(false);
+    expect(data?.deliveryDate).toBeNull();
+  });
+
+  it("refuses a cart", async () => {
+    loadWebOrderDocumentSource.mockResolvedValue(source({ status: "DRAFT" }));
+    await expect(loadWebOrderDocumentData("wo1")).resolves.toBeNull();
+  });
+});
+
+describe("readStoredWebOrderDocument", () => {
+  it("reads the stored bytes back and renders nothing", async () => {
+    webOrderFindUnique.mockResolvedValue({
+      document: { id: "doc1", r2Key: "po/2026/09/doc1.pdf", originalName: "W-2609-00015 purchase order.pdf" },
+    });
+    getObjectBytes.mockResolvedValue(new Uint8Array([37, 80]));
+
+    const file = await readStoredWebOrderDocument("wo1");
+
+    expect(getObjectBytes).toHaveBeenCalledExactlyOnceWith("po/2026/09/doc1.pdf");
+    expect(file).toEqual({
+      documentId: "doc1",
+      filename: "W-2609-00015 purchase order.pdf",
+      bytes: new Uint8Array([37, 80]),
+    });
+    expect(renderPurchaseOrderPdf).not.toHaveBeenCalled();
+    expect(putObject).not.toHaveBeenCalled();
+  });
+
+  it("returns null for an order with no file, and when R2 fails", async () => {
+    webOrderFindUnique.mockResolvedValue({ document: null });
+    await expect(readStoredWebOrderDocument("wo1")).resolves.toBeNull();
+
+    vi.spyOn(console, "error").mockImplementation(() => {});
+    webOrderFindUnique.mockResolvedValue({
+      document: { id: "doc1", r2Key: "k", originalName: "x.pdf" },
+    });
+    getObjectBytes.mockRejectedValue(new Error("NoSuchKey"));
+    await expect(readStoredWebOrderDocument("wo1")).resolves.toBeNull();
   });
 });
