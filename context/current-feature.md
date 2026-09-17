@@ -1251,6 +1251,17 @@ file: generating a PDF remains Phase 19, still unbuilt.
   purchase-order file, is also unbuilt.
 
 ## History
+- 2026-09-17: Fix — preview builds no longer migrate production — on
+  `fix/migrate-on-production-only`. Phase 47's deploy failed with P1002 on
+  `pg_advisory_lock(72707369)`: the branch push and the `main` push, minutes
+  apart, both ran `prisma migrate deploy` against production, because the
+  dashboard's build command ran it for every environment (Phase 41's notes).
+  `vercel.json` now sets `buildCommand` to run `migrate deploy` only when
+  `VERCEL_ENV` is `production`; it overrides the dashboard's. The shell logic
+  was checked with the commands stubbed: preview and development skip the
+  migration, production runs it, a failing migration still fails the build.
+  Not verified on Vercel itself until the next deploys. Production's log now
+  shows `DIRECT_URL` on the non-pooled host; Preview's could not be read.
 - 2026-09-17: Phase 47 — Expected delivery column, review-count ping, button
   and page motion, the shop's success animation and the shop order's PDF on
   its review page — built and driven on `feature/po-delivery-column-and-motion`
