@@ -109,12 +109,15 @@ export async function loadBuyer(
       },
       _count: true,
     }),
-    // This buyer's own orders waiting on the ops team. Counted on submittedAt
-    // rather than the page's range, like the dashboard queue: a shop order has
-    // no PO date, so a ranged count would read zero the moment the reader
-    // narrows the window.
+    // This buyer's own orders waiting on the ops team — submitted or received
+    // but not yet confirmed. Counted on submittedAt rather than the page's
+    // range, like the dashboard queue: a shop order has no PO date, so a
+    // ranged count would read zero the moment the reader narrows the window.
     prisma.webOrder.count({
-      where: { buyerId, status: WebOrderStatus.SUBMITTED },
+      where: {
+        buyerId,
+        status: { in: [WebOrderStatus.SUBMITTED, WebOrderStatus.RECEIVED] },
+      },
     }),
   ]);
 

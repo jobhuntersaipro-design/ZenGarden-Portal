@@ -609,6 +609,9 @@ export async function deletePurchaseOrder(input: {
           purchaseOrderId: null,
           reviewedById: null,
           reviewedAt: null,
+          // Phase 41: or the row sits in SUBMITTED still naming who received it.
+          receivedById: null,
+          receivedAt: null,
         },
       });
     });

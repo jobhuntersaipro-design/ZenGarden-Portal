@@ -73,14 +73,6 @@ export function PoTable({
           <span className="shrink-0 rounded-xxs bg-surface-soft px-xxs font-mono text-[length:var(--text-caption)] text-ink-tertiary">
             {FILE_LABEL[row.fileType] ?? "FILE"}
           </span>
-          {/* A confirmed shop order now carries a real PDF, so the file chip
-              says PDF like any other. This is the one that still says where
-              it came from. */}
-          {row.source === "web" && row.fileType !== "web" ? (
-            <span className="shrink-0 rounded-xxs bg-surface-soft px-xxs font-mono text-[length:var(--text-caption)] text-ink-tertiary">
-              WEB
-            </span>
-          ) : null}
           <span className="truncate font-medium" title={row.poNumber}>
             {row.poNumber}
           </span>
@@ -148,6 +140,28 @@ export function PoTable({
         ),
     },
     {
+      key: "source",
+      header: "Source",
+      // Deliberately not mobileHidden. Card mode drops the two avatar columns
+      // as noise, but where an order came from is the one thing this column
+      // exists to say.
+      cell: (row) => (
+        <span className="inline-flex shrink-0 items-center gap-xxs rounded-full bg-surface-soft px-sm py-xxs text-[length:var(--text-caption)]">
+          {/* Neutral tones only: provenance is a permanent fact, not a
+              process in flight, and 00-master.md §4 reserves the "something
+              is happening" colour for the latter. The text carries the
+              meaning here. */}
+          <span
+            aria-hidden
+            className={`size-1.5 rounded-full ${
+              row.source === "web" ? "bg-ink-secondary" : "bg-ink-tertiary"
+            }`}
+          />
+          {row.source === "web" ? "Shop" : "Manual"}
+        </span>
+      ),
+    },
+    {
       key: "uploadedBy",
       header: "Uploaded by",
       // Two avatars per card is noise when you are scanning for a PO; both
@@ -157,13 +171,15 @@ export function PoTable({
         // Asked of `source`, not inferred from a missing uploader. Since
         // Phase 37 a confirmed shop order *has* an uploader — the buyer's own
         // contact, who is who the generated file was filed against — and
-        // printing their name here would say a customer uploaded a scan.
+        // printing their name here would say a customer uploaded a scan. The
+        // Source column says where the order came from, so this cell reads
+        // the same as a genuinely missing uploader rather than repeating it.
         row.source === "web" ? (
-          <span className="text-ink-tertiary">From the shop</span>
+          <span className="text-ink-disabled">—</span>
         ) : row.uploadedByName ? (
           <PersonChip name={row.uploadedByName} image={row.uploadedByImage} />
         ) : (
-          <span className="text-ink-disabled">Not confirmed</span>
+          <span className="text-ink-disabled">—</span>
         ),
     },
     {

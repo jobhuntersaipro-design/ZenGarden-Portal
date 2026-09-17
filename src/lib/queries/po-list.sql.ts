@@ -13,6 +13,7 @@ export const PO_LIST_SORT_KEYS = [
   "itemCount",
   "total",
   "status",
+  "source",
   "uploadedBy",
   "confirmedBy",
 ] as const;
@@ -27,6 +28,7 @@ const ORDER_COLUMNS: Record<PoListSortKey, string> = {
   itemCount: 'merged."itemCount"',
   total: 'merged."total"',
   status: 'merged."sortStatus"',
+  source: 'merged."source"',
   uploadedBy: 'lower(merged."uploadedByName")',
   confirmedBy: 'lower(merged."confirmedByName")',
 };
@@ -63,7 +65,15 @@ export type PoListFilters = {
   q?: string;
   buyerId?: string;
   uploadedById?: string;
-  status?: "all" | "confirmed" | "needs-review" | "extracting" | "failed" | "web";
+  status?:
+    | "all"
+    | "confirmed"
+    | "needs-review"
+    | "received"
+    | "extracting"
+    | "failed"
+    | "web"
+    | "shop-open";
   stage?: string;
   from?: Date;
   to?: Date;
@@ -123,6 +133,14 @@ export function poListNeedsReviewQuery(filters: PoListFilters): Prisma.Sql {
   `;
 }
 
+/** The "Received" chip's number, built exactly as the needs-review one is. */
+export function poListReceivedQuery(filters: PoListFilters): Prisma.Sql {
+  return Prisma.sql`
+    SELECT COUNT(*)::int AS "count"
+    FROM (${baseSelect({ ...filters, status: "received" })}) AS merged
+  `;
+}
+
 const includesDrafts = (status: PoListFilters["status"]) =>
   status === undefined ||
   status === "all" ||
@@ -130,19 +148,44 @@ const includesDrafts = (status: PoListFilters["status"]) =>
   status === "extracting" ||
   status === "failed";
 
+/**
+ * `"web"` now belongs here too: since a shop order can be confirmed into a
+ * real `PurchaseOrder` row, the chip that claims "from the shop" has to reach
+ * a confirmed one there, not just the still-pending row in `WebOrder`.
+ */
 const includesOrders = (status: PoListFilters["status"]) =>
-  status === undefined || status === "all" || status === "confirmed";
+  status === undefined ||
+  status === "all" ||
+  status === "confirmed" ||
+  status === "web";
 
 /**
- * A submitted shop order is work waiting on a person, exactly like a draft, so
- * it belongs to the same statuses — and to "needs-review", which is what keeps
- * the chip's count and the rows it filters to in agreement.
+ * A submitted shop order is work waiting on a person, exactly like a draft.
+ * A received one is work a person has picked up — which is the whole reason
+ * the state exists, so the two chips partition the shop backlog rather than
+ * overlapping. `web` takes both, because it means "came from the shop".
  */
 const includesWebOrders = (status: PoListFilters["status"]) =>
   status === undefined ||
   status === "all" ||
   status === "needs-review" ||
-  status === "web";
+  status === "received" ||
+  status === "web" ||
+  status === "shop-open";
+
+/**
+ * `shop-open` is not a chip. It is what the dashboard's "orders from the shop
+ * to confirm" line links to, and it must be exactly the rows that line counts
+ * (`openWebOrderCount`: SUBMITTED or RECEIVED) — no scan drafts, and no
+ * confirmed shop purchase orders, which `web` has taken in since Phase 41.
+ * It therefore reaches the web branch alone, through the last arm below.
+ */
+const webStatusCondition = (status: PoListFilters["status"]) =>
+  status === "needs-review"
+    ? Prisma.sql`wo."status" = 'SUBMITTED'`
+    : status === "received"
+      ? Prisma.sql`wo."status" = 'RECEIVED'`
+      : Prisma.sql`wo."status" IN ('SUBMITTED', 'RECEIVED')`;
 
 function baseSelect(filters: PoListFilters): Prisma.Sql {
   const parts: Prisma.Sql[] = [];
@@ -157,14 +200,13 @@ function baseSelect(filters: PoListFilters): Prisma.Sql {
 /**
  * Orders placed on the shop and waiting for someone to confirm them.
  *
- * The status is hardcoded rather than taken from `filters`: a DRAFT is a
- * client's live cart, and the one thing that must never happen is a
- * half-assembled cart appearing in the ops queue.
+ * The status condition is built from `filters` by `webStatusCondition`, never
+ * widened past `SUBMITTED`/`RECEIVED`: a DRAFT is a client's live cart, and
+ * the one thing that must never happen is a half-assembled cart appearing in
+ * the ops queue.
  */
 function webOrderRows(filters: PoListFilters): Prisma.Sql {
-  const conditions: Prisma.Sql[] = [
-    Prisma.sql`wo."status" = 'SUBMITTED'`,
-  ];
+  const conditions: Prisma.Sql[] = [webStatusCondition(filters.status)];
 
   // Unlike a draft, a shop order has a real buyer, so this filter works.
   if (filters.buyerId) conditions.push(Prisma.sql`wo."buyerId" = ${filters.buyerId}`);
@@ -194,7 +236,11 @@ function webOrderRows(filters: PoListFilters): Prisma.Sql {
       NULL::date                                AS "poDate",
       (SELECT COUNT(*)::int FROM "WebOrderLine" wl WHERE wl."webOrderId" = wo."id") AS "itemCount",
       wo."subtotal"                             AS "total",
-      'NEEDS_REVIEW'                            AS "status",
+      -- Not the raw status: IntakeStatus (the type StatusBadge renders
+      -- against) has NEEDS_REVIEW but no SUBMITTED, so a raw 'SUBMITTED'
+      -- would make the badge throw. A submitted row keeps NEEDS_REVIEW; a
+      -- received one carries RECEIVED, which Task 9 adds a badge for.
+      CASE WHEN wo."status" = 'RECEIVED' THEN 'RECEIVED' ELSE 'NEEDS_REVIEW' END AS "status",
       NULL                                      AS "stage",
       NULL                                      AS "uploadedByName",
       NULL                                      AS "uploadedByImage",
@@ -248,6 +294,12 @@ function orderRows(filters: PoListFilters): Prisma.Sql {
         WHERE li."purchaseOrderId" = po."id" AND li."description" ILIKE ${like}
       )
     )`);
+  }
+  // The Source column calls these rows "Shop"; the chip must agree with it.
+  if (filters.status === "web") {
+    conditions.push(
+      Prisma.sql`EXISTS (SELECT 1 FROM "WebOrder" w WHERE w."purchaseOrderId" = po."id")`,
+    );
   }
 
   return Prisma.sql`

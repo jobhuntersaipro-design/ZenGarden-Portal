@@ -15,9 +15,13 @@ export type StatusChip =
   | "all"
   | "confirmed"
   | "needs-review"
+  | "received"
   | "extracting"
   | "failed"
-  | "web";
+  | "web"
+  // Not a chip: the dashboard's shop-order line links to it, and it has no
+  // entry in CHIPS below. While it is the filter, no chip reads selected.
+  | "shop-open";
 
 /**
  * Chips and badges read the same tokens, so a colour means the same thing in
@@ -32,6 +36,11 @@ const CHIPS: { value: StatusChip; label: string; dot: string }[] = [
     dot: INTAKE_STATUS.NEEDS_REVIEW.dot,
   },
   {
+    value: "received",
+    label: "Received",
+    dot: INTAKE_STATUS.RECEIVED.dot,
+  },
+  {
     value: "extracting",
     label: "Extracting",
     dot: INTAKE_STATUS.EXTRACTING.dot,
@@ -40,7 +49,8 @@ const CHIPS: { value: StatusChip; label: string; dot: string }[] = [
   {
     value: "web",
     label: "From the shop",
-    dot: INTAKE_STATUS.NEEDS_REVIEW.dot,
+    // Provenance, not a state to act on — the Source column's colour.
+    dot: "bg-ink-secondary",
   },
 ];
 
@@ -50,10 +60,12 @@ export function PoFilters({
   buyers,
   uploaders,
   needsReview,
+  received,
 }: {
   buyers: { id: string; name: string }[];
   uploaders: { id: string; name: string }[];
   needsReview: number;
+  received: number;
 }) {
   const { replace } = useUrlNavigation();
   const pathname = usePathname();
@@ -186,7 +198,9 @@ export function PoFilters({
             const count =
               chip.value === "needs-review" && needsReview > 0
                 ? needsReview
-                : null;
+                : chip.value === "received" && received > 0
+                  ? received
+                  : null;
             return (
               <ChoiceButton
                 key={chip.value}

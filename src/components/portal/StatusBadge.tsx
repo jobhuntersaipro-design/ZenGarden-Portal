@@ -8,6 +8,7 @@ import { stageColorVar, stageLabel } from "@/lib/po-stages";
 export type IntakeStatus =
   | "EXTRACTING"
   | "NEEDS_REVIEW"
+  | "RECEIVED"
   | "FAILED"
   | "NOT_CONFIRMED";
 
@@ -36,6 +37,15 @@ export const INTAKE_STATUS: Record<IntakeStatus, StatusTone> = {
     label: "Needs review",
     text: "text-brand-amber",
     dot: "bg-brand-amber",
+  },
+  // `accent-blue` is the palette's "a process is running right now"
+  // (00-master.md §4) — which is exactly true of an order a person has
+  // picked up. It already covers uploading, extracting, in production and
+  // delivering; this is a fifth thing in flight, not a second meaning.
+  RECEIVED: {
+    label: "Received",
+    text: "text-accent-blue",
+    dot: "bg-accent-blue",
   },
   FAILED: { label: "Failed", text: "text-accent-red", dot: "bg-accent-red" },
   NOT_CONFIRMED: {

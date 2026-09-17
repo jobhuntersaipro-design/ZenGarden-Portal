@@ -27,4 +27,11 @@ describe("buyerOrderStatus", () => {
       "Awaiting confirmation",
     );
   });
+
+  // Phase 41: the team can now mark an order received before confirming it.
+  it("says the team has it once received", () => {
+    expect(buyerOrderStatus({ kind: "received", stage: null })).toBe(
+      "Received by the team",
+    );
+  });
 });

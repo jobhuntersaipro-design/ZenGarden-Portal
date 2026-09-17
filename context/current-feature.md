@@ -1,9 +1,227 @@
-# Current Feature: Product listings — one product, its variants, and the admin who decides
+# Current Feature: Receiving a shop order, and the Source column
 
 ## Status
 
+**Phase 41 — receiving a shop order, and the Source column — built across
+thirteen tasks and driven in a browser on `feature/order-receipt`, not yet
+merged** (2026-09-17). Spec `docs/specs/41-order-receipt-and-source.md`, whose
+§10 is now what was measured and §11 what was not. Asked for as: "revamp this
+page. admin should be able to receive the purchase order when an order is
+place from shop.lovinghandsportal by buyer. Also, it also need to add once more
+column named source, indicating if this PO is coming from shop or uploaded
+manually. Also superadmin or admin need to be receiving email when an Purchase
+Order is placed by buyer".
+
+**The admin notification email already existed, and nothing was built for
+it.** `notify()` in `src/actions/cart.ts` mails every active `MEMBER` and
+`SUPER_ADMIN` the moment a buyer sends an order, with the generated
+purchase-order PDF attached and a link to `/web-orders/{id}`. The user
+confirmed they receive it. This phase does not touch it; do not rebuild it.
+
+A shop order must now be **received** before it can be confirmed —
+`SUBMITTED → RECEIVED → CONFIRMED`. On `/web-orders/[id]`, **Receive order** is
+the primary action until someone presses it; Confirm is disabled beside the
+caption "Receive this order before confirming it.", and `confirmWebOrder`
+refuses a submitted order with the same words. `receiveWebOrder` records who
+and when in `receivedById` and `receivedAt` — kept apart from `reviewedById`,
+which means who *decided* — and emails the buyer through a new
+`WebOrderReceived` template that promises no date and attaches nothing.
+Decline accepts a received order as well as a submitted one. The buyer's
+`/orders` reads "Received by the team" and the last step of their step bar
+reads "Received". On `/purchase-orders` a received order carries its own
+**Received** badge and chip, so the shop backlog splits between *Needs review*
+and *Received* instead of overlapping; a **Source** column after Status reads
+**Shop** or **Manual**, sorts over the whole list and replaces the `WEB` chip;
+*From the shop* now includes confirmed shop orders, so the dashboard's
+"orders from the shop to confirm" line links to a chip-less filter,
+`?status=shop-open`, holding only the unconfirmed ones it counts; and Uploaded
+by reads `—` for every shop row. The eleven readers of `SUBMITTED` were decided one by one
+(spec §7).
+
+One migration, `20260918090000_web_order_received` — the enum value and two
+nullable columns — and no new dependency.
+
+## Verified, with the figures
+
+Driven on the development database as a super admin and a throwaway `CLIENT`
+(`delivered@resend.dev`, Resend's test inbox), with fixtures inserted directly
+rather than sent through the cart, because the cart's `notify()` mails real
+inboxes. Measurements in
+`.superpowers/sdd/2026-09-16-order-receipt-and-source/task-13a-measurements.md`.
+
+- **Confirming a received order writes its document.** `W-2609-00021`,
+  received and then confirmed with a delivery date of 2026-09-25, read back
+  with `PurchaseOrder.documentId` **`cmu4bso97000052otzg7ccpyd`, not null**,
+  and R2 `HeadObject` on its key answered **3992 bytes, `application/pdf`**.
+  This matters because for part of the build it was null on every confirmed
+  shop order: confirm draws the PDF while the order is still `RECEIVED`, and
+  the document guard refused that state. The confirm tests mock that module;
+  a test now runs the real guard, and this read is the only live proof.
+- **Receiving moves the chips by one each.** Needs review **4 → 3**, Received
+  **0 → 1**, and the one row under *Received* read Status Received, Source
+  Shop. The row read back `status RECEIVED`, `receivedAt
+  2026-09-16T16:15:47.074Z`, received by Aisha Rahman. The Receive button was
+  gone with no refresh and no reload; a second receive toasted **318 ms** after
+  the click.
+- **Who received survives the decision, both ways.** After confirm,
+  `receivedById` was still Aisha's and `receivedAt` unchanged, beside
+  `reviewedById` and `reviewedAt 2026-09-16T16:39:18.963Z`. `W-2609-00022`,
+  received and then declined with a reason, read `status DECLINED` with
+  `receivedById` and `receivedAt` **still set**; the buyer's `/orders` read
+  "Not accepted".
+- **The buyer sees it.** `/orders` read "Received by the team"; the order page's
+  step bar read `Cart, done | Review, done | Confirm, done | Received, done` at
+  390, 768 and 1440. Once confirmed it read **Confirmed** and offered Download
+  PDF, whose URL route answered **200**.
+- **The Source sort sorts the whole list, proved in the direction that
+  discriminates.** At page size 10, descending put the only Shop row **1 of
+  407** — which proves nothing, because the default sort by PO date also puts
+  it first. Ascending put **ten Manual rows and no Shop row** on page 1 and the
+  Shop row at **407 of 407** on page 41. Only a whole-list sort moves a row
+  from 1 to 407.
+- **Source reads true.** Every scan row read Manual; *From the shop* returned
+  **1 row**, the confirmed `W-2609-00021`, and not the declined order.
+- **Sweep:** `/purchase-orders`, `/web-orders/[id]` and the buyer's order page
+  at 390 / 768 / 1440 — nine combinations. Eight passed first time;
+  `/web-orders/[id]` at 390 read **405 / 390**, was fixed, and re-measured
+  **390 / 390**, 768 / 768 and 1440 / 1440 against a contact named "Phase 41
+  Overflow Test Contact With A Long Name". Receive, Confirm and Decline all
+  clear 44px at 390; every sub-44px element is an already-accepted class
+  or a field label beside a control that clears it.
+- **Access.** A guest's `curl` on `/web-orders/[id]` got **307** to sign-in on
+  the portal host and **404** on the shop host; the `CLIENT`'s own session got
+  **404** with none of the order's controls in the body.
+- **Cleanup, counted both ends.** Three web orders and their lines, one
+  purchase order with its line item and stage event, one `Document`, one audit
+  row, one login attempt and two throwaway `CLIENT` rows were deleted **by
+  id**, and the PDF's R2 key answered **NotFound** afterwards. Counts returned
+  to the baseline exactly — users **2**, `CLIENT` **0**, web orders **0**,
+  purchase orders **400**, products **308**, buyers **11**, documents **406**,
+  line items **1606**, stage events **2323**, audit events **5**, login
+  attempts **68**.
+- **1145/1145 tests, `tsc --noEmit`, `npm run lint`** (the same 2 pre-existing
+  warnings, 0 errors) **and `npm run build` all clean.** After the final
+  review's fixes: **1149/1149 tests across 93 files**, `tsc`, lint (the same 2
+  warnings) and `build` clean again.
+
+## Not verified
+
+- **Anything on production.** This branch has never been deployed, and the
+  migration has not run there.
+- **A real `MEMBER` receiving.** `aisha@lovinghandsportal.com` reads
+  `SUPER_ADMIN` in development, so every live receive, confirm and decline was a
+  super admin's. The action uses the same `requireUser()` guard as confirm and
+  decline; the member case rests on that and on unit tests.
+- **`confirmWebOrder` called directly on a submitted order.** Only the disabled
+  button and its caption were seen. A crafted Server-Action POST is not a valid
+  probe — Phase 40 recorded that it answers "Server action not found" for a
+  super admin too.
+- **Two people receiving at once**, or one order received twice. Unit tests
+  only.
+- **The emails arriving.** Each went to Resend's test inbox with no send error
+  logged; no inbox was read.
+- **An order placed through the real cart.** Every fixture was a direct insert.
+- **Uploaded by reading `—` on a confirmed shop row.** Read live only on a
+  submitted row; the confirmed case is verified by reading the code.
+- **The buyer-detail page's open shop orders.** Its widened `where` has no test
+  harness and was not driven.
+- **The dashboard's `shop-open` link, live.** The line renders only with an
+  unconfirmed shop order and development holds none; it rests on
+  `po-list.sql.test.ts` and on reading the code. No browser or database was
+  used for the final review's fixes.
+- **Confirm racing a decline**, live. Unit tests only, and their transaction
+  mock cannot roll back — the rollback itself is Prisma's.
+
+## Notes
+
+- **Before deploying, two things.** This branch carries a migration, and
+  production's `DIRECT_URL` pointed at the pooled Neon host from Phase 30
+  through Phase 40; the 2026-09-16 deploy of Phases 36–40 carried two
+  migrations and succeeded, so check it rather than assume either way. And
+  production's one real shop order, **`W-2609-00001`, sits in `SUBMITTED`**:
+  after this deploys it has to be received before anyone can confirm it. Tell
+  the team, rather than let them find a disabled button.
+- **`PurchaseOrder_documentId_fkey` has drifted since Phase 16, and was left
+  alone on purpose.** The development database holds it as `RESTRICT`, from
+  the first migration on 2026-09-05; the schema has implied `SET NULL` since
+  `documentId` became nullable in Phase 16. This phase's cleanup felt it — the
+  purchase order had to be deleted before its `Document`. Realigning it changes
+  what deleting a document does on production, which is the user's decision,
+  not a side effect of this phase. **The next `prisma migrate dev` anyone runs
+  will try to fold that change into whatever migration it generates** — read
+  the SQL before accepting it.
+- **Aisha reads `SUPER_ADMIN` in development.** She already did before any task
+  of this phase touched her, so she was left so. Earlier phases' notes assume
+  a seeded `MEMBER`.
+- **On a received order the buyer's step bar marks all four steps done**, the
+  last reading "Received", with no current step. That matches spec §5 — the
+  last step renames itself as it already did for "Confirmed" — but it is a
+  presentation choice, and showing the last step as current until confirmation
+  would be equally defensible. Worth the user's eye.
+- **Nothing throttles shop submission.** The open-order cap was removed on
+  2026-09-16 at the user's request, and this phase did not reinstate one.
+- **Eight defects were caught before merge**, recorded with cause and fix in
+  spec §10 "Found during the build": a `tsc` failure baked into Task 1; a crash
+  on every submitted shop row, had the list emitted the raw status; every
+  confirmed shop order losing its document; two SQL tests that passed with
+  their behaviour deleted; Receive spinning Confirm; a status colour on the
+  Source dot; the Uploaded by guard the plan deleted; and the 390px overflow.
+  None was caught by a failing test.
+- **The final whole-branch review found two more, both fixed** (spec §4, §6):
+  - **Confirm could overwrite a decline.** Its last write, marking the web
+    order `CONFIRMED`, guarded on the id alone. A decline committing between
+    confirm's read and that write would have left a `CONFIRMED` order, a
+    committed purchase order and a buyer emailed both outcomes. The write is
+    now `updateMany` on `{ id, status: RECEIVED }`; a count of 0 throws inside
+    the transaction, rolling the purchase order back, and answers "This one has
+    already been reviewed."
+  - **The dashboard's shop line led to more rows than it counted.** "1 order
+    from the shop to confirm" linked to `?status=web`, which since this phase
+    also holds every confirmed shop order. It links to `?status=shop-open` —
+    the web branch alone, `SUBMITTED` or `RECEIVED`, exactly
+    `openWebOrderCount` — which is allow-listed on the page but has no chip.
+  - Folded in with them: the *From the shop* chip's dot is `bg-ink-secondary`
+    rather than the amber *Needs review* one; receive's written `data` is
+    pinned by equality; and the buyer's Status sort ranks `received` between
+    submitted and Order placed.
+- **Recorded, not fixed:**
+  - the buyer-sort `received` rank the final review added has no test — no
+    test covers sorting buyer orders by status at all;
+  - **emails that link to a page which stops existing.** The Received email,
+    like the receipt email from `cart.ts` before it, links
+    `/orders/{webOrderId}`. Once the order is confirmed that id answers 404,
+    because `loadBuyerOrder` then finds a purchase order under a different id
+    and no longer returns a `CONFIRMED` web order. The **Confirmed email does
+    not share the shape**: it links `/orders/{purchaseOrderId}`, as the stage
+    emails in `stages.ts` do. The Declined email links the web order's id, and
+    a declined web order stays readable there. A buyer-routing gap across the
+    email sequence, older than this phase;
+  - `receiveWebOrder` answers "This one has already been received." for a
+    `DRAFT` or a missing id — its guarded `updateMany` cannot tell those apart
+    from a real double receive;
+  - `/web-orders/[id]` renders the review form for a `DRAFT` id (pre-existing);
+  - a duplicated assertion in `product-detail.test.ts`;
+  - `webOrderKind` maps every status that is not `DECLINED` or `RECEIVED` to
+    `"submitted"` — unreachable under today's filters, but not exhaustive;
+  - no test that `loadBuyerOrder` returns kind `"received"`, and two tests pin
+    the same `listBuyerOrders` status list;
+  - `buyer-detail.ts`'s open-shop-orders `where` is unpinned;
+  - no test that the *Received* chip excludes the purchase-order branch, and
+    none pinning `IntakeStatus`'s keys, its tones, the chips or the page's
+    `STATUSES` allow-list (none existed before either);
+  - the Source pill's classes duplicate `StatusBadge`'s private pill constant;
+  - `WebOrderReceived`'s heading repeats its subject's literal rather than
+    calling `webOrderReceivedSubject`;
+  - a duplicated where-shape assertion in `confirm-web-order.test.ts`;
+  - Confirm's handler resets `receiving` without the `try`/`finally` Receive
+    uses;
+  - the `kind === "confirmed"` arm of the step-bar state in the buyer's order
+    page is unreachable.
+
+## Previous phase
+
 **Phase 40 — product listings — built across seven tasks and driven in a
-browser on `feature/product-listings`, not yet committed** (2026-09-16). Spec
+browser on `feature/product-listings`, since merged to `main`** (2026-09-16). Spec
 `docs/specs/40-product-listings.md`, whose §8 is now what was measured rather
 than what was intended. Asked for as: "there's 2 same product … I want to put
 it under the same product, so when buyer click in they can choose the variant";

@@ -120,7 +120,7 @@ export default async function OrderDetailPage({
           {/* All four checkout steps are behind a confirmed order, so the bar
               is complete and the fulfilment stages below carry the story on
               (Phase 33). */}
-          <CheckoutSteps current={4} complete />
+          <CheckoutSteps current={4} state="confirmed" />
           {order.deliveryDate ? (
             <p className="mt-sm text-[length:var(--text-body-md)] text-ink">
               {`Confirmed by our team. Expected delivery ${formatDate(order.deliveryDate)}.`}
@@ -134,7 +134,16 @@ export default async function OrderDetailPage({
         <section className="mt-lg rounded-lg border border-hairline bg-canvas p-lg">
           {/* A declined order never reaches the fourth step, so the bar stops
               at Confirm rather than promising a call that is not coming. */}
-          <CheckoutSteps current={order.kind === "declined" ? 3 : 4} />
+          <CheckoutSteps
+            current={order.kind === "declined" ? 3 : 4}
+            state={
+              order.kind === "confirmed"
+                ? "confirmed"
+                : order.kind === "received"
+                  ? "received"
+                  : "pending"
+            }
+          />
           <p className="mt-lg text-[length:var(--text-body-md)] text-ink">
             {order.kind === "declined"
               ? "The team could not accept this order."

@@ -17,7 +17,7 @@ export type ClientOrderLine = {
 };
 
 export type ClientOrder = {
-  kind: "confirmed" | "submitted" | "declined";
+  kind: "confirmed" | "submitted" | "received" | "declined";
   id: string;
   /** The PO number once confirmed, otherwise the shop reference. */
   reference: string;
@@ -74,13 +74,16 @@ export type BuyerOrderSortKey = (typeof BUYER_ORDER_SORT_KEYS)[number];
  */
 const STATUS_RANK: Record<string, number> = {
   submitted: 0,
-  ORDER_PLACED: 1,
-  IN_PRODUCTION: 2,
-  QC_PASSED: 3,
-  IN_WAREHOUSE: 4,
-  DELIVERING: 5,
-  DELIVERED: 6,
-  declined: 7,
+  // Received by the team, not yet confirmed (Phase 41): one step further on
+  // than submitted, still short of a stage.
+  received: 1,
+  ORDER_PLACED: 2,
+  IN_PRODUCTION: 3,
+  QC_PASSED: 4,
+  IN_WAREHOUSE: 5,
+  DELIVERING: 6,
+  DELIVERED: 7,
+  declined: 8,
 };
 
 const statusRank = (order: ClientOrder) =>
@@ -138,6 +141,14 @@ function compareOrders(
   }
 }
 
+/** One mapping, so the list and the detail page cannot disagree. */
+const webOrderKind = (status: WebOrderStatus) =>
+  status === WebOrderStatus.DECLINED
+    ? ("declined" as const)
+    : status === WebOrderStatus.RECEIVED
+      ? ("received" as const)
+      : ("submitted" as const);
+
 export async function listBuyerOrders(
   buyerId: string,
   page = 1,
@@ -171,7 +182,13 @@ export async function listBuyerOrders(
     prisma.webOrder.findMany({
       where: {
         buyerId,
-        status: { in: [WebOrderStatus.SUBMITTED, WebOrderStatus.DECLINED] },
+        status: {
+          in: [
+            WebOrderStatus.SUBMITTED,
+            WebOrderStatus.RECEIVED,
+            WebOrderStatus.DECLINED,
+          ],
+        },
       },
       select: {
         id: true,
@@ -201,10 +218,7 @@ export async function listBuyerOrders(
       buyerReference: po.buyerReference,
     })),
     ...web.map((order) => ({
-      kind:
-        order.status === WebOrderStatus.DECLINED
-          ? ("declined" as const)
-          : ("submitted" as const),
+      kind: webOrderKind(order.status),
       id: order.id,
       reference: order.reference,
       date: order.submittedAt,
@@ -444,7 +458,13 @@ export async function loadBuyerOrder(
     where: {
       id,
       buyerId,
-      status: { in: [WebOrderStatus.SUBMITTED, WebOrderStatus.DECLINED] },
+      status: {
+        in: [
+          WebOrderStatus.SUBMITTED,
+          WebOrderStatus.RECEIVED,
+          WebOrderStatus.DECLINED,
+        ],
+      },
     },
     select: {
       id: true,
@@ -474,7 +494,7 @@ export async function loadBuyerOrder(
   if (!web) return null;
 
   return {
-    kind: web.status === WebOrderStatus.DECLINED ? "declined" : "submitted",
+    kind: webOrderKind(web.status),
     id: web.id,
     reference: web.reference,
     buyerReference: web.buyerReference,
@@ -685,6 +705,13 @@ export async function loadWebOrderForReview(
   };
 }
 
-/** Submitted shop orders waiting on a person. Unscoped by date, like the queue. */
+/**
+ * Shop orders waiting on a person — submitted or received but not yet
+ * confirmed. Unscoped by date, like the queue.
+ */
 export const openWebOrderCount = () =>
-  prisma.webOrder.count({ where: { status: WebOrderStatus.SUBMITTED } });
+  prisma.webOrder.count({
+    where: {
+      status: { in: [WebOrderStatus.SUBMITTED, WebOrderStatus.RECEIVED] },
+    },
+  });

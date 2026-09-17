@@ -14,7 +14,7 @@ import type { OpsWebOrder } from "@/lib/queries/web-orders";
  */
 export function SubmittedOrderPane({ order }: { order: OpsWebOrder }) {
   return (
-    <section className="rounded-lg border border-hairline bg-canvas p-lg">
+    <section className="min-w-0 rounded-lg border border-hairline bg-canvas p-lg">
       <p className="font-mono text-[length:var(--text-eyebrow)] text-ink-tertiary">
         What the buyer sent
       </p>
@@ -50,9 +50,9 @@ export function SubmittedOrderPane({ order }: { order: OpsWebOrder }) {
           ))}
       </dl>
 
-      <div className="mt-md flex items-center gap-xs">
+      <div className="mt-md flex min-w-0 items-center gap-xs">
         <PersonChip name={order.placedByName} image={null} />
-        <span className="text-[length:var(--text-caption)] text-ink-tertiary">
+        <span className="min-w-0 break-all text-[length:var(--text-caption)] text-ink-tertiary">
           {order.placedByEmail}
         </span>
       </div>

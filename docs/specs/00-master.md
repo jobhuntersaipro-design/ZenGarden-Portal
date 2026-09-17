@@ -172,7 +172,7 @@ canvas linked from `CLAUDE.md` is the picture of them.
 | Needs review, action required | `brand-amber` |
 | Confirmed, active, delivered, success | `accent-green` |
 | Failed, overdue, destructive risk | `accent-red` |
-| A process in flight — uploading, extracting, in production, delivering | `accent-blue` |
+| A process in flight — uploading, extracting, received, in production, delivering | `accent-blue` |
 | Pending access, invited | `ink-secondary` text with a 1px `brand-amber` ring |
 | Disabled, inactive | `ink-tertiary` |
 
@@ -181,6 +181,10 @@ canvas linked from `CLAUDE.md` is the picture of them.
   Status is coloured text on `surface-soft`, never a coloured fill — the one
   exception is a chart segment, which is a legend swatch and always labelled.
   Every status carries its text label; colour alone never carries meaning.
+  Where an order came from — the purchase-order list's Source column, Shop or
+  Manual — is a permanent fact, not a process, so its dot is neutral
+  (`ink-secondary` for Shop, `ink-tertiary` for Manual) and never a status
+  colour (Phase 41).
 - **Sentence case.** Eyebrows, field labels and table column headers keep
   Sometype Mono (`font-mono`, `text-eyebrow`, `text-ink-tertiary`) but are not
   uppercased. This is a deliberate departure from the ClickUp system's

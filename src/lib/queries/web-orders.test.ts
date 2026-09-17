@@ -4,15 +4,18 @@ const poFindMany = vi.fn();
 const poFindFirst = vi.fn();
 const webFindMany = vi.fn();
 const webFindFirst = vi.fn();
+const webCount = vi.fn();
 
 vi.mock("@/lib/prisma", () => ({
   prisma: {
     purchaseOrder: { findMany: poFindMany, findFirst: poFindFirst },
-    webOrder: { findMany: webFindMany, findFirst: webFindFirst },
+    webOrder: { findMany: webFindMany, findFirst: webFindFirst, count: webCount },
   },
 }));
 
-const { listBuyerOrders, loadBuyerOrder } = await import("@/lib/queries/web-orders");
+const { listBuyerOrders, loadBuyerOrder, openWebOrderCount } = await import(
+  "@/lib/queries/web-orders"
+);
 
 beforeEach(() => {
   vi.resetAllMocks();
@@ -20,6 +23,7 @@ beforeEach(() => {
   webFindMany.mockResolvedValue([]);
   poFindFirst.mockResolvedValue(null);
   webFindFirst.mockResolvedValue(null);
+  webCount.mockResolvedValue(0);
 });
 
 /**
@@ -78,8 +82,11 @@ describe("listBuyerOrders is a narrow select, never an include", () => {
 
   it("never offers a client's own DRAFT cart as an order", async () => {
     await listBuyerOrders("b1");
+    // Phase 41, a deliberate edit to this line: an order the team has
+    // received but not yet confirmed is still in flight, not gone.
     expect(webFindMany.mock.calls[0][0].where.status.in).toEqual([
       "SUBMITTED",
+      "RECEIVED",
       "DECLINED",
     ]);
   });
@@ -307,5 +314,20 @@ describe("listBuyerOrders sorting", () => {
       "PO-3",
       "PO-1",
     ]);
+  });
+});
+
+describe("openWebOrderCount", () => {
+  /**
+   * A RECEIVED order is still waiting on a person — the team has picked it
+   * up but not yet confirmed it — so it belongs in the dashboard queue
+   * beside SUBMITTED. Pinned by equality: a status added here later has to
+   * be a deliberate edit to this line.
+   */
+  it("counts submitted and received orders, never anything else", async () => {
+    await openWebOrderCount();
+    expect(webCount).toHaveBeenCalledWith({
+      where: { status: { in: ["SUBMITTED", "RECEIVED"] } },
+    });
   });
 });

@@ -17,35 +17,41 @@ import { Check } from "lucide-react";
 export const CHECKOUT_STEPS = ["Cart", "Review", "Confirm", "We'll be in touch"] as const;
 
 /**
- * What the last step is called once it has happened (Phase 38). "We'll be in
- * touch" is a promise, and on a confirmed order the promise has been kept —
- * the buyer has the email and the delivery date. Leaving it in the future
- * tense on an order already confirmed reads as a call still owed.
+ * What the last step is called once it has happened. "We'll be in touch" is a
+ * promise; on a received order a person has it (Phase 41) and on a confirmed
+ * one the promise has been kept (Phase 38). Leaving either in the future
+ * tense reads as a call still owed.
  */
-const COMPLETED_LAST_STEP = "Confirmed";
+const LAST_STEP_LABEL = {
+  pending: null,
+  received: "Received",
+  confirmed: "Confirmed",
+} as const;
+
+export type CheckoutState = "pending" | "received" | "confirmed";
 
 /** 1-based, matching how the steps read. */
 export type CheckoutStep = 1 | 2 | 3 | 4;
 
 export function CheckoutSteps({
   current,
-  /** Marks every step done — an order the team has already confirmed. */
-  complete = false,
+  /** How far the order has actually got, once it has left the buyer's hands. */
+  state = "pending",
 }: {
   current: CheckoutStep;
-  complete?: boolean;
+  state?: CheckoutState;
 }) {
   return (
     <nav aria-label="Order progress">
       <ol className="flex flex-wrap items-center gap-xs">
         {CHECKOUT_STEPS.map((step, index) => {
           const position = index + 1;
-          const isDone = complete || position < current;
-          const isCurrent = !complete && position === current;
-          const label =
-            complete && position === CHECKOUT_STEPS.length
-              ? COMPLETED_LAST_STEP
-              : step;
+          const done = state !== "pending";
+          const isDone = done || position < current;
+          const isCurrent = !done && position === current;
+          const override =
+            position === CHECKOUT_STEPS.length ? LAST_STEP_LABEL[state] : null;
+          const label = override ?? step;
 
           return (
             <li key={step} className="flex items-center gap-xs">

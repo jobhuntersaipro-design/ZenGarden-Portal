@@ -23,6 +23,10 @@ import {
   WebOrderDeclined,
   webOrderDeclinedSubject,
 } from "@/emails/WebOrderDeclined";
+import {
+  WebOrderReceived,
+  webOrderReceivedSubject,
+} from "@/emails/WebOrderReceived";
 import { sendEmail } from "@/lib/email";
 import { env } from "@/lib/env";
 import { formatDate } from "@/lib/dates";
@@ -125,7 +129,11 @@ export async function confirmWebOrder(
         },
       });
       if (!order) throw new Error("MISSING_ORDER");
-      if (order.status !== WebOrderStatus.SUBMITTED) {
+      // Two different mistakes, and only one of them is the user's to fix.
+      if (order.status === WebOrderStatus.SUBMITTED) {
+        throw new Error("NOT_RECEIVED");
+      }
+      if (order.status !== WebOrderStatus.RECEIVED) {
         throw new Error("ALREADY_REVIEWED");
       }
 
@@ -145,8 +153,13 @@ export async function confirmWebOrder(
         deliveryDate,
       });
 
-      await tx.webOrder.update({
-        where: { id: order.id },
+      // Guarded on the status read above, not only on the id. Under READ
+      // COMMITTED a decline can commit between that read and this write; an
+      // unguarded update would then write CONFIRMED over DECLINED and commit
+      // a purchase order for an order the buyer was told is declined.
+      // Throwing here rolls back the purchase order written just above.
+      const { count } = await tx.webOrder.updateMany({
+        where: { id: order.id, status: WebOrderStatus.RECEIVED },
         data: {
           status: WebOrderStatus.CONFIRMED,
           purchaseOrderId: written,
@@ -154,6 +167,7 @@ export async function confirmWebOrder(
           reviewedAt: new Date(),
         },
       });
+      if (count === 0) throw new Error("ALREADY_REVIEWED");
 
       return { poId: written, order };
     });
@@ -191,6 +205,12 @@ export async function confirmWebOrder(
       return { success: false, error: "This buyer already has a PO with that number." };
     }
     const message = cause instanceof Error ? cause.message : "";
+    if (message === "NOT_RECEIVED") {
+      return {
+        success: false,
+        error: "Receive this order before confirming it.",
+      };
+    }
     if (message === "ALREADY_REVIEWED") {
       return { success: false, error: "This one has already been reviewed." };
     }
@@ -205,6 +225,77 @@ export async function confirmWebOrder(
     }
     console.error("[web-orders] confirmWebOrder", cause);
     return { success: false, error: "We couldn't confirm that order." };
+  }
+}
+
+/**
+ * Acknowledge a shop order (Phase 41).
+ *
+ * The gap this closes: between the buyer sending an order and the team
+ * committing to a delivery date, nothing in the product said a human had
+ * seen it. `confirmWebOrder` now requires this to have happened.
+ *
+ * Any signed-in ops member may receive — this is the queue being worked, not
+ * a super-admin act.
+ */
+export async function receiveWebOrder(
+  webOrderId: string,
+): Promise<ActionResult> {
+  const { user, error } = await guard();
+  if (!user) return { success: false, error: error! };
+
+  try {
+    // Guarded on the status the caller last saw, the same shape as
+    // declineWebOrder and advanceStage.
+    const updated = await prisma.webOrder.updateMany({
+      where: { id: webOrderId, status: WebOrderStatus.SUBMITTED },
+      data: {
+        status: WebOrderStatus.RECEIVED,
+        receivedById: user.id,
+        receivedAt: new Date(),
+      },
+    });
+    if (updated.count === 0) {
+      return { success: false, error: "This one has already been received." };
+    }
+
+    revalidatePath("/purchase-orders");
+    revalidatePath("/");
+    revalidatePath(shopPath.orders());
+    revalidatePath(`/web-orders/${webOrderId}`);
+
+    // Read after the update so the recipient is whoever actually placed it.
+    const order = await prisma.webOrder.findUnique({
+      where: { id: webOrderId },
+      select: {
+        reference: true,
+        buyerReference: true,
+        subtotal: true,
+        placedBy: { select: { email: true } },
+        _count: { select: { lines: true } },
+      },
+    });
+    if (order) {
+      after(async () => {
+        await sendEmail({
+          to: [order.placedBy.email],
+          subject: webOrderReceivedSubject(order.reference),
+          react: WebOrderReceived({
+            reference: order.reference,
+            buyerReference: order.buyerReference,
+            lineCount: order._count.lines,
+            total: formatMYR(order.subtotal.toNumber()),
+            // Phase 15: the buyer's session is host-only, and it is the shop's.
+            orderUrl: `${env.SHOP_URL ?? env.APP_URL}/orders/${webOrderId}`,
+          }),
+        });
+      });
+    }
+
+    return { success: true, data: undefined };
+  } catch (cause) {
+    console.error("[web-orders] receiveWebOrder", cause);
+    return { success: false, error: "We couldn't receive that order." };
   }
 }
 
@@ -233,8 +324,13 @@ export async function declineWebOrder(
   try {
     const updated = await prisma.webOrder.updateMany({
       // Guarded on the status the caller last saw, the same shape as
-      // advanceStage: two people reviewing at once cannot both win.
-      where: { id: webOrderId, status: WebOrderStatus.SUBMITTED },
+      // advanceStage: two people reviewing at once cannot both win. Either
+      // SUBMITTED or RECEIVED may be declined — an order a person has looked
+      // at is exactly the one they may turn down.
+      where: {
+        id: webOrderId,
+        status: { in: [WebOrderStatus.SUBMITTED, WebOrderStatus.RECEIVED] },
+      },
       data: {
         status: WebOrderStatus.DECLINED,
         declinedReason: parsed.data.reason,

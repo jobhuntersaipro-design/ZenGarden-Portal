@@ -24,6 +24,7 @@ export type { ActivityEntry, ActivityKind };
 const WEB_ORDER_STATUS: Record<WebOrderStatus, string> = {
   DRAFT: "Draft",
   SUBMITTED: "Submitted",
+  RECEIVED: "Received",
   CONFIRMED: "Confirmed",
   DECLINED: "Declined",
 };

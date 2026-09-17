@@ -4,11 +4,16 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 const webFindUnique = vi.fn();
 const webUpdate = vi.fn();
 const webUpdateMany = vi.fn();
+const txWebUpdateMany = vi.fn();
 const requireUser = vi.fn();
 const writePurchaseOrder = vi.fn();
 
 const tx = {
-  webOrder: { findUnique: webFindUnique, update: webUpdate },
+  webOrder: {
+    findUnique: webFindUnique,
+    update: webUpdate,
+    updateMany: txWebUpdateMany,
+  },
 };
 
 const webFindUniqueOuter = vi.fn();
@@ -95,7 +100,9 @@ beforeEach(() => {
   requireUser.mockResolvedValue({ id: "u1", role: "MEMBER" });
   webFindUnique.mockResolvedValue({
     id: "wo1",
-    status: "SUBMITTED",
+    // Confirmable: a shop order must be received before it can be
+    // confirmed, so this is the state a default confirm fixture is in.
+    status: "RECEIVED",
     buyerId: "b1",
     buyerReference: "ACME-PO-771",
     reference: "W-2609-00001",
@@ -104,6 +111,7 @@ beforeEach(() => {
   });
   webUpdate.mockResolvedValue({});
   webUpdateMany.mockResolvedValue({ count: 1 });
+  txWebUpdateMany.mockResolvedValue({ count: 1 });
   webFindUniqueOuter.mockResolvedValue({
     reference: "W-2609-00001",
     placedBy: { email: "buyer@acme.test" },
@@ -147,10 +155,54 @@ describe("confirmWebOrder", () => {
   it("links the web order to the purchase order it became", async () => {
     const result = await confirmWebOrder("wo1", draft(), OPTIONS);
     expect(result).toEqual({ success: true, data: { poId: "po-new" } });
-    const data = webUpdate.mock.calls[0][0].data;
+    const data = txWebUpdateMany.mock.calls[0][0].data;
     expect(data.status).toBe("CONFIRMED");
     expect(data.purchaseOrderId).toBe("po-new");
     expect(data.reviewedById).toBe("u1");
+  });
+
+  /**
+   * The write is guarded on the status confirm read. Under READ COMMITTED a
+   * decline committing between that read and this write would otherwise be
+   * overwritten with CONFIRMED, and a purchase order committed for an order
+   * the buyer has already been told was declined.
+   */
+  it("writes CONFIRMED only over the RECEIVED order it read", async () => {
+    webFindUnique.mockResolvedValue({
+      id: "w1",
+      status: "RECEIVED",
+      buyerId: "b1",
+      buyerReference: null,
+      reference: "W-2609-00001",
+      placedBy: { email: "buyer@example.com" },
+      _count: { lines: 1 },
+    });
+    await confirmWebOrder("w1", draft(), OPTIONS);
+    expect(txWebUpdateMany).toHaveBeenCalledTimes(1);
+    const call = txWebUpdateMany.mock.calls[0][0];
+    expect(call.where).toEqual({ id: "w1", status: "RECEIVED" });
+    expect(call.data).toEqual({
+      status: "CONFIRMED",
+      purchaseOrderId: "po-new",
+      reviewedById: "u1",
+      reviewedAt: expect.any(Date),
+    });
+    // No unguarded write beside it.
+    expect(webUpdate).not.toHaveBeenCalled();
+  });
+
+  it("rolls back when the order was declined after it was read", async () => {
+    // The guarded write matches nothing: somebody declined it in between.
+    txWebUpdateMany.mockResolvedValue({ count: 0 });
+    const result = await confirmWebOrder("w1", draft(), OPTIONS);
+    await flushAfter();
+    expect(result).toEqual({
+      success: false,
+      error: "This one has already been reviewed.",
+    });
+    // Thrown inside the transaction, so the purchase order written in it is
+    // rolled back — and the buyer is not told their declined order is on.
+    expect(sendEmail).not.toHaveBeenCalled();
   });
 
   it("applies the totals gate, and writes nothing when it fails", async () => {
@@ -260,6 +312,47 @@ describe("confirmWebOrder", () => {
       error: "This is not a portal account.",
     });
   });
+
+  it("refuses an order nobody has received yet, and says which mistake it is", async () => {
+    webFindUnique.mockResolvedValue({
+      id: "w1",
+      status: "SUBMITTED",
+      buyerId: "b1",
+      buyerReference: null,
+      reference: "W-2609-00001",
+      placedBy: { email: "buyer@example.com" },
+      _count: { lines: 1 },
+    });
+
+    const result = await confirmWebOrder("w1", draft(), {
+      deliveryDate: "2026-10-02",
+    });
+
+    expect(result).toEqual({
+      success: false,
+      error: "Receive this order before confirming it.",
+    });
+    expect(writePurchaseOrder).not.toHaveBeenCalled();
+  });
+
+  it("confirms an order that has been received", async () => {
+    webFindUnique.mockResolvedValue({
+      id: "w1",
+      status: "RECEIVED",
+      buyerId: "b1",
+      buyerReference: null,
+      reference: "W-2609-00001",
+      placedBy: { email: "buyer@example.com" },
+      _count: { lines: 1 },
+    });
+    writePurchaseOrder.mockResolvedValue("po1");
+
+    const result = await confirmWebOrder("w1", draft(), {
+      deliveryDate: "2026-10-02",
+    });
+
+    expect(result.success).toBe(true);
+  });
 });
 
 describe("declineWebOrder", () => {
@@ -273,7 +366,7 @@ describe("declineWebOrder", () => {
     await declineWebOrder("wo1", { reason: "Out of stock until October." });
     expect(webUpdateMany.mock.calls[0][0].where).toEqual({
       id: "wo1",
-      status: "SUBMITTED",
+      status: { in: ["SUBMITTED", "RECEIVED"] },
     });
   });
 
@@ -311,5 +404,22 @@ describe("declineWebOrder", () => {
     await declineWebOrder("wo1", { reason: "Out of stock." });
     await flushAfter();
     expect(sendEmail).not.toHaveBeenCalled();
+  });
+
+  it("declines an order that has already been received", async () => {
+    webUpdateMany.mockResolvedValue({ count: 1 });
+    webFindUniqueOuter.mockResolvedValue({
+      reference: "W-2609-00001",
+      placedBy: { email: "buyer@example.com" },
+    });
+
+    const result = await declineWebOrder("w1", { reason: "Out of stock" });
+
+    expect(result.success).toBe(true);
+    // An order a person has looked at is exactly the one they may turn down.
+    expect(webUpdateMany.mock.calls[0]![0].where).toEqual({
+      id: "w1",
+      status: { in: ["SUBMITTED", "RECEIVED"] },
+    });
   });
 });

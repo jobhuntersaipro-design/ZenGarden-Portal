@@ -269,4 +269,23 @@ describe("deletePurchaseOrder — orders placed on the shop", () => {
     expect(call.data.status).toBe("SUBMITTED");
     expect(call.data.purchaseOrderId).toBeNull();
   });
+
+  it("returns the shop order to the queue with nobody named on it", async () => {
+    await deletePurchaseOrder({ id: "po1", typedPoNumber: "PO-2026-0063" });
+
+    expect(webOrderUpdateMany).toHaveBeenCalled();
+    const call = webOrderUpdateMany.mock.calls.at(-1)![0];
+    expect(call.where).toEqual({ purchaseOrderId: "po1" });
+    // Back to SUBMITTED, not RECEIVED: an order returning to the queue is
+    // exactly one that needs a person again. A row in SUBMITTED still naming
+    // who received it is a lie.
+    expect(call.data).toEqual({
+      status: "SUBMITTED",
+      purchaseOrderId: null,
+      reviewedById: null,
+      reviewedAt: null,
+      receivedById: null,
+      receivedAt: null,
+    });
+  });
 });

@@ -62,10 +62,13 @@ describe("loadSentOrder", () => {
 
     await loadSentOrder("b1", "W-2609-00007");
 
+    // Phase 41, a deliberate edit to this line: an order the team has
+    // received but not yet confirmed must still resolve for the buyer who
+    // just sent it, or the "sent" screen would 404 on their own order.
     expect(webOrderFindFirst.mock.calls[0][0].where).toEqual({
       reference: "W-2609-00007",
       buyerId: "b1",
-      status: { in: ["SUBMITTED", "CONFIRMED"] },
+      status: { in: ["SUBMITTED", "RECEIVED", "CONFIRMED"] },
     });
   });
 

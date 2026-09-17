@@ -228,10 +228,17 @@ export async function loadProduct(
           select: { quantity: true, amount: true, purchaseOrderId: true },
         })
       : Promise.resolve([]),
-    // SUBMITTED only: a DRAFT is a client's live cart, and putting one on an
-    // ops screen would show the team a basket nobody has sent.
+    // SUBMITTED or RECEIVED: a DRAFT is a client's live cart, and putting one
+    // on an ops screen would show the team a basket nobody has sent. A
+    // RECEIVED order is still open — the team has picked it up but not yet
+    // confirmed it.
     prisma.webOrderLine.findMany({
-      where: { productId, webOrder: { status: WebOrderStatus.SUBMITTED } },
+      where: {
+        productId,
+        webOrder: {
+          status: { in: [WebOrderStatus.SUBMITTED, WebOrderStatus.RECEIVED] },
+        },
+      },
       select: {
         cartons: true,
         webOrder: {

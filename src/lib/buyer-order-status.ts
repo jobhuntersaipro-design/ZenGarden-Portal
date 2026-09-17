@@ -10,11 +10,14 @@ import type { PoStage } from "@/generated/prisma/enums";
  * server component and builds its rows with this.
  */
 export function buyerOrderStatus(order: {
-  kind: "confirmed" | "submitted" | "declined";
+  kind: "confirmed" | "submitted" | "received" | "declined";
   stage: PoStage | null;
 }): string {
   if (order.kind === "declined") return "Not accepted";
   if (order.kind === "confirmed" && order.stage) return stageLabel(order.stage);
+  // Phase 41: a person has it. Said plainly, because the gap between sending
+  // an order and hearing a date can be days and silence reads as lost.
+  if (order.kind === "received") return "Received by the team";
   // Phase 38: there is now a concrete thing being waited for — the team
   // confirming a delivery date, which arrives by email the moment they do.
   // "With the team" said where the order was; this says what happens next.
