@@ -118,9 +118,11 @@ describe("loadBuyerOrder", () => {
       "unit",
       "unitPrice",
     ]);
-    // The product is reached for its code, pack size, and the variant and
-    // market the document captions (Phase 42) — and nothing else.
+    // The product is reached for its code, pack size, the variant and market
+    // the document captions (Phase 42) and the cartons per pallet its pack
+    // line prints (Phase 44) — and nothing else.
     expect(Object.keys(args.select.lineItems.select.product.select).sort()).toEqual([
+      "cartonsPerPallet",
       "market",
       "packSize",
       "sku",

@@ -66,17 +66,11 @@ export function PurchaseOrderPreview({
           </div>
         </header>
 
-        {/* Three cells, or four once the team has committed to a date. The
-            cell is not drawn while there is nothing to put in it: a blank
-            "Expected delivery" reads as a promise forgotten rather than one
-            not yet made. */}
-        <dl
-          className={`grid gap-md border-b border-hairline py-md ${document.deliveryDate ? "grid-cols-4" : "grid-cols-3"}`}
-        >
+        {/* Always four cells (Phase 44). Expected delivery reads "—" until
+            the team confirms a date, which then takes its place. */}
+        <dl className="grid grid-cols-4 gap-md border-b border-hairline py-md">
           <Meta label="Order date" value={document.orderDate} />
-          {document.deliveryDate ? (
-            <Meta label="Expected delivery" value={document.deliveryDate} />
-          ) : null}
+          <Meta label="Expected delivery" value={document.deliveryDate ?? "—"} />
           <Meta label="Payment terms" value={document.paymentTerms ?? "—"} />
           <Meta label="Currency" value={document.currency} />
         </dl>

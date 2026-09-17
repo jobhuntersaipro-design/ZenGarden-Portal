@@ -1,6 +1,61 @@
-# Current Feature: The shop backlog on top, and deleting from the list
+# Current Feature: The purchase order's pack line and delivery cell
 
 ## Status
+
+**Phase 44 — built and driven in a browser on `feature/po-document-pack-line`,
+merged to `main` and pushed** (2026-09-17). Asked for as: "For the description of the PO
+line item. Remove the words Variant and Market. Then show the following in
+order pieces/carton then cartons/pallet. Also show expected delivery date as
+'-' once the admin confirm the expected delivery date, it will be reflected on
+the PO".
+
+- **Caption** reads `Goat's Milk · Mydin`; a missing half is left out.
+- **Pack line** reads `12 pieces/carton · 52 cartons/pallet · 14,400 pieces`.
+  The user chose to keep the total pieces at the end, and to leave the pallet
+  figure out where the product has none (`6 pieces/carton · 18 pieces`).
+  "carton" is written out rather than taken from the line's unit, so a scanned
+  "Carton" no longer prints capitalised. The pallet figure is read from the
+  product at render time; unlike the pack size it is not snapshotted on the
+  order line.
+- **Expected delivery** is always a cell now, reading `—` until the team
+  confirms a date. Phase 42's redraw at confirm already puts the date on the
+  stored PDF, so no new write path. Applies to both renderers, including the
+  checkout preview.
+- `CartLine` and the three buyer/PDF queries carry `cartonsPerPallet`; the
+  buyer-order leak guard was widened by that one column on purpose.
+
+## Verified, with the figures
+
+Development, port 3001, fixture `W-2609-09944` (1,200 × `ZEN-SC-1000-GM-MYDIN`
+with 52 cartons/pallet, 3 × `MRK-DW-1500-LI-X6` with none and no market) under
+a throwaway `CLIENT`.
+
+- **Buyer's page before confirm** (`shop.localhost:3001/orders/{id}`): Expected
+  delivery `—`; line 1 `ZEN 1L` / `Goat's Milk · Mydin` / `12 pieces/carton ·
+  52 cartons/pallet · 14,400 pieces`; line 2 `MR.KING 1.5L` / `Lime` /
+  `6 pieces/carton · 18 pieces`.
+- **Confirmed as Aisha** with 2 Oct 2026: the stored PDF (4,165 bytes, read from
+  R2 through `pdftotext`) reads Expected delivery `2 Oct 2026` and the same two
+  lines; the buyer's page reads `2 Oct 2026`.
+- **An unconfirmed PDF** rendered through the real renderer reads Expected
+  delivery `—`, so the dash survives the PDF font.
+- No overflow on the buyer's order page at 390 and 768.
+- **Cleanup by id:** web order, purchase order, `Document`, R2 object
+  (NotFound), client, two login attempts and one `SIGNED_IN` audit; counts back
+  to users 2, `CLIENT` 0, web orders 0, POs 400, documents 406, line items
+  1606, stage events 2323, audits 5, login attempts 68, products 308.
+- **1170/1170 tests, `tsc`, lint (same 2 warnings) and `npm run build` clean.**
+
+## Not verified
+
+- **Anything on production.** PDFs already stored keep their old layout until
+  their order is confirmed or its delivery date moves (Phase 42's redraw rule).
+- **The checkout review preview** was not opened; it draws through the same
+  `PurchaseOrderPreview` and `buildPoDocument`, covered by unit tests.
+- **A scanned purchase order's document** on the buyer's page, which takes its
+  pack size and pallet figure from the matched product.
+
+## Previous phase
 
 **Phase 43 — built and driven in a browser on
 `feature/po-list-backlog-and-delete`, merged to `main` and pushed** (2026-09-17). Asked
@@ -941,6 +996,11 @@ file: generating a PDF remains Phase 19, still unbuilt.
   purchase-order file, is also unbuilt.
 
 ## History
+- 2026-09-17: Phase 44 — the purchase order's pack line and delivery cell —
+  built and driven on `feature/po-document-pack-line` (details under Status
+  above). Captions drop the "Variant:"/"Market:" labels, the pack line reads
+  pieces/carton · cartons/pallet · pieces, and Expected delivery reads "—"
+  until confirmed. No migration.
 - 2026-09-17: Phase 43 — the shop backlog on top, and deleting from the list —
   built, driven and merged from `feature/po-list-backlog-and-delete` (details under
   Status above). A PO-date sort pins unconfirmed rows first; super admins
