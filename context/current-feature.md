@@ -1251,6 +1251,39 @@ file: generating a PDF remains Phase 19, still unbuilt.
   purchase-order file, is also unbuilt.
 
 ## History
+- 2026-09-18: Purchase-order emails show the order and a preview of the PDF —
+  merged from `feature/po-email-preview` and pushed. Every email that carries
+  or refers to a shop order (receipt, team notification, confirmed, delivery
+  date moved, declined) now shows the Order ID and the buyer's PO number
+  under the heading, the facts (buyer, order date, expected delivery or
+  "We'll confirm", payment terms, currency, PO number), the lines (item with
+  code, cartons, unit price, amount), subtotal/tax/total, page 1 of the PDF
+  inline as `cid:po-preview`, a "Can't see the document?" line, and "This
+  email is not an invoice." Shared pieces: `renderPoPreviewPng` (pdf.js +
+  `@napi-rs/canvas`, 2x, null on failure or after 10s),
+  `poEmailAttachments` (`W-….pdf`, and `W-…-preview.png` inline only when
+  drawn) and `preparePoEmail` in `src/lib/po-email.ts`; `PoMetaLine`,
+  `PoSummary`, `PoPreview`, `PoFooter` in `src/emails/po-parts.tsx`. The
+  decline email now attaches the order as sent, read back from R2 and not
+  redrawn. Team notification subject gained the Order ID. `pdfjs-dist`
+  (pinned to react-pdf's 5.4.296) and `@napi-rs/canvas` became direct
+  dependencies, external on the server and traced into `/shop/**`,
+  `/web-orders/**` and `/purchase-orders/**`. Found on the way: React 19
+  hoists a `<link rel="preload">` for any server-rendered `<img>` into
+  `<head>` (`fetchPriority="low"` stops it; a test watched failing); the
+  email card was a fixed-width table whose `max-width` browsers ignore, so
+  no email ever shrank on a phone (measured 600 at 390, now 390); and no
+  charset was declared. There are **no stage-move emails** (production, QC,
+  warehouse, delivering, delivered) — none existed to upgrade, and none were
+  added. Verified in a production build through a temporary probe route
+  (deleted): preview 177ms cold / 53ms warm, 132 KB PNG beside a 4.4 KB PDF;
+  all five emails rendered through `@react-email/render`, no preload, fit at
+  390 and 700, and with images blocked still read the lines and total.
+  1212/1212 tests, `tsc`, lint (same 2 warnings), build clean. **Not
+  verified:** a real send or any mail client (Gmail, Outlook, Apple Mail),
+  and the rasteriser on Vercel's linux runtime — the linux canvas binary is
+  not installed locally, so only a deployed send proves it; a failure there
+  degrades to HTML and the PDF.
 - 2026-09-17: Fix — Order ID is not the PO number — on
   `fix/order-id-vs-po-number`, not yet committed. Reported as "W-2609-00014 is
   an Order ID, not a PO number". Cause: confirming a shop order copied its

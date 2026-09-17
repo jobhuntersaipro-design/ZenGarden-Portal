@@ -13,7 +13,11 @@ import {
 import { prisma } from "@/lib/prisma";
 import { deleteObject, isPendingKey } from "@/lib/r2";
 import { shopPath } from "@/lib/shop-routes";
-import { attachWebOrderDocument } from "@/lib/web-order-document";
+import {
+  attachWebOrderDocument,
+  readStoredWebOrderDocument,
+} from "@/lib/web-order-document";
+import { preparePoEmail } from "@/lib/po-email";
 import {
   WebOrderDraftSchema,
   checkTotals,
@@ -209,12 +213,11 @@ export async function confirmWebOrder(
     // returns null and the email goes without it.
     after(async () => {
       const redrawn = await attachWebOrderDocument(webOrderId, { redraw: true });
+      const po = await preparePoEmail(webOrderId, confirmed.order.reference, redrawn);
       await sendEmail({
         to: [confirmed.order.placedBy.email],
         subject: webOrderConfirmedSubject(confirmed.order.reference, formatDate(deliveryDate)),
-        attachments: redrawn
-          ? [{ filename: redrawn.filename, content: Buffer.from(redrawn.bytes) }]
-          : undefined,
+        attachments: po.attachments,
         react: WebOrderConfirmed({
           reference: confirmed.order.reference,
           buyerReference: confirmed.order.buyerReference,
@@ -222,7 +225,9 @@ export async function confirmWebOrder(
           lineCount: confirmed.order._count.lines,
           total: formatMYR(Number(data.total)),
           orderUrl: `${env.SHOP_URL ?? env.APP_URL}/orders/${confirmed.poId}`,
-          attached: Boolean(redrawn),
+          attached: po.attached,
+          document: po.document,
+          preview: po.preview,
         }),
       });
     });
@@ -309,13 +314,21 @@ export async function declineWebOrder(
     });
     if (order) {
       after(async () => {
+        // What the buyer sent, read back as stored: a declined order is not
+        // redrawn, and one sent before Phase 37 has no file at all.
+        const sent = await readStoredWebOrderDocument(webOrderId);
+        const po = await preparePoEmail(webOrderId, order.reference, sent);
         await sendEmail({
           to: [order.placedBy.email],
           subject: webOrderDeclinedSubject(order.reference),
+          attachments: po.attachments,
           react: WebOrderDeclined({
             reference: order.reference,
             reason: parsed.data.reason,
             orderUrl: `${env.SHOP_URL ?? env.APP_URL}/orders/${webOrderId}`,
+            document: po.document,
+            preview: po.preview,
+            attached: po.attached,
           }),
         });
       });

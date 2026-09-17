@@ -51,7 +51,36 @@ vi.mock("@/lib/email", () => ({ sendEmail }));
 // and both carry it. Mocked here because what matters at this level is that
 // its result reaches the emails — the renderer has its own tests.
 const attachWebOrderDocument = vi.fn();
-vi.mock("@/lib/web-order-document", () => ({ attachWebOrderDocument }));
+const readStoredWebOrderDocument = vi.fn();
+vi.mock("@/lib/web-order-document", () => ({
+  attachWebOrderDocument,
+  readStoredWebOrderDocument,
+}));
+// The email's document half (2026-09-18): the real attachment builder, with a
+// stand-in preview so no test rasterises a PDF. `document` is null here — the
+// facts and line table are covered by `po-email.test.tsx`.
+vi.mock("@/lib/po-email", async (importOriginal) => {
+  const actual = await importOriginal<typeof import("@/lib/po-email")>();
+  return {
+    ...actual,
+    preparePoEmail: async (
+      _webOrderId: string,
+      reference: string,
+      file: { bytes: Uint8Array } | null,
+    ) => ({
+      document: null,
+      preview: Boolean(file),
+      attached: Boolean(file),
+      attachments: file
+        ? actual.poEmailAttachments({
+            poNumber: reference,
+            pdfBytes: file.bytes,
+            previewPng: Buffer.from("png"),
+          })
+        : undefined,
+    }),
+  };
+});
 // `after` runs the notifications once the response is out. Invoked inline
 // here so their failure modes are still exercised rather than silently
 // skipped — and the returned promise is *kept*, because `submitWebOrder`
@@ -311,8 +340,15 @@ describe("submitWebOrder", () => {
     for (const call of sendEmail.mock.calls) {
       expect(call[0].attachments).toEqual([
         {
-          filename: "W-2609-00001 purchase order.pdf",
-          content: Buffer.from([37, 80, 68, 70]),
+          filename: "W-2609-00001.pdf",
+          content: expect.any(Buffer),
+          contentType: "application/pdf",
+        },
+        {
+          filename: "W-2609-00001-preview.png",
+          content: expect.any(Buffer),
+          contentType: "image/png",
+          contentId: "po-preview",
         },
       ]);
     }

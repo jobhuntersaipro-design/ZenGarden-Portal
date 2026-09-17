@@ -22,6 +22,28 @@ const SHARP_ROUTES = [
 ];
 
 /**
+ * The entry points whose Server Actions send a purchase-order email, and so
+ * rasterise page 1 of its PDF (2026-09-18): the shop's cart and checkout
+ * (`submitWebOrder`), a shop order's review (`confirmWebOrder`,
+ * `declineWebOrder`) and a purchase order's edit sheet (`updatePurchaseOrder`).
+ * Globs, for the reason `SHARP_ROUTES` gives.
+ */
+const PO_PREVIEW_ROUTES = ["/shop/**", "/web-orders/**", "/purchase-orders/**"];
+
+/**
+ * What the preview needs at runtime and a build trace cannot see:
+ * `@napi-rs/canvas` is required by pdf.js through `createRequire` and loads a
+ * platform binary by name, and the standard fonts are read from disk by path
+ * — the purchase order does not embed its Helvetica. Missing any of them, the
+ * email still goes, as HTML and the PDF, with no picture.
+ */
+const PO_PREVIEW_FILES = [
+  "./node_modules/pdfjs-dist/legacy/build/**/*",
+  "./node_modules/pdfjs-dist/standard_fonts/**/*",
+  "./node_modules/@napi-rs/**/*",
+];
+
+/**
  * `sharp` is a native module: a `.node` binary that dlopens libvips, which
  * ships beside it as `@img/sharp-libvips-<platform>`. **Next's build trace
  * drops that libvips package on purpose when the build runs on Vercel** — see
@@ -55,8 +77,13 @@ const nextConfig: NextConfig = {
    * `src/lib/pdf/purchase-order.tsx` is `import "server-only"` for the other
    * half of the rule: nothing may pull it toward the browser in the first
    * place.
+   *
+   * pdf.js and its Node canvas, which draw an email's preview of that PDF
+   * (`src/lib/po-email.ts`), are kept external for the same reason: a native
+   * binary and a worker module loaded by path. The browser's react-pdf viewer
+   * is unaffected — this list is for server bundles only.
    */
-  serverExternalPackages: ["@react-pdf/renderer"],
+  serverExternalPackages: ["@react-pdf/renderer", "pdfjs-dist", "@napi-rs/canvas"],
   // Phase 26 renamed the admin room's second section. `:path*` matches zero
   // segments too, so the bare /admin/customers is covered by the one rule.
   async redirects() {
@@ -68,12 +95,15 @@ const nextConfig: NextConfig = {
       },
     ];
   },
-  outputFileTracingIncludes: Object.fromEntries(
-    SHARP_ROUTES.map((route) => [
-      route,
-      ["./node_modules/sharp/**/*", "./node_modules/@img/**/*"],
-    ]),
-  ),
+  outputFileTracingIncludes: {
+    ...Object.fromEntries(
+      SHARP_ROUTES.map((route) => [
+        route,
+        ["./node_modules/sharp/**/*", "./node_modules/@img/**/*"],
+      ]),
+    ),
+    ...Object.fromEntries(PO_PREVIEW_ROUTES.map((route) => [route, PO_PREVIEW_FILES])),
+  },
 };
 
 export default nextConfig;

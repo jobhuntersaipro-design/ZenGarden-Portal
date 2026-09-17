@@ -4,10 +4,20 @@ import type { ReactNode } from "react";
  * Shell for every transactional email. Inline styles only — mail clients do
  * not load our stylesheet, so the design tokens are written out by hand here.
  * This is the one place raw hex is expected.
+ *
+ * At most 600px wide with 32px of padding, so the content column is at most
+ * 536px — the width a purchase order's preview image is drawn at
+ * (`po-parts.tsx`) — and narrower on a phone.
  */
 export function Layout({ children }: { children: ReactNode }) {
   return (
     <html lang="en">
+      {/* eslint-disable-next-line @next/next/no-head-element -- an email, not a page */}
+      <head>
+        {/* Declared, not assumed: without it "·" and "—" can arrive as "Â·". */}
+        <meta httpEquiv="Content-Type" content="text/html; charset=UTF-8" />
+        <meta name="viewport" content="width=device-width, initial-scale=1" />
+      </head>
       <body
         style={{
           margin: 0,
@@ -28,20 +38,23 @@ export function Layout({ children }: { children: ReactNode }) {
               <td align="center">
                 <table
                   role="presentation"
-                  width="560"
+                  width="100%"
                   cellPadding={0}
                   cellSpacing={0}
                   style={{
-                    width: 560,
-                    maxWidth: "100%",
+                    // Full width capped at 600, not a fixed 600 held down by
+                    // max-width: browsers ignore max-width on a table, so a
+                    // fixed width never shrank on a phone.
+                    width: "100%",
+                    maxWidth: 600,
                     backgroundColor: "#ffffff",
                     borderRadius: 14,
-                    padding: 32,
                   }}
                 >
                   <tbody>
                     <tr>
-                      <td>
+                      {/* Padding on the cell: Outlook ignores it on a table. */}
+                      <td style={{ padding: 32 }}>
                         <div
                           style={{
                             fontFamily:

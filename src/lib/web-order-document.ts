@@ -4,7 +4,10 @@ import { formatDate } from "@/lib/dates";
 import { loadSupplierDetails } from "@/lib/org-settings";
 import { renderPurchaseOrderPdf } from "@/lib/pdf/purchase-order";
 import { prisma } from "@/lib/prisma";
-import { buildPoDocumentFromOrder } from "@/lib/purchase-order-document";
+import {
+  buildPoDocumentFromOrder,
+  type PoDocumentData,
+} from "@/lib/purchase-order-document";
 import { loadWebOrderDocumentSource } from "@/lib/queries/web-orders";
 import {
   PENDING_KEY_PREFIX,
@@ -49,6 +52,76 @@ export type WebOrderDocument = {
   bytes: Uint8Array;
 };
 
+type WebOrderDocumentSource = NonNullable<
+  Awaited<ReturnType<typeof loadWebOrderDocumentSource>>
+>;
+
+/**
+ * What the file prints, as data. Shared by the renderer and the emails, so a
+ * mail's line table and the PDF on it cannot say different things.
+ */
+async function documentDataFor(source: WebOrderDocumentSource): Promise<PoDocumentData> {
+  const confirmed = source.status === WebOrderStatus.CONFIRMED;
+  return buildPoDocumentFromOrder({
+    order: source.order,
+    supplier: await loadSupplierDetails(),
+    orderDate: source.submittedAt ? formatDate(source.submittedAt) : "—",
+    // Only once the team has confirmed: before that there is no promise
+    // to print, and the cell reads "—".
+    deliveryDate:
+      confirmed && source.deliveryDate ? formatDate(source.deliveryDate) : null,
+    // Anything submitted or received is waiting; a declined order is not.
+    awaitingConfirmation:
+      source.status === WebOrderStatus.SUBMITTED ||
+      source.status === WebOrderStatus.RECEIVED,
+  });
+}
+
+/**
+ * The order's document data for an email's facts and line table, without
+ * rendering anything. Any status but DRAFT: a declined order's email still
+ * shows what the buyer sent. Never throws; null when it cannot be read.
+ */
+export async function loadWebOrderDocumentData(
+  webOrderId: string,
+): Promise<PoDocumentData | null> {
+  try {
+    const source = await loadWebOrderDocumentSource(webOrderId);
+    if (!source || source.status === WebOrderStatus.DRAFT) return null;
+    return await documentDataFor(source);
+  } catch (cause) {
+    console.error("[web-order-document] loadWebOrderDocumentData", cause);
+    return null;
+  }
+}
+
+/**
+ * The file already stored for an order, read back as it is — no render, no
+ * write, any status. For the decline email, which shows what the buyer sent
+ * and must not redraw a document for an order nobody is fulfilling. Never
+ * throws.
+ */
+export async function readStoredWebOrderDocument(
+  webOrderId: string,
+): Promise<WebOrderDocument | null> {
+  try {
+    const order = await prisma.webOrder.findUnique({
+      where: { id: webOrderId },
+      select: { document: { select: { id: true, r2Key: true, originalName: true } } },
+    });
+    const stored = order?.document;
+    if (!stored) return null;
+    return {
+      documentId: stored.id,
+      filename: stored.originalName,
+      bytes: await getObjectBytes(stored.r2Key),
+    };
+  } catch (cause) {
+    console.error("[web-order-document] readStoredWebOrderDocument", cause);
+    return null;
+  }
+}
+
 export async function attachWebOrderDocument(
   webOrderId: string,
   options: { redraw?: boolean } = {},
@@ -74,17 +147,7 @@ export async function attachWebOrderDocument(
     const confirmed = source.status === WebOrderStatus.CONFIRMED;
     const render = async () =>
       renderPurchaseOrderPdf(
-        buildPoDocumentFromOrder({
-          order: source.order,
-          supplier: await loadSupplierDetails(),
-          orderDate: source.submittedAt ? formatDate(source.submittedAt) : "—",
-          // Only once the team has confirmed: before that there is no promise
-          // to print, and the cell reads "—".
-          deliveryDate:
-            confirmed && source.deliveryDate ? formatDate(source.deliveryDate) : null,
-          // Declined orders never reach here, so anything unconfirmed is waiting.
-          awaitingConfirmation: !confirmed,
-        }),
+        await documentDataFor(source),
         confirmed ? CONFIRMED_FOOTNOTE : SENT_FOOTNOTE,
       );
 

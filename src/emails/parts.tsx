@@ -3,14 +3,18 @@ import type { CSSProperties, ReactNode } from "react";
 /**
  * Mail clients do not load our stylesheet, so the design tokens are written
  * out by hand here and in `Layout.tsx`. These two files are the only place in
- * the codebase where a raw hex value is expected.
+ * the codebase where a raw hex value is expected; `po-parts.tsx` takes its
+ * colours from here.
  */
 export const ink = "#292d34";
 export const inkSecondary = "#646464";
 export const inkTertiary = "#838383";
 export const surfaceSoft = "#e9ebf0";
+export const hairline = "#e8e8e8";
+export const canvas = "#f8f9fa";
+export const white = "#ffffff";
 
-const bodyFont = "Inter, Helvetica, Arial, sans-serif";
+export const bodyFont = "Inter, Helvetica, Arial, sans-serif";
 
 export function Heading({ children }: { children: ReactNode }) {
   return (
@@ -78,6 +82,8 @@ export function ButtonLink({ href, children }: { href: string; children: ReactNo
 }
 
 /** For anything the reader has to copy exactly: links, temporary passwords. */
+export const monoFont = "'Sometype Mono', ui-monospace, Menlo, Consolas, monospace";
+
 export function Mono({
   children,
   style,
@@ -88,7 +94,7 @@ export function Mono({
   return (
     <span
       style={{
-        fontFamily: "'Sometype Mono', ui-monospace, Menlo, Consolas, monospace",
+        fontFamily: monoFont,
         fontSize: 14,
         color: ink,
         wordBreak: "break-all",
