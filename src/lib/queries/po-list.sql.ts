@@ -10,6 +10,7 @@ export const PO_LIST_SORT_KEYS = [
   "poNumber",
   "buyerName",
   "poDate",
+  "deliveryDate",
   "itemCount",
   "total",
   "status",
@@ -25,6 +26,7 @@ const ORDER_COLUMNS: Record<PoListSortKey, string> = {
   poNumber: 'merged."poNumber"',
   buyerName: 'lower(merged."buyerName")',
   poDate: 'merged."poDate"',
+  deliveryDate: 'merged."deliveryDate"',
   itemCount: 'merged."itemCount"',
   total: 'merged."total"',
   status: 'merged."sortStatus"',
@@ -47,6 +49,11 @@ export type PoListRow = {
   buyerName: string;
   buyerId: string | null;
   poDate: Date | null;
+  /**
+   * The expected delivery date. Set when a shop order is confirmed or on the
+   * edit sheet; null on every row still waiting on the team.
+   */
+  deliveryDate: Date | null;
   itemCount: number;
   total: Prisma.Decimal;
   status: string;
@@ -204,6 +211,7 @@ function webOrderRows(): Prisma.Sql {
       buyer."name"                              AS "buyerName",
       wo."buyerId"                              AS "buyerId",
       NULL::date                                AS "poDate",
+      NULL::date                                AS "deliveryDate",
       (SELECT COUNT(*)::int FROM "WebOrderLine" wl WHERE wl."webOrderId" = wo."id") AS "itemCount",
       wo."subtotal"                             AS "total",
       -- Not the raw status: IntakeStatus (the type StatusBadge renders
@@ -281,6 +289,7 @@ function orderRows(filters: PoListFilters): Prisma.Sql {
       buyer."name"                              AS "buyerName",
       buyer."id"                                AS "buyerId",
       po."poDate"                               AS "poDate",
+      po."deliveryDate"                         AS "deliveryDate",
       (SELECT COUNT(*)::int FROM "LineItem" li WHERE li."purchaseOrderId" = po."id") AS "itemCount",
       po."total"                                AS "total",
       po."stage"::text                          AS "status",
@@ -360,6 +369,7 @@ function draftRows(filters: PoListFilters, part: "review" | "table"): Prisma.Sql
       COALESCE(ext."draftJson"->>'newBuyerName', '—')            AS "buyerName",
       NULL                                      AS "buyerId",
       NULL::date                                AS "poDate",
+      NULL::date                                AS "deliveryDate",
       COALESCE(jsonb_array_length(CASE
         WHEN jsonb_typeof(ext."draftJson"->'lineItems') = 'array'
         THEN ext."draftJson"->'lineItems' END), 0)::int          AS "itemCount",

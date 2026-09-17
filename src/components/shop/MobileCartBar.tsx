@@ -50,7 +50,7 @@ export function MobileCartBar() {
       </div>
       <Link
         href={shopHref.cart()}
-        className="flex h-12 flex-1 items-center justify-center rounded-pill bg-ink text-[length:var(--text-body-sm)] font-semibold text-canvas hover:bg-ink-deep"
+        className="flex h-12 flex-1 items-center justify-center pressable rounded-pill bg-ink text-[length:var(--text-body-sm)] font-semibold text-canvas hover:bg-ink-deep"
       >
         View cart
       </Link>

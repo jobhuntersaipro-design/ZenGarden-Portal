@@ -41,6 +41,7 @@ const STATUSES: StatusChip[] = ["all", "confirmed", "extracting", "failed", "web
 const toClientRow = (row: PoListRow): PoRow => ({
   ...row,
   poDate: row.poDate ? row.poDate.toISOString() : null,
+  deliveryDate: row.deliveryDate ? row.deliveryDate.toISOString() : null,
   total: row.total.toString(),
   queuedAt: row.queuedAt ? row.queuedAt.toISOString() : null,
 });

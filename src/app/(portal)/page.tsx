@@ -95,6 +95,7 @@ export default async function DashboardPage({
   const rows: PoRow[] = list.rows.map((row) => ({
     ...row,
     poDate: row.poDate ? row.poDate.toISOString() : null,
+    deliveryDate: row.deliveryDate ? row.deliveryDate.toISOString() : null,
     total: row.total.toString(),
     queuedAt: row.queuedAt ? row.queuedAt.toISOString() : null,
   }));

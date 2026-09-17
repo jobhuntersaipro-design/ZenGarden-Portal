@@ -1,6 +1,96 @@
-# Current Feature: The review queue, and its count in the sidebar
+# Current Feature: Expected delivery in the list, motion, the success animation and the shop order's PDF
 
 ## Status
+
+**Phase 47 — built and driven in a browser on
+`feature/po-delivery-column-and-motion`, not yet committed** (2026-09-17). Asked for
+as: "In the PO table, add one more column named Expected Delivery date. Add
+some subtle animation for the ribbon number to get admin attention. Add more
+animation to the button and the pages. I have a success.lottie animation file,
+I want to replace the checkmark when user placed an order at shops, where
+should I put the file? In the PO confirmation page, from the what the buyer
+sent, just show original PO with preview function."
+
+Decisions the user made (one round of questions):
+
+- **Ribbon: soft ping + pop.** A faint ink ring fades outward from the review
+  count every 3s (`count-ping`, resting for 60% of the cycle) in the sidebar
+  and on the phone's Orders tab; the pill pops when its number changes
+  (`count-pop`, keyed by the count). The queue heading's pill only pops.
+  Both are off under reduced motion.
+- **Motion: press + page entrance.** `Button` scales to 97% on press
+  (replacing the 1px drop), and the ink and gradient pills lift 1px with
+  `shadow-xs` on hover. Six hand-styled shop CTA links get the same through a
+  new `pressable` utility. Every portal and shop page's top-level blocks rise
+  in 30ms apart (`page-enter`, the existing `rise`), keyed by pathname in
+  `PageTransition` — a sort, chip or page of the table does not replay it.
+- **Shop order review: PDF with the summary below.** The left pane of
+  `/web-orders/[id]` leads with the order's generated purchase-order PDF in
+  `DocumentPreview` (paging, zoom, download), and keeps the lines and buyer's
+  total under it; an order with no PDF shows the summary alone.
+
+Decided without asking: the column reads **Expected delivery** (sentence case,
+per 00-master §4), sits after PO date, sorts soonest first by default with
+undated rows last, and is hidden in the review queue, where every row is
+undated. The success animation lives at **`public/animations/success.lottie`**
+and plays once through `@lottiefiles/dotlottie-react` (new dependency) in
+`SuccessMark`; the old checkmark stays as the fallback under reduced motion or
+a failed load. **The proxy matcher now skips `.lottie`**: without it the shop
+host rewrote the path under `/shop` and answered 404.
+
+## Verified, with the figures
+
+Development, port 3000, as Aisha, with a fixture shop order `W-2609-09970`
+(two lines, PDF drawn through the real `attachWebOrderDocument`, 4,280 bytes,
+no email) under a throwaway `CLIENT`.
+
+- **Column:** main table headers PO number, Buyer, PO date, Expected delivery,
+  Items…; `PO-2026-0025` read 4 Sep 2026 / 16 Sep 2026; the queue's headers
+  have no Expected delivery. Sorting it gave `?sort=deliveryDate&dir=asc` with
+  23, 24, 26, 26, 27 Sep 2025 first.
+- **Ribbon:** the sidebar pill "4" computed `count-pop` and a ring with
+  `count-ping` at 3s; the link's name still "Purchase Orders, 4 need review";
+  the phone tab's pill at 791 inside the tab's 788 top, as in Phase 46.
+- **Page entrance:** counted remounts of `.page-enter` — 0 after a sort, 0
+  after the Confirmed chip, 1 after clicking Buyers, whose first block
+  computed `rise` 0.32s.
+- **Buttons:** hovering Confirm order computed `translate: 0px -1px` and the
+  indigo `rgba(18, 43, 165, 0.08) 0 4px 12px` shadow. The press rule is
+  compiled and applied — with transitions off the pressed button computes
+  `scale: 0.97` — but headless Chrome did not advance the 150ms transition
+  while sampled, so the press itself was not watched moving.
+- **PDF pane:** the landscape page rendered in the left pane (472×333 at
+  1440, 274 wide at 390, 644 at 768), text reading ZEN GARDEN TRADING (M) SDN
+  BHD … FIX-333 … Expected Delivery —; 0 console errors on reload.
+- **Success mark, fallback path:** signed in as the fixture client on
+  `shop.localhost`, `/checkout/sent/W-2609-09970` requested
+  `/animations/success.lottie` (404, no file yet) and the player's wasm from
+  jsdelivr (200); the canvas went away and the checkmark showed.
+- **The matcher, both ways:** a throwaway `probe.lottie` answered 404 on the
+  shop host with the old matcher and 200 with the new one (200 on the portal
+  host too); the probe was deleted.
+- **No overflow** on `/purchase-orders`, `/web-orders/[id]` and the sent page
+  at 390, 768 and 1440.
+- **Cleanup by id:** web order and its lines, `Document`, R2 object
+  (`NoSuchKey`), the client, its login attempts and audit rows; counts back to
+  users 2, `CLIENT` 0, web orders 0, documents 406, POs 400, login attempts
+  68, audits 5. The temporary fixture script was removed.
+- **1177/1177 tests** (two new SQL tests for the column), `tsc`, lint (same 2
+  warnings) and `npm run build` clean.
+
+## Not verified
+
+- **The real `success.lottie` playing.** The file has not been added; only the
+  fallback was driven. Its size on the page (112px) may want tuning to the
+  animation.
+- **The wasm from a CDN.** The player fetches its WebAssembly from jsdelivr
+  (unpkg as backup). A blocked CDN falls back to the checkmark; self-hosting
+  it (`setWasmUrl`) was not done.
+- **Anything on production**, a member's view, and the storefront's own pages
+  beyond the sent page (entrance and CTA motion there rest on the shared
+  layout and utility).
+
+## Previous phase
 
 **Phase 46 — built and driven in a browser on
 `feature/po-needs-review-section`, merged to `main` and pushed** (2026-09-17). Asked for
@@ -1161,6 +1251,11 @@ file: generating a PDF remains Phase 19, still unbuilt.
   purchase-order file, is also unbuilt.
 
 ## History
+- 2026-09-17: Phase 47 — Expected delivery column, review-count ping, button
+  and page motion, the shop's success animation and the shop order's PDF on
+  its review page — built and driven on `feature/po-delivery-column-and-motion`
+  (details under Status above). New dependency `@lottiefiles/dotlottie-react`;
+  the proxy matcher skips `.lottie`. No migration.
 - 2026-09-17: Expected delivery cannot be before the PO date when confirming a
   shop order, and on the confirmed-PO edit sheet — merged from
   `feature/delivery-not-before-po-date` and pushed.

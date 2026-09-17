@@ -84,7 +84,7 @@ export function ShopHeader({
         <div className="flex shrink-0 items-center gap-md whitespace-nowrap">
           <Link
             href={shopHref.cart()}
-            className="flex h-control-md items-center gap-xs rounded-pill bg-ink px-md text-[length:var(--text-body-sm)] font-semibold text-canvas hover:bg-ink-deep focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-focus"
+            className="flex h-control-md items-center gap-xs pressable rounded-pill bg-ink px-md text-[length:var(--text-body-sm)] font-semibold text-canvas hover:bg-ink-deep focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-focus"
           >
             <ShoppingCart className="size-4" aria-hidden />
             <span>Cart</span>

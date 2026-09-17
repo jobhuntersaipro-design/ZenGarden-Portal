@@ -93,7 +93,11 @@ export function MobileTabBar() {
                 strokeWidth={active ? 2.25 : 1.75}
                 aria-hidden
               />
-              <NavCount count={count} className="absolute -top-xxs left-sm" />
+              <NavCount
+                count={count}
+                attention
+                className="absolute -top-xxs left-sm"
+              />
             </span>
             <span
               aria-hidden

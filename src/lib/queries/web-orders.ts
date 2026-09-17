@@ -642,6 +642,12 @@ export type OpsWebOrder = {
   buyerReference: string | null;
   notes: string | null;
   subtotal: string;
+  /**
+   * The purchase-order PDF drawn when the buyer sent the order (Phase 37).
+   * Null for an order sent before that, or for the moment after sending while
+   * `after()` is still drawing it.
+   */
+  document: { id: string; originalName: string } | null;
   lines: {
     productId: string;
     sku: string;
@@ -671,6 +677,7 @@ export async function loadWebOrderForReview(
       submittedAt: true,
       buyer: { select: { name: true, paymentTerms: true } },
       placedBy: { select: { name: true, email: true } },
+      document: { select: { id: true, originalName: true } },
       lines: {
         select: {
           productId: true,
@@ -699,6 +706,7 @@ export async function loadWebOrderForReview(
     buyerReference: order.buyerReference,
     notes: order.notes,
     subtotal: order.subtotal.toFixed(2),
+    document: order.document,
     lines: order.lines
       .map((line) => ({
         productId: line.productId,

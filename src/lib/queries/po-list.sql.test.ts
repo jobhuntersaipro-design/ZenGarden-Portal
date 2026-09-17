@@ -68,6 +68,24 @@ describe("the purchase-order list joins Document loosely", () => {
   });
 });
 
+describe("the expected delivery column", () => {
+  // A UNION matches columns by position, so a branch missing it — or carrying
+  // it in another place — either fails or shifts every column after it.
+  it("is selected right after the PO date in every branch", () => {
+    const table = sqlOf(poListQuery(ALL, { key: "poDate", dir: "desc" }, 0, 10) as never);
+    const queue = sqlOf(poReviewQueueQuery() as never);
+    const pairs = /AS "poDate", [^,]+ AS "deliveryDate"/g;
+    expect(table.match(pairs)).toHaveLength(2);
+    expect(queue.match(pairs)).toHaveLength(2);
+    expect(table).toContain('po."deliveryDate" AS "deliveryDate"');
+  });
+
+  it("sorts on the column with the undated rows last", () => {
+    const sql = sqlOf(poListQuery(ALL, { key: "deliveryDate", dir: "asc" }, 0, 10) as never);
+    expect(sql).toContain('ORDER BY merged."deliveryDate" ASC NULLS LAST');
+  });
+});
+
 /**
  * The branch is identified by the literal it selects, not by the table it
  * reads. `FROM "WebOrder"` stopped distinguishing it in Phase 37: the

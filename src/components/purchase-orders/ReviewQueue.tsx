@@ -16,9 +16,10 @@ const ignoreSort = () => {};
 
 /**
  * Columns that say nothing about a row waiting on the team: none of them has
- * a PO date or a confirmer yet, so both would read "—" on every line.
+ * a PO date, an expected delivery or a confirmer yet, so each would read "—"
+ * on every line.
  */
-const QUEUE_HIDDEN = new Set(["poDate", "confirmedBy"]);
+const QUEUE_HIDDEN = new Set(["poDate", "deliveryDate", "confirmedBy"]);
 
 /**
  * Everything waiting on a person, above the purchase-order table (Phase 46):

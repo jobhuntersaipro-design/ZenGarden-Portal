@@ -297,6 +297,11 @@
      lingering transform would make a table row the containing block for its
      sticky first cell. Pair with `stagger-N` for the delay. */
   --animate-rise: rise 320ms cubic-bezier(0.2, 0.7, 0.2, 1) backwards;
+  /* The review count beside Purchase Orders: a ring that fades outward and
+     rests for most of its cycle, so it is noticed rather than watched. */
+  --animate-count-ping: count-ping 3s cubic-bezier(0, 0, 0.2, 1) infinite;
+  /* The same pill when its number changes: a short overshoot and settle. */
+  --animate-count-pop: count-pop 420ms cubic-bezier(0.34, 1.56, 0.64, 1);
   /* The ring inside a control that is waiting (`Spinner`). */
   --animate-spinner: spinner 0.8s linear infinite;
   /* The indeterminate extraction bar: a short fill sliding across its track.
@@ -502,6 +507,100 @@
 @media (prefers-reduced-motion: reduce) {
   .animate-rise {
     animation: none;
+  }
+}
+
+@keyframes count-ping {
+  0% {
+    transform: scale(1);
+    opacity: 0.4;
+  }
+  40%,
+  100% {
+    transform: scale(1.9);
+    opacity: 0;
+  }
+}
+
+@keyframes count-pop {
+  0% {
+    transform: scale(0.6);
+  }
+  60% {
+    transform: scale(1.2);
+  }
+  100% {
+    transform: none;
+  }
+}
+
+/* A number that changes is still there; only the motion goes. */
+@media (prefers-reduced-motion: reduce) {
+  .animate-count-ping {
+    display: none;
+  }
+  .animate-count-pop {
+    animation: none;
+  }
+}
+
+/*
+ * The primary pill's feel, for a link styled as one: it lifts a pixel with the
+ * indigo shadow on hover and gives a little under the finger. `Button` has the
+ * same motion as utilities; this is for the CTAs that must be real `<a>`s.
+ */
+@utility pressable {
+  transition:
+    translate 150ms ease-out,
+    scale 150ms ease-out,
+    box-shadow 150ms ease-out,
+    background-color 150ms ease-out;
+  &:hover {
+    box-shadow: var(--shadow-xs);
+    translate: 0 -1px;
+  }
+  &:active {
+    scale: 0.97;
+    translate: 0;
+  }
+  @media (prefers-reduced-motion: reduce) {
+    &:hover,
+    &:active {
+      translate: none;
+      scale: none;
+    }
+  }
+}
+
+/*
+ * A page arriving after a navigation (`PageTransition`): each top-level block
+ * rises in turn, 30ms apart, capped at the sixth so a long page is never still
+ * arriving. The same `rise` as a table row, and the same `backwards` fill, so
+ * nothing is left holding a transform once it lands.
+ */
+@utility page-enter {
+  & > * {
+    animation: var(--animate-rise);
+  }
+  & > :nth-child(2) {
+    animation-delay: 30ms;
+  }
+  & > :nth-child(3) {
+    animation-delay: 60ms;
+  }
+  & > :nth-child(4) {
+    animation-delay: 90ms;
+  }
+  & > :nth-child(5) {
+    animation-delay: 120ms;
+  }
+  & > :nth-child(n + 6) {
+    animation-delay: 150ms;
+  }
+  @media (prefers-reduced-motion: reduce) {
+    & > * {
+      animation: none;
+    }
   }
 }
 
