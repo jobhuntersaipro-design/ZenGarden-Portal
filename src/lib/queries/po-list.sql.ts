@@ -59,21 +59,25 @@ export type PoListRow = {
   /** Where the order came from: `web` for one placed on the shop (Phase 37). */
   source: "web" | "scan";
   revision: number;
+  /**
+   * When the row joined its list: a shop order's send, an upload's arrival, a
+   * purchase order's confirmation. Orders the review queue, longest waiting
+   * first (Phase 46).
+   */
+  queuedAt: Date | null;
 };
 
 export type PoListFilters = {
   q?: string;
   buyerId?: string;
   uploadedById?: string;
-  status?:
-    | "all"
-    | "confirmed"
-    | "needs-review"
-    | "received"
-    | "extracting"
-    | "failed"
-    | "web"
-    | "shop-open";
+  /**
+   * The main table's chips. Since Phase 46 nothing waiting on the team is in
+   * that table — it has its own section, `poReviewQueueQuery` — so the
+   * "needs-review", "received" and "shop-open" filters that used to reach it
+   * are gone.
+   */
+  status?: "all" | "confirmed" | "extracting" | "failed" | "web";
   stage?: string;
   from?: Date;
   to?: Date;
@@ -129,28 +133,35 @@ export function poListSummaryQuery(filters: PoListFilters): Prisma.Sql {
 }
 
 /**
- * The "Needs review" chip's number: the same filtered set with the status
- * filter removed, so the count always matches the rows the chip filters to.
+ * The review queue (Phase 46): everything waiting on a person — shop orders
+ * sent or received but not yet confirmed, and uploads Claude has read and
+ * nobody has reviewed. It ignores the page's filters on purpose: it is the
+ * team's inbox, and a search for one buyer must not hide another's order.
+ *
+ * Longest waiting first, because that is the order the work should be done
+ * in. The sidebar's count is `poReviewQueueSummaryQuery` over the same rows.
  */
-export function poListNeedsReviewQuery(filters: PoListFilters): Prisma.Sql {
+export function poReviewQueueQuery(): Prisma.Sql {
   return Prisma.sql`
-    SELECT COUNT(*)::int AS "count"
-    FROM (${baseSelect({ ...filters, status: "needs-review" })}) AS merged
+    SELECT * FROM (${reviewQueueSelect()}) AS merged
+    ORDER BY merged."queuedAt" ASC NULLS LAST, merged."poNumber" ASC
   `;
 }
 
-/** The "Received" chip's number, built exactly as the needs-review one is. */
-export function poListReceivedQuery(filters: PoListFilters): Prisma.Sql {
+/** The queue's count and money, over exactly the rows the section shows. */
+export function poReviewQueueSummaryQuery(): Prisma.Sql {
   return Prisma.sql`
-    SELECT COUNT(*)::int AS "count"
-    FROM (${baseSelect({ ...filters, status: "received" })}) AS merged
+    SELECT COUNT(*)::int AS "count", COALESCE(SUM("total"), 0) AS "total"
+    FROM (${reviewQueueSelect()}) AS merged
   `;
 }
+
+const reviewQueueSelect = () =>
+  Prisma.sql`${draftRows({}, "review")} UNION ALL ${webOrderRows()}`;
 
 const includesDrafts = (status: PoListFilters["status"]) =>
   status === undefined ||
   status === "all" ||
-  status === "needs-review" ||
   status === "extracting" ||
   status === "failed";
 
@@ -165,73 +176,26 @@ const includesOrders = (status: PoListFilters["status"]) =>
   status === "confirmed" ||
   status === "web";
 
-/**
- * A submitted shop order is work waiting on a person, exactly like a draft.
- * A received one is work a person has picked up — which is the whole reason
- * the state exists, so the two chips partition the shop backlog rather than
- * overlapping. `web` takes both, because it means "came from the shop".
- */
-const includesWebOrders = (status: PoListFilters["status"]) =>
-  status === undefined ||
-  status === "all" ||
-  status === "needs-review" ||
-  status === "received" ||
-  status === "web" ||
-  status === "shop-open";
-
-/**
- * `shop-open` is not a chip. It is what the dashboard's "orders from the shop
- * to confirm" line links to, and it must be exactly the rows that line counts
- * (`openWebOrderCount`: SUBMITTED or RECEIVED) — no scan drafts, and no
- * confirmed shop purchase orders, which `web` has taken in since Phase 41.
- * It therefore reaches the web branch alone, through the last arm below.
- */
-const webStatusCondition = (status: PoListFilters["status"]) =>
-  status === "needs-review"
-    ? Prisma.sql`wo."status" = 'SUBMITTED'`
-    : status === "received"
-      ? Prisma.sql`wo."status" = 'RECEIVED'`
-      : Prisma.sql`wo."status" IN ('SUBMITTED', 'RECEIVED')`;
-
 function baseSelect(filters: PoListFilters): Prisma.Sql {
   const parts: Prisma.Sql[] = [];
   if (includesOrders(filters.status)) parts.push(orderRows(filters));
-  if (includesDrafts(filters.status)) parts.push(draftRows(filters));
-  if (includesWebOrders(filters.status)) parts.push(webOrderRows(filters));
+  // Never the shop branch, and never a draft ready for review: both are in the
+  // review queue above the table (Phase 46), and each order appears once.
+  if (includesDrafts(filters.status)) parts.push(draftRows(filters, "table"));
   // A status that matches no source still has to return the row shape.
   if (parts.length === 0) return Prisma.sql`${orderRows(filters)} AND FALSE`;
   return parts.reduce((left, right) => Prisma.sql`${left} UNION ALL ${right}`);
 }
 
 /**
- * Orders placed on the shop and waiting for someone to confirm them.
+ * Orders placed on the shop and waiting for someone to confirm them — the
+ * review queue's shop half.
  *
- * The status condition is built from `filters` by `webStatusCondition`, never
- * widened past `SUBMITTED`/`RECEIVED`: a DRAFT is a client's live cart, and
- * the one thing that must never happen is a half-assembled cart appearing in
- * the ops queue.
+ * Never widened past `SUBMITTED`/`RECEIVED`: a DRAFT is a client's live cart,
+ * and the one thing that must never happen is a half-assembled cart appearing
+ * in the ops queue. Takes no filters, because the queue ignores them.
  */
-function webOrderRows(filters: PoListFilters): Prisma.Sql {
-  const conditions: Prisma.Sql[] = [webStatusCondition(filters.status)];
-
-  // Unlike a draft, a shop order has a real buyer, so this filter works.
-  if (filters.buyerId) conditions.push(Prisma.sql`wo."buyerId" = ${filters.buyerId}`);
-  // No PO date, no stage, and no uploader — a filter on any of them excludes
-  // these rows rather than matching everything, exactly as it does for drafts.
-  if (filters.from || filters.to) conditions.push(Prisma.sql`FALSE`);
-  if (filters.stage) conditions.push(Prisma.sql`FALSE`);
-  if (filters.uploadedById) conditions.push(Prisma.sql`FALSE`);
-  if (filters.q) {
-    const like = `%${filters.q}%`;
-    conditions.push(
-      Prisma.sql`(wo."reference" ILIKE ${like} OR buyer."name" ILIKE ${like} OR EXISTS (
-        SELECT 1 FROM "WebOrderLine" wl
-        JOIN "Product" prd ON prd."id" = wl."productId"
-        WHERE wl."webOrderId" = wo."id" AND prd."name" ILIKE ${like}
-      ))`,
-    );
-  }
-
+function webOrderRows(): Prisma.Sql {
   return Prisma.sql`
     SELECT
       wo."id"                                   AS "id",
@@ -255,10 +219,11 @@ function webOrderRows(filters: PoListFilters): Prisma.Sql {
       'web'                                     AS "fileType",
       'web'                                     AS "source",
       1                                         AS "revision",
+      wo."submittedAt"                          AS "queuedAt",
       0                                         AS "sortStatus"
     FROM "WebOrder" wo
     JOIN "Buyer" buyer ON buyer."id" = wo."buyerId"
-    WHERE ${Prisma.join(conditions, " AND ")}
+    WHERE wo."status" IN ('SUBMITTED', 'RECEIVED')
   `;
 }
 
@@ -334,6 +299,7 @@ function orderRows(filters: PoListFilters): Prisma.Sql {
         SELECT 1 FROM "WebOrder" wo2 WHERE wo2."purchaseOrderId" = po."id"
       ) THEN 'web' ELSE 'scan' END              AS "source",
       po."revision"                             AS "revision",
+      po."confirmedAt"                          AS "queuedAt",
       -- Confirmed rows sort after the backlog on a status sort, and on a PO
       -- date sort too (see poListQuery): the queue is what someone opens this
       -- page for.
@@ -352,20 +318,20 @@ function orderRows(filters: PoListFilters): Prisma.Sql {
   `;
 }
 
-function draftRows(filters: PoListFilters): Prisma.Sql {
+/**
+ * Uploads that have not become orders. `review` is the queue's half — read by
+ * Claude and waiting on a person; `table` is every other state, which stays in
+ * the main table under its Extracting and Failed chips.
+ */
+function draftRows(filters: PoListFilters, part: "review" | "table"): Prisma.Sql {
   const statuses =
-    filters.status === "needs-review"
+    part === "review"
       ? [Prisma.sql`'SUCCEEDED'`]
       : filters.status === "extracting"
         ? [Prisma.sql`'RUNNING'`, Prisma.sql`'PENDING'`]
         : filters.status === "failed"
           ? [Prisma.sql`'FAILED'`]
-          : [
-              Prisma.sql`'SUCCEEDED'`,
-              Prisma.sql`'RUNNING'`,
-              Prisma.sql`'PENDING'`,
-              Prisma.sql`'FAILED'`,
-            ];
+          : [Prisma.sql`'RUNNING'`, Prisma.sql`'PENDING'`, Prisma.sql`'FAILED'`];
 
   const conditions: Prisma.Sql[] = [
     Prisma.sql`ext."status"::text IN (${Prisma.join(statuses, ", ")})`,
@@ -411,6 +377,7 @@ function draftRows(filters: PoListFilters): Prisma.Sql {
       doc."mimeType"                            AS "fileType",
       'scan'                                    AS "source",
       1                                         AS "revision",
+      doc."uploadedAt"                          AS "queuedAt",
       0                                         AS "sortStatus"
     FROM "Extraction" ext
     JOIN "Document" doc  ON doc."id" = ext."documentId"

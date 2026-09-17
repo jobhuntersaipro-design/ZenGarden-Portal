@@ -98,6 +98,7 @@ export default async function BuyerPage({
     ...row,
     poDate: row.poDate ? row.poDate.toISOString() : null,
     total: row.total.toString(),
+    queuedAt: row.queuedAt ? row.queuedAt.toISOString() : null,
   }));
 
   const knows = (productId: string) =>

@@ -2,10 +2,10 @@ import { Prisma } from "@/generated/prisma/client";
 import { Role } from "@/generated/prisma/enums";
 import { prisma } from "@/lib/prisma";
 import {
-  poListNeedsReviewQuery,
   poListQuery,
-  poListReceivedQuery,
   poListSummaryQuery,
+  poReviewQueueQuery,
+  poReviewQueueSummaryQuery,
   type PoListFilters,
   type PoListRow,
   type PoListSortKey,
@@ -15,15 +15,12 @@ export type ListResult = {
   rows: PoListRow[];
   total: number;
   sum: string;
-  needsReview: number;
-  received: number;
 };
 
 /**
- * One round trip per question: the page of rows, the summary over the same
- * filtered set, and the "Needs review" and "Received" counts with the status
- * filter lifted. Each chip's number therefore always matches the rows it
- * filters to.
+ * One round trip per question: the page of rows and the summary over the same
+ * filtered set. Everything waiting on the team is not in it — see
+ * `listReviewQueue` (Phase 46).
  */
 export async function listPurchaseOrders(
   filters: PoListFilters,
@@ -31,22 +28,44 @@ export async function listPurchaseOrders(
   take: number,
   skip: number,
 ): Promise<ListResult> {
-  const [rows, summary, needsReview, received] = await Promise.all([
+  const [rows, summary] = await Promise.all([
     prisma.$queryRaw<PoListRow[]>(poListQuery(filters, sort, take, skip)),
     prisma.$queryRaw<{ count: number; total: Prisma.Decimal }[]>(
       poListSummaryQuery(filters),
     ),
-    prisma.$queryRaw<{ count: number }[]>(poListNeedsReviewQuery(filters)),
-    prisma.$queryRaw<{ count: number }[]>(poListReceivedQuery(filters)),
   ]);
 
   return {
     rows,
     total: summary[0]?.count ?? 0,
     sum: (summary[0]?.total ?? new Prisma.Decimal(0)).toString(),
-    needsReview: needsReview[0]?.count ?? 0,
-    received: received[0]?.count ?? 0,
   };
+}
+
+/**
+ * The review queue above the table (Phase 46): every row, unpaged and
+ * unfiltered, longest waiting first. Its length is the sidebar's number.
+ */
+export async function listReviewQueue(): Promise<{ rows: PoListRow[]; sum: string }> {
+  const [rows, summary] = await Promise.all([
+    prisma.$queryRaw<PoListRow[]>(poReviewQueueQuery()),
+    prisma.$queryRaw<{ total: Prisma.Decimal }[]>(poReviewQueueSummaryQuery()),
+  ]);
+  return {
+    rows,
+    sum: (summary[0]?.total ?? new Prisma.Decimal(0)).toString(),
+  };
+}
+
+/**
+ * The sidebar's number: the queue's own summary query, so the badge and the
+ * section can never count different rows. One aggregate per shell render.
+ */
+export async function reviewQueueCount(): Promise<number> {
+  const summary = await prisma.$queryRaw<{ count: number }[]>(
+    poReviewQueueSummaryQuery(),
+  );
+  return summary[0]?.count ?? 0;
 }
 
 /** Options for the buyer and uploader selects on the filter row. */

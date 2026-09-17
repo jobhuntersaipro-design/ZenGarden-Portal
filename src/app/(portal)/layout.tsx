@@ -4,6 +4,7 @@ import { Role } from "@/generated/prisma/enums";
 import { getSessionUser } from "@/lib/auth-guards";
 import { env } from "@/lib/env";
 import { prisma } from "@/lib/prisma";
+import { reviewQueueCount } from "@/lib/queries/purchase-orders";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { Toaster } from "@/components/ui/sonner";
 import { AvatarChangeListener } from "@/components/portal/AvatarBroadcast";
@@ -11,6 +12,7 @@ import { AvatarSavingProvider } from "@/components/portal/AvatarSaving";
 import { NavProgressProvider } from "@/components/portal/NavProgress";
 import { MobileTabBar, MobileTopBar } from "@/components/portal/MobileNav";
 import { SkipLink } from "@/components/portal/SkipLink";
+import { ReviewCountProvider } from "@/components/portal/ReviewCount";
 import { Sidebar } from "@/components/portal/Sidebar";
 
 export default async function PortalLayout({
@@ -35,10 +37,15 @@ export default async function PortalLayout({
   // would otherwise sit stale in the shell for up to five minutes while every
   // table — which joins the row directly — already showed the new one. One
   // indexed lookup by primary key is the cheaper half of that trade.
-  const profile = await prisma.user.findUnique({
-    where: { id: user.id },
-    select: { name: true, image: true },
-  });
+  // The review queue's count rides alongside (Phase 46): the sidebar and the
+  // Orders tab show it, and it is the same query the queue section runs.
+  const [profile, reviewCount] = await Promise.all([
+    prisma.user.findUnique({
+      where: { id: user.id },
+      select: { name: true, image: true },
+    }),
+    reviewQueueCount(),
+  ]);
   const displayName = profile?.name ?? user.name;
   const displayImage = profile?.image ?? null;
 
@@ -52,6 +59,10 @@ export default async function PortalLayout({
         {/* Wraps the shell *and* the page: /settings writes the flag, the
             sidebar and mobile top bar read it. */}
         <AvatarSavingProvider>
+          {/* The review queue's count, for the sidebar and the tab bar; kept
+              current from the browser because this layout is not re-rendered
+              on a client-side navigation (Phase 46). */}
+          <ReviewCountProvider initial={reviewCount}>
           {/* A picture changed in another tab has to reach this one. */}
           <AvatarChangeListener />
           <SkipLink />
@@ -89,6 +100,7 @@ export default async function PortalLayout({
             </div>
           </div>
           <MobileTabBar />
+          </ReviewCountProvider>
         </AvatarSavingProvider>
       </NavProgressProvider>
       <Toaster />

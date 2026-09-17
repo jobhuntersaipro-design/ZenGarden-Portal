@@ -11,17 +11,12 @@ import { PO_STAGES, stageLabel } from "@/lib/po-stages";
 import { usePendingChoice } from "@/hooks/usePendingChoice";
 import { useUrlNavigation } from "@/hooks/useUrlNavigation";
 
-export type StatusChip =
-  | "all"
-  | "confirmed"
-  | "needs-review"
-  | "received"
-  | "extracting"
-  | "failed"
-  | "web"
-  // Not a chip: the dashboard's shop-order line links to it, and it has no
-  // entry in CHIPS below. While it is the filter, no chip reads selected.
-  | "shop-open";
+/**
+ * The main table's filters. Needs review and Received left in Phase 46 with
+ * the rows they filtered to, which now sit in the review queue above the
+ * table; so did `shop-open`, the dashboard's link, which points at the queue.
+ */
+export type StatusChip = "all" | "confirmed" | "extracting" | "failed" | "web";
 
 /**
  * Chips and badges read the same tokens, so a colour means the same thing in
@@ -31,16 +26,6 @@ const CHIPS: { value: StatusChip; label: string; dot: string }[] = [
   { value: "all", label: "All", dot: "bg-ink-tertiary" },
   { value: "confirmed", label: "Confirmed", dot: "bg-accent-green" },
   {
-    value: "needs-review",
-    label: "Needs review",
-    dot: INTAKE_STATUS.NEEDS_REVIEW.dot,
-  },
-  {
-    value: "received",
-    label: "Received",
-    dot: INTAKE_STATUS.RECEIVED.dot,
-  },
-  {
     value: "extracting",
     label: "Extracting",
     dot: INTAKE_STATUS.EXTRACTING.dot,
@@ -49,7 +34,8 @@ const CHIPS: { value: StatusChip; label: string; dot: string }[] = [
   {
     value: "web",
     label: "From the shop",
-    // Provenance, not a state to act on — the Source column's colour.
+    // Provenance, not a state to act on — the Source column's colour. Holds
+    // confirmed shop orders only since Phase 46: unconfirmed ones are queued.
     dot: "bg-ink-secondary",
   },
 ];
@@ -59,13 +45,9 @@ const SEARCH_DEBOUNCE_MS = 200;
 export function PoFilters({
   buyers,
   uploaders,
-  needsReview,
-  received,
 }: {
   buyers: { id: string; name: string }[];
   uploaders: { id: string; name: string }[];
-  needsReview: number;
-  received: number;
 }) {
   const { replace } = useUrlNavigation();
   const pathname = usePathname();
@@ -193,14 +175,6 @@ export function PoFilters({
           aria-busy={statuses.pending || undefined}
         >
           {CHIPS.map((chip) => {
-            // The count comes from the same query that feeds the table, so a
-            // row leaving the queue changes the chip on the same render.
-            const count =
-              chip.value === "needs-review" && needsReview > 0
-                ? needsReview
-                : chip.value === "received" && received > 0
-                  ? received
-                  : null;
             return (
               <ChoiceButton
                 key={chip.value}
@@ -222,9 +196,6 @@ export function PoFilters({
                   className={`size-1.5 rounded-full ${chip.dot}`}
                 />
                 {chip.label}
-                {count !== null ? (
-                  <span className="tabular-nums font-medium">{count}</span>
-                ) : null}
               </ChoiceButton>
             );
           })}
