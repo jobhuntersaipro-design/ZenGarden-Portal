@@ -113,6 +113,42 @@ export default async function OrderDetailPage({
         </div>
       </div>
 
+      {/* The document leads (2026-09-17): it is the record the buyer asked to
+          be able to review, so it comes before the progress and the lines,
+          full width and fitted to it. The lines card below says the same thing
+          on purpose — the quick read. `data-print-region` is what Print
+          keeps. */}
+      <section className="mt-lg min-w-0" data-print-region>
+        <div className="flex flex-wrap items-baseline justify-between gap-sm">
+          <h2 className="font-display text-[length:var(--text-heading-sm)] font-[650] text-ink">
+            Your purchase order
+          </h2>
+        </div>
+        <p className="mt-xxs text-[length:var(--text-body-sm)] text-ink-tertiary">
+          The document we hold against this order.
+        </p>
+        <div className="mt-md">
+          {documentIsSound ? (
+            <PurchaseOrderPreview
+              document={document}
+              footnote={
+                order.kind === "confirmed"
+                  ? "Confirmed by our team. This is the order we are fulfilling."
+                  : order.kind === "declined"
+                    ? "This order was not accepted. Nothing will be delivered against it."
+                    : "Sent to our team. They confirm the figures and come back to you."
+              }
+            />
+          ) : (
+            <p className="rounded-lg border border-accent-red p-md text-[length:var(--text-body-sm)] text-accent-red">
+              We couldn&rsquo;t draw the purchase order for this order. Its
+              lines come to {formatMYR(document.total)} against a total of{" "}
+              {formatMYR(Number(order.total))} — please ask our team before
+              working from either figure.
+            </p>
+          )}
+        </div>
+      </section>
       {order.kind === "confirmed" && order.stage ? (
         <section className="mt-lg rounded-lg border border-hairline bg-canvas p-lg">
           <p className="mb-sm font-mono text-[length:var(--text-eyebrow)] text-ink-tertiary">
@@ -190,42 +226,6 @@ export default async function OrderDetailPage({
         </div>
       </section>
 
-      {/* The lines above and the document below say the same thing on purpose.
-          A4 is 794px and scrolls inside its own container on a phone, which is
-          readable but not comfortable; the card is the quick read, the document
-          is the record — and it is the record the buyer asked to be able to
-          review. `data-print-region` is what Print keeps. */}
-      <section className="mt-lg min-w-0" data-print-region>
-        <div className="flex flex-wrap items-baseline justify-between gap-sm">
-          <h2 className="font-display text-[length:var(--text-heading-sm)] font-[650] text-ink">
-            Your purchase order
-          </h2>
-        </div>
-        <p className="mt-xxs text-[length:var(--text-body-sm)] text-ink-tertiary">
-          The document we hold against this order.
-        </p>
-        <div className="mt-md">
-          {documentIsSound ? (
-            <PurchaseOrderPreview
-              document={document}
-              footnote={
-                order.kind === "confirmed"
-                  ? "Confirmed by our team. This is the order we are fulfilling."
-                  : order.kind === "declined"
-                    ? "This order was not accepted. Nothing will be delivered against it."
-                    : "Sent to our team. They confirm the figures and come back to you."
-              }
-            />
-          ) : (
-            <p className="rounded-lg border border-accent-red p-md text-[length:var(--text-body-sm)] text-accent-red">
-              We couldn&rsquo;t draw the purchase order for this order. Its
-              lines come to {formatMYR(document.total)} against a total of{" "}
-              {formatMYR(Number(order.total))} — please ask our team before
-              working from either figure.
-            </p>
-          )}
-        </div>
-      </section>
     </div>
   );
 }

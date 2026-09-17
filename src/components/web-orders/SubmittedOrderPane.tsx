@@ -1,4 +1,3 @@
-import { DocumentPreview } from "@/components/review/DocumentPreviewLoader";
 import { PersonChip } from "@/components/ui/person";
 import { quantityCaption } from "@/lib/cartons";
 import { formatDateTime } from "@/lib/dates";
@@ -8,15 +7,15 @@ import type { OpsWebOrder } from "@/lib/queries/web-orders";
 /**
  * What the buyer actually sent, read-only.
  *
- * This plays the part the PDF plays on `/review/[id]`: the thing you check the
- * form beside it against — and since the order's own PDF exists, it leads
- * with that PDF. It is deliberately not editable — the form is where
+ * The summary beside the order's PDF: since 2026-09-17 the PDF is the page's
+ * primary pane and this sits in the side rail under the confirm form (or on
+ * its own, for an order with no PDF). It is deliberately not editable — the form is where
  * changes happen, and having two editable copies of the same numbers is how a
  * reviewer loses track of which one the buyer agreed to.
  */
 export function SubmittedOrderPane({ order }: { order: OpsWebOrder }) {
   return (
-    <section className="min-w-0 rounded-lg border border-hairline bg-canvas p-lg">
+    <section className="@container min-w-0 rounded-lg border border-hairline bg-canvas p-lg">
       <p className="font-mono text-[length:var(--text-eyebrow)] text-ink-tertiary">
         What the buyer sent
       </p>
@@ -24,20 +23,7 @@ export function SubmittedOrderPane({ order }: { order: OpsWebOrder }) {
         {order.reference}
       </h2>
 
-      {/* The purchase order itself, as the buyer received it — with the same
-          paging, zoom and download as an uploaded scan on /review/[id]. The
-          summary stays underneath for the quick read and for who placed
-          it. */}
-      {order.document ? (
-        <div className="mt-md">
-          <DocumentPreview
-            documentId={order.document.id}
-            originalName={order.document.originalName}
-          />
-        </div>
-      ) : null}
-
-      <dl className="mt-md grid gap-sm sm:grid-cols-2">
+      <dl className="mt-md grid gap-sm @md:grid-cols-2">
         {[
           ["Buyer", order.buyerName],
           ["Their reference", order.buyerReference],
@@ -85,7 +71,7 @@ export function SubmittedOrderPane({ order }: { order: OpsWebOrder }) {
             <p className="text-[length:var(--text-body-sm)] text-ink">{line.name}</p>
             <p className="text-[length:var(--text-caption)] tabular-nums text-ink-tertiary">
               {/* The line's total only: the unit price is on the document
-                  above, and two money figures per line read as a sum. */}
+                  beside it, and two money figures per line read as a sum. */}
               {`${line.sku} · ${quantityCaption(line.cartons, line.packSize, line.unit)} · ${formatMYR(
                 Number(line.amount),
               )}`}

@@ -1,6 +1,14 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useReducer, useRef, useState } from "react";
+import {
+  useCallback,
+  useEffect,
+  useMemo,
+  useReducer,
+  useRef,
+  useState,
+  type ReactNode,
+} from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
@@ -15,7 +23,7 @@ import {
 } from "@/actions/purchase-orders";
 import { Combobox, type ComboboxOption } from "@/components/review/Combobox";
 import { draftReducer } from "@/components/review/draft-reducer";
-import { Field, FieldShell } from "@/components/review/Field";
+import { Field, FieldShell, ReadOnlyField } from "@/components/review/Field";
 import {
   LineItemsTable,
   LineItemSum,
@@ -28,6 +36,7 @@ import {
 } from "@/lib/extraction/match-products";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
+import { formatDate } from "@/lib/dates";
 import {
   Dialog,
   DialogContent,
@@ -50,6 +59,8 @@ export function ReviewForm({
   buyers,
   catalogue,
   queue,
+  document,
+  locked,
 }: {
   extractionId: string;
   status: ExtractionStatus;
@@ -59,6 +70,19 @@ export function ReviewForm({
   buyers: ComboboxOption[];
   catalogue: CatalogueEntry[];
   queue: string[];
+  /**
+   * The source document, drawn as this screen's primary pane (2026-09-17).
+   * A slot rather than a sibling on the page, so the form can put its header
+   * fields in the rail beside it and its line items full width underneath.
+   */
+  document: ReactNode;
+  /**
+   * Read-only since 2026-09-17 — but only where Claude read a value and the
+   * draft carries it.
+   * A failed extraction has no PO number, and locking an empty field would
+   * leave the upload impossible to confirm.
+   */
+  locked: { poNumber: boolean; poDate: boolean };
 }) {
   const router = useRouter();
   const [draft, dispatch] = useReducer(draftReducer, initialDraft);
@@ -267,72 +291,98 @@ export function ReviewForm({
           own width back up the chain and the *page* scrolls sideways on a
           phone instead of the table scrolling inside its own container. */}
       <div className="flex min-w-0 flex-col gap-md">
-        {/* Buyer leads on its own full-width row so a long buyer name is never
-            the value that truncates (G4, design reference §3.4). */}
-        <FieldShell label="Buyer" confidence={confidence.buyerName}>
-          <div className="flex items-center gap-xs">
-            <div className="min-w-0 flex-1">
-              <Combobox
-                ariaLabel="Buyer"
-                value={draft.buyerId ?? null}
-                options={buyers}
-                placeholder={draft.newBuyerName ?? "Choose a buyer"}
-                createLabel={(query) => `Create “${query}”`}
-                onSelect={(option) =>
-                  dispatch({ type: "buyer", buyerId: option.id, newBuyerName: null })
-                }
-                onCreate={(name) =>
-                  dispatch({ type: "buyer", buyerId: null, newBuyerName: name })
+        {/* The document leads and the header fields sit in the rail beside it
+            from `xl`; below `xl` they stack, document first. The line items
+            need 952px, so they run full width underneath both. */}
+        <div className="grid min-w-0 gap-xl xl:grid-cols-document">
+          <div className="min-w-0 xl:sticky xl:top-md xl:self-start">{document}</div>
+          <div className="@container flex min-w-0 flex-col gap-md">
+            {/* Buyer leads on its own full-width row so a long buyer name is never
+                the value that truncates (G4, design reference §3.4). */}
+            <FieldShell label="Buyer" confidence={confidence.buyerName}>
+              <div className="flex items-center gap-xs">
+                <div className="min-w-0 flex-1">
+                  <Combobox
+                    ariaLabel="Buyer"
+                    value={draft.buyerId ?? null}
+                    options={buyers}
+                    placeholder={draft.newBuyerName ?? "Choose a buyer"}
+                    createLabel={(query) => `Create “${query}”`}
+                    onSelect={(option) =>
+                      dispatch({ type: "buyer", buyerId: option.id, newBuyerName: null })
+                    }
+                    onCreate={(name) =>
+                      dispatch({ type: "buyer", buyerId: null, newBuyerName: name })
+                    }
+                  />
+                </div>
+                {draft.buyerId ? (
+                  <span className="shrink-0 rounded-full bg-surface-soft px-sm py-xxs text-[length:var(--text-caption)] text-accent-green">
+                    Known buyer
+                  </span>
+                ) : null}
+              </div>
+              {fieldError("buyerId") ? (
+                <p className="text-[length:var(--text-caption)] text-accent-red">
+                  {fieldError("buyerId")}
+                </p>
+              ) : null}
+            </FieldShell>
+
+            <div className="grid gap-md @md:grid-cols-2">
+              {locked.poNumber ? (
+                <ReadOnlyField
+                  id="poNumber"
+                  label="PO number"
+                  value={draft.poNumber}
+                  confidence={confidence.poNumber}
+                />
+              ) : (
+                <Field
+                  id="poNumber"
+                  label="PO number"
+                  value={draft.poNumber}
+                  confidence={confidence.poNumber}
+                  error={fieldError("poNumber")}
+                  onChange={(value) => dispatch({ type: "field", field: "poNumber", value })}
+                />
+              )}
+              {locked.poDate ? (
+                <ReadOnlyField
+                  id="poDate"
+                  label="PO date"
+                  value={draft.poDate ? formatDate(draft.poDate) : ""}
+                  confidence={confidence.poDate}
+                />
+              ) : (
+                <Field
+                  id="poDate"
+                  label="PO date"
+                  type="date"
+                  value={draft.poDate}
+                  confidence={confidence.poDate}
+                  error={fieldError("poDate")}
+                  onChange={(value) => dispatch({ type: "field", field: "poDate", value })}
+                />
+              )}
+              <Field
+                id="currency"
+                label="Currency"
+                value={draft.currency}
+                confidence={confidence.currency}
+                onChange={(value) => dispatch({ type: "field", field: "currency", value })}
+              />
+              <Field
+                id="paymentTerms"
+                label="Payment terms"
+                value={draft.paymentTerms ?? ""}
+                confidence={confidence.paymentTerms}
+                onChange={(value) =>
+                  dispatch({ type: "field", field: "paymentTerms", value: value || null })
                 }
               />
             </div>
-            {draft.buyerId ? (
-              <span className="shrink-0 rounded-full bg-surface-soft px-sm py-xxs text-[length:var(--text-caption)] text-accent-green">
-                Known buyer
-              </span>
-            ) : null}
           </div>
-          {fieldError("buyerId") ? (
-            <p className="text-[length:var(--text-caption)] text-accent-red">
-              {fieldError("buyerId")}
-            </p>
-          ) : null}
-        </FieldShell>
-
-        <div className="grid gap-md sm:grid-cols-2">
-          <Field
-            id="poNumber"
-            label="PO number"
-            value={draft.poNumber}
-            confidence={confidence.poNumber}
-            error={fieldError("poNumber")}
-            onChange={(value) => dispatch({ type: "field", field: "poNumber", value })}
-          />
-          <Field
-            id="poDate"
-            label="PO date"
-            type="date"
-            value={draft.poDate}
-            confidence={confidence.poDate}
-            error={fieldError("poDate")}
-            onChange={(value) => dispatch({ type: "field", field: "poDate", value })}
-          />
-          <Field
-            id="currency"
-            label="Currency"
-            value={draft.currency}
-            confidence={confidence.currency}
-            onChange={(value) => dispatch({ type: "field", field: "currency", value })}
-          />
-          <Field
-            id="paymentTerms"
-            label="Payment terms"
-            value={draft.paymentTerms ?? ""}
-            confidence={confidence.paymentTerms}
-            onChange={(value) =>
-              dispatch({ type: "field", field: "paymentTerms", value: value || null })
-            }
-          />
         </div>
 
         <section className="min-w-0">

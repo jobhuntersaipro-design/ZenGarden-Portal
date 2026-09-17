@@ -268,8 +268,16 @@ export default async function PurchaseOrderPage({
       {/* A grid item defaults to `min-width: auto`, so the track grew to the
           error card's max-content width and pushed the page 113px past a 390px
           viewport (2026-09-06 review). Both columns must be allowed to shrink. */}
-      <div className="mt-lg grid min-w-0 gap-lg lg:grid-cols-[45fr_55fr]">
-        <section className="min-w-0">
+      {/* With a document, the document is the primary pane (2026-09-17): the
+          wide column, the viewport's height, held in view from `xl` while the
+          summary rail beside it scrolls. Without one there is only a short
+          note to show, so the old split stays. */}
+      <div
+        className={`mt-lg grid min-w-0 gap-lg ${po.document ? "xl:grid-cols-document" : "lg:grid-cols-[45fr_55fr]"}`}
+      >
+        <section
+          className={`min-w-0 ${po.document ? "xl:sticky xl:top-md xl:self-start" : ""}`}
+        >
           <p className="mb-xs font-mono text-[length:var(--text-eyebrow)] text-ink-tertiary">
             {/* Three cases now, not two: a scan the customer emailed, the
                 purchase order we generated for an order placed on the shop
@@ -317,11 +325,13 @@ export default async function PurchaseOrderPage({
         </section>
 
         <div className="flex min-w-0 flex-col gap-lg">
-          <section className="rounded-lg border border-hairline bg-canvas p-lg">
+          {/* Container queries rather than viewport ones: the same card is a
+              22rem rail beside the document and full width below `xl`. */}
+          <section className="@container rounded-lg border border-hairline bg-canvas p-lg">
             <h2 className="mb-sm font-mono text-[length:var(--text-eyebrow)] text-ink-tertiary">
               Summary
             </h2>
-            <dl className="grid gap-sm sm:grid-cols-2">
+            <dl className="grid gap-sm @sm:grid-cols-2">
               {[
                 ["PO number", po.poNumber],
                 ["PO date", formatDate(po.poDate)],
@@ -347,7 +357,7 @@ export default async function PurchaseOrderPage({
               {/* Prose, so it wraps across the full width rather than
                   truncating — unlike every other row on this card, whose `dd`
                   sets `title={value}` and clips. */}
-              <div className="sm:col-span-2">
+              <div className="@sm:col-span-2">
                 <dt className="font-mono text-[length:var(--text-eyebrow)] text-ink-tertiary">
                   Remark
                 </dt>
@@ -393,90 +403,57 @@ export default async function PurchaseOrderPage({
             <h2 className="mb-sm font-mono text-[length:var(--text-eyebrow)] text-ink-tertiary">
               Line items
             </h2>
-            <div className="overflow-x-auto">
-              <table className="w-full border-collapse">
-                <thead>
-                  <tr className="border-b border-hairline text-left">
-                    {["Description", "Qty", "Unit price", "Amount"].map(
-                      (heading, index) => (
-                        <th
-                          key={heading}
-                          scope="col"
-                          className={`py-xs font-mono text-[length:var(--text-eyebrow)] font-normal text-ink-tertiary ${index > 0 ? "pl-md text-right" : ""}`}
-                        >
-                          {heading}
-                        </th>
-                      ),
-                    )}
-                  </tr>
-                </thead>
-                <tbody>
-                  {/* Not sortable: these are in the order they appear on the
-                      customer's document, which is what lets someone check
-                      them against the page beside it (design reference §4). */}
-                  {po.lineItems.map((line) => (
-                    <tr
-                      key={line.id}
-                      className="border-b border-hairline last:border-0"
-                    >
-                      <td className="py-xs pr-sm text-[length:var(--text-body-sm)] text-ink">
-                        <span
-                          className="block truncate"
-                          title={line.description}
-                        >
-                          {line.description}
-                        </span>
-                        {/* The code the document printed, not the catalogue's.
-                            They are the same once a line is linked, but a line
-                            whose code created nothing still has one to show. */}
-                        {line.sku ?? line.product?.sku ? (
-                          <span className="block font-mono text-[length:var(--text-caption)] text-ink-tertiary">
-                            {line.sku ?? line.product?.sku}
-                          </span>
-                        ) : null}
-                      </td>
-                      {/* `pl-md` on every numeric cell. Without it a
-                          right-aligned "4 kit" sits flush against the left
-                          edge of "RM 3,428.15" and the two read as one string
-                          — reported as `4 kitRM 3,428.15` (brief G6). The unit
-                          stays with the quantity and never joins the currency
-                          value. */}
-                      <td className="py-xs pl-md text-right tabular-nums text-[length:var(--text-body-sm)] text-ink">
-                        {line.quantity.toString()}
-                        {line.unit ? ` ${line.unit}` : ""}
-                      </td>
-                      <td className="py-xs pl-md text-right tabular-nums text-[length:var(--text-body-sm)] text-ink">
-                        {formatMYR(line.unitPrice)}
-                      </td>
-                      <td className="py-xs pl-md text-right tabular-nums text-[length:var(--text-body-sm)] text-ink">
-                        {formatMYR(line.amount)}
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-                <tfoot>
-                  {[
-                    { label: "Subtotal", value: po.subtotal, strong: false },
-                    { label: "Tax", value: po.tax, strong: false },
-                    { label: "Total", value: po.total, strong: true },
-                  ].map(({ label, value, strong }) => (
-                    <tr key={label}>
-                      <td
-                        colSpan={3}
-                        className={`py-xxs text-right text-[length:var(--text-body-sm)] ${strong ? "font-semibold text-ink" : "text-ink-secondary"}`}
-                      >
-                        {label}
-                      </td>
-                      <td
-                        className={`py-xxs pl-md text-right tabular-nums text-[length:var(--text-body-sm)] ${strong ? "font-semibold text-ink" : "text-ink-secondary"}`}
-                      >
-                        {formatMYR(value)}
-                      </td>
-                    </tr>
-                  ))}
-                </tfoot>
-              </table>
-            </div>
+            {/* A list rather than a four-column table since 2026-09-17: the
+                card sits in a 22rem rail beside the document, where Qty, Unit
+                price and Amount left the description a few characters wide.
+                Not sortable: these are in the order they appear on the
+                customer's document, which is what lets someone check them
+                against the page beside it (design reference §4). */}
+            <ul className="flex flex-col">
+              {po.lineItems.map((line) => (
+                <li
+                  key={line.id}
+                  className="border-b border-hairline py-xs first:pt-0"
+                >
+                  <div className="flex items-baseline justify-between gap-sm">
+                    <span className="min-w-0 text-[length:var(--text-body-sm)] text-ink">
+                      {line.description}
+                    </span>
+                    <span className="shrink-0 text-[length:var(--text-body-sm)] font-semibold tabular-nums text-ink">
+                      {formatMYR(line.amount)}
+                    </span>
+                  </div>
+                  {/* The code the document printed, not the catalogue's. They
+                      are the same once a line is linked, but a line whose code
+                      created nothing still has one to show. The unit stays
+                      with the quantity and never joins the currency value
+                      (brief G6). */}
+                  <p className="mt-xxs text-[length:var(--text-caption)] tabular-nums text-ink-tertiary">
+                    {[
+                      line.sku ?? line.product?.sku,
+                      `${line.quantity.toString()}${line.unit ? ` ${line.unit}` : ""} × ${formatMYR(line.unitPrice)}`,
+                    ]
+                      .filter(Boolean)
+                      .join(" · ")}
+                  </p>
+                </li>
+              ))}
+            </ul>
+            <dl className="pt-xs">
+              {[
+                { label: "Subtotal", value: po.subtotal, strong: false },
+                { label: "Tax", value: po.tax, strong: false },
+                { label: "Total", value: po.total, strong: true },
+              ].map(({ label, value, strong }) => (
+                <div
+                  key={label}
+                  className={`flex items-baseline justify-between gap-sm py-xxs text-[length:var(--text-body-sm)] ${strong ? "font-semibold text-ink" : "text-ink-secondary"}`}
+                >
+                  <dt>{label}</dt>
+                  <dd className="tabular-nums">{formatMYR(value)}</dd>
+                </div>
+              ))}
+            </dl>
           </section>
         </div>
       </div>

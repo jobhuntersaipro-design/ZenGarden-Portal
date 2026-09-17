@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import { notFound, redirect } from "next/navigation";
 import { BackLink } from "@/components/portal/BackLink";
 import { PageHeader } from "@/components/portal/PageHeader";
+import { DocumentPreview } from "@/components/review/DocumentPreviewLoader";
 import { SubmittedOrderPane } from "@/components/web-orders/SubmittedOrderPane";
 import { WebOrderReviewForm } from "@/components/web-orders/WebOrderReviewForm";
 import { requireUser } from "@/lib/auth-guards";
@@ -14,9 +15,9 @@ export const dynamic = "force-dynamic";
 /**
  * The ops review screen for an order placed on the shop.
  *
- * Two panes, mirroring `/review/[id]`'s geometry so it reads as the same job:
- * what the buyer sent on the left, the purchase order being written on the
- * right.
+ * The order's purchase-order PDF leads, with the confirm form and what the
+ * buyer sent in a side rail — the same geometry as `/review/[id]`, so it reads
+ * as the same job. An order with no PDF keeps the two half-width panes.
  */
 export default async function WebOrderReviewPage({
   params,
@@ -52,6 +53,25 @@ export default async function WebOrderReviewPage({
         <p className="mt-lg rounded-lg border border-hairline bg-surface p-lg text-[length:var(--text-body-md)] text-ink">
           This order was declined and the buyer has been told.
         </p>
+      ) : order.document ? (
+        // The purchase order's PDF is the primary pane (2026-09-17): most of
+        // the width and the viewport's height, held in view while the rail
+        // beside it — confirm form, then the buyer's summary — scrolls.
+        <div className="mt-lg grid min-w-0 gap-lg xl:grid-cols-document">
+          <section className="min-w-0 xl:sticky xl:top-md xl:self-start">
+            <p className="mb-xs font-mono text-[length:var(--text-eyebrow)] text-ink-tertiary">
+              Purchase order · as the buyer received it
+            </p>
+            <DocumentPreview
+              documentId={order.document.id}
+              originalName={order.document.originalName}
+            />
+          </section>
+          <div className="flex min-w-0 flex-col gap-lg">
+            <WebOrderReviewForm order={order} />
+            <SubmittedOrderPane order={order} />
+          </div>
+        </div>
       ) : (
         <div className="mt-lg grid min-w-0 gap-lg lg:grid-cols-2">
           <SubmittedOrderPane order={order} />

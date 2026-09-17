@@ -12,7 +12,7 @@ export default function ReviewLoading() {
   return (
     <PageSkeleton>
       <HeaderSkeleton action={false} />
-      <div className="grid gap-xl lg:grid-cols-2">
+      <div className="grid gap-xl xl:grid-cols-document">
         <Shimmer className="h-preview w-full rounded-lg" />
         <div className="flex flex-col gap-md">
           {Array.from({ length: 8 }, (_, index) => (
