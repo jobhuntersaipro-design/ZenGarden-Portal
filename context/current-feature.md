@@ -1251,6 +1251,14 @@ file: generating a PDF remains Phase 19, still unbuilt.
   purchase-order file, is also unbuilt.
 
 ## History
+- 2026-09-18: Fix — the line under a purchase-order email's heading reads
+  only "Order ID W-…" — merged from `fix/po-email-meta-order-id` and pushed.
+  Asked for as: keep the Order ID, remove "· 3 lines · RM 200.00 · your PO
+  number testingpo". The lines, total and the buyer's PO number stay in the
+  order summary below; an email whose document data cannot be read no longer
+  names the PO number at all. The props and selects that fed only that line
+  were removed. 1213/1213 tests (one pins the line's text exactly), `tsc`,
+  lint (same 2 warnings), build clean. Not re-rendered in a browser.
 - 2026-09-18: Purchase-order emails show the order and a preview of the PDF —
   merged from `feature/po-email-preview` and pushed. Every email that carries
   or refers to a shop order (receipt, team notification, confirmed, delivery

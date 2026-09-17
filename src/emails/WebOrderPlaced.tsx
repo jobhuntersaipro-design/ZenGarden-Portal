@@ -7,11 +7,7 @@ export type WebOrderPlacedProps = {
   reference: string;
   buyerName: string;
   placedByName: string;
-  lineCount: number;
-  total: string;
   reviewUrl: string;
-  /** The buyer's own PO number, when they gave one. */
-  buyerReference?: string | null;
   /** The order's facts and lines (2026-09-18). Null when they could not be read. */
   document?: PoDocumentData | null;
   /** Whether page 1 of the PDF is on the email as `cid:po-preview`. */
@@ -25,10 +21,7 @@ export function WebOrderPlaced({
   reference,
   buyerName,
   placedByName,
-  lineCount,
-  total,
   reviewUrl,
-  buyerReference = null,
   document = null,
   preview = false,
   attached = false,
@@ -36,13 +29,7 @@ export function WebOrderPlaced({
   return (
     <Layout>
       <Heading>{`New order ${reference} from ${buyerName}`}</Heading>
-      <PoMetaLine
-        reference={reference}
-        lineCount={lineCount}
-        total={total}
-        buyerReference={buyerReference}
-        audience="staff"
-      />
+      <PoMetaLine reference={reference} />
       <Paragraph>
         {`${placedByName} at ${buyerName} placed an order on the shop.`}
       </Paragraph>

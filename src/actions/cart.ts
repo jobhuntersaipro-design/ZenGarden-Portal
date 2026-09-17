@@ -12,7 +12,6 @@ import { WebOrderReceipt, webOrderReceiptSubject } from "@/emails/WebOrderReceip
 import { sendEmail } from "@/lib/email";
 import { preparePoEmail } from "@/lib/po-email";
 import { env } from "@/lib/env";
-import { formatMYR } from "@/lib/money";
 import { prisma } from "@/lib/prisma";
 import { shopPath } from "@/lib/shop-routes";
 import { loadCart, type Cart } from "@/lib/queries/cart";
@@ -516,17 +515,13 @@ async function notify(
       where: { reference },
       select: {
         reference: true,
-        buyerReference: true,
-        subtotal: true,
         buyer: { select: { name: true } },
         placedBy: { select: { name: true, email: true } },
-        _count: { select: { lines: true } },
         id: true,
       },
     });
     if (!order) return;
 
-    const total = formatMYR(order.subtotal.toNumber());
     // Rendered once and shared: the team and the buyer get the same preview.
     const po = await preparePoEmail(order.id, order.reference, file);
 
@@ -547,10 +542,7 @@ async function notify(
           reference: order.reference,
           buyerName: order.buyer.name,
           placedByName: order.placedBy.name,
-          lineCount: order._count.lines,
-          total,
           reviewUrl: `${env.APP_URL}/web-orders/${order.id}`,
-          buyerReference: order.buyerReference,
           document: po.document,
           preview: po.preview,
           attached: po.attached,
@@ -566,9 +558,6 @@ async function notify(
       attachments: po.attachments,
       react: WebOrderReceipt({
         reference: order.reference,
-        buyerReference: order.buyerReference,
-        lineCount: order._count.lines,
-        total,
         orderUrl: `${env.SHOP_URL ?? env.APP_URL}/orders/${order.id}`,
         // Said only when it is true, so the email never promises a file that
         // is not on it.

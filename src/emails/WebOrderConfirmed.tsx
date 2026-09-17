@@ -6,11 +6,8 @@ import type { PoDocumentData } from "@/lib/purchase-order-document";
 export type WebOrderConfirmedProps = {
   /** Our Order ID, `W-2609-00014`. */
   reference: string;
-  /** The buyer's own PO number, when they gave one. Never the Order ID. */
-  buyerReference: string | null;
   /** Already formatted — "2 Oct 2026" — so the email and the screen agree. */
   expectedDelivery: string;
-  lineCount: number;
   total: string;
   orderUrl: string;
   /**
@@ -46,9 +43,7 @@ export type WebOrderConfirmedProps = {
  */
 export function WebOrderConfirmed({
   reference,
-  buyerReference,
   expectedDelivery,
-  lineCount,
   total,
   orderUrl,
   updated = false,
@@ -63,13 +58,7 @@ export function WebOrderConfirmed({
           ? `Delivery of order ${reference} has moved to ${expectedDelivery}`
           : `Order ${reference} is confirmed`}
       </Heading>
-      <PoMetaLine
-        reference={reference}
-        lineCount={lineCount}
-        total={total}
-        buyerReference={buyerReference}
-        audience="buyer"
-      />
+      <PoMetaLine reference={reference} />
       <Paragraph>
         {updated
           ? `We have had to change the delivery date on order ${reference}. It is now expected on ${expectedDelivery}. Nothing else on the order has changed.`

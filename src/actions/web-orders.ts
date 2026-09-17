@@ -150,7 +150,6 @@ export async function confirmWebOrder(
           buyerReference: true,
           reference: true,
           placedBy: { select: { email: true } },
-          _count: { select: { lines: true } },
         },
       });
       if (!order) throw new Error("MISSING_ORDER");
@@ -220,9 +219,7 @@ export async function confirmWebOrder(
         attachments: po.attachments,
         react: WebOrderConfirmed({
           reference: confirmed.order.reference,
-          buyerReference: confirmed.order.buyerReference,
           expectedDelivery: formatDate(deliveryDate),
-          lineCount: confirmed.order._count.lines,
           total: formatMYR(Number(data.total)),
           orderUrl: `${env.SHOP_URL ?? env.APP_URL}/orders/${confirmed.poId}`,
           attached: po.attached,

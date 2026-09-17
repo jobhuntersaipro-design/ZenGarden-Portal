@@ -125,9 +125,6 @@ const receipt = (over: { preview?: boolean; attached?: boolean } = {}) =>
   renderToStaticMarkup(
     WebOrderReceipt({
       reference: "W-2609-00015",
-      buyerReference: "ACME-PO-771",
-      lineCount: 1,
-      total: "RM 264,600.00",
       orderUrl: "https://shop.example.com/orders/wo1",
       document,
       preview: true,
@@ -143,7 +140,8 @@ describe("purchase-order emails", () => {
     for (const text of [
       "We have your order W-2609-00015",
       "Order ID",
-      "your PO number",
+      "PO number",
+      "ACME-PO-771",
       "Acme Industrial Sdn Bhd",
       "15 Sep 2026",
       "We&#x27;ll confirm",
@@ -158,6 +156,14 @@ describe("purchase-order emails", () => {
     ]) {
       expect(html).toContain(text);
     }
+  });
+
+  /** Only the Order ID under the heading (2026-09-18): the rest is in the summary. */
+  it("keeps the line under the heading to the Order ID", () => {
+    const html = receipt();
+    const meta = html.match(/<p[^>]*>Order ID .*?<\/p>/)?.[0] ?? "";
+    expect(meta.replace(/<[^>]+>/g, "")).toBe("Order ID W-2609-00015");
+    expect(html).not.toContain("your PO number");
   });
 
   it("draws the inline preview, with no preload hoisted into the head", () => {
