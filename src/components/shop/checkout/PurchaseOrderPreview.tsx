@@ -1,3 +1,4 @@
+import { DocumentFit } from "@/components/shop/checkout/DocumentFit";
 import { formatGrouped } from "@/lib/money";
 import {
   AWAITING_CONFIRMATION_NOTE,
@@ -14,15 +15,15 @@ import {
  * becomes `text-ink`, `#6f6f6f` `text-ink-tertiary`, `#646464`
  * `text-ink-secondary` and `#e8e8e8` `border-hairline`.
  *
- * **Fixed at a landscape 1070px inside a scrolling container** (portrait A4's
- * 794px until Phase 45 added five quantity columns; `globals.css` says why
- * not A4's own 1123). A document that
- * reflows is not the document; the reader is checking what the seller will
- * hold, so it keeps its proportions and the *container* scrolls on a narrow
- * screen, which is this project's rule for wide content and keeps the page
- * itself from ever scrolling sideways.
+ * **Laid out at a landscape 1070px** (portrait A4's 794px until Phase 45 added
+ * five quantity columns; `globals.css` says why not A4's own 1123). A document
+ * that reflows is not the document; the reader is checking what the seller
+ * will hold, so it keeps its proportions. Since 2026-09-17 `DocumentFit` opens
+ * it scaled to the frame's width with −/+/Fit, and only a zoom past Fit scrolls
+ * inside the frame — the page itself never scrolls sideways.
  *
- * Server-renderable: it takes data and holds no state. The review screen
+ * Server-renderable: it takes data and holds no state (the zoom lives in
+ * `DocumentFit`, a client leaf). The review screen
  * passes a fresh `PoDocumentData` as the reader types, so it is always
  * current without this component knowing anything about forms.
  */
@@ -41,15 +42,12 @@ export function PurchaseOrderPreview({
   footnote?: string;
 }) {
   return (
-    // The two data attributes are print hooks, not styling: `globals.css`
-    // needs to reach the scroller (to stop it clipping the page at the paper's
-    // edge) and the sheet itself (to drop the screen-only shadow) without
-    // matching on utility classes, which tailwind-merge or a restyle could
-    // move out from under it.
-    <div
-      data-po-scroller
-      className="overflow-x-auto rounded-lg border border-hairline bg-surface p-md"
-    >
+    // The data attributes are print hooks, not styling: `globals.css` needs to
+    // reach the frame and scroller (to stop them clipping the page at the
+    // paper's edge), the zoom (to print at full size) and the sheet itself (to
+    // drop the screen-only shadow) without matching on utility classes, which
+    // tailwind-merge or a restyle could move out from under it.
+    <DocumentFit>
       <article
         data-po-page
         aria-label="Purchase order preview"
@@ -220,7 +218,7 @@ export function PurchaseOrderPreview({
           ) : null}
         </footer>
       </article>
-    </div>
+    </DocumentFit>
   );
 }
 

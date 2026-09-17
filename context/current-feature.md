@@ -1251,6 +1251,26 @@ file: generating a PDF remains Phase 19, still unbuilt.
   purchase-order file, is also unbuilt.
 
 ## History
+- 2026-09-17: The document leads wherever a purchase order is previewed, and
+  PO number and PO date are read-only — built and driven on
+  `feature/po-document-primary`, not yet committed. `/web-orders/[id]`,
+  `/purchase-orders/[id]` and `/review/[id]` put the PDF in a wide column
+  (`grid-cols-document`: the rest of the width beside a 22rem rail, from `xl`,
+  sticky), at up to the viewport's height (`--spacing-preview`); the confirm
+  form / summary sit in the rail, and on `/review` the line items run full
+  width underneath. PO detail's line items became a list to fit the rail. The
+  shop's sheet (checkout review, buyer's order page) moved to the top and opens
+  at Fit with −/+/Fit (`DocumentFit`, CSS `zoom`; print resets it). PO number
+  and date are read-only on the shop-order confirm form, the PO edit sheet and
+  `/review` — there only when both Claude's output and the draft hold the
+  value, so a failed or thin extraction stays editable. UI only: the actions
+  still accept both fields. Driven with fixtures (a real rendered PDF, three
+  R2 copies): PDF 718px wide at 1440 (was 472), no cropping at 390/768/1440,
+  zoom 125% then Fit, confirm and an edit-sheet save kept PO number and date;
+  shop sheet 1070/678/308px at 1440/768/390, print hides controls at zoom 1.
+  Fixtures deleted by id, R2 NotFound, counts at baseline. 1177/1177 tests,
+  lint (same 2 warnings), build clean. **Found, not fixed:** PO detail at 390
+  overflows 88px from the header's Download/Edit/Delete row (pre-existing).
 - 2026-09-17: Fix — the success animation, and the review summary's lines —
   on `fix/success-lottie-and-summary-lines`. Reported as the animation "not
   showing" on production, where the file answered 200 on both hosts and plays

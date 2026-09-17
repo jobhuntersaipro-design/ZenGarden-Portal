@@ -50,7 +50,7 @@ export function ReviewSendForm({
   const cartonCount = cart.lines.reduce((sum, line) => sum + line.cartons, 0);
   const supplierEmail = supplier.email;
 
-  // Rebuilt on every keystroke, which is the point: the document below is the
+  // Rebuilt on every keystroke, which is the point: the document above is the
   // one that will be filed, so the PO number and the note appear on
   // it as they are typed rather than after the order is already sent.
   const document = buildPoDocument({
@@ -82,6 +82,31 @@ export function ReviewSendForm({
 
   return (
     <div className="mt-lg flex flex-col gap-xl">
+      {/* First (2026-09-17): the document is what this screen is for, so it
+          leads, full width and fitted to it; the fields that fill it in follow.
+          `min-w-0`: the sheet is laid out at 1070px and would otherwise stretch
+          this column to its own width and push the *page* sideways (measured
+          856 against 390 when it was A4). */}
+      <section className="min-w-0">
+        <h2 className="text-[length:var(--text-heading-sm)] font-[650] text-ink">
+          Your purchase order
+        </h2>
+        <p className="mt-xxs text-[length:var(--text-body-sm)] text-ink-tertiary">
+          This is the document we file against your order. It updates as you
+          fill in the fields below.
+        </p>
+        <div className="mt-md">
+          {documentIsSound ? (
+            <PurchaseOrderPreview document={document} />
+          ) : (
+            <p className="rounded-lg border border-accent-red p-md text-[length:var(--text-body-sm)] text-accent-red">
+              We couldn&rsquo;t draw your purchase order. Go back to the cart and
+              try again.
+            </p>
+          )}
+        </div>
+      </section>
+
       {/* The two short cards pair up from `md`; with no buyer on the session
           there is only one, so the grid is not applied at all rather than
           leaving half the row empty. `min-w-0` on each item because a grid
@@ -156,32 +181,8 @@ export function ReviewSendForm({
         </p>
       </Card>
 
-      {/* `min-w-0`: the A4 document inside is 794px wide and would otherwise
-          stretch this column to its own width and push the *page* sideways
-          (measured 856 against 390). With it, the document scrolls inside its
-          own container, which is this project's rule for wide content. */}
-      <section className="min-w-0">
-        <h2 className="text-[length:var(--text-heading-sm)] font-[650] text-ink">
-          Your purchase order
-        </h2>
-        <p className="mt-xxs text-[length:var(--text-body-sm)] text-ink-tertiary">
-          This is the document we file against your order. It updates as you
-          fill in the fields above.
-        </p>
-        <div className="mt-md">
-          {documentIsSound ? (
-            <PurchaseOrderPreview document={document} />
-          ) : (
-            <p className="rounded-lg border border-accent-red p-md text-[length:var(--text-body-sm)] text-accent-red">
-              We couldn&rsquo;t draw your purchase order. Go back to the cart and
-              try again.
-            </p>
-          )}
-        </div>
-      </section>
-
       {/* Last, because it is the last thing you do: the buyer reads the
-          document above, then confirms the figures underneath it. */}
+          document at the top, then confirms the figures down here. */}
       <section className="rounded-lg border border-hairline bg-canvas p-lg">
         <h2 className="text-[length:var(--text-heading-sm)] font-[650] text-ink">
           {`${cart.lines.length} product${cart.lines.length === 1 ? "" : "s"} · ${cartonCount} carton${cartonCount === 1 ? "" : "s"}`}

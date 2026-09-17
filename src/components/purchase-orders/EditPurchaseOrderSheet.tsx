@@ -3,7 +3,9 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
+import { formatDate } from "@/lib/dates";
 import { updatePurchaseOrder, type PurchaseOrderPatch } from "@/actions/stages";
+import { ReadOnlyField } from "@/components/review/Field";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import {
@@ -16,9 +18,12 @@ import {
 } from "@/components/ui/sheet";
 import { Textarea } from "@/components/ui/textarea";
 
+/**
+ * PO number and PO date are shown, not edited (2026-09-17): they are what the
+ * order was confirmed under. They still travel in the patch unchanged, which
+ * is what the delivery-date check (not before the PO date) compares against.
+ */
 const LABELS: { key: keyof PurchaseOrderPatch; label: string; type?: string }[] = [
-  { key: "poNumber", label: "PO number" },
-  { key: "poDate", label: "PO date", type: "date" },
   // Phase 38. Editable after the fact, and a change here emails the buyer
   // when the order came from the shop — a date that moves silently is what
   // they would ring up about.
@@ -55,11 +60,21 @@ export function EditPurchaseOrderSheet({
         <SheetHeader>
           <SheetTitle>Edit purchase order</SheetTitle>
           <SheetDescription>
-            Totals and line items are set at review and are not editable here.
+            PO number, PO date, totals and line items are set at review and
+            are not editable here.
           </SheetDescription>
         </SheetHeader>
 
         <div className="flex flex-col gap-md p-md">
+          <div className="grid gap-md sm:grid-cols-2">
+            <ReadOnlyField id="edit-poNumber" label="PO number" value={initial.poNumber} />
+            <ReadOnlyField
+              id="edit-poDate"
+              label="PO date"
+              value={initial.poDate ? formatDate(initial.poDate) : ""}
+            />
+          </div>
+
           {LABELS.map(({ key, label, type }) => (
             <div key={key} className="flex flex-col gap-xxs">
               <label

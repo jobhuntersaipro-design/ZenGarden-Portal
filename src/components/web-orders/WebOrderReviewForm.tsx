@@ -3,13 +3,13 @@
 import { useMemo, useReducer, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
-import { Field } from "@/components/review/Field";
+import { Field, ReadOnlyField } from "@/components/review/Field";
 import { TotalsBanner } from "@/components/review/TotalsBanner";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { draftReducer } from "@/components/review/draft-reducer";
 import { confirmWebOrder, declineWebOrder } from "@/actions/web-orders";
-import { todayISO } from "@/lib/dates";
+import { formatDate, todayISO } from "@/lib/dates";
 import { checkTotals, type PoDraft } from "@/lib/validation/purchase-orders";
 // The browser entry: this is a client component, and the `client` entry
 // drags PrismaClient into the bundle.
@@ -47,8 +47,8 @@ export function WebOrderReviewForm({ order }: { order: OpsWebOrder }) {
   const [attempted, setAttempted] = useState(false);
 
   const [draft, dispatch] = useReducer(draftReducer, {
-    // Defaults a reviewer can type over: the shop reference as the PO number,
-    // today as the PO date, and the buyer's standing terms.
+    // The shop reference as the PO number and today as the PO date, both
+    // read-only since 2026-09-17; the buyer's standing terms, editable.
     poNumber: order.reference,
     buyerId: order.buyerId,
     newBuyerName: null,
@@ -113,24 +113,22 @@ export function WebOrderReviewForm({ order }: { order: OpsWebOrder }) {
   const blockedByTotals = !totals.matches && !acknowledged;
 
   return (
-    <section className="rounded-lg border border-hairline bg-canvas p-lg">
+    <section className="@container min-w-0 rounded-lg border border-hairline bg-canvas p-lg">
       <p className="font-mono text-[length:var(--text-eyebrow)] text-ink-tertiary">
         Confirm as a purchase order
       </p>
 
-      <div className="mt-md grid gap-sm sm:grid-cols-2">
-        <Field
-          id="poNumber"
-          label="PO number"
-          value={draft.poNumber}
-          onChange={(value) => dispatch({ type: "field", field: "poNumber", value })}
-        />
-        <Field
+      {/* One column in the side rail, two where the form has the room: a
+          container query, because the same form sits in a 22rem rail beside
+          the order's PDF and in half the page when there is no PDF. */}
+      <div className="mt-md grid gap-sm @md:grid-cols-2">
+        {/* Read-only (2026-09-17): the shop reference and today are what the
+            purchase order is filed under, and not the reviewer's to retype. */}
+        <ReadOnlyField id="poNumber" label="PO number" value={draft.poNumber} />
+        <ReadOnlyField
           id="poDate"
           label="PO date"
-          type="date"
-          value={draft.poDate}
-          onChange={(value) => dispatch({ type: "field", field: "poDate", value })}
+          value={draft.poDate ? formatDate(draft.poDate) : ""}
         />
         <Field
           id="deliveryDate"

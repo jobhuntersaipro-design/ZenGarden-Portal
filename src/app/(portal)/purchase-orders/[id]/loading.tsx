@@ -27,7 +27,7 @@ export default function PurchaseOrderLoading() {
         <Shimmer className="mt-lg h-16 w-full" />
       </section>
 
-      <div className="mt-lg grid gap-lg lg:grid-cols-[45fr_55fr]">
+      <div className="mt-lg grid gap-lg xl:grid-cols-document">
         <div>
           <Shimmer className="mb-xs h-4 w-36" />
           <Shimmer className="h-preview w-full rounded-lg" />

@@ -83,6 +83,49 @@ export function Field({
   );
 }
 
+/**
+ * A value the reviewer checks but cannot change — PO number and PO date since
+ * 2026-09-17. Text in a tinted box at an input's height, so it lines up with
+ * the editable fields beside it without looking like one of them.
+ */
+export function ReadOnlyField({
+  id,
+  label,
+  value,
+  confidence,
+}: {
+  id: string;
+  label: string;
+  value: string;
+  confidence?: number;
+}) {
+  return (
+    <div className="flex min-w-0 flex-col gap-xxs">
+      <div className="flex items-baseline justify-between gap-sm">
+        <span
+          id={`${id}-label`}
+          className="font-mono text-[length:var(--text-eyebrow)] text-ink-tertiary"
+        >
+          {label}
+        </span>
+        {typeof confidence === "number" ? (
+          <span className="tabular-nums text-[length:var(--text-caption)] text-ink-tertiary">
+            {Math.round(confidence)}
+          </span>
+        ) : null}
+      </div>
+      <p
+        id={id}
+        aria-labelledby={`${id}-label`}
+        title={value}
+        className="flex h-control-md min-w-0 items-center truncate rounded-sm bg-surface-soft px-2.5 text-[length:var(--text-body-md)] text-ink"
+      >
+        <span className="truncate">{value || "—"}</span>
+      </p>
+    </div>
+  );
+}
+
 /** Same chrome as `Field` but wrapping something other than a text input. */
 export function FieldShell({
   label,

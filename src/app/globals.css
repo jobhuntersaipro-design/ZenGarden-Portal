@@ -199,8 +199,11 @@
 
   /* Review screen (Phase 04). The source column's resting height, so the
      skeleton, the PDF loader and the poller all reserve the same space; and
-     the minimum the line-item table needs before it scrolls horizontally. */
-  --spacing-preview: 600px;
+     the minimum the line-item table needs before it scrolls horizontally.
+     Since 2026-09-17 the document is the primary UI wherever a purchase order
+     is previewed, so it takes the viewport's height less the page chrome
+     around it (its own zoom bar and paging), never less than the old 600px. */
+  --spacing-preview: max(600px, calc(100dvh - 12rem));
   /* Sum of the per-column minimums declared in LineItemsTable's colgroup:
      240 + 176 + 80 + 80 + 112 + 112 + 40. At 720px the Description and Product
      headers collided and Amount was clipped off the card (measured
@@ -215,6 +218,11 @@
      that reflows is not the document (Phase 33). On the spacing scale
      because that is where `w-*` reads from, as `min-w-line-items` does. */
   --spacing-po-page: 1070px;
+  /* The document beside its side rail (2026-09-17): the document takes every
+     pixel the rail does not. Applied from `xl` only — at `lg` the content
+     column is ~720px, which would leave the document narrower than the rail,
+     so below `xl` the two stack with the document first. */
+  --grid-template-columns-document: minmax(0, 1fr) 22rem;
   --spacing-po-totals: 300px;
   /* The cart row's product thumbnail (Phase 17 §5.5) — 88px via ProductThumb,
      shared by CartLines, GuestCart's loading rows and the cart loading.tsx
@@ -729,11 +737,23 @@
     width: 100%;
   }
 
+  [data-po-frame],
   [data-po-scroller] {
     overflow: visible !important;
     border: 0 !important;
     background: transparent !important;
     padding: 0 !important;
+  }
+
+  /* The screen's −/+/Fit is a reading aid, not part of the document: paper
+     gets the sheet at its own size and no zoom bar. `!important` is what beats
+     the zoom the page sets inline. */
+  [data-po-controls] {
+    display: none !important;
+  }
+
+  [data-po-zoom] {
+    zoom: 1 !important;
   }
 
   [data-po-page] {

@@ -52,6 +52,19 @@ function toDraft(value: unknown): PoDraft {
   return draft;
 }
 
+/**
+ * Whether this JSON carries a non-empty value for the field. PO number and PO
+ * date are locked on this screen (2026-09-17) only when both Claude's output
+ * and the draft hold one: a failed extraction has no `rawJson`, and a draft
+ * missing the field falls back to "" or today in `toDraft` — locking either
+ * would leave the reviewer unable to confirm, or confirming a date nobody read.
+ */
+function hasValue(raw: unknown, field: "poNumber" | "poDate"): boolean {
+  if (typeof raw !== "object" || raw === null) return false;
+  const value = (raw as Record<string, unknown>)[field];
+  return typeof value === "string" && value.trim() !== "";
+}
+
 function confidenceMap(raw: unknown): Record<string, number> {
   if (typeof raw !== "object" || raw === null) return {};
   const fields = (raw as { confidence?: { fields?: unknown } }).confidence?.fields;
@@ -140,22 +153,30 @@ export default async function ReviewPage({
       {running ? (
         <RunningPoller extractionId={id} />
       ) : (
-        <div className="grid gap-xl lg:grid-cols-2">
-          <DocumentPreview
-            documentId={extraction.document.id}
-            originalName={extraction.document.originalName}
-          />
-          <ReviewForm
-            extractionId={id}
-            status={extraction.status}
-            extractionError={extraction.error}
-            initialDraft={toDraft(extraction.draftJson)}
-            confidence={confidenceMap(extraction.rawJson)}
-            buyers={buyers.map((buyer) => ({ id: buyer.id, label: buyer.name }))}
-            catalogue={products}
-            queue={queue}
-          />
-        </div>
+        <ReviewForm
+          document={
+            <DocumentPreview
+              documentId={extraction.document.id}
+              originalName={extraction.document.originalName}
+            />
+          }
+          locked={{
+            poNumber:
+              hasValue(extraction.rawJson, "poNumber") &&
+              hasValue(extraction.draftJson, "poNumber"),
+            poDate:
+              hasValue(extraction.rawJson, "poDate") &&
+              hasValue(extraction.draftJson, "poDate"),
+          }}
+          extractionId={id}
+          status={extraction.status}
+          extractionError={extraction.error}
+          initialDraft={toDraft(extraction.draftJson)}
+          confidence={confidenceMap(extraction.rawJson)}
+          buyers={buyers.map((buyer) => ({ id: buyer.id, label: buyer.name }))}
+          catalogue={products}
+          queue={queue}
+        />
       )}
     </>
   );
