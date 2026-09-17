@@ -84,9 +84,11 @@ export function SubmittedOrderPane({ order }: { order: OpsWebOrder }) {
           >
             <p className="text-[length:var(--text-body-sm)] text-ink">{line.name}</p>
             <p className="text-[length:var(--text-caption)] tabular-nums text-ink-tertiary">
+              {/* The line's total only: the unit price is on the document
+                  above, and two money figures per line read as a sum. */}
               {`${line.sku} · ${quantityCaption(line.cartons, line.packSize, line.unit)} · ${formatMYR(
-                Number(line.unitPrice),
-              )} · ${formatMYR(Number(line.amount))}`}
+                Number(line.amount),
+              )}`}
             </p>
           </li>
         ))}
