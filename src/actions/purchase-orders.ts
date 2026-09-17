@@ -590,18 +590,11 @@ export async function deletePurchaseOrder(input: {
     }
 
     await prisma.$transaction(async (tx) => {
-      await tx.purchaseOrder.delete({ where: { id: po.id } });
-      // Guarded since Phase 16: documentId is nullable, and a null here would
-      // become `IS NULL` and quietly match nothing.
-      if (po.documentId) {
-        await tx.extraction.updateMany({
-          where: { documentId: po.documentId, status: "CONFIRMED" },
-          data: { status: "SUCCEEDED" },
-        });
-      }
       // The mirror of the extraction going back to SUCCEEDED: a deleted order
-      // returns to the queue rather than stranding its web order in CONFIRMED
-      // pointing at a row that no longer exists.
+      // returns to the queue rather than stranding its web order in CONFIRMED.
+      // Before the delete, not after: `purchaseOrderId` is ON DELETE SET NULL,
+      // so once the order is gone this `where` matches nothing — which is
+      // exactly how it stranded one until Phase 43.
       await tx.webOrder.updateMany({
         where: { purchaseOrderId: po.id },
         data: {
@@ -614,6 +607,15 @@ export async function deletePurchaseOrder(input: {
           receivedAt: null,
         },
       });
+      await tx.purchaseOrder.delete({ where: { id: po.id } });
+      // Guarded since Phase 16: documentId is nullable, and a null here would
+      // become `IS NULL` and quietly match nothing.
+      if (po.documentId) {
+        await tx.extraction.updateMany({
+          where: { documentId: po.documentId, status: "CONFIRMED" },
+          data: { status: "SUCCEEDED" },
+        });
+      }
     });
 
     revalidatePath("/purchase-orders");

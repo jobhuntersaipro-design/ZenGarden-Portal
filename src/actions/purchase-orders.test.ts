@@ -270,6 +270,23 @@ describe("deletePurchaseOrder — orders placed on the shop", () => {
     expect(call.data.purchaseOrderId).toBeNull();
   });
 
+  /**
+   * `WebOrder.purchaseOrderId` is ON DELETE SET NULL. Deleting the purchase
+   * order first nulls the link, so a reset keyed on it then matches nothing
+   * and the shop order is stranded in CONFIRMED, pointing at no order and in
+   * no chip. Seen on the development database before this was reordered; a
+   * mock cannot apply the foreign key, so the order of the calls is what is
+   * pinned.
+   */
+  it("resets the shop order before deleting the purchase order it points at", async () => {
+    await deletePurchaseOrder({ id: "po1", typedPoNumber: "PO-2026-0063" });
+
+    expect(poDelete).toHaveBeenCalled();
+    expect(webOrderUpdateMany.mock.invocationCallOrder[0]).toBeLessThan(
+      poDelete.mock.invocationCallOrder[0]!,
+    );
+  });
+
   it("returns the shop order to the queue with nobody named on it", async () => {
     await deletePurchaseOrder({ id: "po1", typedPoNumber: "PO-2026-0063" });
 

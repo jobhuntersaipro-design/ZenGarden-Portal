@@ -173,8 +173,7 @@ export default async function PurchaseOrderPage({
                 notes: po.notes,
               }}
             />
-            {/* Super admin only. Deliberately not on the list: opening the
-                order first means seeing what is about to go. */}
+            {/* Super admin only, here and in the list's last column. */}
             {user?.role === Role.SUPER_ADMIN ? (
               <DeletePoDialog
                 poId={po.id}
@@ -186,6 +185,7 @@ export default async function PurchaseOrderPage({
                   timeZone: TIME_ZONE,
                 })}
                 supersedesRevision={po.revisionOf?.revision ?? null}
+                fromShop={po.webOrder !== null}
               />
             ) : null}
           </div>

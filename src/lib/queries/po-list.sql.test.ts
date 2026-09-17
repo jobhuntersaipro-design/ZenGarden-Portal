@@ -225,3 +225,24 @@ describe("the received state", () => {
     expect(sql).toContain('merged."source"');
   });
 });
+
+/**
+ * An unconfirmed row — a scan draft, a submitted or received shop order — has
+ * no PO date, and Postgres puts NULLs last on the default newest-first sort. A
+ * shop order sent this morning therefore sat on the list's last page, behind
+ * every confirmed order ever filed. Sorting by PO date now puts the backlog
+ * first in both directions, and the date orders what follows.
+ */
+describe("the backlog on a PO date sort", () => {
+  it.each(["desc", "asc"] as const)("comes first when sorted %s", (dir) => {
+    const sql = sqlOf(poListQuery(ALL, { key: "poDate", dir }, 0, 10) as never);
+    expect(sql).toContain(
+      `ORDER BY merged."sortStatus" ASC, merged."poDate" ${dir.toUpperCase()} NULLS LAST`,
+    );
+  });
+
+  it("is not pinned on any other sort, which keeps its own meaning", () => {
+    const sql = sqlOf(poListQuery(ALL, { key: "total", dir: "desc" }, 0, 10) as never);
+    expect(sql).toContain('ORDER BY merged."total" DESC NULLS LAST');
+  });
+});

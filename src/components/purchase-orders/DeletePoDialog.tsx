@@ -4,6 +4,7 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
 import { deletePurchaseOrder } from "@/actions/purchase-orders";
+import { RowDeleteButton } from "@/components/purchase-orders/RowDeleteButton";
 import { Button } from "@/components/ui/button";
 import {
   Dialog,
@@ -25,8 +26,8 @@ import { Input } from "@/components/ui/input";
  * into view.
  *
  * There is no "a later revision will survive" case: a superseded order
- * redirects to its newer revision, so this page only ever shows the current
- * one.
+ * redirects to its newer revision, and the list shows the latest revision
+ * alone, so both places only ever offer the current one.
  */
 export function DeletePoDialog({
   poId,
@@ -34,6 +35,8 @@ export function DeletePoDialog({
   lineItemCount,
   monthLabel,
   supersedesRevision,
+  fromShop = false,
+  variant = "button",
 }: {
   poId: string;
   poNumber: string;
@@ -45,6 +48,17 @@ export function DeletePoDialog({
    * Deleting it un-hides that earlier order, which nobody would guess.
    */
   supersedesRevision: number | null;
+  /**
+   * A confirmed shop order has no upload to return to. Its web order goes
+   * back to the queue instead, and the copy has to say that.
+   */
+  fromShop?: boolean;
+  /**
+   * `button` on the order's own page, which is gone once this succeeds, so it
+   * returns to the list. `row` in the list's last column, which stays put:
+   * the action's revalidation redraws the table without the row.
+   */
+  variant?: "button" | "row";
 }) {
   const router = useRouter();
   const [open, setOpen] = useState(false);
@@ -55,9 +69,16 @@ export function DeletePoDialog({
 
   return (
     <>
-      <Button variant="secondary" onClick={() => setOpen(true)}>
-        Delete
-      </Button>
+      {variant === "row" ? (
+        <RowDeleteButton
+          label={`Delete ${poNumber}`}
+          onOpen={() => setOpen(true)}
+        />
+      ) : (
+        <Button variant="secondary" onClick={() => setOpen(true)}>
+          Delete
+        </Button>
+      )}
 
       <Dialog open={open} onOpenChange={setOpen}>
         <DialogContent>
@@ -66,8 +87,10 @@ export function DeletePoDialog({
             <DialogDescription>
               Removes the order, its {lineItemCount}{" "}
               {lineItemCount === 1 ? "line item" : "line items"} and its stage
-              history. The original document is kept, and this upload goes back
-              to the review queue.
+              history.{" "}
+              {fromShop
+                ? "The buyer's order goes back to the queue as Needs review."
+                : "The original document is kept, and this upload goes back to the review queue."}
             </DialogDescription>
           </DialogHeader>
 
@@ -119,7 +142,7 @@ export function DeletePoDialog({
                 }
                 setOpen(false);
                 toast.success(`${poNumber} deleted`);
-                router.push("/purchase-orders");
+                if (variant === "button") router.push("/purchase-orders");
               }}
             >
               Delete order

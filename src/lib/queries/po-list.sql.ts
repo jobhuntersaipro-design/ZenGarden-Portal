@@ -102,6 +102,12 @@ export function poListQuery(
       ? "NULLS FIRST"
       : "NULLS LAST",
   );
+  // A draft or an unconfirmed shop order has no PO date, so NULLS LAST would
+  // file the backlog behind every confirmed order — on the last page of the
+  // default sort. Pinned first in both directions; the date orders the rest.
+  const backlogFirst = Prisma.raw(
+    sort.key === "poDate" ? 'merged."sortStatus" ASC, ' : "",
+  );
 
   // The union goes in a FROM clause rather than being ordered directly:
   // Postgres only allows result column names in a UNION's own ORDER BY, and
@@ -109,7 +115,7 @@ export function poListQuery(
   // text). Wrapping also lets the tie-break on "poNumber" stay stable.
   return Prisma.sql`
     SELECT * FROM (${baseSelect(filters)}) AS merged
-    ORDER BY ${orderColumn} ${direction} ${nulls}, merged."poNumber" ASC
+    ORDER BY ${backlogFirst}${orderColumn} ${direction} ${nulls}, merged."poNumber" ASC
     LIMIT ${limit} OFFSET ${offset}
   `;
 }
@@ -328,8 +334,9 @@ function orderRows(filters: PoListFilters): Prisma.Sql {
         SELECT 1 FROM "WebOrder" wo2 WHERE wo2."purchaseOrderId" = po."id"
       ) THEN 'web' ELSE 'scan' END              AS "source",
       po."revision"                             AS "revision",
-      -- Confirmed rows sort after the backlog on a status sort: the queue is
-      -- what someone opens this page for.
+      -- Confirmed rows sort after the backlog on a status sort, and on a PO
+      -- date sort too (see poListQuery): the queue is what someone opens this
+      -- page for.
       1                                         AS "sortStatus"
     FROM "PurchaseOrder" po
     JOIN "Buyer" buyer      ON buyer."id" = po."buyerId"
