@@ -23,6 +23,7 @@ import {
   stageLabel,
 } from "@/lib/po-stages";
 import { PO_STAGES } from "@/lib/po-stages";
+import { ORDER_IDENTITY_SELECT, orderIdentity, orderLabel } from "@/lib/order-identity";
 import { prisma } from "@/lib/prisma";
 import { PersonChip } from "@/components/ui/person";
 
@@ -36,9 +37,11 @@ export async function generateMetadata({
   const { id } = await params;
   const po = await prisma.purchaseOrder.findUnique({
     where: { id },
-    select: { poNumber: true },
+    select: ORDER_IDENTITY_SELECT,
   });
-  return { title: `${po?.poNumber ?? "Purchase order"} · Zen Garden Portal` };
+  return {
+    title: `${po ? orderLabel(orderIdentity(po)) : "Purchase order"} · Zen Garden Portal`,
+  };
 }
 
 const DAY_MS = 24 * 60 * 60 * 1000;
@@ -76,6 +79,10 @@ export default async function PurchaseOrderPage({
 
   // An old revision is not a page of its own: the current one is the record.
   if (po.supersededBy) redirect(`/purchase-orders/${po.supersededBy.id}`);
+
+  // Order ID and PO number, never one for the other (2026-09-17).
+  const identity = orderIdentity(po);
+  const label = orderLabel(identity);
 
   const current = po.stage;
   const daysFromOrder = Math.max(
@@ -143,12 +150,12 @@ export default async function PurchaseOrderPage({
         </Link>
         <span className="text-[length:var(--text-body-sm)] text-ink-tertiary">
           {" / "}
-          {po.poNumber}
+          {label}
         </span>
       </nav>
 
       <PageHeader
-        eyebrow={po.poNumber}
+        eyebrow={label}
         title={po.buyer.name}
         action={
           <div className="flex items-center gap-sm">
@@ -163,8 +170,8 @@ export default async function PurchaseOrderPage({
             ) : null}
             <EditPurchaseOrderSheet
               poId={po.id}
+              identity={identity}
               initial={{
-                poNumber: po.poNumber,
                 poDate: po.poDate.toISOString().slice(0, 10),
                 deliveryDate: po.deliveryDate
                   ? po.deliveryDate.toISOString().slice(0, 10)
@@ -177,7 +184,8 @@ export default async function PurchaseOrderPage({
             {user?.role === Role.SUPER_ADMIN ? (
               <DeletePoDialog
                 poId={po.id}
-                poNumber={po.poNumber}
+                orderId={identity.orderId}
+                poNumber={identity.poNumber}
                 lineItemCount={po.lineItems.length}
                 monthLabel={po.poDate.toLocaleDateString("en-GB", {
                   month: "long",
@@ -199,7 +207,7 @@ export default async function PurchaseOrderPage({
             href={`/purchase-orders/${po.revisionOf.id}`}
             className="text-brand-link underline-offset-2 hover:underline"
           >
-            {po.revisionOf.poNumber}
+            {po.revisionOf.poNumber ?? "the previous revision"}
           </Link>
           , confirmed {formatDate(po.revisionOf.confirmedAt)}
         </p>
@@ -333,7 +341,8 @@ export default async function PurchaseOrderPage({
             </h2>
             <dl className="grid gap-sm @sm:grid-cols-2">
               {[
-                ["PO number", po.poNumber],
+                ["Order ID", identity.orderId ?? "—"],
+                ["PO number", identity.poNumber ?? "—"],
                 ["PO date", formatDate(po.poDate)],
                 [
                   "Expected delivery",

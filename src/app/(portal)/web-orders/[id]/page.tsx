@@ -47,7 +47,7 @@ export default async function WebOrderReviewPage({
   return (
     <>
       <BackLink fallbackHref="/purchase-orders?status=web" />
-      <PageHeader eyebrow="From the shop" title={order.reference} />
+      <PageHeader eyebrow="From the shop · Order ID" title={order.reference} />
 
       {order.status === "DECLINED" ? (
         <p className="mt-lg rounded-lg border border-hairline bg-surface p-lg text-[length:var(--text-body-md)] text-ink">

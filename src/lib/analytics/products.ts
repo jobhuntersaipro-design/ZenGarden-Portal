@@ -23,7 +23,6 @@ export function twelveMonthWindow(now: Date = new Date()) {
 /** One row of a product's sales: a line item joined to its purchase order. */
 export type ProductSaleRow = {
   purchaseOrderId: string;
-  poNumber: string;
   poDate: Date;
   buyerId: string;
   buyerName: string;

@@ -215,7 +215,10 @@ enum ExtractionStatus {
 
 model PurchaseOrder {
   id             String         @id @default(cuid())
-  poNumber       String
+  /// The buyer's own purchase-order number: printed on an uploaded scan, or
+  /// null on an order placed on the shop, whose buyer PO (if any) is in
+  /// `buyerReference`. Never our Order ID — that is `WebOrder.reference`.
+  poNumber       String?
   revision       Int            @default(1)
   revisionOfId   String?        @unique
   revisionOf     PurchaseOrder? @relation("revisions", fields: [revisionOfId], references: [id])

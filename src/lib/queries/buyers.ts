@@ -47,7 +47,6 @@ const LATEST_ONLY = { supersededBy: { is: null } } as const;
 
 type OrderRow = {
   id: string;
-  poNumber: string;
   buyerId: string;
   poDate: Date;
   total: Prisma.Decimal;
@@ -64,7 +63,6 @@ type OrderRow = {
  */
 const toAnalytics = (row: OrderRow, buyerName: string): AnalyticsOrder => ({
   id: row.id,
-  poNumber: row.poNumber,
   buyerId: row.buyerId,
   buyerName,
   poDate: row.poDate,
@@ -122,7 +120,6 @@ export async function listBuyers(
       where: LATEST_ONLY,
       select: {
         id: true,
-        poNumber: true,
         buyerId: true,
         poDate: true,
         total: true,

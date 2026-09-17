@@ -36,7 +36,7 @@ export function WebOrderReceipt({
       <Heading>{`We have your order ${reference}`}</Heading>
       <Paragraph>
         {`${lineCount} line${lineCount === 1 ? "" : "s"} · ${total}`}
-        {buyerReference ? ` · your reference ${buyerReference}` : ""}
+        {buyerReference ? ` · your PO number ${buyerReference}` : ""}
       </Paragraph>
       {attached ? (
         <Paragraph>Your purchase order is attached to this email.</Paragraph>

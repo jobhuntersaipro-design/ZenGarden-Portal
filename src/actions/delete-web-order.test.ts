@@ -88,7 +88,7 @@ describe("deleteWebOrder", () => {
 
     expect(result).toEqual({
       success: false,
-      error: "That is not the order reference.",
+      error: "That is not the Order ID.",
     });
     expect(webDeleteMany).not.toHaveBeenCalled();
   });

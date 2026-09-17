@@ -47,9 +47,10 @@ export function WebOrderReviewForm({ order }: { order: OpsWebOrder }) {
   const [attempted, setAttempted] = useState(false);
 
   const [draft, dispatch] = useReducer(draftReducer, {
-    // The shop reference as the PO number and today as the PO date, both
-    // read-only since 2026-09-17; the buyer's standing terms, editable.
-    poNumber: order.reference,
+    // No PO number in the draft: the buyer's own is on the order and the
+    // Order ID is never one (2026-09-17). Today as the PO date, read-only; the
+    // buyer's standing terms, editable.
+    poNumber: "",
     buyerId: order.buyerId,
     newBuyerName: null,
     poDate: todayISO(),
@@ -122,9 +123,10 @@ export function WebOrderReviewForm({ order }: { order: OpsWebOrder }) {
           container query, because the same form sits in a 22rem rail beside
           the order's PDF and in half the page when there is no PDF. */}
       <div className="mt-md grid gap-sm @md:grid-cols-2">
-        {/* Read-only (2026-09-17): the shop reference and today are what the
-            purchase order is filed under, and not the reviewer's to retype. */}
-        <ReadOnlyField id="poNumber" label="PO number" value={draft.poNumber} />
+        {/* Read-only (2026-09-17). Order ID is ours; PO number is the buyer's
+            own, blank when they gave none — never the Order ID. */}
+        <ReadOnlyField id="orderId" label="Order ID" value={order.reference} />
+        <ReadOnlyField id="poNumber" label="PO number" value={order.buyerReference ?? ""} />
         <ReadOnlyField
           id="poDate"
           label="PO date"

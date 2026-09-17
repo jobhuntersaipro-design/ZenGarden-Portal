@@ -63,8 +63,59 @@ describe("the purchase-order list joins Document loosely", () => {
     // The table's two branches, and the queue's two (Phase 46).
     expect(text.match(/AS "source"/g)).toHaveLength(2);
     expect(sqlOf(poReviewQueueQuery() as never).match(/AS "source"/g)).toHaveLength(2);
-    // The purchase-order branch asks the database rather than guessing.
-    expect(text).toContain('SELECT 1 FROM "WebOrder" wo2 WHERE wo2."purchaseOrderId" = po."id"');
+    // The purchase-order branch asks the database rather than guessing: a row
+    // is "Shop" exactly when a web order points at it.
+    expect(text).toContain('LEFT JOIN "WebOrder" wo ON wo."purchaseOrderId" = po."id"');
+    expect(text).toContain(`CASE WHEN wo."id" IS NOT NULL THEN 'web' ELSE 'scan' END AS "source"`);
+  });
+});
+
+/**
+ * Order ID and PO number are two columns, and neither is ever filled from the
+ * other (2026-09-17). Until then every branch selected one "poNumber" column
+ * holding the shop's `W-…` Order ID, the buyer's PO, or an upload's file name.
+ */
+describe("Order ID and PO number", () => {
+  const table = sqlOf(poListQuery(ALL, { key: "poDate", dir: "desc" }, 0, 10) as never);
+  const queue = sqlOf(poReviewQueueQuery() as never);
+
+  it("selects both, in every branch", () => {
+    expect(table.match(/AS "orderId"/g)).toHaveLength(2);
+    expect(table.match(/AS "poNumber"/g)).toHaveLength(2);
+    expect(queue.match(/AS "orderId"/g)).toHaveLength(2);
+    expect(queue.match(/AS "poNumber"/g)).toHaveLength(2);
+  });
+
+  it("takes the Order ID from the shop order alone", () => {
+    expect(table).toContain('wo."reference" AS "orderId"');
+    expect(queue).toContain('wo."reference" AS "orderId"');
+    // An upload has none.
+    expect(queue).toContain(`'DRAFT' AS "kind", NULL AS "orderId"`);
+    // And the shop reference never lands in the PO number column.
+    expect(table).not.toMatch(/wo\."reference"\s+AS "poNumber"/);
+    expect(queue).not.toMatch(/wo\."reference"\s+AS "poNumber"/);
+  });
+
+  it("takes the PO number from the buyer, and blank when there is none", () => {
+    // A shop order waiting in the queue: what the buyer typed at checkout.
+    expect(queue).toContain(`NULLIF(btrim(wo."buyerReference"), '') AS "poNumber"`);
+    // A confirmed order: the number on the PO, or a shop buyer's own.
+    expect(table).toContain(`NULLIF(btrim(po."poNumber"), '')`);
+    expect(table).toContain(
+      `CASE WHEN wo."id" IS NOT NULL THEN NULLIF(btrim(po."buyerReference"), '') END`,
+    );
+    // An upload: what Claude read, never the file name.
+    expect(queue).toContain(`NULLIF(btrim(ext."draftJson"->>'poNumber'), '') AS "poNumber"`);
+    expect(queue).not.toContain(`COALESCE(ext."draftJson"->>'poNumber', doc."originalName")`);
+  });
+
+  it("finds an order by either one", () => {
+    const searched = sqlOf(
+      poListQuery({ ...ALL, q: "W-2609" }, { key: "poDate", dir: "desc" }, 0, 10) as never,
+    );
+    expect(searched).toContain('po."poNumber" ILIKE');
+    expect(searched).toContain('OR wo."reference" ILIKE');
+    expect(searched).toContain('OR (wo."id" IS NOT NULL AND po."buyerReference" ILIKE');
   });
 });
 
@@ -171,7 +222,9 @@ describe("the review queue", () => {
   });
 
   it("runs longest waiting first", () => {
-    expect(queue).toContain('ORDER BY merged."queuedAt" ASC NULLS LAST, merged."poNumber" ASC');
+    expect(queue).toContain(
+      'ORDER BY merged."queuedAt" ASC NULLS LAST, merged."orderId" ASC NULLS LAST, merged."poNumber" ASC NULLS LAST',
+    );
     // When each kind joined the queue: a shop order's send, an upload's arrival.
     expect(queue).toContain('wo."submittedAt" AS "queuedAt"');
     expect(queue).toContain('doc."uploadedAt" AS "queuedAt"');

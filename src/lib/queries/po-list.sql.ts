@@ -7,6 +7,7 @@ import { Prisma } from "@/generated/prisma/client";
  * not here before it reaches the query.
  */
 export const PO_LIST_SORT_KEYS = [
+  "orderId",
   "poNumber",
   "buyerName",
   "poDate",
@@ -23,6 +24,7 @@ export type PoListSortKey = (typeof PO_LIST_SORT_KEYS)[number];
 
 /** The column each sort key maps to. Never the formatted string. */
 const ORDER_COLUMNS: Record<PoListSortKey, string> = {
+  orderId: 'merged."orderId"',
   poNumber: 'merged."poNumber"',
   buyerName: 'lower(merged."buyerName")',
   poDate: 'merged."poDate"',
@@ -45,7 +47,18 @@ const NULLS_FIRST_ON_ASC: readonly PoListSortKey[] = ["confirmedBy"];
 export type PoListRow = {
   id: string;
   kind: "PO" | "DRAFT" | "WEB";
-  poNumber: string;
+  /**
+   * Our internal tracking ID (`W-2609-00014`) — a shop order's only. Null on
+   * an uploaded scan, which has none (2026-09-17).
+   */
+  orderId: string | null;
+  /**
+   * The buyer's own PO number: printed on a scan, typed at checkout on a shop
+   * order. Null when the buyer gave none — never filled from the Order ID.
+   */
+  poNumber: string | null;
+  /** An upload's file name, for deleting it; null on every other row. */
+  fileName: string | null;
   buyerName: string;
   buyerId: string | null;
   poDate: Date | null;
@@ -123,10 +136,12 @@ export function poListQuery(
   // The union goes in a FROM clause rather than being ordered directly:
   // Postgres only allows result column names in a UNION's own ORDER BY, and
   // half of these sorts are expressions (`lower(...)`, for case-insensitive
-  // text). Wrapping also lets the tie-break on "poNumber" stay stable.
+  // text). Wrapping also lets the tie-break stay stable: Order ID, then PO
+  // number, so shop orders (`W-…`) lead scans as they did when both lived in
+  // one column.
   return Prisma.sql`
     SELECT * FROM (${baseSelect(filters)}) AS merged
-    ORDER BY ${backlogFirst}${orderColumn} ${direction} ${nulls}, merged."poNumber" ASC
+    ORDER BY ${backlogFirst}${orderColumn} ${direction} ${nulls}, merged."orderId" ASC NULLS LAST, merged."poNumber" ASC NULLS LAST, merged."id" ASC
     LIMIT ${limit} OFFSET ${offset}
   `;
 }
@@ -151,7 +166,7 @@ export function poListSummaryQuery(filters: PoListFilters): Prisma.Sql {
 export function poReviewQueueQuery(): Prisma.Sql {
   return Prisma.sql`
     SELECT * FROM (${reviewQueueSelect()}) AS merged
-    ORDER BY merged."queuedAt" ASC NULLS LAST, merged."poNumber" ASC
+    ORDER BY merged."queuedAt" ASC NULLS LAST, merged."orderId" ASC NULLS LAST, merged."poNumber" ASC NULLS LAST, merged."id" ASC
   `;
 }
 
@@ -207,7 +222,9 @@ function webOrderRows(): Prisma.Sql {
     SELECT
       wo."id"                                   AS "id",
       'WEB'                                     AS "kind",
-      wo."reference"                            AS "poNumber",
+      wo."reference"                            AS "orderId",
+      NULLIF(btrim(wo."buyerReference"), '')    AS "poNumber",
+      NULL                                      AS "fileName",
       buyer."name"                              AS "buyerName",
       wo."buyerId"                              AS "buyerId",
       NULL::date                                AS "poDate",
@@ -267,6 +284,8 @@ function orderRows(filters: PoListFilters): Prisma.Sql {
     const like = `%${filters.q}%`;
     conditions.push(Prisma.sql`(
       po."poNumber" ILIKE ${like}
+      OR wo."reference" ILIKE ${like}
+      OR (wo."id" IS NOT NULL AND po."buyerReference" ILIKE ${like})
       OR buyer."name" ILIKE ${like}
       OR EXISTS (
         SELECT 1 FROM "LineItem" li
@@ -285,7 +304,14 @@ function orderRows(filters: PoListFilters): Prisma.Sql {
     SELECT
       po."id"                                   AS "id",
       'PO'                                      AS "kind",
-      po."poNumber"                             AS "poNumber",
+      wo."reference"                            AS "orderId",
+      -- The buyer's PO: printed on a scan, typed at checkout on a shop order.
+      -- A scan's buyerReference is the retired extraction field, not a PO.
+      COALESCE(
+        NULLIF(btrim(po."poNumber"), ''),
+        CASE WHEN wo."id" IS NOT NULL THEN NULLIF(btrim(po."buyerReference"), '') END
+      )                                         AS "poNumber",
+      NULL                                      AS "fileName",
       buyer."name"                              AS "buyerName",
       buyer."id"                                AS "buyerId",
       po."poDate"                               AS "poDate",
@@ -304,9 +330,7 @@ function orderRows(filters: PoListFilters): Prisma.Sql {
       -- uploader meant "from the shop"; now it has one, whose uploader is the
       -- *buyer's own contact* — and the list would have printed a customer's
       -- name in the Uploaded by column.
-      CASE WHEN EXISTS (
-        SELECT 1 FROM "WebOrder" wo2 WHERE wo2."purchaseOrderId" = po."id"
-      ) THEN 'web' ELSE 'scan' END              AS "source",
+      CASE WHEN wo."id" IS NOT NULL THEN 'web' ELSE 'scan' END AS "source",
       po."revision"                             AS "revision",
       po."confirmedAt"                          AS "queuedAt",
       -- Confirmed rows sort after the backlog on a status sort, and on a PO
@@ -321,6 +345,9 @@ function orderRows(filters: PoListFilters): Prisma.Sql {
     -- the buyer page — with no error and no type failure. po-list.sql.test.ts
     -- exists for exactly this line.
     LEFT JOIN "Document" doc   ON doc."id" = po."documentId"
+    -- At most one: WebOrder.purchaseOrderId is unique. Where the Order ID
+    -- comes from, and what makes a row "Shop".
+    LEFT JOIN "WebOrder" wo    ON wo."purchaseOrderId" = po."id"
     LEFT JOIN "User" uploader  ON uploader."id" = doc."uploadedById"
     LEFT JOIN "User" confirmer ON confirmer."id" = po."confirmedById"
     WHERE ${Prisma.join(conditions, " AND ")}
@@ -365,7 +392,10 @@ function draftRows(filters: PoListFilters, part: "review" | "table"): Prisma.Sql
     SELECT
       ext."id"                                  AS "id",
       'DRAFT'                                   AS "kind",
-      COALESCE(ext."draftJson"->>'poNumber', doc."originalName") AS "poNumber",
+      NULL                                      AS "orderId",
+      -- Not the file name: a file name is not a PO number (2026-09-17).
+      NULLIF(btrim(ext."draftJson"->>'poNumber'), '') AS "poNumber",
+      doc."originalName"                        AS "fileName",
       COALESCE(ext."draftJson"->>'newBuyerName', '—')            AS "buyerName",
       NULL                                      AS "buyerId",
       NULL::date                                AS "poDate",

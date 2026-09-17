@@ -1,5 +1,6 @@
 import { WebOrderStatus } from "@/generated/prisma/enums";
 import { dateColumnRange } from "@/lib/dates";
+import { ORDER_IDENTITY_SELECT, orderIdentity } from "@/lib/order-identity";
 import { prisma } from "@/lib/prisma";
 import {
   boughtTogether,
@@ -19,7 +20,10 @@ const LATEST_ONLY = { supersededBy: { is: null } } as const;
 export type OrderHistoryRow = {
   lineItemId: string;
   purchaseOrderId: string;
-  poNumber: string;
+  /** Our Order ID; null on an uploaded scan. */
+  orderId: string | null;
+  /** The buyer's own PO number; null where they gave none. */
+  poNumber: string | null;
   buyerId: string;
   buyerName: string;
   poDate: string;
@@ -172,7 +176,7 @@ export async function loadProduct(
         purchaseOrder: {
           select: {
             id: true,
-            poNumber: true,
+            ...ORDER_IDENTITY_SELECT,
             poDate: true,
             total: true,
             stage: true,
@@ -199,7 +203,6 @@ export async function loadProduct(
         purchaseOrder: {
           select: {
             id: true,
-            poNumber: true,
             poDate: true,
             buyerId: true,
             buyer: { select: { name: true } },
@@ -255,7 +258,6 @@ export async function loadProduct(
 
   const rows: ProductSaleRow[] = lines.map((line) => ({
     purchaseOrderId: line.purchaseOrder.id,
-    poNumber: line.purchaseOrder.poNumber,
     poDate: line.purchaseOrder.poDate,
     buyerId: line.purchaseOrder.buyerId,
     buyerName: line.purchaseOrder.buyer.name,
@@ -268,7 +270,6 @@ export async function loadProduct(
     .filter((line) => line.productId !== null)
     .map((line) => ({
       purchaseOrderId: line.purchaseOrder.id,
-      poNumber: line.purchaseOrder.poNumber,
       poDate: line.purchaseOrder.poDate,
       buyerId: line.purchaseOrder.buyerId,
       buyerName: line.purchaseOrder.buyer.name,
@@ -360,7 +361,7 @@ export async function loadProduct(
     history: lines.map((line) => ({
       lineItemId: line.id,
       purchaseOrderId: line.purchaseOrder.id,
-      poNumber: line.purchaseOrder.poNumber,
+      ...orderIdentity(line.purchaseOrder),
       buyerId: line.purchaseOrder.buyerId,
       buyerName: line.purchaseOrder.buyer.name,
       poDate: line.purchaseOrder.poDate.toISOString(),

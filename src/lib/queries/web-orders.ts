@@ -1,4 +1,5 @@
 import { PoEventKind, WebOrderStatus } from "@/generated/prisma/enums";
+import { orderIdentity } from "@/lib/order-identity";
 import { prisma } from "@/lib/prisma";
 import type { PoStage } from "@/generated/prisma/enums";
 
@@ -22,12 +23,15 @@ export type ClientOrderLine = {
 export type ClientOrder = {
   kind: "confirmed" | "submitted" | "received" | "declined";
   id: string;
-  /** The PO number once confirmed, otherwise the shop reference. */
-  reference: string;
   /**
-   * The buyer's own PO number, where they gave one. Stored on both sources
-   * since Phase 32 and shown on no screen until now — it is the number their
-   * own system uses, so it is how they will look an order up.
+   * Our Order ID (`W-2609-00014`). Null on a purchase order that came in as an
+   * uploaded scan, which has none. Never a PO number (2026-09-17).
+   */
+  orderId: string | null;
+  /**
+   * The buyer's own PO number, where they gave one — typed at checkout, or
+   * printed on the document they sent. It is the number their own system
+   * uses, so it is how they will look an order up. Never the Order ID.
    */
   buyerReference: string | null;
   date: Date | null;
@@ -59,7 +63,7 @@ export type ClientOrder = {
  * schema change months from now would turn that into a leak nobody edited.
  */
 export const BUYER_ORDER_SORT_KEYS = [
-  "reference",
+  "orderId",
   "buyerReference",
   "date",
   "deliveryDate",
@@ -95,11 +99,12 @@ const statusRank = (order: ClientOrder) =>
     : (STATUS_RANK[order.kind] ?? 0);
 
 /**
- * Whether a row has nothing in the sorted column. Only two columns can be
- * empty: a buyer's own PO number is optional, and an order has no date until
- * it is sent.
+ * Whether a row has nothing in the sorted column: a scan has no Order ID, a
+ * buyer's own PO number is optional, and an order has no date until it is
+ * sent.
  */
 function isBlank(order: ClientOrder, key: BuyerOrderSortKey): boolean {
+  if (key === "orderId") return !order.orderId;
   if (key === "buyerReference") return !order.buyerReference;
   if (key === "date") return order.date === null;
   // An order the team has not confirmed has no delivery date to sort on.
@@ -122,8 +127,8 @@ function compareOrders(
   key: BuyerOrderSortKey,
 ): number {
   switch (key) {
-    case "reference":
-      return a.reference.localeCompare(b.reference, undefined, { numeric: true });
+    case "orderId":
+      return (a.orderId ?? "").localeCompare(b.orderId ?? "", undefined, { numeric: true });
     case "buyerReference":
       return (a.buyerReference ?? "").localeCompare(b.buyerReference ?? "", undefined, {
         numeric: true,
@@ -178,6 +183,7 @@ export async function listBuyerOrders(
         deliveryDate: true,
         total: true,
         buyerReference: true,
+        webOrder: { select: { reference: true } },
         _count: { select: { lineItems: true } },
       },
       orderBy: { poDate: "desc" },
@@ -208,22 +214,25 @@ export async function listBuyerOrders(
   ]);
 
   const rows: ClientOrder[] = [
-    ...confirmed.map((po) => ({
-      kind: "confirmed" as const,
-      id: po.id,
-      reference: po.poNumber,
-      date: po.poDate,
-      stage: po.stage,
-      stageChangedAt: po.stageChangedAt,
-      deliveryDate: po.deliveryDate,
-      total: po.total.toFixed(2),
-      lineCount: po._count.lineItems,
-      buyerReference: po.buyerReference,
-    })),
+    ...confirmed.map((po) => {
+      const { orderId, poNumber } = orderIdentity(po);
+      return {
+        kind: "confirmed" as const,
+        id: po.id,
+        orderId,
+        buyerReference: poNumber,
+        date: po.poDate,
+        stage: po.stage,
+        stageChangedAt: po.stageChangedAt,
+        deliveryDate: po.deliveryDate,
+        total: po.total.toFixed(2),
+        lineCount: po._count.lineItems,
+      };
+    }),
     ...web.map((order) => ({
       kind: webOrderKind(order.status),
       id: order.id,
-      reference: order.reference,
+      orderId: order.reference,
       date: order.submittedAt,
       stage: null,
       stageChangedAt: null,
@@ -361,6 +370,7 @@ export async function loadBuyerOrder(
       // which is deliberately not selected anywhere in this file.
       webOrder: {
         select: {
+          reference: true,
           buyerReference: true,
           notes: true,
           documentId: true,
@@ -400,8 +410,10 @@ export async function loadBuyerOrder(
     return {
       kind: "confirmed",
       id: po.id,
-      reference: po.poNumber,
-      buyerReference: po.webOrder?.buyerReference ?? po.buyerReference,
+      orderId: po.webOrder?.reference ?? null,
+      // The buyer's PO: printed on a scan, typed at checkout on a shop order.
+      buyerReference:
+        orderIdentity(po).poNumber ?? po.webOrder?.buyerReference?.trim() ?? null,
       date: po.poDate,
       stage: po.stage,
       stageChangedAt: po.stageChangedAt,
@@ -494,7 +506,7 @@ export async function loadBuyerOrder(
   return {
     kind: webOrderKind(web.status),
     id: web.id,
-    reference: web.reference,
+    orderId: web.reference,
     buyerReference: web.buyerReference,
     date: web.submittedAt,
     stage: null,
@@ -597,8 +609,8 @@ export async function loadWebOrderDocumentSource(webOrderId: string) {
     deliveryDate: order.purchaseOrder?.deliveryDate ?? null,
     documentId: order.documentId,
     order: {
-      reference: order.reference,
-      buyerReference: order.buyerReference,
+      orderId: order.reference,
+      poNumber: order.buyerReference,
       currency: order.currency,
       paymentTerms: order.buyer.paymentTerms,
       notes: order.notes,

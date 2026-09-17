@@ -79,9 +79,15 @@ export const DraftLineItemSchema = DraftLineItemFields.superRefine(
  * The reviewer's working copy. Either an existing buyer is chosen or a new one
  * is named — never both, never neither.
  */
-export const PoDraftSchema = z
-  .object({
+const draftBuyerChosen = {
+  check: (draft: { buyerId?: string | null; newBuyerName?: string | null }) =>
+    Boolean(draft.buyerId) || Boolean(draft.newBuyerName),
+  message: { message: "Choose a buyer", path: ["buyerId"] },
+};
+
+const draftObject = z.object({
     poNumber: z.string().min(1, "PO number is required"),
+
     buyerId: z.string().nullable().optional(),
     newBuyerName: z.string().min(1).nullable().optional(),
     poDate: isoDate,
@@ -93,11 +99,22 @@ export const PoDraftSchema = z
     tax: decimalString("Tax"),
     /** As printed on the document. Never recomputed — the gate compares to it. */
     total: decimalString("Total"),
-  })
-  .refine((draft) => Boolean(draft.buyerId) || Boolean(draft.newBuyerName), {
-    message: "Choose a buyer",
-    path: ["buyerId"],
   });
+
+export const PoDraftSchema = draftObject.refine(
+  draftBuyerChosen.check,
+  draftBuyerChosen.message,
+);
+
+/**
+ * The same draft for confirming an order placed on the shop, which has no PO
+ * number to type: the buyer's own is on the order (`buyerReference`) and the
+ * Order ID is never one (2026-09-17). `confirmWebOrder` blanks whatever is
+ * sent, so this only has to accept the blank.
+ */
+export const WebOrderDraftSchema = draftObject
+  .extend({ poNumber: z.string() })
+  .refine(draftBuyerChosen.check, draftBuyerChosen.message);
 
 export type PoDraft = z.infer<typeof PoDraftSchema>;
 export type DraftLineItem = z.infer<typeof DraftLineItemSchema>;
@@ -184,11 +201,12 @@ export function lineAmount(quantity: string, unitPrice: string): string {
 }
 
 /**
- * Deleting is confirmed by typing the PO number back, the same shape as
+ * Deleting is confirmed by typing the order's identifier back — its Order ID,
+ * or the PO number for a scan, which has none — the same shape as
  * `deleteUser`'s email check in Phase 09. The comparison itself lives in the
  * action, so it can be trimmed and case-insensitive against the real value.
  */
 export const deletePurchaseOrderSchema = z.object({
   id: z.string().min(1),
-  typedPoNumber: z.string().min(1),
+  typedReference: z.string().min(1),
 });

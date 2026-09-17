@@ -11,8 +11,9 @@ import { TIME_ZONE } from "@/lib/dates";
  * UTC it would name the wrong month for the eight hours either side of
  * midnight.
  *
- * At confirm this is only the *default* for `poNumber` — ops types over it
- * when the customer has a number of their own.
+ * This is the order's **Order ID**, our tracking number, and never its PO
+ * number: the buyer's own PO is `buyerReference`, and confirming no longer
+ * copies this into `PurchaseOrder.poNumber` (2026-09-17).
  */
 export function webOrderReference(seq: number, at: Date = new Date()): string {
   const kl = new TZDate(at, TIME_ZONE);

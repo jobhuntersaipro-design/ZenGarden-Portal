@@ -32,7 +32,8 @@ const emptyToNull = z
   .transform((value) => value?.trim() || null);
 
 const purchaseOrderPatchSchema = z.object({
-  poNumber: z.string().min(1, "PO number is required"),
+  // No PO number (2026-09-17): it is the buyer's own, set at review, and the
+  // edit sheet shows it read-only. A patch carrying one is stripped here.
   poDate: isoDate,
   /** The day the team committed to. Nullable: a scanned PO may carry none. */
   deliveryDate: isoDate.nullable(),
@@ -193,7 +194,6 @@ export async function revertStage(
 
 /** Fields the edit sheet may change. Line items are handled alongside. */
 export type PurchaseOrderPatch = {
-  poNumber: string;
   poDate: string;
   deliveryDate: string | null;
   paymentTerms: string | null;
@@ -201,7 +201,6 @@ export type PurchaseOrderPatch = {
 };
 
 const FIELD_LABELS: Record<keyof PurchaseOrderPatch, string> = {
-  poNumber: "PO number",
   poDate: "PO date",
   deliveryDate: "expected delivery",
   paymentTerms: "payment terms",
@@ -234,7 +233,6 @@ export async function updatePurchaseOrder(
       where: { id: poId },
       select: {
         stage: true,
-        poNumber: true,
         poDate: true,
         deliveryDate: true,
         paymentTerms: true,
@@ -260,7 +258,6 @@ export async function updatePurchaseOrder(
       value ? value.toISOString().slice(0, 10) : null;
 
     const changed: string[] = [];
-    if (po.poNumber !== data.poNumber) changed.push(FIELD_LABELS.poNumber);
     if (asDay(po.poDate) !== data.poDate) changed.push(FIELD_LABELS.poDate);
     const deliveryMoved = asDay(po.deliveryDate) !== data.deliveryDate;
     if (deliveryMoved) changed.push(FIELD_LABELS.deliveryDate);
@@ -276,7 +273,6 @@ export async function updatePurchaseOrder(
       prisma.purchaseOrder.update({
         where: { id: poId },
         data: {
-          poNumber: data.poNumber,
           poDate: new Date(data.poDate),
           // An ISO day parses as UTC midnight, which is what a `@db.Date`
           // column stores — the same rule `submitWebOrder` follows.
@@ -325,7 +321,6 @@ export async function updatePurchaseOrder(
           react: WebOrderConfirmed({
             reference: order.reference,
             buyerReference: order.buyerReference,
-            poNumber: data.poNumber,
             expectedDelivery: when,
             lineCount: order._count.lines,
             total: formatMYR(po.total.toNumber()),

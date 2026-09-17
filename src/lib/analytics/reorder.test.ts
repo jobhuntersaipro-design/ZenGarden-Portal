@@ -9,7 +9,6 @@ const order = (
   products: string[],
 ): AnalyticsOrder => ({
   id: `po-${poDate}`,
-  poNumber: "PO-1",
   buyerId: "b1",
   buyerName: "Acme",
   poDate: new Date(`${poDate}T04:00:00Z`),

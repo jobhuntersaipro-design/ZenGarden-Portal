@@ -38,6 +38,7 @@ import { prisma } from "@/lib/prisma";
 export const dynamic = "force-dynamic";
 
 const HISTORY_SORT_KEYS = [
+  "orderId",
   "poNumber",
   "buyerName",
   "poDate",
@@ -92,9 +93,11 @@ export default async function ProductPage({
   const sorted = [...data.history].sort((a, b) => {
     const left = a[sort.key as keyof typeof a];
     const right = b[sort.key as keyof typeof b];
+    // Order ID and PO number can be blank; a blank compares as empty text,
+    // not as the number 0.
     const comparison =
-      typeof left === "string" && typeof right === "string"
-        ? left.localeCompare(right)
+      typeof left === "string" || typeof right === "string"
+        ? String(left ?? "").localeCompare(String(right ?? ""))
         : Number(left) - Number(right);
     return sort.dir === "asc" ? comparison : -comparison;
   });

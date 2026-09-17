@@ -1,6 +1,7 @@
 import { AuditAction, PoEventKind, WebOrderStatus } from "@/generated/prisma/enums";
 import { formatMYR } from "@/lib/money";
 import { stageLabel } from "@/lib/po-stages";
+import { ORDER_IDENTITY_SELECT, orderIdentity, orderLabel } from "@/lib/order-identity";
 import { prisma } from "@/lib/prisma";
 import {
   ACTIVITY_KINDS,
@@ -103,7 +104,7 @@ export async function loadBuyerActivity(
       take,
       select: {
         id: true,
-        poNumber: true,
+        ...ORDER_IDENTITY_SELECT,
         total: true,
         confirmedAt: true,
         // The provenance sentence needs whoever *uploaded* the document, not
@@ -125,7 +126,7 @@ export async function loadBuyerActivity(
         toStage: true,
         changedAt: true,
         changedBy: { select: { name: true, image: true } },
-        purchaseOrder: { select: { id: true, poNumber: true } },
+        purchaseOrder: { select: { id: true, ...ORDER_IDENTITY_SELECT } },
       },
     }),
     prisma.user.findMany({ where: { buyerId }, select: { email: true } }),
@@ -221,7 +222,7 @@ export async function loadBuyerActivity(
     at: order.confirmedAt.toISOString(),
     // `document` is null exactly when the order has no scan behind it — a
     // web order, confirmed straight from the shop cart.
-    text: `${order.poNumber} confirmed · ${formatMYR(order.total.toString())} · ${
+    text: `${orderLabel(orderIdentity(order))} confirmed · ${formatMYR(order.total.toString())} · ${
       order.document ? `uploaded by ${order.document.uploadedBy.name}` : "from the shop"
     }`,
     actor: order.confirmedBy,
@@ -232,7 +233,7 @@ export async function loadBuyerActivity(
     id: `stage:${event.id}`,
     kind: "purchase-order",
     at: event.changedAt.toISOString(),
-    text: `${event.purchaseOrder.poNumber} → ${stageLabel(event.toStage)}${
+    text: `${orderLabel(orderIdentity(event.purchaseOrder))} → ${stageLabel(event.toStage)}${
       event.changedBy ? ` · by ${event.changedBy.name}` : ""
     }`,
     actor: event.changedBy ?? null,

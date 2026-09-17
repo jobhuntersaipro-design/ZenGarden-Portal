@@ -2,10 +2,10 @@ import { Layout } from "@/emails/Layout";
 import { ButtonLink, Heading, Mono, Paragraph } from "@/emails/parts";
 
 export type WebOrderConfirmedProps = {
+  /** Our Order ID, `W-2609-00014`. */
   reference: string;
+  /** The buyer's own PO number, when they gave one. Never the Order ID. */
   buyerReference: string | null;
-  /** The PO number the team gave it, which may be the buyer's own. */
-  poNumber: string;
   /** Already formatted — "2 Oct 2026" — so the email and the screen agree. */
   expectedDelivery: string;
   lineCount: number;
@@ -38,7 +38,6 @@ export type WebOrderConfirmedProps = {
 export function WebOrderConfirmed({
   reference,
   buyerReference,
-  poNumber,
   expectedDelivery,
   lineCount,
   total,
@@ -59,9 +58,9 @@ export function WebOrderConfirmed({
           : `We have accepted your order and expect to deliver it on ${expectedDelivery}.`}
       </Paragraph>
       <Paragraph muted>
-        {`${lineCount} line${lineCount === 1 ? "" : "s"} · ${total} · our reference `}
-        <Mono>{poNumber}</Mono>
-        {buyerReference ? " · your reference " : ""}
+        {`${lineCount} line${lineCount === 1 ? "" : "s"} · ${total} · Order ID `}
+        <Mono>{reference}</Mono>
+        {buyerReference ? " · your PO number " : ""}
         {buyerReference ? <Mono>{buyerReference}</Mono> : null}
       </Paragraph>
       {attached ? (

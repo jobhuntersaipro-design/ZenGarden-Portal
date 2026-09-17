@@ -3,6 +3,7 @@ import Link from "next/link";
 import type { DashboardData } from "@/lib/queries/dashboard";
 import { formatMYR } from "@/lib/money";
 import { CountUp } from "@/components/portal/CountUp";
+import { orderLabel } from "@/lib/order-identity";
 
 /** Six small tiles. Concentration flips its tone above 60% (design ref §3.2). */
 export function InRangeGrid({ data }: { data: DashboardData }) {
@@ -30,7 +31,7 @@ export function InRangeGrid({ data }: { data: DashboardData }) {
           href={`/purchase-orders/${inRange.largest.id}`}
           className="text-brand-link underline-offset-2 hover:underline"
         >
-          {inRange.largest.poNumber} · {inRange.largest.buyerName}
+          {orderLabel(inRange.largest.identity)} · {inRange.largest.buyerName}
         </Link>
       ) : (
         "No orders in this range"

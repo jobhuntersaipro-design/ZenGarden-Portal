@@ -78,7 +78,6 @@ export async function loadBuyer(
       where: { ...LATEST_ONLY, buyerId },
       select: {
         id: true,
-        poNumber: true,
         buyerId: true,
         poDate: true,
         total: true,
@@ -123,7 +122,6 @@ export async function loadBuyer(
 
   const orders: AnalyticsOrder[] = history.map((row) => ({
     id: row.id,
-    poNumber: row.poNumber,
     buyerId: row.buyerId,
     buyerName: buyer.name,
     poDate: row.poDate,

@@ -61,17 +61,22 @@ export function PurchaseOrderPreview({
             <p className="font-display text-[length:var(--text-heading-md)] font-[650] text-ink">
               PURCHASE ORDER
             </p>
-            <p className="mt-xxs font-mono text-[length:var(--text-body-md)] text-ink">
-              {document.reference}
-            </p>
+            {/* Our Order ID, named — never the buyer's PO (2026-09-17). */}
+            {document.orderId ? (
+              <p className="mt-xxs font-mono text-[length:var(--text-body-md)] text-ink">
+                {`Order ID ${document.orderId}`}
+              </p>
+            ) : null}
           </div>
         </header>
 
-        {/* Always four cells (Phase 44). Expected delivery reads "—" until
-            the team confirms a date, which then takes its place; until then
-            the note under them says so (Phase 45). */}
+        {/* Five cells since 2026-09-17, the buyer's PO Number first ("—" when
+            they gave none). Expected delivery reads "—" until the team
+            confirms a date, which then takes its place; until then the note
+            under them says so (Phase 45). */}
         <div className="border-b border-hairline py-md">
-          <dl className="grid grid-cols-4 gap-md">
+          <dl className="grid grid-cols-5 gap-md">
+            <Meta label="PO Number" value={document.poNumber ?? "—"} />
             <Meta label="Order Date" value={document.orderDate} />
             <Meta label="Expected Delivery" value={document.deliveryDate ?? "—"} />
             <Meta label="Payment Terms" value={document.paymentTerms ?? "—"} />
@@ -211,9 +216,9 @@ export function PurchaseOrderPreview({
           <span className="text-[length:var(--text-caption)] text-ink-tertiary">
             {footnote}
           </span>
-          {document.ourReference ? (
+          {document.orderId ? (
             <span className="font-mono text-[length:var(--text-caption)] text-ink-tertiary">
-              {document.ourReference}
+              {`Order ID ${document.orderId}`}
             </span>
           ) : null}
         </footer>

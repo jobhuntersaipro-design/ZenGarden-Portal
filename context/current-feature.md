@@ -1251,6 +1251,48 @@ file: generating a PDF remains Phase 19, still unbuilt.
   purchase-order file, is also unbuilt.
 
 ## History
+- 2026-09-17: Fix — Order ID is not the PO number — on
+  `fix/order-id-vs-po-number`, not yet committed. Reported as "W-2609-00014 is
+  an Order ID, not a PO number". Cause: confirming a shop order copied its
+  `WebOrder.reference` into `PurchaseOrder.poNumber`, and the PDF masthead and
+  checkout preview printed the Order ID wherever the buyer gave no PO.
+  Decisions the user made: an uploaded scan's Order ID is "—" (no new ID
+  series), and the fix is a migration. `PurchaseOrder.poNumber` is now
+  nullable and means the buyer's PO only; migration
+  `20260919090000_po_number_not_order_id` copies a shop order's
+  `buyerReference` onto its purchase order where missing and nulls `poNumber`
+  **only where it equals the order's own W- reference**, so a number a
+  reviewer typed before the lock survives. Not stored in `poNumber` for shop
+  orders on purpose: the `(buyerId, poNumber, revision)` unique key would
+  refuse a buyer reusing their own PO. `src/lib/order-identity.ts` resolves
+  both (Order ID from the web order; PO from `poNumber`, or `buyerReference`
+  on a shop order only — on a scan that column is the retired extraction
+  field). Order ID and PO number are separate columns or fields on the
+  purchase-order list and review queue (search matches both), PO detail and
+  its edit sheet and delete dialog (types the Order ID where there is one),
+  the shop-order confirm form and summary, product order history, the buyer's
+  orders table ("Order ID", "Your PO number"), their order page, the sent
+  page, both PDF/preview renderers ("Order ID W-…" under the title, a "PO
+  Number" cell reading "—" when blank), both emails and the checkout hint.
+  Single-identifier places (tab titles, breadcrumbs, activity lines, the
+  dashboard's largest PO) say "Order ID W-…" or "PO number …". An upload's
+  file name no longer stands in as its PO number; it shows beside the file
+  badge instead. `confirmWebOrder` blanks any PO number a client sends.
+  Driven on development with fixtures seeded in the **old** shape, then
+  migrated: A (`poNumber` W-2609-09991, buyer PO FIX-PO-A) → null /
+  FIX-PO-A; B (no buyer PO) → null / null; C (typed TYPED-PO-C) kept. List
+  read `W-2609-09991 | FIX-PO-A`, `W-2609-09992 | —`, `W-2609-09993 |
+  TYPED-PO-C`, queue `W-2609-09994 | FIX-PO-D`; searching either value found
+  its row. Confirming D in the browser stored `poNumber` null and
+  `buyerReference` FIX-PO-D; its redrawn PDF read "Order ID W-2609-09994" and
+  "PO Number FIX-PO-D"; delete stayed disabled for FIX-PO-D and enabled for
+  the Order ID. Buyer view: a scan row `— | PO-2026-0063` titled "PO number
+  PO-2026-0063"; checkout preview "PO Number —", then the typed value. No
+  overflow on the list at 390. Fixtures, one R2 object (NotFound) and a draft
+  cart deleted by id; counts at baseline. 1197/1197 tests (20 new; four
+  watched failing with the defect put back), `tsc`, lint (same 2 warnings),
+  build clean. **Not verified on production**, where the migration runs on
+  deploy; how many confirmed shop orders it rewrites there was not read.
 - 2026-09-17: The document leads wherever a purchase order is previewed, and
   PO number and PO date are read-only — built and driven on
   `feature/po-document-primary`, not yet committed. `/web-orders/[id]`,

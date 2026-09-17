@@ -47,8 +47,8 @@ const source = (over: Record<string, unknown> = {}) => ({
   deliveryDate: new Date("2026-10-02T00:00:00.000Z"),
   documentId: null,
   order: {
-    reference: "W-2609-00015",
-    buyerReference: "ACME-PO-771",
+    orderId: "W-2609-00015",
+    poNumber: "ACME-PO-771",
     currency: "MYR",
     paymentTerms: "45 days",
     notes: null,
@@ -115,8 +115,9 @@ describe("attachWebOrderDocument", () => {
   it("draws the document from the order, dates and all", async () => {
     await attachWebOrderDocument("wo1");
     const [document, footnote] = renderPurchaseOrderPdf.mock.calls[0];
-    expect(document.reference).toBe("ACME-PO-771");
-    expect(document.ourReference).toBe("W-2609-00015");
+    // Two fields, never one for the other (2026-09-17).
+    expect(document.poNumber).toBe("ACME-PO-771");
+    expect(document.orderId).toBe("W-2609-00015");
     expect(document.orderDate).toBe("15 Sep 2026");
     // Not confirmed yet, so no promise is printed even though a date is set.
     expect(document.deliveryDate).toBeNull();

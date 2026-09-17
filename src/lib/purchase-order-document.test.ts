@@ -49,8 +49,8 @@ const build = (over: Partial<Parameters<typeof buildPoDocument>[0]> = {}) =>
     subtotal: "676.50",
     buyer,
     supplier,
-    buyerReference: null,
-    ourReference: "W-2609-00007",
+    poNumber: null,
+    orderId: "W-2609-00007",
     notes: null,
     paymentTerms: "30 days",
     orderDate: "14 Sep 2026",
@@ -80,15 +80,18 @@ describe("buildPoDocument", () => {
     expect(documentAgreesWithOrder(doc, "999.99")).toBe(false);
   });
 
-  it("prints the buyer's own PO number as the reference when they gave one", () => {
-    const doc = build({ buyerReference: "ACME-PO-771" });
-    expect(doc.reference).toBe("ACME-PO-771");
-    // Ours still appears in the footer: it is what we file the order under.
-    expect(doc.ourReference).toBe("W-2609-00007");
+  it("carries the buyer's own PO number and our Order ID as two fields", () => {
+    const doc = build({ poNumber: "ACME-PO-771" });
+    expect(doc.poNumber).toBe("ACME-PO-771");
+    expect(doc.orderId).toBe("W-2609-00007");
   });
 
-  it("falls back to our reference when the buyer has no PO number", () => {
-    expect(build({ buyerReference: "   " }).reference).toBe("W-2609-00007");
+  // The defect of 2026-09-17: with no PO of the buyer's own, the masthead
+  // printed our Order ID as though it were one.
+  it("leaves the PO number blank when the buyer gave none, never the Order ID", () => {
+    expect(build({ poNumber: null }).poNumber).toBeNull();
+    expect(build({ poNumber: "   " }).poNumber).toBeNull();
+    expect(build({ poNumber: "   " }).orderId).toBe("W-2609-00007");
   });
 
   it("numbers the lines from one and carries its quantity columns", () => {
@@ -191,8 +194,8 @@ describe("buildPoDocumentFromOrder", () => {
   });
 
   const order = (over: Partial<StoredOrder> = {}): StoredOrder => ({
-    reference: "W-2609-00005",
-    buyerReference: null,
+    orderId: "W-2609-00005",
+    poNumber: null,
     currency: "MYR",
     paymentTerms: "30 days",
     notes: null,
@@ -247,21 +250,25 @@ describe("buildPoDocumentFromOrder", () => {
   });
 
   /**
-   * The reason the checkout builder and this one both exist: a buyer opening an
-   * order months later must read the same masthead they confirmed, so their own
-   * PO number wins over our reference where they gave one — and our reference
-   * is still printed underneath either way.
+   * A buyer opening an order months later reads the same two fields they
+   * confirmed: their own PO number where they gave one, our Order ID
+   * regardless, and neither ever standing in for the other.
    */
-  it("prints the buyer's own number where they gave one, and ours regardless", () => {
-    expect(fromOrder({ buyerReference: "ACME-771" }).reference).toBe("ACME-771");
-    expect(fromOrder({ buyerReference: "ACME-771" }).ourReference).toBe(
-      "W-2609-00005",
-    );
-    expect(fromOrder().reference).toBe("W-2609-00005");
+  it("prints the buyer's own number where they gave one, and our Order ID regardless", () => {
+    expect(fromOrder({ poNumber: "ACME-771" }).poNumber).toBe("ACME-771");
+    expect(fromOrder({ poNumber: "ACME-771" }).orderId).toBe("W-2609-00005");
+    expect(fromOrder().poNumber).toBeNull();
+    expect(fromOrder().orderId).toBe("W-2609-00005");
   });
 
-  it("treats a blank buyer reference as none at all", () => {
-    expect(fromOrder({ buyerReference: "   " }).reference).toBe("W-2609-00005");
+  it("treats a blank PO number as none at all", () => {
+    expect(fromOrder({ poNumber: "   " }).poNumber).toBeNull();
+  });
+
+  it("has no Order ID for a scanned order, and does not borrow the PO number", () => {
+    const scan = fromOrder({ orderId: null, poNumber: "SVPPPO26090009" });
+    expect(scan.orderId).toBeNull();
+    expect(scan.poNumber).toBe("SVPPPO26090009");
   });
 
   /**

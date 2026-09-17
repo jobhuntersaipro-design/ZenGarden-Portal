@@ -22,7 +22,12 @@ import type { SortDirection } from "@/lib/queries/pagination";
 export type PoRow = {
   id: string;
   kind: "PO" | "DRAFT" | "WEB";
-  poNumber: string;
+  /** Our internal tracking ID (`W-2609-00014`); null on an uploaded scan. */
+  orderId: string | null;
+  /** The buyer's own PO number; null when they gave none. */
+  poNumber: string | null;
+  /** An upload's file name, for deleting it. */
+  fileName: string | null;
   buyerName: string;
   buyerId: string | null;
   poDate: string | null;
@@ -108,17 +113,37 @@ export function poColumns({
   canDeleteOrders: boolean;
 }): Column<PoRow>[] {
   return [
+    // Two columns, never one (2026-09-17). Order ID is our tracking ID and
+    // only a shop order has one; PO number is the buyer's own and is blank
+    // when they gave none. Neither is ever filled from the other.
     {
-      key: "poNumber",
-      header: "PO number",
+      key: "orderId",
+      header: "Order ID",
       cell: (row) => (
         <span className="flex items-center gap-xs">
           <span className="shrink-0 rounded-xxs bg-surface-soft px-xxs font-mono text-[length:var(--text-caption)] text-ink-tertiary">
             {FILE_LABEL[row.fileType] ?? "FILE"}
           </span>
-          <span className="truncate font-medium" title={row.poNumber}>
-            {row.poNumber}
-          </span>
+          {row.orderId ? (
+            <span className="truncate font-medium" title={`Order ID ${row.orderId}`}>
+              {row.orderId}
+            </span>
+          ) : row.kind === "DRAFT" && row.fileName ? (
+            // An upload not yet confirmed has no Order ID, and often no PO
+            // number read yet either (a failed extraction). Its file name,
+            // beside the file badge, is what tells two of them apart — shown
+            // as the file it is, never in the PO number column.
+            <span
+              className="truncate text-ink-secondary"
+              title={`Uploaded file ${row.fileName} — no Order ID`}
+            >
+              {row.fileName}
+            </span>
+          ) : (
+            <span className="text-ink-tertiary" title="No Order ID — uploaded, not placed on the shop">
+              —
+            </span>
+          )}
           {row.revision > 1 ? (
             <span className="shrink-0 rounded-full bg-surface-soft px-xs text-[length:var(--text-caption)] text-ink-secondary">
               Rev {row.revision}
@@ -126,6 +151,20 @@ export function poColumns({
           ) : null}
         </span>
       ),
+    },
+    {
+      key: "poNumber",
+      header: "PO number",
+      cell: (row) =>
+        row.poNumber ? (
+          <span className="block max-w-56 truncate" title={`PO number ${row.poNumber}`}>
+            {row.poNumber}
+          </span>
+        ) : (
+          <span className="text-ink-tertiary" title="The buyer gave no PO number">
+            —
+          </span>
+        ),
     },
     {
       key: "buyerName",
@@ -263,7 +302,10 @@ export function poColumns({
         // a super admin and the reference typed back.
         if (row.kind === "DRAFT") {
           return (
-            <DeleteUploadButton extractionId={row.id} fileName={row.poNumber} />
+            <DeleteUploadButton
+              extractionId={row.id}
+              fileName={row.fileName ?? "this upload"}
+            />
           );
         }
         if (!canDeleteOrders) return null;
@@ -271,7 +313,7 @@ export function poColumns({
           return (
             <DeleteWebOrderDialog
               webOrderId={row.id}
-              reference={row.poNumber}
+              reference={row.orderId ?? ""}
               lineCount={row.itemCount}
             />
           );
@@ -280,6 +322,7 @@ export function poColumns({
           <DeletePoDialog
             variant="row"
             poId={row.id}
+            orderId={row.orderId}
             poNumber={row.poNumber}
             lineItemCount={row.itemCount}
             monthLabel={

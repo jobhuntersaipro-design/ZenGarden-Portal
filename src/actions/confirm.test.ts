@@ -202,6 +202,33 @@ describe("confirmPurchaseOrder — the delivery date is a shop-order rule", () =
   });
 });
 
+describe("writePurchaseOrder — the PO number", () => {
+  const write = async (poNumber: string) => {
+    const { writePurchaseOrder } = await import("@/actions/purchase-orders");
+    await writePurchaseOrder(tx as never, {
+      data: draft({ poNumber }) as never,
+      buyerId: "b1",
+      documentId: null,
+      confirmedById: "u1",
+      revision: 1,
+      revisionOfId: null,
+      totals: { computed: "0", document: "0", difference: "0", matches: true, lineItemsMatchSubtotal: true, lineItemSum: "0" },
+      totalsAcknowledged: false,
+    });
+    return poCreate.mock.calls.at(-1)![0].data.poNumber;
+  };
+
+  it("stores the number printed on a scan", async () => {
+    expect(await write("SVPPPO26090009")).toBe("SVPPPO26090009");
+  });
+
+  // A shop order's draft carries none (2026-09-17): stored as null, not "".
+  it("stores a blank one as no PO number at all", async () => {
+    expect(await write("")).toBeNull();
+    expect(await write("   ")).toBeNull();
+  });
+});
+
 describe("confirmPurchaseOrder — revisions", () => {
   it("saves a first confirmation as revision 1 with no parent", async () => {
     await confirmPurchaseOrder("ext-1", draft());

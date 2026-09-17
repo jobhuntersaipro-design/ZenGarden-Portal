@@ -30,13 +30,36 @@ export function OrderHistoryTable({
   const onSortChange = useTableSort();
 
   const columns: Column<OrderHistoryRow & { id: string }>[] = [
+    // Order ID and PO number in their own columns, never one for the other
+    // (2026-09-17).
     {
-      key: "poNumber",
-      header: "PO number",
+      key: "orderId",
+      header: "Order ID",
       // Plain text on purpose: `DataTable` already wraps the first cell of
       // every row in a link to `rowHref`, so a second anchor here would nest
       // <a> inside <a> and fail hydration.
-      cell: (row) => <span className="font-medium">{row.poNumber}</span>,
+      cell: (row) =>
+        row.orderId ? (
+          <span className="font-medium" title={`Order ID ${row.orderId}`}>
+            {row.orderId}
+          </span>
+        ) : (
+          <span className="text-ink-tertiary" title="No Order ID — uploaded, not placed on the shop">
+            —
+          </span>
+        ),
+    },
+    {
+      key: "poNumber",
+      header: "PO number",
+      cell: (row) =>
+        row.poNumber ? (
+          <span title={`PO number ${row.poNumber}`}>{row.poNumber}</span>
+        ) : (
+          <span className="text-ink-tertiary" title="The buyer gave no PO number">
+            —
+          </span>
+        ),
     },
     {
       key: "buyerName",

@@ -15,6 +15,7 @@ import {
 } from "@/lib/auth-guards";
 import { extractPurchaseOrder } from "@/lib/extraction/extract-po";
 import { formatMYR } from "@/lib/money";
+import { ORDER_IDENTITY_SELECT, orderIdentity } from "@/lib/order-identity";
 import { prisma } from "@/lib/prisma";
 import { createProductsForLines } from "@/lib/extraction/resolve-products";
 import { deleteObject, getObjectBytes, isPendingKey } from "@/lib/r2";
@@ -138,7 +139,8 @@ export async function checkDuplicate(
       data: existing
         ? {
             poId: existing.id,
-            poNumber: existing.poNumber,
+            // Found by this number, so it is the one searched for.
+            poNumber: existing.poNumber ?? poNumber,
             revision: existing.revision,
             confirmedAt: existing.confirmedAt.toISOString(),
             sameBuyer: existing.buyerId === buyerId,
@@ -218,7 +220,9 @@ export async function writePurchaseOrder(
 
   const po = await tx.purchaseOrder.create({
     data: {
-      poNumber: data.poNumber,
+      // The buyer's own number, or null. A shop order's draft carries none —
+      // its Order ID lives on the WebOrder and never here (2026-09-17).
+      poNumber: data.poNumber.trim() || null,
       revision: input.revision,
       revisionOfId: input.revisionOfId,
       buyerId: input.buyerId,
@@ -565,11 +569,11 @@ export async function retryExtraction(
  */
 export async function deletePurchaseOrder(input: {
   id: string;
-  typedPoNumber: string;
+  typedReference: string;
 }): Promise<ActionResult> {
   const parsed = deletePurchaseOrderSchema.safeParse(input);
   if (!parsed.success) {
-    return { success: false, error: "Type the PO number to confirm." };
+    return { success: false, error: "Type the Order ID or PO number to confirm." };
   }
 
   try {
@@ -577,16 +581,22 @@ export async function deletePurchaseOrder(input: {
 
     const po = await prisma.purchaseOrder.findUnique({
       where: { id: parsed.data.id },
-      select: { id: true, poNumber: true, documentId: true },
+      select: { id: true, documentId: true, ...ORDER_IDENTITY_SELECT },
     });
     if (!po) return { success: false, error: "That order no longer exists." };
 
-    // Same shape as deleteUser's email check in Phase 09.
+    // Same shape as deleteUser's email check in Phase 09, against the
+    // identifier the dialog asked for: the Order ID, else the PO number.
+    const { orderId, poNumber } = orderIdentity(po);
+    const reference = orderId ?? poNumber ?? "";
     if (
-      parsed.data.typedPoNumber.trim().toLowerCase() !==
-      po.poNumber.trim().toLowerCase()
+      !reference ||
+      parsed.data.typedReference.trim().toLowerCase() !== reference.trim().toLowerCase()
     ) {
-      return { success: false, error: "That is not the PO number." };
+      return {
+        success: false,
+        error: orderId ? "That is not the Order ID." : "That is not the PO number.",
+      };
     }
 
     await prisma.$transaction(async (tx) => {

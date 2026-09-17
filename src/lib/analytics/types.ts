@@ -20,7 +20,6 @@ export type AnalyticsStageEvent = {
 
 export type AnalyticsOrder = {
   id: string;
-  poNumber: string;
   buyerId: string;
   buyerName: string;
   poDate: Date;
