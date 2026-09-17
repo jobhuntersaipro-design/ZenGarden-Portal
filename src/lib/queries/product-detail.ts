@@ -97,7 +97,6 @@ export type OpenShopOrderRow = {
   buyerName: string;
   cartons: number;
   submittedAt: string | null;
-  requestedDate: string | null;
 };
 
 /**
@@ -246,7 +245,6 @@ export async function loadProduct(
             id: true,
             reference: true,
             submittedAt: true,
-            requestedDate: true,
             buyer: { select: { name: true } },
           },
         },
@@ -358,7 +356,6 @@ export async function loadProduct(
       buyerName: line.webOrder.buyer.name,
       cartons: line.cartons,
       submittedAt: line.webOrder.submittedAt?.toISOString() ?? null,
-      requestedDate: line.webOrder.requestedDate?.toISOString() ?? null,
     })),
     history: lines.map((line) => ({
       lineItemId: line.id,

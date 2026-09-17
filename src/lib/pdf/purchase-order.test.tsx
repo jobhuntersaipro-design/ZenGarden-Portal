@@ -13,7 +13,6 @@ const document: PoDocumentData = {
   reference: "ACME-PO-771",
   ourReference: "W-2609-00015",
   orderDate: "15 Sep 2026",
-  requestedDate: "30 Sep 2026",
   deliveryDate: null,
   paymentTerms: "45 days",
   currency: "MYR",
@@ -22,12 +21,13 @@ const document: PoDocumentData = {
     address: "12 Jalan Perindustrian\n40150 Shah Alam\nSelangor",
     contact: "Aisha Rahman · orders@acme.test",
   },
-  supplier: { name: "Zen Garden", address: null, contact: null },
+  supplier: { name: "ZEN GARDEN TRADING (M) SDN BHD", address: null, contact: null },
   lines: [
     {
       position: 1,
       sku: "ZEN-SC-2100-GM-VN",
-      description: "ZEN 2.1L — Goat's Milk",
+      description: "ZEN 2.1L",
+      detailCaption: "Variant: Goat's Milk · Market: Vietnam",
       packCaption: "6 per carton · 18 pieces",
       cartons: 3,
       unitPrice: "220.50",
@@ -36,16 +36,17 @@ const document: PoDocumentData = {
     {
       position: 2,
       sku: "ZEN-HW-0500-LV",
-      description: "H/WASH 500ML — Lavender",
-      packCaption: "24 per carton · 24 pieces",
-      cartons: 1,
-      unitPrice: "142.00",
-      amount: "142.00",
+      description: "H/WASH 500ML",
+      detailCaption: "",
+      packCaption: "24 per carton · 24,000 pieces",
+      cartons: 1000,
+      unitPrice: "1420.00",
+      amount: "1420000.00",
     },
   ],
-  subtotal: "803.50",
+  subtotal: "1420661.50",
   tax: null,
-  total: "803.50",
+  total: "1420661.50",
   notes: "Please deliver to the rear gate before noon.",
 };
 
@@ -56,7 +57,7 @@ describe("renderPurchaseOrderPdf", () => {
     expect(bytes.byteLength).toBeGreaterThan(2000);
   }, 30_000);
 
-  it("renders a confirmed order, whose meta strip carries a fifth cell", async () => {
+  it("renders a confirmed order, whose meta strip carries the expected delivery cell", async () => {
     const bytes = await renderPurchaseOrderPdf(
       { ...document, deliveryDate: "2 Oct 2026" },
       "Confirmed by our team.",
@@ -69,9 +70,8 @@ describe("renderPurchaseOrderPdf", () => {
       {
         ...document,
         tax: "48.21",
-        total: "851.71",
+        total: "1420709.71",
         notes: null,
-        requestedDate: null,
         paymentTerms: null,
         buyer: { name: "Acme Industrial Sdn Bhd", address: null, contact: null },
       },

@@ -25,10 +25,21 @@ const toDecimal = (value: MoneyInput): Decimal =>
  */
 export function formatMYR(value: MoneyInput, decimals: 0 | 2 = 2): string {
   const decimal = toDecimal(value);
+  const sign = decimal.isNegative() ? "-" : "";
+  return `${sign}RM ${formatGrouped(decimal.abs(), decimals)}`;
+}
+
+/**
+ * `1,234.50` — the figure without the currency, thousands grouped. The
+ * purchase order prints its currency once, in the total's label, so every
+ * figure in its columns uses this. Pass `0` for a count (`1,200` cartons).
+ */
+export function formatGrouped(value: MoneyInput, decimals: 0 | 2 = 2): string {
+  const decimal = toDecimal(value);
   const negative = decimal.isNegative();
   const [whole, fraction] = decimal.abs().toFixed(decimals).split(".");
   const grouped = whole.replace(/\B(?=(\d{3})+(?!\d))/g, ",");
-  return `${negative ? "-" : ""}RM ${grouped}${fraction ? `.${fraction}` : ""}`;
+  return `${negative ? "-" : ""}${grouped}${fraction ? `.${fraction}` : ""}`;
 }
 
 /**

@@ -180,10 +180,18 @@ export async function confirmWebOrder(
     // heard nothing at all and had to come and look. After the response and
     // through sendEmail, which never throws: a failed email is a missing
     // nudge, not an unconfirmed order.
+    //
+    // The file is redrawn first (Phase 42), because the one sent at submit
+    // could not carry the date this confirmation promises. A failed redraw
+    // returns null and the email goes without it.
     after(async () => {
+      const redrawn = await attachWebOrderDocument(webOrderId, { redraw: true });
       await sendEmail({
         to: [confirmed.order.placedBy.email],
         subject: webOrderConfirmedSubject(confirmed.order.reference, formatDate(deliveryDate)),
+        attachments: redrawn
+          ? [{ filename: redrawn.filename, content: Buffer.from(redrawn.bytes) }]
+          : undefined,
         react: WebOrderConfirmed({
           reference: confirmed.order.reference,
           buyerReference: confirmed.order.buyerReference,
@@ -192,6 +200,7 @@ export async function confirmWebOrder(
           lineCount: confirmed.order._count.lines,
           total: formatMYR(Number(data.total)),
           orderUrl: `${env.SHOP_URL ?? env.APP_URL}/orders/${confirmed.poId}`,
+          attached: Boolean(redrawn),
         }),
       });
     });

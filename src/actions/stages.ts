@@ -17,6 +17,7 @@ import { sendEmail } from "@/lib/email";
 import { env } from "@/lib/env";
 import { formatDate } from "@/lib/dates";
 import { formatMYR } from "@/lib/money";
+import { attachWebOrderDocument } from "@/lib/web-order-document";
 
 export type ActionResult<T = undefined> =
   | { success: true; data: T }
@@ -238,6 +239,7 @@ export async function updatePurchaseOrder(
         // are told when it moves.
         webOrder: {
           select: {
+            id: true,
             reference: true,
             buyerReference: true,
             placedBy: { select: { email: true } },
@@ -295,15 +297,25 @@ export async function updatePurchaseOrder(
     // they would ring up about. Only for an order they placed themselves —
     // a scanned PO has no shop account behind it to write to — and after the
     // response, through sendEmail, which never throws.
-    if (deliveryMoved && po.webOrder && data.deliveryDate) {
+    //
+    // The purchase-order file prints that date too (Phase 42), so it is
+    // redrawn whenever the date moves — cleared included — and the redrawn
+    // file rides on the email.
+    if (deliveryMoved && po.webOrder) {
       const order = po.webOrder;
-      // Formatted once and used for both, or the subject line and the body
-      // print the same day two different ways.
-      const when = formatDate(data.deliveryDate);
+      const newDate = data.deliveryDate;
       after(async () => {
+        const redrawn = await attachWebOrderDocument(order.id, { redraw: true });
+        if (!newDate) return;
+        // Formatted once and used for both, or the subject line and the body
+        // print the same day two different ways.
+        const when = formatDate(newDate);
         await sendEmail({
           to: [order.placedBy.email],
           subject: webOrderConfirmedSubject(order.reference, when, true),
+          attachments: redrawn
+            ? [{ filename: redrawn.filename, content: Buffer.from(redrawn.bytes) }]
+            : undefined,
           react: WebOrderConfirmed({
             reference: order.reference,
             buyerReference: order.buyerReference,
@@ -313,6 +325,7 @@ export async function updatePurchaseOrder(
             total: formatMYR(po.total.toNumber()),
             orderUrl: `${env.SHOP_URL ?? env.APP_URL}/orders/${poId}`,
             updated: true,
+            attached: Boolean(redrawn),
           }),
         });
       });

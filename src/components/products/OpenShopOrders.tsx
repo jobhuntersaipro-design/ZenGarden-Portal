@@ -50,14 +50,7 @@ export function OpenShopOrders({ rows }: { rows: OpenShopOrderRow[] }) {
               {`${row.cartons} ${row.cartons === 1 ? "carton" : "cartons"}`}
             </span>
             <span className="shrink-0 text-[length:var(--text-caption)] text-ink-tertiary">
-              {[
-                row.submittedAt ? `placed ${formatDate(row.submittedAt)}` : null,
-                row.requestedDate
-                  ? `wants ${formatDate(row.requestedDate)}`
-                  : null,
-              ]
-                .filter(Boolean)
-                .join(" · ")}
+              {row.submittedAt ? `placed ${formatDate(row.submittedAt)}` : null}
             </span>
           </li>
         ))}

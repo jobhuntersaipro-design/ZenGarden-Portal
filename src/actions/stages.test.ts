@@ -41,6 +41,9 @@ const flushAfter = async () => {
   await Promise.all(afterTasks);
   afterTasks.length = 0;
 };
+// Phase 42: a moved date redraws the shop order's purchase-order file.
+const attachWebOrderDocument = vi.fn();
+vi.mock("@/lib/web-order-document", () => ({ attachWebOrderDocument }));
 
 const { advanceStage, revertStage, updatePurchaseOrder } = await import(
   "@/actions/stages"
@@ -179,6 +182,7 @@ describe("updatePurchaseOrder — the expected delivery date", () => {
     total: { toNumber: () => 210 },
     currency: "MYR",
     webOrder: {
+      id: "wo1",
       reference: "W-2609-00001",
       buyerReference: "ACME-PO-771",
       placedBy: { email: "buyer@acme.test" },
@@ -233,6 +237,25 @@ describe("updatePurchaseOrder — the expected delivery date", () => {
     expect(body).toContain("has moved");
   });
 
+  it("redraws the purchase-order file and attaches it to the email", async () => {
+    attachWebOrderDocument.mockResolvedValue({
+      documentId: "doc1",
+      filename: "W-2609-00001 purchase order.pdf",
+      bytes: new Uint8Array([37, 80]),
+    });
+    await updatePurchaseOrder("po1", { ...patch, deliveryDate: "2026-10-09" });
+    await flushAfter();
+
+    expect(attachWebOrderDocument).toHaveBeenCalledExactlyOnceWith("wo1", {
+      redraw: true,
+    });
+    const call = sendEmail.mock.calls[0][0];
+    expect(call.attachments).toEqual([
+      { filename: "W-2609-00001 purchase order.pdf", content: expect.any(Buffer) },
+    ]);
+    expect(renderToStaticMarkup(call.react)).toContain("is attached to");
+  });
+
   it("names the change in the activity entry", async () => {
     await updatePurchaseOrder("po1", { ...patch, deliveryDate: "2026-10-09" });
     const writes = transaction.mock.calls[0][0];
@@ -249,13 +272,18 @@ describe("updatePurchaseOrder — the expected delivery date", () => {
     await flushAfter();
     expect(transaction).toHaveBeenCalled();
     expect(sendEmail).not.toHaveBeenCalled();
+    expect(attachWebOrderDocument).not.toHaveBeenCalled();
   });
 
   it("emails nobody when the date is cleared rather than moved", async () => {
-    // There is no date to promise, so there is nothing to tell them.
+    // There is no date to promise, so there is nothing to tell them — but the
+    // file still loses the date it printed.
     await updatePurchaseOrder("po1", { ...patch, deliveryDate: null });
     await flushAfter();
     expect(transaction).toHaveBeenCalled();
     expect(sendEmail).not.toHaveBeenCalled();
+    expect(attachWebOrderDocument).toHaveBeenCalledExactlyOnceWith("wo1", {
+      redraw: true,
+    });
   });
 });

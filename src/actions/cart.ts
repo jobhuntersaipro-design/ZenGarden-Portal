@@ -452,13 +452,6 @@ export async function submitWebOrder(
           submittedAt: new Date(),
           subtotal,
           buyerReference: parsed.data.buyerReference?.trim() || null,
-          // UTC midnight of the calendar day the client picked, the same
-          // trick `dateColumnRange` uses: a timestamp compared against a
-          // `@db.Date` column is truncated in UTC, so building the date from
-          // local midnight would store the day before (2026-09-06).
-          requestedDate: parsed.data.requestedDate
-            ? new Date(`${parsed.data.requestedDate}T00:00:00.000Z`)
-            : null,
           notes: parsed.data.notes?.trim() || null,
         },
       });

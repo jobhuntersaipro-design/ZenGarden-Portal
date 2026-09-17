@@ -18,9 +18,15 @@ import {
  * `Document` (Phase 37).
  *
  * **Idempotent.** An order that already has a file gets its bytes read back
- * rather than a second render, so calling this at submit and again at confirm
- * produces one document, not two. That is what lets `confirmWebOrder` repair
- * an order whose render failed the first time without risking a duplicate.
+ * rather than a second render, so calling this twice produces one document,
+ * not two. That is what lets `confirmWebOrder` repair an order whose render
+ * failed the first time without risking a duplicate.
+ *
+ * **`redraw` renders again into the same object** (Phase 42). The file sent at
+ * submit cannot carry an expected delivery date, because nobody has promised
+ * one yet; confirming, and moving that date afterwards, redraw it. The
+ * `Document` row, its id and its R2 key stay the same, so every link to it —
+ * the buyer's Download, the ops document pane — reads the new bytes.
  *
  * **Never inside the order's own transaction.** Rendering takes hundreds of
  * milliseconds and R2 is a network call; holding a Postgres transaction open
@@ -28,11 +34,13 @@ import {
  * and stated at the call site: an order can exist with no file, and the file
  * is fetched later.
  *
- * The wording along the foot of the page is the caller's, because it is the
- * one thing that differs between a document sent and a document confirmed.
+ * The wording along the foot of the page follows the order's status — the
+ * same two sentences the buyer's order page prints under its preview.
  */
 const SENT_FOOTNOTE =
   "Sent to our team. They confirm the figures and come back to you.";
+const CONFIRMED_FOOTNOTE =
+  "Confirmed by our team. This is the order we are fulfilling.";
 
 export type WebOrderDocument = {
   documentId: string;
@@ -43,6 +51,7 @@ export type WebOrderDocument = {
 
 export async function attachWebOrderDocument(
   webOrderId: string,
+  options: { redraw?: boolean } = {},
 ): Promise<WebOrderDocument | null> {
   try {
     const source = await loadWebOrderDocumentSource(webOrderId);
@@ -62,12 +71,35 @@ export async function attachWebOrderDocument(
     }
 
     const filename = `${source.reference} purchase order.pdf`;
+    const confirmed = source.status === WebOrderStatus.CONFIRMED;
+    const render = async () =>
+      renderPurchaseOrderPdf(
+        buildPoDocumentFromOrder({
+          order: source.order,
+          supplier: await loadSupplierDetails(),
+          orderDate: source.submittedAt ? formatDate(source.submittedAt) : "—",
+          // Only once the team has confirmed: before that there is no promise
+          // to print, and the cell is not drawn at all.
+          deliveryDate:
+            confirmed && source.deliveryDate ? formatDate(source.deliveryDate) : null,
+        }),
+        confirmed ? CONFIRMED_FOOTNOTE : SENT_FOOTNOTE,
+      );
 
     if (source.documentId) {
       const existing = await prisma.document.findUnique({
         where: { id: source.documentId },
         select: { id: true, r2Key: true, originalName: true },
       });
+      if (existing && options.redraw) {
+        const bytes = await render();
+        await putObject(existing.r2Key, bytes, "application/pdf");
+        await prisma.document.update({
+          where: { id: existing.id },
+          data: { sizeBytes: bytes.byteLength },
+        });
+        return { documentId: existing.id, filename: existing.originalName, bytes };
+      }
       if (existing) {
         return {
           documentId: existing.id,
@@ -79,15 +111,7 @@ export async function attachWebOrderDocument(
       // Fall through and write a new one.
     }
 
-    const bytes = await renderPurchaseOrderPdf(
-      buildPoDocumentFromOrder({
-        order: source.order,
-        supplier: await loadSupplierDetails(),
-        orderDate: source.submittedAt ? formatDate(source.submittedAt) : "—",
-        requestedDate: source.requestedDate ? formatDate(source.requestedDate) : null,
-      }),
-      SENT_FOOTNOTE,
-    );
+    const bytes = await render();
 
     // `r2Key` is unique and contains the row's own id, which does not exist
     // until the row does — the placeholder Phase 03 introduced for exactly

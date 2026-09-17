@@ -3,7 +3,7 @@ import Link from "next/link";
 import { redirect } from "next/navigation";
 import { CheckoutSteps } from "@/components/shop/checkout/CheckoutSteps";
 import { ReviewSendForm } from "@/components/shop/checkout/ReviewSendForm";
-import { formatDate, todayISO } from "@/lib/dates";
+import { formatDate } from "@/lib/dates";
 import { loadSupplierDetails } from "@/lib/org-settings";
 import { loadCart } from "@/lib/queries/cart";
 import { loadReviewBuyer } from "@/lib/queries/shop-checkout";
@@ -65,7 +65,6 @@ export default async function CheckoutReviewPage() {
         cart={cart}
         buyer={buyer}
         supplier={supplier}
-        todayInKL={todayISO()}
         orderDate={formatDate(new Date())}
       />
     </div>

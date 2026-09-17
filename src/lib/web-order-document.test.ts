@@ -44,7 +44,7 @@ const source = (over: Record<string, unknown> = {}) => ({
   status: "SUBMITTED",
   placedById: "client-1",
   submittedAt: new Date("2026-09-15T02:00:00.000Z"),
-  requestedDate: new Date("2026-09-30T00:00:00.000Z"),
+  deliveryDate: new Date("2026-10-02T00:00:00.000Z"),
   documentId: null,
   order: {
     reference: "W-2609-00015",
@@ -117,7 +117,9 @@ describe("attachWebOrderDocument", () => {
     expect(document.reference).toBe("ACME-PO-771");
     expect(document.ourReference).toBe("W-2609-00015");
     expect(document.orderDate).toBe("15 Sep 2026");
-    expect(document.requestedDate).toBe("30 Sep 2026");
+    // Not confirmed yet, so no promise is printed even though a date is set.
+    expect(document.deliveryDate).toBeNull();
+    expect(document).not.toHaveProperty("requestedDate");
     // Summed from the lines by the shared builder, never echoed.
     expect(document.total).toBe("661.50");
     expect(footnote).toMatch(/^Sent to our team/);
@@ -140,6 +142,47 @@ describe("attachWebOrderDocument", () => {
 
     expect(renderPurchaseOrderPdf).not.toHaveBeenCalled();
     expect(documentCreate).not.toHaveBeenCalled();
+    expect(result?.documentId).toBe("doc1");
+  });
+
+  it("prints the expected delivery date and the confirmed footnote once confirmed", async () => {
+    loadWebOrderDocumentSource.mockResolvedValue(source({ status: "CONFIRMED" }));
+    await attachWebOrderDocument("wo1");
+    const [document, footnote] = renderPurchaseOrderPdf.mock.calls[0];
+    expect(document.deliveryDate).toBe("2 Oct 2026");
+    expect(footnote).toMatch(/^Confirmed by our team/);
+  });
+
+  /**
+   * Phase 42: the file sent at submit cannot carry the date the team commits
+   * to at confirm, so confirm redraws it — into the same row and the same key,
+   * so every link to the document reads the new bytes.
+   */
+  it("redraws into the existing object when asked, keeping the row", async () => {
+    loadWebOrderDocumentSource.mockResolvedValue(
+      source({ status: "CONFIRMED", documentId: "doc1" }),
+    );
+    documentFindUnique.mockResolvedValue({
+      id: "doc1",
+      r2Key: "po/2026/09/doc1.pdf",
+      originalName: "W-2609-00015 purchase order.pdf",
+    });
+
+    const result = await attachWebOrderDocument("wo1", { redraw: true });
+
+    expect(renderPurchaseOrderPdf).toHaveBeenCalledOnce();
+    expect(getObjectBytes).not.toHaveBeenCalled();
+    expect(documentCreate).not.toHaveBeenCalled();
+    expect(putObject).toHaveBeenCalledExactlyOnceWith(
+      "po/2026/09/doc1.pdf",
+      expect.anything(),
+      "application/pdf",
+    );
+    expect(documentUpdate).toHaveBeenCalledExactlyOnceWith({
+      where: { id: "doc1" },
+      data: { sizeBytes: 16 },
+    });
+    expect(webOrderUpdate).not.toHaveBeenCalled();
     expect(result?.documentId).toBe("doc1");
   });
 

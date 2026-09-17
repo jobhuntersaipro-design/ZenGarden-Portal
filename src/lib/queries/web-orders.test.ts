@@ -118,10 +118,13 @@ describe("loadBuyerOrder", () => {
       "unit",
       "unitPrice",
     ]);
-    // The product is reached for its code and pack size and nothing else.
+    // The product is reached for its code, pack size, and the variant and
+    // market the document captions (Phase 42) — and nothing else.
     expect(Object.keys(args.select.lineItems.select.product.select).sort()).toEqual([
+      "market",
       "packSize",
       "sku",
+      "variant",
     ]);
     // Stage dates are the client's own facts; the note and the person are not.
     expect(Object.keys(args.select.stageEvents.select).sort()).toEqual([
@@ -170,7 +173,6 @@ describe("loadBuyerOrder", () => {
       "buyerReference",
       "documentId",
       "notes",
-      "requestedDate",
     ]);
     expect(args.select.documentId).toBeUndefined();
   });

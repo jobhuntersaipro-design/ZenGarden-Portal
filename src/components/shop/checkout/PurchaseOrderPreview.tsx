@@ -1,6 +1,8 @@
-import { Wordmark } from "@/components/portal/Wordmark";
-import { formatMYR } from "@/lib/money";
-import type { PoDocumentData } from "@/lib/purchase-order-document";
+import { formatGrouped } from "@/lib/money";
+import {
+  DOCUMENT_COMPANY_NAME,
+  type PoDocumentData,
+} from "@/lib/purchase-order-document";
 
 /**
  * The purchase order itself, drawn before it is sent (Phase 33).
@@ -51,12 +53,9 @@ export function PurchaseOrderPreview({
         className="mx-auto flex w-po-page flex-col bg-canvas p-xl text-ink shadow-sm"
       >
         <header className="flex items-start justify-between border-b-2 border-ink pb-md">
-          <div>
-            <Wordmark />
-            <p className="mt-xxs text-[length:var(--text-caption)] text-ink-tertiary">
-              Prepared for the buyer named below
-            </p>
-          </div>
+          <p className="font-display text-[length:var(--text-heading-sm)] font-[650] text-ink">
+            {DOCUMENT_COMPANY_NAME}
+          </p>
           <div className="text-right">
             <p className="font-display text-[length:var(--text-heading-md)] font-[650] text-ink">
               PURCHASE ORDER
@@ -67,15 +66,14 @@ export function PurchaseOrderPreview({
           </div>
         </header>
 
-        {/* Four cells, or five once the team has committed to a date. The
+        {/* Three cells, or four once the team has committed to a date. The
             cell is not drawn while there is nothing to put in it: a blank
             "Expected delivery" reads as a promise forgotten rather than one
             not yet made. */}
         <dl
-          className={`grid gap-md border-b border-hairline py-md ${document.deliveryDate ? "grid-cols-5" : "grid-cols-4"}`}
+          className={`grid gap-md border-b border-hairline py-md ${document.deliveryDate ? "grid-cols-4" : "grid-cols-3"}`}
         >
           <Meta label="Order date" value={document.orderDate} />
-          <Meta label="Delivery requested" value={document.requestedDate ?? "—"} />
           {document.deliveryDate ? (
             <Meta label="Expected delivery" value={document.deliveryDate} />
           ) : null}
@@ -127,18 +125,23 @@ export function PurchaseOrderPreview({
                 <span className="block text-[length:var(--text-body-sm)] font-medium text-ink">
                   {line.description}
                 </span>
+                {line.detailCaption ? (
+                  <span className="mt-xxs block text-[length:var(--text-caption)] text-ink-tertiary">
+                    {line.detailCaption}
+                  </span>
+                ) : null}
                 <span className="mt-xxs block text-[length:var(--text-caption)] text-ink-tertiary">
                   {line.packCaption}
                 </span>
               </span>
               <span className="text-right text-[length:var(--text-body-sm)] tabular-nums text-ink">
-                {line.cartons}
+                {formatGrouped(line.cartons, 0)}
               </span>
               <span className="text-right text-[length:var(--text-body-sm)] tabular-nums text-ink">
-                {line.unitPrice}
+                {formatGrouped(line.unitPrice)}
               </span>
               <span className="text-right text-[length:var(--text-body-sm)] font-semibold tabular-nums text-ink">
-                {line.amount}
+                {formatGrouped(line.amount)}
               </span>
             </Row>
           ))}
@@ -151,7 +154,7 @@ export function PurchaseOrderPreview({
                 Subtotal
               </span>
               <span className="text-[length:var(--text-body-md)] font-medium tabular-nums text-ink">
-                {document.subtotal}
+                {formatGrouped(document.subtotal)}
               </span>
             </div>
             {document.tax ? (
@@ -160,7 +163,7 @@ export function PurchaseOrderPreview({
                   Tax
                 </span>
                 <span className="text-[length:var(--text-body-md)] font-medium tabular-nums text-ink">
-                  {document.tax}
+                  {formatGrouped(document.tax)}
                 </span>
               </div>
             ) : null}
@@ -169,7 +172,7 @@ export function PurchaseOrderPreview({
                 {`Total (${document.currency})`}
               </span>
               <span className="font-display text-[length:var(--text-heading-md)] font-[650] tabular-nums text-ink">
-                {formatMYR(document.total).replace("RM ", "")}
+                {formatGrouped(document.total)}
               </span>
             </div>
           </div>
@@ -187,11 +190,6 @@ export function PurchaseOrderPreview({
         ) : null}
 
         <div className="grow" />
-
-        <div className="grid grid-cols-2 gap-xl pt-lg">
-          <Signature label="Authorised by (buyer)" />
-          <Signature label="Date" />
-        </div>
 
         <footer className="mt-md flex justify-between border-t border-hairline pt-xs">
           <span className="text-[length:var(--text-caption)] text-ink-tertiary">
@@ -253,15 +251,6 @@ function Party({
           {party.contact}
         </p>
       ) : null}
-    </div>
-  );
-}
-
-function Signature({ label }: { label: string }) {
-  return (
-    <div>
-      <div className="h-px bg-ink" />
-      <p className="mt-xxs text-[length:var(--text-caption)] text-ink-tertiary">{label}</p>
     </div>
   );
 }

@@ -85,7 +85,6 @@ describe("loadProduct — open shop orders", () => {
           id: "wo1",
           reference: "W-2609-00016",
           submittedAt: new Date("2026-09-15T02:00:00.000Z"),
-          requestedDate: new Date("2026-09-30T00:00:00.000Z"),
           buyer: { name: "Acme Industrial Sdn Bhd" },
         },
       },
@@ -100,7 +99,6 @@ describe("loadProduct — open shop orders", () => {
         buyerName: "Acme Industrial Sdn Bhd",
         cartons: 4,
         submittedAt: "2026-09-15T02:00:00.000Z",
-        requestedDate: "2026-09-30T00:00:00.000Z",
       },
     ]);
   });
