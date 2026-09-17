@@ -1,6 +1,87 @@
-# Current Feature: The purchase order's pack line and delivery cell
+# Current Feature: The purchase order's quantity columns
 
 ## Status
+
+**Phase 45 — built and driven in a browser on
+`feature/po-document-quantity-columns`, merged to `main` and pushed** (2026-09-17). Asked
+for as: "Put as subtext … 'Our team will confirm the expected delivery and
+payment terms as soon as possible'. For description line item, remove 6
+pieces/carton · 60 cartons/pallet · 6 pieces instead, add columns for
+pieces/carton, carton/pallet and total pieces and total cartons and total
+pallet".
+
+Decisions the user made:
+
+- **Five quantity columns on every line**: Pieces/carton, Cartons/pallet,
+  Total pieces, Total cartons (the old Cartons column) and Total pallets. The
+  pack text line under the description is gone; a figure the product lacks
+  reads "—".
+- **Total Pallets is a whole number, rounded up** to the pallets that ship
+  (1,200 ÷ 52 → 24; 25 ÷ 60 → 1; an exact 104 ÷ 52 stays 2). First built at
+  two decimals; changed after the user read an example PDF.
+- **Headings are capitalised word by word** on both renderers — Product Code,
+  Pieces/Carton, Cartons/Pallet, Total Pieces, Total Cartons, Total Pallets,
+  Unit Price, and the date labels Order Date, Expected Delivery, Payment
+  Terms. A deliberate exception to the sentence-case rule in
+  `docs/specs/00-master.md` §4, on the document only.
+- **Landscape.** The PDF is landscape A4. The on-screen sheet is 1070px wide,
+  not A4's 1123: at 1123 the shop's content column (1070px inside the frame)
+  scrolled the sheet sideways on a 1440px desktop and hid part of Amount —
+  measured 1163 scroll against 1110 client, then 1110 / 1110 after. Print CSS
+  asks for A4 landscape.
+- **The note sits under the dates only while the order awaits confirmation**
+  — a cart, a submitted or a received order — via a new
+  `awaitingConfirmation` on `PoDocumentData`, set by each caller. Its wording
+  is one constant, `AWAITING_CONFIRMATION_NOTE`, shared by both renderers.
+
+`PoDocumentLine.packCaption` became five fields, and `documentPackCaption`
+and `packCaptionFor` were removed for `documentQuantities`. Found in the
+browser: "Pieces/carton" and "Cartons/pallet" have no space to wrap on and
+ran into each other; each now offers a break after the slash.
+
+## Verified, with the figures
+
+Development, port 3001, fixture `W-2609-09945` (1,200 × `ZEN-SC-1000-GM-MYDIN`
+at 12/carton and 52/pallet; 3 × `MRK-DW-1500-LI-X6` at 6/carton, no pallet
+figure) under a throwaway `CLIENT`.
+
+- **Buyer's page before confirm:** the note under the dates; line 1 reads
+  12 / 52 / 14,400 / 1,200 / 23.08 / 210.00 / 252,000.00 (pallets since
+  rounded up — see below), line 2
+  6 / — / 18 / 3 / — / 157.50 / 472.50. No page overflow at 390, 768, 1280
+  and 1440, and the sheet's frame does not scroll at 1440.
+- **Confirmed as Aisha with 2 Oct 2026:** the buyer's page reads 2 Oct 2026
+  with no note; the stored PDF (4,297 bytes) is one page of 841.89 × 595.28pt
+  and extracts the same ten columns and figures.
+- **An unconfirmed PDF** through the real renderer extracts the note and "—"
+  in both pallet columns.
+- **Cleanup by id:** web order, purchase order, `Document`, R2 object
+  (NotFound), client, two login attempts, one audit row; counts back to users
+  2, `CLIENT` 0, web orders 0, POs 400, documents 406, line items 1606, stage
+  events 2323, audits 5, login attempts 68, products 308.
+- **1172/1172 tests, `tsc`, lint (same 2 warnings) and `npm run build` clean.**
+- **After the rounding and capitals change:** example PDFs rendered through
+  the real renderer extract `Pieces/Carton … Unit Price` and `Order Date /
+  Expected Delivery / Payment Terms`, with Total Pallets 3 for 130 cartons at
+  60 and 1 for 60; 1172/1172 tests, `tsc` and lint clean again.
+
+## Not verified
+
+- **The capitalised headings on screen.** The change is text only in the same
+  cells, but the browser was not reopened after it.
+- **Anything on production.** Stored PDFs keep their portrait layout until
+  their order is confirmed or its delivery date moves.
+- **Printing** through the browser's Print button at landscape.
+- **The checkout review preview** in a browser (same component and builder,
+  unit-tested), and a scanned purchase order's document on the buyer's page.
+- **Confirmed shop orders still number their lines from 0 on the buyer's web
+  page** (seen again in this phase's screenshots; the stored PDF numbers from
+  1). Pre-existing since Phase 42's notes; the user was asked and has not
+  decided whether to fix it.
+- **A long product code** still wraps inside its column on the PDF
+  (`ZEN-SC-1000-GM-MY-` / `DIN`), as it did before this phase.
+
+## Previous phase
 
 **Phase 44 — built and driven in a browser on `feature/po-document-pack-line`,
 merged to `main` and pushed** (2026-09-17). Asked for as: "For the description of the PO
@@ -996,6 +1077,11 @@ file: generating a PDF remains Phase 19, still unbuilt.
   purchase-order file, is also unbuilt.
 
 ## History
+- 2026-09-17: Phase 45 — the purchase order's quantity columns — built and
+  merged from `feature/po-document-quantity-columns` (details under Status
+  above). Five quantity columns replace the pack text line, the document goes
+  landscape, and a note under the dates says the team will confirm delivery
+  and terms until it does. No migration.
 - 2026-09-17: Phase 44 — the purchase order's pack line and delivery cell —
   built and driven on `feature/po-document-pack-line` (details under Status
   above). Captions drop the "Variant:"/"Market:" labels, the pack line reads

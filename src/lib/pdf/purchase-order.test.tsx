@@ -14,6 +14,7 @@ const document: PoDocumentData = {
   ourReference: "W-2609-00015",
   orderDate: "15 Sep 2026",
   deliveryDate: null,
+  awaitingConfirmation: true,
   paymentTerms: "45 days",
   currency: "MYR",
   buyer: {
@@ -28,8 +29,11 @@ const document: PoDocumentData = {
       sku: "ZEN-SC-2100-GM-VN",
       description: "ZEN 2.1L",
       detailCaption: "Goat's Milk · Vietnam",
-      packCaption: "6 pieces/carton · 52 cartons/pallet · 18 pieces",
+      piecesPerCarton: 6,
+      cartonsPerPallet: 52,
+      totalPieces: 18,
       cartons: 3,
+      pallets: 1,
       unitPrice: "220.50",
       amount: "661.50",
     },
@@ -38,8 +42,11 @@ const document: PoDocumentData = {
       sku: "ZEN-HW-0500-LV",
       description: "H/WASH 500ML",
       detailCaption: "",
-      packCaption: "24 pieces/carton · 24,000 pieces",
+      piecesPerCarton: 24,
+      cartonsPerPallet: null,
+      totalPieces: 24000,
       cartons: 1000,
+      pallets: null,
       unitPrice: "1420.00",
       amount: "1420000.00",
     },
@@ -59,7 +66,7 @@ describe("renderPurchaseOrderPdf", () => {
 
   it("renders a confirmed order, whose meta strip carries the expected delivery cell", async () => {
     const bytes = await renderPurchaseOrderPdf(
-      { ...document, deliveryDate: "2 Oct 2026" },
+      { ...document, deliveryDate: "2 Oct 2026", awaitingConfirmation: false },
       "Confirmed by our team.",
     );
     expect(bytes.subarray(0, 5).toString("latin1")).toBe("%PDF-");

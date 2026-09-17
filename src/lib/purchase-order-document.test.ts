@@ -91,34 +91,40 @@ describe("buildPoDocument", () => {
     expect(build({ buyerReference: "   " }).reference).toBe("W-2609-00007");
   });
 
-  it("numbers the lines from one and carries the pack caption", () => {
+  it("numbers the lines from one and carries its quantity columns", () => {
     const doc = build();
     expect(doc.lines[0].position).toBe(1);
-    // Pieces per carton, then cartons per pallet, then the line's pieces.
-    expect(doc.lines[0].packCaption).toBe(
-      "6 pieces/carton · 52 cartons/pallet · 18 pieces",
-    );
-  });
-
-  it("groups the thousands in the pack caption", () => {
-    const doc = build({
-      lines: [line({ packSize: 1200, cartonsPerPallet: 1500, cartons: 3, pieces: 3600 })],
+    // By equality, so a column added or dropped later has to be deliberate.
+    const { piecesPerCarton, cartonsPerPallet, totalPieces, cartons, pallets } =
+      doc.lines[0];
+    expect({ piecesPerCarton, cartonsPerPallet, totalPieces, cartons, pallets }).toEqual({
+      piecesPerCarton: 6,
+      cartonsPerPallet: 52,
+      totalPieces: 18,
+      cartons: 3,
+      // 3 cartons at 52 a pallet still ship on one pallet.
+      pallets: 1,
     });
-    expect(doc.lines[0].packCaption).toBe(
-      "1,200 pieces/carton · 1,500 cartons/pallet · 3,600 pieces",
-    );
   });
 
-  it("leaves the pallet figure out where the product has none", () => {
+  it("rounds pallets up to whole pallets, and leaves an exact fill alone", () => {
+    // 1,200 ÷ 52 = 23.08, which ships on 24.
+    const doc = build({ lines: [line({ cartons: 1200, pieces: 7200 })] });
+    expect(doc.lines[0].pallets).toBe(24);
+    expect(doc.lines[0].totalPieces).toBe(7200);
+    // 104 ÷ 52 is exactly 2: rounding up must not make it 3.
+    expect(build({ lines: [line({ cartons: 104 })] }).lines[0].pallets).toBe(2);
+  });
+
+  it("has no pallet count where the product has no pallet figure", () => {
     const doc = build({ lines: [line({ cartonsPerPallet: null })] });
-    expect(doc.lines[0].packCaption).toBe("6 pieces/carton · 18 pieces");
+    expect(doc.lines[0].cartonsPerPallet).toBeNull();
+    expect(doc.lines[0].pallets).toBeNull();
+    expect(doc.lines[0].totalPieces).toBe(18);
   });
 
-  it("writes carton in lower case whatever the line's unit says", () => {
-    const doc = build({ lines: [line({ unit: "Carton" })] });
-    expect(doc.lines[0].packCaption).toBe(
-      "6 pieces/carton · 52 cartons/pallet · 18 pieces",
-    );
+  it("tells the buyer, on a cart, that the team will confirm delivery and terms", () => {
+    expect(build().awaitingConfirmation).toBe(true);
   });
 
   it("takes the variant off the name and prints it with the market underneath, unlabelled", () => {
@@ -136,9 +142,11 @@ describe("buildPoDocument", () => {
     expect(bare.detailCaption).toBe("");
   });
 
-  it("leaves the pieces off a line whose pack size is unknown", () => {
-    const doc = build({ lines: [line({ packSize: null, pieces: null })] });
-    expect(doc.lines[0].packCaption).toBe("52 cartons/pallet");
+  it("has no piece counts on a line whose pack size is unknown", () => {
+    const line0 = build({ lines: [line({ packSize: null, pieces: null })] }).lines[0];
+    expect(line0.piecesPerCarton).toBeNull();
+    expect(line0.totalPieces).toBeNull();
+    expect(line0.pallets).toBe(1);
   });
 
   it("joins each party's contact, and omits it when there is nothing to join", () => {
@@ -174,7 +182,8 @@ describe("buildPoDocumentFromOrder", () => {
     position: 1,
     sku: "ZEN-SC-2100-GM",
     description: "ZEN 2.1L — Goat's Milk",
-    packCaption: "6 per carton · 18 pieces",
+    packSize: 6,
+    cartonsPerPallet: 52,
     quantity: "3",
     unitPrice: "225.50",
     amount: "676.50",
@@ -202,7 +211,29 @@ describe("buildPoDocumentFromOrder", () => {
       order: order(over),
       supplier,
       orderDate: "15 Sep 2026",
+      awaitingConfirmation: true,
     });
+
+  it("counts a stored line's quantity columns from its own quantity", () => {
+    const stored = fromOrder({
+      lines: [storedLine({ quantity: "1200", amount: "676.50" })],
+    }).lines[0];
+    expect(stored.cartons).toBe(1200);
+    expect(stored.totalPieces).toBe(7200);
+    expect(stored.pallets).toBe(24);
+  });
+
+  it("passes whether the order is still awaiting confirmation", () => {
+    expect(fromOrder().awaitingConfirmation).toBe(true);
+    expect(
+      buildPoDocumentFromOrder({
+        order: order(),
+        supplier,
+        orderDate: "15 Sep 2026",
+        awaitingConfirmation: false,
+      }).awaitingConfirmation,
+    ).toBe(false);
+  });
 
   it("totals from its own lines rather than from anything handed to it", () => {
     const doc = fromOrder({
@@ -280,6 +311,7 @@ describe("buildPoDocumentFromOrder", () => {
         supplier,
         orderDate: "15 Sep 2026",
         deliveryDate: "2 Oct 2026",
+        awaitingConfirmation: false,
       }).deliveryDate,
     ).toBe("2 Oct 2026");
   });

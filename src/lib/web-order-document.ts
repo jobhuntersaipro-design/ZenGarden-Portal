@@ -79,9 +79,11 @@ export async function attachWebOrderDocument(
           supplier: await loadSupplierDetails(),
           orderDate: source.submittedAt ? formatDate(source.submittedAt) : "—",
           // Only once the team has confirmed: before that there is no promise
-          // to print, and the cell is not drawn at all.
+          // to print, and the cell reads "—".
           deliveryDate:
             confirmed && source.deliveryDate ? formatDate(source.deliveryDate) : null,
+          // Declined orders never reach here, so anything unconfirmed is waiting.
+          awaitingConfirmation: !confirmed,
         }),
         confirmed ? CONFIRMED_FOOTNOTE : SENT_FOOTNOTE,
       );

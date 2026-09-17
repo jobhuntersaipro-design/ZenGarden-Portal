@@ -1,5 +1,6 @@
 import { formatGrouped } from "@/lib/money";
 import {
+  AWAITING_CONFIRMATION_NOTE,
   DOCUMENT_COMPANY_NAME,
   type PoDocumentData,
 } from "@/lib/purchase-order-document";
@@ -13,7 +14,9 @@ import {
  * becomes `text-ink`, `#6f6f6f` `text-ink-tertiary`, `#646464`
  * `text-ink-secondary` and `#e8e8e8` `border-hairline`.
  *
- * **Fixed at A4's 794px inside a scrolling container.** A document that
+ * **Fixed at a landscape 1070px inside a scrolling container** (portrait A4's
+ * 794px until Phase 45 added five quantity columns; `globals.css` says why
+ * not A4's own 1123). A document that
  * reflows is not the document; the reader is checking what the seller will
  * hold, so it keeps its proportions and the *container* scrolls on a narrow
  * screen, which is this project's rule for wide content and keeps the page
@@ -67,13 +70,21 @@ export function PurchaseOrderPreview({
         </header>
 
         {/* Always four cells (Phase 44). Expected delivery reads "—" until
-            the team confirms a date, which then takes its place. */}
-        <dl className="grid grid-cols-4 gap-md border-b border-hairline py-md">
-          <Meta label="Order date" value={document.orderDate} />
-          <Meta label="Expected delivery" value={document.deliveryDate ?? "—"} />
-          <Meta label="Payment terms" value={document.paymentTerms ?? "—"} />
-          <Meta label="Currency" value={document.currency} />
-        </dl>
+            the team confirms a date, which then takes its place; until then
+            the note under them says so (Phase 45). */}
+        <div className="border-b border-hairline py-md">
+          <dl className="grid grid-cols-4 gap-md">
+            <Meta label="Order Date" value={document.orderDate} />
+            <Meta label="Expected Delivery" value={document.deliveryDate ?? "—"} />
+            <Meta label="Payment Terms" value={document.paymentTerms ?? "—"} />
+            <Meta label="Currency" value={document.currency} />
+          </dl>
+          {document.awaitingConfirmation ? (
+            <p className="mt-sm text-[length:var(--text-body-sm)] text-ink-secondary">
+              {AWAITING_CONFIRMATION_NOTE}
+            </p>
+          ) : null}
+        </div>
 
         <div className="grid grid-cols-2 gap-xl border-b border-hairline py-md">
           <Party heading="Buyer" party={document.buyer} />
@@ -84,16 +95,30 @@ export function PurchaseOrderPreview({
           <Row className="border-b border-ink pb-xs">
             <span className="text-[length:var(--text-caption)] text-ink-tertiary">#</span>
             <span className="text-[length:var(--text-caption)] text-ink-tertiary">
-              Product code
+              Product Code
             </span>
             <span className="text-[length:var(--text-caption)] text-ink-tertiary">
               Description
             </span>
             <span className="text-right text-[length:var(--text-caption)] text-ink-tertiary">
-              Cartons
+              {/* No space to wrap on, so the break is offered after the
+                  slash; unbroken, the two headers ran into each other. */}
+              Pieces/<wbr />Carton
             </span>
             <span className="text-right text-[length:var(--text-caption)] text-ink-tertiary">
-              Unit price
+              Cartons/<wbr />Pallet
+            </span>
+            <span className="text-right text-[length:var(--text-caption)] text-ink-tertiary">
+              Total Pieces
+            </span>
+            <span className="text-right text-[length:var(--text-caption)] text-ink-tertiary">
+              Total Cartons
+            </span>
+            <span className="text-right text-[length:var(--text-caption)] text-ink-tertiary">
+              Total Pallets
+            </span>
+            <span className="text-right text-[length:var(--text-caption)] text-ink-tertiary">
+              Unit Price
             </span>
             <span className="text-right text-[length:var(--text-caption)] text-ink-tertiary">
               Amount
@@ -124,13 +149,12 @@ export function PurchaseOrderPreview({
                     {line.detailCaption}
                   </span>
                 ) : null}
-                <span className="mt-xxs block text-[length:var(--text-caption)] text-ink-tertiary">
-                  {line.packCaption}
-                </span>
               </span>
-              <span className="text-right text-[length:var(--text-body-sm)] tabular-nums text-ink">
-                {formatGrouped(line.cartons, 0)}
-              </span>
+              <Quantity value={count(line.piecesPerCarton)} />
+              <Quantity value={count(line.cartonsPerPallet)} />
+              <Quantity value={count(line.totalPieces)} />
+              <Quantity value={formatGrouped(line.cartons, 0)} />
+              <Quantity value={count(line.pallets)} />
               <span className="text-right text-[length:var(--text-body-sm)] tabular-nums text-ink">
                 {formatGrouped(line.unitPrice)}
               </span>
@@ -200,11 +224,27 @@ export function PurchaseOrderPreview({
   );
 }
 
-/** The artboard's six-column line grid, shared by the header and every row. */
+/** A whole number grouped, or "—" where the product does not carry it. */
+const count = (value: number | null) =>
+  value === null ? "—" : formatGrouped(value, 0);
+
+function Quantity({ value }: { value: string }) {
+  return (
+    <span className="text-right text-[length:var(--text-body-sm)] tabular-nums text-ink">
+      {value}
+    </span>
+  );
+}
+
+/**
+ * The ten-column line grid, shared by the header and every row: #, code,
+ * description, the five quantity columns at one width so their two-line
+ * headers align, unit price and amount (Phase 45).
+ */
 function Row({ children, className = "" }: { children: React.ReactNode; className?: string }) {
   return (
     <div
-      className={`grid grid-cols-[34px_132px_minmax(0,1fr)_64px_96px_104px] items-start gap-xs py-xs ${className}`}
+      className={`grid grid-cols-[34px_120px_minmax(0,1fr)_68px_68px_68px_68px_68px_84px_108px] items-start gap-xs py-xs ${className}`}
     >
       {children}
     </div>

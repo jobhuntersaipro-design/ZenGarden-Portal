@@ -57,6 +57,8 @@ export default async function OrderDetailPage({
     supplier,
     orderDate: order.date ? formatDate(order.date) : "—",
     deliveryDate: order.deliveryDate ? formatDate(order.deliveryDate) : null,
+    // A declined order is not waiting on anyone, so it makes no promise.
+    awaitingConfirmation: order.kind === "submitted" || order.kind === "received",
   });
   // A confirmed purchase order carries its own total, and a scan-origin one can
   // carry tax on top of its lines. Where the document's own arithmetic does not
