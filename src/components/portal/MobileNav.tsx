@@ -2,9 +2,11 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
+import { NavCount, withCountLabel } from "@/components/portal/NavCount";
+import { useReviewCount } from "@/components/portal/ReviewCount";
 import { UserMenu } from "@/components/portal/UserMenu";
 import { Wordmark } from "@/components/portal/Wordmark";
-import { NAV, isActive } from "@/components/portal/nav";
+import { NAV, REVIEW_QUEUE_HREF, isActive } from "@/components/portal/nav";
 
 /**
  * The mobile shell, below `lg`. The desktop `Sidebar` used to collapse into a
@@ -60,6 +62,8 @@ export function MobileTopBar({
  */
 export function MobileTabBar() {
   const pathname = usePathname();
+  // Orders waiting on the team, on the Orders tab (Phase 46).
+  const { count: reviewCount } = useReviewCount();
 
   return (
     <nav
@@ -69,6 +73,7 @@ export function MobileTabBar() {
     >
       {NAV.map(({ href, short, label, icon: Icon }) => {
         const active = isActive(pathname, href);
+        const count = href === REVIEW_QUEUE_HREF ? reviewCount : 0;
         return (
           <Link
             key={href}
@@ -77,16 +82,19 @@ export function MobileTabBar() {
             // The visible label is the short one; the accessible name is the
             // full one, so "Orders" does not become the only thing a screen
             // reader ever hears for Purchase Orders.
-            aria-label={label}
+            aria-label={withCountLabel(label, count)}
             className={`flex h-14 flex-col items-center justify-center gap-xxs px-xxs transition-colors duration-[0.25s] focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-focus ${
               active ? "text-ink" : "text-ink-tertiary"
             }`}
           >
-            <Icon
-              className="size-5 shrink-0"
-              strokeWidth={active ? 2.25 : 1.75}
-              aria-hidden
-            />
+            <span className="relative">
+              <Icon
+                className="size-5 shrink-0"
+                strokeWidth={active ? 2.25 : 1.75}
+                aria-hidden
+              />
+              <NavCount count={count} className="absolute -top-xxs left-sm" />
+            </span>
             <span
               aria-hidden
               className={`text-[length:var(--text-caption)] ${active ? "font-semibold" : ""}`}

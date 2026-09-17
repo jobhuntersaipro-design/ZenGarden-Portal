@@ -1,6 +1,90 @@
-# Current Feature: The purchase order's quantity columns
+# Current Feature: The review queue, and its count in the sidebar
 
 ## Status
+
+**Phase 46 — built and driven in a browser on
+`feature/po-needs-review-section`, merged to `main` and pushed** (2026-09-17). Asked for
+as: "in the purchase order table seprate out the section for Needs Review,
+make it a section on top of the main table, this require the intention of
+admin. Also, at the sidebar, the Purchase Order should add a small ribbon
+indicating number of pending need review PO."
+
+Decisions the user made:
+
+- **The section holds everything waiting on the team**: shop orders sent
+  (Needs review) or received (Received) but not confirmed, and uploads Claude
+  has read (Needs review). Uploads still extracting or failed stay in the
+  table.
+- **Those rows leave the main table.** Its Needs review and Received chips
+  went with them, and "From the shop" now means confirmed shop orders only.
+  The `needs-review`, `received` and `shop-open` list filters were removed;
+  an old link carrying one falls back to All, with the rows in the section on
+  the same page. The dashboard's "Needs you" lines for reviews and shop orders
+  link to the section's anchor; failed uploads still filter the table.
+- **The section ignores the search and filters** — it is the inbox — and runs
+  longest waiting first, by a new `queuedAt` (a shop order's send, an
+  upload's arrival). It hides PO date and Confirmed by, blank on every
+  queued row, and renders nothing when empty.
+- **The count shows beside Purchase Orders in the sidebar and on the phone's
+  Orders tab**, from the queue's own summary query, and disappears at zero.
+- **The count is a dark pill** (ink, white number), also beside the section
+  heading. First built amber; the user asked for the current design, compared
+  screenshots of the dark pill and the soft grey `badge-pill`, and chose dark —
+  the grey one all but vanished on the selected sidebar row.
+
+**A defect the browser found:** the portal layout is not re-rendered on a
+client-side navigation, so with the count drawn only there, a shop order
+arriving while someone was on Buyers left the sidebar at 4 beside a section
+reading 5 until a reload. The count now lives in `ReviewCountProvider`, seeded
+by the layout and re-read from `/api/review-queue/count` (staff only) on every
+navigation, on focus and once a minute; the section also writes the number it
+drew, so the two agree on the same page. Also found: the badge wrapped
+"Purchase Orders" onto two lines in the 240px sidebar, and sat 1px over the
+phone tab bar's border — both fixed and re-measured.
+
+## Verified, with the figures
+
+Development, port 3001, as Aisha, with the three uploads development already
+holds ready for review and fixture shop orders under a throwaway `CLIENT`.
+
+- **Split:** section "Needs review 5" — three uploads, then W-2609-09962
+  (Received) and W-2609-09961 (Needs review), longest waiting first; main
+  table 403 rows (400 purchase orders, two extracting, one failed); chips All,
+  Confirmed, Extracting, Failed, From the shop; sidebar "Purchase Orders 5",
+  accessible name "Purchase Orders, 5 need review".
+- **Filters don't touch it:** a search plus the Confirmed chip left the
+  section at 5.
+- **It follows the work:** receiving W-2609-09961 kept 5; confirming
+  W-2609-09962 made the sidebar and the section 4.
+- **Arrivals:** before the fix, sidebar 4 against section 5 after a soft
+  navigation; after it, a new order inserted while on Buyers read 6 on the next
+  sidebar click (Products), and 6 in both places on the list.
+- **Phone:** the Orders tab's badge reads 6 inside the tab (791 against its
+  788 top); no overflow at 390 and 768. The sidebar label is one line (21px),
+  the badge 12px clear of it.
+- **Dashboard:** "3 purchase orders need review" and "3 orders from the shop
+  to confirm" both link to the section; "1 upload failed to extract" still
+  filters the table.
+- `GET /api/review-queue/count` as a guest answered 307 to sign-in.
+- **Cleanup by id:** four web orders, one purchase order, one `Document`, its
+  R2 object (NotFound), the client and one login attempt; counts back to users
+  2, `CLIENT` 0, web orders 0, POs 400, documents 406, line items 1606, stage
+  events 2323, audits 5, login attempts 68, products 308; extractions unchanged
+  (2 running, 400 confirmed, 3 succeeded, 1 failed).
+- **1175/1175 tests** (the list-query tests rewritten, and a guard watched
+  failing — six tests — with the shop branch put back in the table), `tsc`,
+  lint (same 2 warnings) and `npm run build` clean.
+
+## Not verified
+
+- **Anything on production.**
+- **A member's view** — the queue and count are the same for every staff
+  role, and were read as a super admin.
+- **The once-a-minute refresh and the focus refresh** on their own; only the
+  navigation refresh was driven.
+- **A queue of more than a handful of rows.** It is unpaged by design.
+
+## Previous phase
 
 **Phase 45 — built and driven in a browser on
 `feature/po-document-quantity-columns`, merged to `main` and pushed** (2026-09-17). Asked
@@ -1077,6 +1161,11 @@ file: generating a PDF remains Phase 19, still unbuilt.
   purchase-order file, is also unbuilt.
 
 ## History
+- 2026-09-17: Phase 46 — the review queue, and its count in the sidebar —
+  built, driven and merged from `feature/po-needs-review-section` (details under Status
+  above). Everything waiting on the team moved from the purchase-order table
+  to a section above it, and its count shows on Purchase Orders in the sidebar
+  and the phone's Orders tab, kept current from the browser. No migration.
 - 2026-09-17: Fix — the shop card's price ignored the selected flavour — on
   `fix/shop-card-variant-price`, merged to `main` and pushed. Reported as critical: Zen Garden Shower Cream
   2.1L CARROT is RM 10.00 and its siblings RM 5.00, and the catalogue card read

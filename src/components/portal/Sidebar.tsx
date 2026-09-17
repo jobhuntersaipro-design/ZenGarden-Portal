@@ -3,9 +3,11 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { LinkSpinner } from "@/components/portal/LinkSpinner";
+import { NavCount, withCountLabel } from "@/components/portal/NavCount";
+import { useReviewCount } from "@/components/portal/ReviewCount";
 import { UserMenu } from "@/components/portal/UserMenu";
 import { Wordmark } from "@/components/portal/Wordmark";
-import { NAV, isActive } from "@/components/portal/nav";
+import { NAV, REVIEW_QUEUE_HREF, isActive } from "@/components/portal/nav";
 
 /**
  * The desktop sidebar, from `lg` up.
@@ -26,6 +28,8 @@ export function Sidebar({
   userImage?: string | null;
 }) {
   const pathname = usePathname();
+  // Orders waiting on the team, beside Purchase Orders (Phase 46).
+  const { count: reviewCount } = useReviewCount();
 
   return (
     // Sticky, not merely tall: the shell grows with the page, so a plain
@@ -49,11 +53,13 @@ export function Sidebar({
       >
         {NAV.map(({ href, label, icon: Icon }) => {
           const active = isActive(pathname, href);
+          const count = href === REVIEW_QUEUE_HREF ? reviewCount : 0;
           return (
             <Link
               key={href}
               href={href}
               aria-current={active ? "page" : undefined}
+              aria-label={count > 0 ? withCountLabel(label, count) : undefined}
               className={`flex h-11 items-center gap-sm rounded-sm px-sm text-[length:var(--text-body-sm)] transition-colors duration-[0.25s] ease-[cubic-bezier(0.5,0,0.5,1)] focus-visible:outline-2 focus-visible:outline-focus ${
                 active
                   ? "bg-surface-soft font-semibold text-ink"
@@ -65,10 +71,15 @@ export function Sidebar({
                 strokeWidth={1.75}
                 aria-hidden
               />
-              <span>{label}</span>
-              {/* Spins from the click until the route commits and its
-                  loading.tsx takes over. */}
-              <LinkSpinner className="ml-auto" />
+              {/* One line: with the count beside it, "Purchase Orders"
+                  otherwise wrapped in the 240px rail. */}
+              <span className="whitespace-nowrap">{label}</span>
+              <span className="ml-auto flex items-center gap-xs">
+                <NavCount count={count} />
+                {/* Spins from the click until the route commits and its
+                    loading.tsx takes over. */}
+                <LinkSpinner />
+              </span>
             </Link>
           );
         })}

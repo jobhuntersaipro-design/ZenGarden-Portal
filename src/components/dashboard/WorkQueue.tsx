@@ -16,11 +16,16 @@ import { INTAKE_STATUS } from "@/components/portal/StatusBadge";
  * It is deliberately outside the date range: a draft has no PO date, so a
  * ranged link to it lands on an empty table — the defect already recorded
  * against the intake links in the 2026-09-06 UI-change brief.
+ *
+ * Since Phase 46 the review and shop lines open the review queue at the top of
+ * /purchase-orders, where those rows now live; only failed uploads are still a
+ * filter on the table.
  */
 export function WorkQueue({ intake }: { intake: IntakeCounts }) {
   const jobs = [
     {
       key: "needs-review",
+      href: "/purchase-orders#needs-review",
       count: intake.needsReview,
       tone: INTAKE_STATUS.NEEDS_REVIEW,
       one: "purchase order needs review",
@@ -28,15 +33,16 @@ export function WorkQueue({ intake }: { intake: IntakeCounts }) {
     },
     {
       key: "failed",
+      href: "/purchase-orders?status=failed",
       count: intake.failed,
       tone: INTAKE_STATUS.FAILED,
       one: "upload failed to extract",
       many: "uploads failed to extract",
     },
     {
-      // Not `web`: that chip also holds every shop order ever confirmed, and
-      // this count is only the ones still waiting (SUBMITTED or RECEIVED).
+      // The shop half of the review queue: SUBMITTED or RECEIVED.
       key: "shop-open",
+      href: "/purchase-orders#needs-review",
       count: intake.webOrders,
       tone: INTAKE_STATUS.NEEDS_REVIEW,
       one: "order from the shop to confirm",
@@ -63,7 +69,7 @@ export function WorkQueue({ intake }: { intake: IntakeCounts }) {
         {jobs.map((job) => (
           <li key={job.key}>
             <Link
-              href={`/purchase-orders?status=${job.key}`}
+              href={job.href}
               className="-mx-xs flex min-h-control-md items-center gap-xs rounded-sm px-xs text-[length:var(--text-body-md)] text-ink transition-colors hover:bg-surface focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-focus"
             >
               <span

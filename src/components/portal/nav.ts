@@ -7,6 +7,9 @@ import { FileText, LayoutDashboard, Package, Users } from "lucide-react";
  * Destinations only. Upload is an action — the "Upload PO" primary in the page
  * header — never a nav row (00-master.md §4, design reference §3.0).
  */
+/** The destination whose nav entry carries the review queue's count. */
+export const REVIEW_QUEUE_HREF = "/purchase-orders";
+
 export const NAV = [
   { href: "/", label: "Dashboard", short: "Dashboard", icon: LayoutDashboard },
   // Title case at the user's request (2026-09-06) — the one label that is.

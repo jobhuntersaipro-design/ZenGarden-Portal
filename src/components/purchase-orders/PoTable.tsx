@@ -38,6 +38,8 @@ export type PoRow = {
   /** Where the order came from, from the query rather than inferred. */
   source: "web" | "scan";
   revision: number;
+  /** When the row joined its list, as an ISO string (Phase 46). */
+  queuedAt: string | null;
 };
 
 const FILE_LABEL: Record<string, string> = {
@@ -72,7 +74,39 @@ export function PoTable({
 }) {
   const onSortChange = useTableSort();
 
-  const columns: Column<PoRow>[] = [
+  return (
+    <>
+      <DataTable
+        columns={poColumns({ canDeleteOrders })}
+        rows={rows}
+        sort={sort}
+        onSortChange={onSortChange}
+        emptyText="No purchase orders match."
+        rowHref={poRowHref}
+      />
+      <TablePagination page={page} size={size} total={total} />
+    </>
+  );
+}
+
+/** Where a row opens: the order, the shop order's review, or the upload's. */
+export const poRowHref = (row: PoRow) =>
+  row.kind === "PO"
+    ? `/purchase-orders/${row.id}`
+    : row.kind === "WEB"
+      ? `/web-orders/${row.id}`
+      : `/review/${row.id}`;
+
+/**
+ * The purchase-order columns, shared by the main table and the review queue
+ * above it (Phase 46) so a row reads the same in both.
+ */
+export function poColumns({
+  canDeleteOrders,
+}: {
+  canDeleteOrders: boolean;
+}): Column<PoRow>[] {
+  return [
     {
       key: "poNumber",
       header: "PO number",
@@ -253,24 +287,4 @@ export function PoTable({
       },
     },
   ];
-
-  return (
-    <>
-      <DataTable
-        columns={columns}
-        rows={rows}
-        sort={sort}
-        onSortChange={onSortChange}
-        emptyText="No purchase orders match."
-        rowHref={(row) =>
-          row.kind === "PO"
-            ? `/purchase-orders/${row.id}`
-            : row.kind === "WEB"
-              ? `/web-orders/${row.id}`
-              : `/review/${row.id}`
-        }
-      />
-      <TablePagination page={page} size={size} total={total} />
-    </>
-  );
 }

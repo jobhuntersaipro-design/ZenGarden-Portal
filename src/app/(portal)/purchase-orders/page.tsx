@@ -5,6 +5,7 @@ import { UpdatingHint } from "@/components/portal/UpdatingHint";
 import { UploadPoButton } from "@/components/portal/UploadPoButton";
 import { PoFilters, type StatusChip } from "@/components/purchase-orders/PoFilters";
 import { PoTable, type PoRow } from "@/components/purchase-orders/PoTable";
+import { ReviewQueue } from "@/components/purchase-orders/ReviewQueue";
 import { getSessionUser } from "@/lib/auth-guards";
 import { formatMYR } from "@/lib/money";
 import {
@@ -16,10 +17,12 @@ import {
 import {
   PO_LIST_SORT_KEYS,
   type PoListFilters,
+  type PoListRow,
 } from "@/lib/queries/po-list.sql";
 import {
   listFilterOptions,
   listPurchaseOrders,
+  listReviewQueue,
 } from "@/lib/queries/purchase-orders";
 
 export const metadata: Metadata = {
@@ -29,18 +32,18 @@ export const dynamic = "force-dynamic";
 
 // Must stay in step with StatusChip and with CHIPS in PoFilters. A chip whose
 // value is missing here changes the URL and is then silently ignored by the
-// page — the defect Phase 11 hit on /products. `shop-open` has no chip, but
-// the dashboard links to it, so it must be here all the same.
-const STATUSES: StatusChip[] = [
-  "all",
-  "confirmed",
-  "needs-review",
-  "received",
-  "extracting",
-  "failed",
-  "web",
-  "shop-open",
-];
+// page — the defect Phase 11 hit on /products. An old link carrying
+// `needs-review`, `received` or `shop-open` falls back to All, and the rows it
+// meant are in the review queue at the top of the same page (Phase 46).
+const STATUSES: StatusChip[] = ["all", "confirmed", "extracting", "failed", "web"];
+
+// Money and dates cross to the client as strings (00-master.md §4).
+const toClientRow = (row: PoListRow): PoRow => ({
+  ...row,
+  poDate: row.poDate ? row.poDate.toISOString() : null,
+  total: row.total.toString(),
+  queuedAt: row.queuedAt ? row.queuedAt.toISOString() : null,
+});
 
 const asDate = (value: string | undefined) => {
   if (!value) return undefined;
@@ -74,23 +77,14 @@ export default async function PurchaseOrdersPage({
   });
   const { page, size, skip, take } = parsePagination(params);
 
-  const { rows, total, sum, needsReview, received } = await listPurchaseOrders(
-    filters,
-    sort,
-    take,
-    skip,
-  );
-  const [{ buyers, uploaders }, user] = await Promise.all([
-    listFilterOptions(),
-    getSessionUser(),
-  ]);
-
-  // Money and dates cross to the client as strings (00-master.md §4).
-  const clientRows: PoRow[] = rows.map((row) => ({
-    ...row,
-    poDate: row.poDate ? row.poDate.toISOString() : null,
-    total: row.total.toString(),
-  }));
+  const [{ rows, total, sum }, queue, { buyers, uploaders }, user] =
+    await Promise.all([
+      listPurchaseOrders(filters, sort, take, skip),
+      listReviewQueue(),
+      listFilterOptions(),
+      getSessionUser(),
+    ]);
+  const canDeleteOrders = user?.role === Role.SUPER_ADMIN;
 
   return (
     <>
@@ -100,12 +94,13 @@ export default async function PurchaseOrdersPage({
         action={<UploadPoButton />}
       />
 
-      <PoFilters
-        buyers={buyers}
-        uploaders={uploaders}
-        needsReview={needsReview}
-        received={received}
+      <ReviewQueue
+        rows={queue.rows.map(toClientRow)}
+        sum={queue.sum}
+        canDeleteOrders={canDeleteOrders}
       />
+
+      <PoFilters buyers={buyers} uploaders={uploaders} />
 
       {/* Counts and sums the same filtered set the table shows, so the number
           and the rows under it always agree (00-master.md §4). */}
@@ -117,12 +112,12 @@ export default async function PurchaseOrdersPage({
       </p>
 
       <PoTable
-        rows={clientRows}
+        rows={rows.map(toClientRow)}
         sort={sort}
         page={page}
         size={size}
         total={total}
-        canDeleteOrders={user?.role === Role.SUPER_ADMIN}
+        canDeleteOrders={canDeleteOrders}
       />
     </>
   );

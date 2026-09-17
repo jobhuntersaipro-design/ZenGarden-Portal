@@ -96,6 +96,7 @@ export default async function DashboardPage({
     ...row,
     poDate: row.poDate ? row.poDate.toISOString() : null,
     total: row.total.toString(),
+    queuedAt: row.queuedAt ? row.queuedAt.toISOString() : null,
   }));
 
   return (
