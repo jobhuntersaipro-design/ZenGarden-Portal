@@ -3,8 +3,8 @@
 ## Status
 
 **Phase 41 — receiving a shop order, and the Source column — built across
-thirteen tasks and driven in a browser on `feature/order-receipt`, not yet
-merged** (2026-09-17). Spec `docs/specs/41-order-receipt-and-source.md`, whose
+thirteen tasks and driven in a browser on `feature/order-receipt`, merged to
+`main` as `c983174` and deployed to production** (2026-09-17). Spec `docs/specs/41-order-receipt-and-source.md`, whose
 §10 is now what was measured and §11 what was not. Asked for as: "revamp this
 page. admin should be able to receive the purchase order when an order is
 place from shop.lovinghandsportal by buyer. Also, it also need to add once more
@@ -106,8 +106,10 @@ inboxes. Measurements in
 
 ## Not verified
 
-- **Anything on production.** This branch has never been deployed, and the
-  migration has not run there.
+- **Any journey on production.** The deploy is Ready (`36tt4t7wr`), the site
+  answers — `/` 307 to sign-in, `/signin` 200 from `sin1` — and the migration is
+  applied there, read from build logs. No production screen was opened, no
+  order received, and no production row read or written.
 - **A real `MEMBER` receiving.** `aisha@lovinghandsportal.com` reads
   `SUPER_ADMIN` in development, so every live receive, confirm and decline was a
   super admin's. The action uses the same `requireUser()` guard as confirm and
@@ -134,13 +136,27 @@ inboxes. Measurements in
 
 ## Notes
 
-- **Before deploying, two things.** This branch carries a migration, and
-  production's `DIRECT_URL` pointed at the pooled Neon host from Phase 30
-  through Phase 40; the 2026-09-16 deploy of Phases 36–40 carried two
-  migrations and succeeded, so check it rather than assume either way. And
-  production's one real shop order, **`W-2609-00001`, sits in `SUBMITTED`**:
-  after this deploys it has to be received before anyone can confirm it. Tell
-  the team, rather than let them find a disabled button.
+- **Preview deployments migrate the production database.** Vercel's build
+  command is `prisma generate && prisma migrate deploy && next build` for every
+  target, and the branch's preview build log printed its datasource as
+  `ep-polished-wildflower-b3zeyn4i-pooler` — production. Pushing
+  `feature/order-receipt` therefore applied `20260918090000_web_order_received`
+  to production at 01:15:57 UTC, two minutes before `main` was pushed; the
+  `main` build then logged **"21 migrations found … No pending migrations to
+  apply."** Harmless this time — the migration is additive and the Phase 40
+  code ran against it unchanged — but **any branch pushed with a migration
+  changes production before review or merge**, and preview deployments read and
+  write production data. The Preview `DATABASE_URL`/`DIRECT_URL` are Secret-type
+  and cannot be read with `vercel env pull`; `vercel inspect <url> --logs`
+  shows the datasource. Pointing Preview at its own Neon branch is a Vercel
+  settings change, not yet made.
+- **Production's `DIRECT_URL` is still the `-pooler` host**, checked
+  2026-09-17. Both of the day's migrating builds succeeded through it; a P1002
+  on a later deploy is the recorded consequence, and the fix is dropping
+  `-pooler` from that one variable.
+- **Production's one real shop order, `W-2609-00001`, sits in `SUBMITTED`** and
+  now has to be received before anyone can confirm it. The team needs telling,
+  rather than finding a disabled button.
 - **`PurchaseOrder_documentId_fkey` has drifted since Phase 16, and was left
   alone on purpose.** The development database holds it as `RESTRICT`, from
   the first migration on 2026-09-05; the schema has implied `SET NULL` since
@@ -746,6 +762,17 @@ file: generating a PDF remains Phase 19, still unbuilt.
   purchase-order file, is also unbuilt.
 
 ## History
+- 2026-09-17: Phase 41 — receiving a shop order, and the Source column —
+  built across thirteen tasks, merged from `feature/order-receipt` as
+  `c983174` and deployed (spec `docs/specs/41-order-receipt-and-source.md`;
+  details under Status above). A shop order runs `SUBMITTED → RECEIVED →
+  CONFIRMED`, the buyer is emailed on receipt, and the purchase-order list
+  gained a Source column, a Received chip and a chip-less `shop-open` filter
+  for the dashboard. One additive migration. The admin notification email
+  already existed and was not rebuilt. **Deploying found that preview builds
+  migrate production**: the branch push applied the migration there before
+  `main` was pushed. Before this phase, on 2026-09-16, the open-order cap on
+  shop submission was removed at the user's request.
 - 2026-09-14: Phases 31 and 32 — product variants, and review and send — built,
   verified and merged from `feature/product-variants` (specs
   `docs/specs/31-product-variants.md`, `docs/specs/32-order-review.md`).
