@@ -285,6 +285,25 @@ describe("confirmWebOrder", () => {
     },
   );
 
+  // Asked for on 2026-09-17: goods cannot arrive before they were ordered.
+  it("refuses an expected delivery date before the PO date", async () => {
+    const result = await confirmWebOrder("wo1", draft({ poDate: "2026-09-10" }), {
+      deliveryDate: "2026-09-09",
+    });
+    expect(result).toEqual({
+      success: false,
+      error: "Expected delivery can't be before the PO date.",
+    });
+    expect(writePurchaseOrder).not.toHaveBeenCalled();
+  });
+
+  it("allows delivery on the PO date itself", async () => {
+    const result = await confirmWebOrder("wo1", draft({ poDate: "2026-09-10" }), {
+      deliveryDate: "2026-09-10",
+    });
+    expect(result.success).toBe(true);
+  });
+
   it("refuses a delivery date that is not a calendar day", async () => {
     const result = await confirmWebOrder("wo1", draft(), {
       deliveryDate: "next tuesday",

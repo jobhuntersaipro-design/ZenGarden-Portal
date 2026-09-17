@@ -211,6 +211,30 @@ describe("updatePurchaseOrder — the expected delivery date", () => {
     };
   });
 
+  // The confirm form's rule, on the edit sheet too (2026-09-17).
+  it("refuses an expected delivery date before the PO date, and writes nothing", async () => {
+    const result = await updatePurchaseOrder("po1", {
+      ...patch,
+      deliveryDate: "2026-09-14",
+    });
+    expect(result).toEqual({
+      success: false,
+      error: "Expected delivery can't be before the PO date.",
+    });
+    expect(transaction).not.toHaveBeenCalled();
+  });
+
+  it("refuses a PO date moved past the delivery date", async () => {
+    const result = await updatePurchaseOrder("po1", { ...patch, poDate: "2026-10-03" });
+    expect(result.success).toBe(false);
+    expect(transaction).not.toHaveBeenCalled();
+  });
+
+  it("still allows clearing the delivery date", async () => {
+    const result = await updatePurchaseOrder("po1", { ...patch, deliveryDate: null });
+    expect(result.success).toBe(true);
+  });
+
   it("writes nothing and emails nobody when nothing moved", async () => {
     const result = await updatePurchaseOrder("po1", patch);
     await flushAfter();

@@ -71,6 +71,9 @@ export function EditPurchaseOrderSheet({
               <Input
                 id={`edit-${key}`}
                 type={type ?? "text"}
+                // The picker offers no delivery day before the PO date; the
+                // action refuses a typed one (2026-09-17).
+                min={key === "deliveryDate" ? patch.poDate || undefined : undefined}
                 value={patch[key] ?? ""}
                 onChange={(event) => set(key, event.target.value)}
               />

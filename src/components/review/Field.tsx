@@ -15,6 +15,7 @@ export function Field({
   value,
   confidence,
   type = "text",
+  min,
   error,
   onChange,
 }: {
@@ -23,6 +24,8 @@ export function Field({
   value: string;
   confidence?: number;
   type?: string;
+  /** The earliest value a date input's picker offers. */
+  min?: string;
   error?: string;
   onChange: (value: string) => void;
 }) {
@@ -48,6 +51,7 @@ export function Field({
       <Input
         id={id}
         type={type}
+        min={min}
         value={value}
         title={value || undefined}
         onChange={(event) => onChange(event.target.value)}

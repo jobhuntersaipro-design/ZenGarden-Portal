@@ -44,7 +44,13 @@ const purchaseOrderPatchSchema = z.object({
       .max(2000, "That remark is too long — 2000 characters at most")
       .nullable(),
   ),
-});
+}).refine(
+  // Goods cannot arrive before they were ordered — the confirm form's rule
+  // too (2026-09-17). Both are YYYY-MM-DD, so they compare as calendar days;
+  // a cleared date is still allowed.
+  (patch) => patch.deliveryDate === null || patch.deliveryDate >= patch.poDate,
+  { message: "Expected delivery can't be before the PO date.", path: ["deliveryDate"] },
+);
 
 const guard = async () => {
   try {
