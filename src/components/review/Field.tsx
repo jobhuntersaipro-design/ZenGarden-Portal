@@ -51,7 +51,11 @@ export function Field({
         value={value}
         title={value || undefined}
         onChange={(event) => onChange(event.target.value)}
-        aria-describedby={low ? `${id}-low` : undefined}
+        aria-describedby={
+          [low ? `${id}-low` : null, error ? `${id}-error` : null]
+            .filter(Boolean)
+            .join(" ") || undefined
+        }
         aria-invalid={error ? true : undefined}
         className={low ? "border-l-2 border-l-brand-amber" : undefined}
       />
@@ -64,7 +68,12 @@ export function Field({
         </p>
       ) : null}
       {error ? (
-        <p className="text-[length:var(--text-caption)] text-accent-red">{error}</p>
+        <p
+          id={`${id}-error`}
+          className="text-[length:var(--text-caption)] text-accent-red"
+        >
+          {error}
+        </p>
       ) : null}
     </div>
   );

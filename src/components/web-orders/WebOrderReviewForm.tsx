@@ -47,6 +47,12 @@ export function WebOrderReviewForm({ order }: { order: OpsWebOrder }) {
    * day, so there is nothing to prefill it from.
    */
   const [deliveryDate, setDeliveryDate] = useState("");
+  /**
+   * Set by the first Confirm pressed with a required field empty (2026-09-17).
+   * Until then nothing is red: an untouched form is not a mistake yet. After
+   * it, each message clears the moment its field is filled.
+   */
+  const [attempted, setAttempted] = useState(false);
 
   const [draft, dispatch] = useReducer(draftReducer, {
     // Defaults a reviewer can type over: the shop reference as the PO number,
@@ -97,6 +103,15 @@ export function WebOrderReviewForm({ order }: { order: OpsWebOrder }) {
   }, [draft]);
 
   const totals = useMemo(() => checkTotals(submitted), [submitted]);
+  // Both are settled by the team at confirm and printed on the buyer's
+  // purchase order, so neither may be left blank. The server says the same.
+  const missing = {
+    deliveryDate: deliveryDate ? null : "Set an expected delivery date.",
+    paymentTerms: draft.paymentTerms?.trim() ? null : "Enter the payment terms.",
+  };
+  const firstMissing = (Object.keys(missing) as (keyof typeof missing)[]).find(
+    (field) => missing[field] !== null,
+  );
   const blockedByTotals = !totals.matches && !acknowledged;
   const received = order.status === "RECEIVED";
 
@@ -126,6 +141,7 @@ export function WebOrderReviewForm({ order }: { order: OpsWebOrder }) {
           type="date"
           value={deliveryDate}
           onChange={setDeliveryDate}
+          error={attempted ? (missing.deliveryDate ?? undefined) : undefined}
         />
         <Field
           id="paymentTerms"
@@ -134,6 +150,7 @@ export function WebOrderReviewForm({ order }: { order: OpsWebOrder }) {
           onChange={(value) =>
             dispatch({ type: "field", field: "paymentTerms", value })
           }
+          error={attempted ? (missing.paymentTerms ?? undefined) : undefined}
         />
         <Field
           id="tax"
@@ -229,8 +246,15 @@ export function WebOrderReviewForm({ order }: { order: OpsWebOrder }) {
         <Button
           variant={received ? "default" : "secondary"}
           pending={pending && !declining && !receiving}
-          disabled={blockedByTotals || !deliveryDate || !received}
-          onClick={() =>
+          // Not disabled for an empty date or terms: a greyed-out button does
+          // not say which field is missing. Pressing it does, under the field.
+          disabled={blockedByTotals || !received}
+          onClick={() => {
+            if (firstMissing) {
+              setAttempted(true);
+              document.getElementById(firstMissing)?.focus();
+              return;
+            }
             startTransition(async () => {
               setDeclining(false);
               setReceiving(false);
@@ -244,8 +268,8 @@ export function WebOrderReviewForm({ order }: { order: OpsWebOrder }) {
               } else {
                 toast.error(result.error);
               }
-            })
-          }
+            });
+          }}
         >
           Confirm order
         </Button>
@@ -260,13 +284,11 @@ export function WebOrderReviewForm({ order }: { order: OpsWebOrder }) {
           <p className="text-[length:var(--text-caption)] text-ink-tertiary">
             Locked — totals don&rsquo;t match
           </p>
-        ) : !deliveryDate ? (
-          // The buyer is emailed this date the moment Confirm is pressed, so
-          // there is no confirming without one.
-          <p className="text-[length:var(--text-caption)] text-ink-tertiary">
-            Locked — set an expected delivery date
+        ) : attempted && firstMissing ? (
+          <p role="alert" className="text-[length:var(--text-caption)] text-accent-red">
+            Fill in the expected delivery date and payment terms to confirm.
           </p>
-        ) : deliveryDate < todayISO() ? (
+        ) : deliveryDate && deliveryDate < todayISO() ? (
           // Allowed, not blocked: backdating a date the goods already went
           // out on is legitimate. It is said out loud because it is usually
           // a typo.
@@ -298,7 +320,10 @@ export function WebOrderReviewForm({ order }: { order: OpsWebOrder }) {
                   const result = await declineWebOrder(order.id, { reason });
                   if (result.success) {
                     toast.success("Order declined and the buyer told.");
-                    router.push("/purchase-orders?status=web");
+                    // Not `?status=web`: since Phase 46 that chip holds
+                    // confirmed shop orders only, and a declined one is in
+                    // neither the queue nor the table.
+                    router.push("/purchase-orders");
                   } else {
                     toast.error(result.error);
                   }
