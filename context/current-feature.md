@@ -1077,6 +1077,21 @@ file: generating a PDF remains Phase 19, still unbuilt.
   purchase-order file, is also unbuilt.
 
 ## History
+- 2026-09-17: Fix — the shop card's price ignored the selected flavour — on
+  `fix/shop-card-variant-price`, merged to `main` and pushed. Reported as critical: Zen Garden Shower Cream
+  2.1L CARROT is RM 10.00 and its siblings RM 5.00, and the catalogue card read
+  "from RM 5.00" with CARROT selected. `ShopProductCard` printed the listing's
+  cheapest price whenever flavours were priced apart, whatever was selected;
+  the cart was never wrong, since Add to cart sends the selected product and
+  the cart prices from it. The card now always prints the selected flavour's
+  own price, and "from" is gone. A render test was watched failing first
+  (RM 5.00 with a RM 10.00 flavour selected). Driven on development by pricing
+  `ZEN-SC-1000-CR-MYDIN` at 420 against five siblings at 210: the desktop chips
+  and the phone select both read RM 420.00 on Carrot and RM 210.00 on each
+  other flavour, switching back and forth, and the carrot product page read
+  RM 420.00; the price was restored to 210 (all six read back 210, no
+  `ProductPrice` rows written). 1174/1174 tests, `tsc`, lint and build clean.
+  Not verified on production, where the report came from.
 - 2026-09-17: Phase 45 — the purchase order's quantity columns — built and
   merged from `feature/po-document-quantity-columns` (details under Status
   above). Five quantity columns replace the pack text line, the document goes

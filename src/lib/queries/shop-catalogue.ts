@@ -48,11 +48,10 @@ export type Facet<T extends string | number> = { value: T; count: number }[];
  * the card it drew before.
  *
  * `variants` is ordered by `groupProducts`, and `priceFrom`/`priceTo` bracket
- * it so a card can say "from RM 210.00" where the flavours are priced apart.
- * In the catalogue as it stands they never are — all 81 multi-variant groups
- * price every flavour identically — but a card that silently showed one
- * flavour's price as if it were the group's would be a lie the day that
- * changes.
+ * its prices. The card no longer prints the range: it shows the selected
+ * flavour's own price, because printing the cheapest flavour's price beside a
+ * dearer selected one misled a buyer on 2026-09-17, once flavours were
+ * priced apart.
  */
 export type ShopProductGroup = {
   key: string;
