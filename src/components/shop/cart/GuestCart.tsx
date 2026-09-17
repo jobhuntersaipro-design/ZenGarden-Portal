@@ -81,7 +81,7 @@ function GuestCta() {
     <div>
       <Link
         href={shopHref.signIn("/cart")}
-        className="flex h-control-lg w-full items-center justify-center gap-xs rounded-pill bg-ink text-[length:var(--text-button-md)] font-semibold text-canvas hover:bg-ink-deep focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-focus"
+        className="flex h-control-lg w-full items-center justify-center gap-xs pressable rounded-pill bg-ink text-[length:var(--text-button-md)] font-semibold text-canvas hover:bg-ink-deep focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-focus"
       >
         <Lock className="size-4" aria-hidden />
         Sign in to send this order

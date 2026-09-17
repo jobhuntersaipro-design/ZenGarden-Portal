@@ -150,9 +150,10 @@ export default auth((request) => {
 
 export const config = {
   matcher: [
-    // Everything except Next's own assets and static files. `/api/auth` is
-    // matched on purpose — it is let through in the handler above, where the
-    // reason is visible.
-    "/((?!_next/static|_next/image|favicon.ico|.*\\.(?:svg|png|jpg|jpeg|gif|webp|ico)$).*)",
+    // Everything except Next's own assets and static files — `.lottie` too,
+    // or the shop host rewrites the success animation under /shop and 404s
+    // it. `/api/auth` is matched on purpose — it is let through in the
+    // handler above, where the reason is visible.
+    "/((?!_next/static|_next/image|favicon.ico|.*\\.(?:svg|png|jpg|jpeg|gif|webp|ico|lottie)$).*)",
   ],
 };

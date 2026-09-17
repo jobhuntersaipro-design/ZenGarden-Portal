@@ -1,8 +1,8 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound, redirect } from "next/navigation";
-import { Check } from "lucide-react";
 import { CheckoutSteps } from "@/components/shop/checkout/CheckoutSteps";
+import { SuccessMark } from "@/components/shop/checkout/SuccessMark";
 import { formatDate } from "@/lib/dates";
 import { formatMYR } from "@/lib/money";
 import { loadSentOrder } from "@/lib/queries/shop-checkout";
@@ -42,12 +42,7 @@ export default async function OrderSentPage({
       </div>
 
       <div className="rounded-xl border border-hairline bg-canvas p-xxl text-center">
-        <span
-          aria-hidden
-          className="mx-auto flex size-16 items-center justify-center rounded-full bg-surface-soft"
-        >
-          <Check className="size-7 text-accent-green" />
-        </span>
+        <SuccessMark />
 
         <h1 className="mt-md font-display text-[length:var(--text-display-md)] font-[650] text-ink">
           Your order is with us
@@ -71,7 +66,7 @@ export default async function OrderSentPage({
         <div className="mt-lg flex flex-col items-center gap-sm">
           <Link
             href={shopHref.order(order.id)}
-            className="flex h-control-lg w-full items-center justify-center rounded-pill bg-ink px-lg text-[length:var(--text-button-md)] font-semibold text-canvas hover:bg-ink-deep focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-focus sm:w-fit"
+            className="flex h-control-lg w-full items-center justify-center pressable rounded-pill bg-ink px-lg text-[length:var(--text-button-md)] font-semibold text-canvas hover:bg-ink-deep focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-focus sm:w-fit"
           >
             Track this order
           </Link>

@@ -26,6 +26,7 @@ export type PoRow = {
   buyerName: string;
   buyerId: string | null;
   poDate: string | null;
+  deliveryDate: string | null;
   itemCount: number;
   total: string;
   status: string;
@@ -152,6 +153,18 @@ export function poColumns({
       cell: (row) =>
         row.poDate ? (
           formatDate(row.poDate)
+        ) : (
+          <span className="text-ink-tertiary">—</span>
+        ),
+    },
+    {
+      key: "deliveryDate",
+      header: "Expected delivery",
+      // Soonest first: the order about to leave is the one to look at.
+      defaultDir: "asc",
+      cell: (row) =>
+        row.deliveryDate ? (
+          formatDate(row.deliveryDate)
         ) : (
           <span className="text-ink-tertiary">—</span>
         ),

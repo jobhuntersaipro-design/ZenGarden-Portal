@@ -98,7 +98,7 @@ function ReviewCta({ hasUnavailable }: { hasUnavailable: boolean }) {
     <div>
       <Link
         href={shopHref.checkoutReview()}
-        className="flex h-control-lg w-full items-center justify-center rounded-pill bg-ink text-[length:var(--text-button-md)] font-semibold text-canvas hover:bg-ink-deep focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-focus"
+        className="flex h-control-lg w-full items-center justify-center pressable rounded-pill bg-ink text-[length:var(--text-button-md)] font-semibold text-canvas hover:bg-ink-deep focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-focus"
       >
         Review and send
       </Link>

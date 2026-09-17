@@ -13,18 +13,33 @@
  */
 export function NavCount({
   count,
-  className = "",
+  attention = false,
+  className = "relative",
 }: {
   count: number;
+  /**
+   * A faint ring fades outward every few seconds, so a waiting order is seen
+   * from any page. The nav passes it; the queue's own heading does not — the
+   * reader is already looking at the rows.
+   */
+  attention?: boolean;
+  /** Must position the pill (`relative` or `absolute`): the ring sits in it. */
   className?: string;
 }) {
   if (count <= 0) return null;
   return (
     <span
+      // Keyed by the number, so a change remounts the pill and replays its
+      // pop; the same number across a navigation stays still.
+      key={count}
       aria-hidden
-      className={`inline-flex h-5 min-w-5 items-center justify-center rounded-full bg-ink px-xxs text-[length:var(--text-caption)] font-semibold tabular-nums text-canvas ${className}`}
+      className={`inline-flex h-5 min-w-5 animate-count-pop items-center justify-center rounded-full bg-ink px-xxs text-[length:var(--text-caption)] font-semibold tabular-nums text-canvas ${className}`}
     >
-      {count > 99 ? "99+" : count}
+      {attention ? (
+        <span className="pointer-events-none absolute inset-0 animate-count-ping rounded-full bg-ink" />
+      ) : null}
+      {/* Positioned so it paints above the ring, which is positioned too. */}
+      <span className="relative">{count > 99 ? "99+" : count}</span>
     </span>
   );
 }

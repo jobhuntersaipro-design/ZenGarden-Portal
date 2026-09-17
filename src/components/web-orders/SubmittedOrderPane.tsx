@@ -1,3 +1,4 @@
+import { DocumentPreview } from "@/components/review/DocumentPreviewLoader";
 import { PersonChip } from "@/components/ui/person";
 import { quantityCaption } from "@/lib/cartons";
 import { formatDateTime } from "@/lib/dates";
@@ -8,7 +9,8 @@ import type { OpsWebOrder } from "@/lib/queries/web-orders";
  * What the buyer actually sent, read-only.
  *
  * This plays the part the PDF plays on `/review/[id]`: the thing you check the
- * form beside it against. It is deliberately not editable — the form is where
+ * form beside it against — and since the order's own PDF exists, it leads
+ * with that PDF. It is deliberately not editable — the form is where
  * changes happen, and having two editable copies of the same numbers is how a
  * reviewer loses track of which one the buyer agreed to.
  */
@@ -21,6 +23,19 @@ export function SubmittedOrderPane({ order }: { order: OpsWebOrder }) {
       <h2 className="mt-xxs font-display text-[length:var(--text-heading-sm)] text-ink">
         {order.reference}
       </h2>
+
+      {/* The purchase order itself, as the buyer received it — with the same
+          paging, zoom and download as an uploaded scan on /review/[id]. The
+          summary stays underneath for the quick read and for who placed
+          it. */}
+      {order.document ? (
+        <div className="mt-md">
+          <DocumentPreview
+            documentId={order.document.id}
+            originalName={order.document.originalName}
+          />
+        </div>
+      ) : null}
 
       <dl className="mt-md grid gap-sm sm:grid-cols-2">
         {[

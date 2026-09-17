@@ -75,7 +75,7 @@ export function Sidebar({
                   otherwise wrapped in the 240px rail. */}
               <span className="whitespace-nowrap">{label}</span>
               <span className="ml-auto flex items-center gap-xs">
-                <NavCount count={count} />
+                <NavCount count={count} attention />
                 {/* Spins from the click until the route commits and its
                     loading.tsx takes over. */}
                 <LinkSpinner />

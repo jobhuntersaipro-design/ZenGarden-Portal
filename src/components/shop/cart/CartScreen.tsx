@@ -56,7 +56,7 @@ export function CartScreen({
           </p>
           <Link
             href={shopHref.catalogue()}
-            className="mx-auto mt-md flex h-control-lg w-fit items-center rounded-pill bg-ink px-lg text-[length:var(--text-button-md)] font-semibold text-canvas hover:bg-ink-deep focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-focus"
+            className="mx-auto mt-md flex h-control-lg w-fit items-center pressable rounded-pill bg-ink px-lg text-[length:var(--text-button-md)] font-semibold text-canvas hover:bg-ink-deep focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-focus"
           >
             Browse the catalogue
           </Link>

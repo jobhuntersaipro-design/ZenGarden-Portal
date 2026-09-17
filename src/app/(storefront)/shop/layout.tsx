@@ -16,6 +16,7 @@ import { loadSupplierDetails } from "@/lib/org-settings";
 import { cartSummary } from "@/lib/queries/cart";
 import { listShopCategories } from "@/lib/queries/shop-catalogue";
 import { loadShopViewer } from "@/lib/shop-viewer";
+import { PageTransition } from "@/components/portal/PageTransition";
 
 export const metadata: Metadata = { title: "Zen Garden" };
 export const dynamic = "force-dynamic";
@@ -80,7 +81,7 @@ export default async function StorefrontLayout({
               id="main"
               className="mx-auto w-full max-w-page px-md pb-section sm:px-lg md:pb-0"
             >
-              {children}
+              <PageTransition>{children}</PageTransition>
             </main>
           </NavProgressProvider>
           <ShopFooter categories={categories} supplier={supplier} />

@@ -14,6 +14,7 @@ import { MobileTabBar, MobileTopBar } from "@/components/portal/MobileNav";
 import { SkipLink } from "@/components/portal/SkipLink";
 import { ReviewCountProvider } from "@/components/portal/ReviewCount";
 import { Sidebar } from "@/components/portal/Sidebar";
+import { PageTransition } from "@/components/portal/PageTransition";
 
 export default async function PortalLayout({
   children,
@@ -86,7 +87,7 @@ export default async function PortalLayout({
                 page 246px (2026-09-06 review, A5). */}
               <main id="main" className="min-w-0 flex-1 p-md sm:p-lg lg:p-xl">
                 <div className="mx-auto w-full max-w-[var(--container-page)]">
-                  {children}
+                  <PageTransition>{children}</PageTransition>
                 </div>
               </main>
               {/* The tab bar is fixed, so it paints over the end of the page
