@@ -369,7 +369,11 @@ describe("confirmWebOrder", () => {
     });
   });
 
-  it("refuses an order nobody has received yet, and says which mistake it is", async () => {
+  /**
+   * The Receive step was removed on 2026-09-17: a sent order is confirmed
+   * directly, and its CONFIRMED write is guarded on the SUBMITTED it read.
+   */
+  it("confirms an order straight from submitted, with no receive step", async () => {
     webFindUnique.mockResolvedValue({
       id: "w1",
       status: "SUBMITTED",
@@ -379,18 +383,43 @@ describe("confirmWebOrder", () => {
       placedBy: { email: "buyer@example.com" },
       _count: { lines: 1 },
     });
+    writePurchaseOrder.mockResolvedValue("po1");
 
     const result = await confirmWebOrder("w1", draft(), {
       deliveryDate: "2026-10-02",
     });
 
-    expect(result).toEqual({
-      success: false,
-      error: "Receive this order before confirming it.",
+    expect(result.success).toBe(true);
+    expect(txWebUpdateMany.mock.calls[0][0].where).toEqual({
+      id: "w1",
+      status: "SUBMITTED",
     });
-    expect(writePurchaseOrder).not.toHaveBeenCalled();
   });
 
+  it.each(["CONFIRMED", "DECLINED", "DRAFT"])(
+    "still refuses an order that is %s",
+    async (status) => {
+      webFindUnique.mockResolvedValue({
+        id: "w1",
+        status,
+        buyerId: "b1",
+        buyerReference: null,
+        reference: "W-2609-00001",
+        placedBy: { email: "buyer@example.com" },
+        _count: { lines: 1 },
+      });
+
+      const result = await confirmWebOrder("w1", draft(), OPTIONS);
+
+      expect(result).toEqual({
+        success: false,
+        error: "This one has already been reviewed.",
+      });
+      expect(writePurchaseOrder).not.toHaveBeenCalled();
+    },
+  );
+
+  // Received before the step was removed, and still waiting: still confirms.
   it("confirms an order that has been received", async () => {
     webFindUnique.mockResolvedValue({
       id: "w1",

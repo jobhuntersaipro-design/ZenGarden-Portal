@@ -1161,6 +1161,20 @@ file: generating a PDF remains Phase 19, still unbuilt.
   purchase-order file, is also unbuilt.
 
 ## History
+- 2026-09-17: The Receive step removed — merged from
+  `feature/remove-receive-step` and pushed. A shop order goes straight from
+  sent to confirmed: `/web-orders/[id]` shows Confirm order and Decline only,
+  and `confirmWebOrder` accepts SUBMITTED, guarding its CONFIRMED write on
+  whichever status it read. `receiveWebOrder`, its test and the
+  `WebOrderReceived` email and its test were deleted at the user's request.
+  **RECEIVED is still read everywhere** — the enum value, the Received badge
+  in the review queue, the buyer's "Received by the team" and the step bar —
+  because orders received before today still exist and still confirm; no
+  migration. Driven on development: a sent fixture order showed only Back,
+  Confirm order and Decline, and confirmed with 2 Oct 2026 straight from sent.
+  Fixture, purchase order, document, R2 object (NotFound), client and its
+  sign-in deleted by id; counts at baseline. 1170/1170 tests, `tsc`, lint and
+  build clean. Not verified on production.
 - 2026-09-17: Confirming a shop order requires payment terms as well as the
   expected delivery date, and says which is missing — on
   `feature/confirm-requires-delivery-and-terms`, merged to `main` and pushed. Until now
