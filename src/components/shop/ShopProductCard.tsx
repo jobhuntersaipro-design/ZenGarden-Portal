@@ -50,9 +50,6 @@ export function ShopProductCard({
   ]
     .filter(Boolean)
     .join(" · ");
-  // Identical prices across flavours is the catalogue's own reality today, so
-  // the card shows one figure. It says "from" only when they really differ.
-  const spread = group.priceFrom !== group.priceTo;
 
   return (
     <li className="flex flex-col rounded-lg border border-hairline bg-canvas p-md transition-colors hover:border-hairline-strong hover:shadow-sm">
@@ -93,13 +90,13 @@ export function ShopProductCard({
         />
       ) : null}
 
+      {/* Always the selected flavour's own price — the one Add to cart below
+          puts in the cart. Until 2026-09-17 a listing priced apart printed
+          "from" and its cheapest flavour whatever was selected, so a buyer
+          choosing a RM 10.00 flavour read RM 5.00. A flavour is always
+          selected, so there is no range left to show. */}
       <p className="mt-xs text-[length:var(--text-body-md)] font-semibold tabular-nums text-ink">
-        {spread ? (
-          <span className="mr-xxs text-[length:var(--text-caption)] font-normal text-ink-tertiary">
-            from
-          </span>
-        ) : null}
-        {formatMYR(Number(spread ? group.priceFrom : selected.listPrice))}
+        {formatMYR(Number(selected.listPrice))}
         <span className="ml-xxs text-[length:var(--text-caption)] font-normal text-ink-tertiary">
           {`per ${group.unit}`}
         </span>
