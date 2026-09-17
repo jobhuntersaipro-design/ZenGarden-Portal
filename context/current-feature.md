@@ -1251,6 +1251,22 @@ file: generating a PDF remains Phase 19, still unbuilt.
   purchase-order file, is also unbuilt.
 
 ## History
+- 2026-09-17: Fix — the success animation, and the review summary's lines —
+  on `fix/success-lottie-and-summary-lines`. Reported as the animation "not
+  showing" on production, where the file answered 200 on both hosts and plays
+  1.5s to a green check. Two gaps in `SuccessMark` could hide it: reduced
+  motion swapped it for the old grey check, and the player fetched its 1.2 MB
+  wasm from jsdelivr, leaving an empty box when that stalled. The wasm is now
+  bundled (`setWasmUrl` with `new URL(..., import.meta.url)`,
+  `@lottiefiles/dotlottie-web` declared at 0.80.0), reduced motion holds the
+  last frame, and an error or 4s without loading shows the checkmark. Driven
+  on development: CDNs blocked → drawn from `/_next/static/media`; reduced
+  motion → last frame (3,951 px painted, as at the end of playback); 404 →
+  checkmark; a hung request → blank at 2s, checkmark by 5s. The shop order
+  summary's lines drop the unit price and keep the line total
+  (`AARA-HC-0400-AD · 5 cartons · 120 pieces · RM 912.00`). Fixture deleted by
+  id; counts at baseline. 1177/1177 tests, lint and build clean. Which of the
+  two gaps hid it on the user's machine was not established.
 - 2026-09-17: Fix — preview builds no longer migrate production — on
   `fix/migrate-on-production-only`. Phase 47's deploy failed with P1002 on
   `pg_advisory_lock(72707369)`: the branch push and the `main` push, minutes

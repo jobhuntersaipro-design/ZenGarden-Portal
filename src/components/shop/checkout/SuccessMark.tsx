@@ -1,8 +1,11 @@
 "use client";
 
-import { useCallback, useState } from "react";
-import type { DotLottie } from "@lottiefiles/dotlottie-react";
-import { DotLottieReact } from "@lottiefiles/dotlottie-react";
+import { useCallback, useEffect, useState } from "react";
+import {
+  DotLottieReact,
+  setWasmUrl,
+  type DotLottie,
+} from "@lottiefiles/dotlottie-react";
 import { Check } from "lucide-react";
 
 /**
@@ -11,44 +14,72 @@ import { Check } from "lucide-react";
  */
 const SUCCESS_ANIMATION = "/animations/success.lottie";
 
+/** Past this, a player still loading is treated as one that never will. */
+const LOAD_TIMEOUT_MS = 4000;
+
+// The player's WebAssembly, bundled with the app. Left to its default it is
+// fetched from jsdelivr, and a blocked or slow CDN left the mark an empty box
+// with no error to fall back on. Resolved the way DocumentPreview resolves the
+// pdf.js worker, so the bundler fingerprints it.
+if (typeof window !== "undefined") {
+  setWasmUrl(
+    new URL(
+      "@lottiefiles/dotlottie-web/dotlottie-player.wasm",
+      import.meta.url,
+    ).toString(),
+  );
+}
+
 /**
  * The mark on "Your order is with us": the success animation, played once.
  *
- * The checkmark it replaced is still the fallback, for two readers — someone
- * who has asked for reduced motion, and anyone whose animation fails to load
- * (the file missing, or the player's WebAssembly blocked). Either way the page
- * still says the order went through.
+ * Under reduced motion it is not hidden but held on its last frame, so every
+ * buyer sees the same finished mark. The plain checkmark is the fallback for
+ * an animation that errors or has not loaded within four seconds, so the page
+ * never shows an empty space where the confirmation should be.
  */
 export function SuccessMark() {
-  const [failed, setFailed] = useState(false);
-  // Stable, so the player is not handed a new callback — and a second
-  // listener — on every render.
+  const [state, setState] = useState<"loading" | "ready" | "failed">("loading");
+
+  useEffect(() => {
+    if (state !== "loading") return;
+    const timer = setTimeout(() => setState("failed"), LOAD_TIMEOUT_MS);
+    return () => clearTimeout(timer);
+  }, [state]);
+
+  // Stable, so the player is not handed a new callback — and more listeners —
+  // on every render.
   const onPlayer = useCallback((player: DotLottie | null) => {
-    player?.addEventListener("loadError", () => setFailed(true));
+    if (!player) return;
+    player.addEventListener("load", () => {
+      setState("ready");
+      if (window.matchMedia("(prefers-reduced-motion: reduce)").matches) {
+        player.setFrame(player.totalFrames - 1);
+      } else {
+        player.play();
+      }
+    });
+    player.addEventListener("loadError", () => setState("failed"));
   }, []);
 
-  const check = (
-    <span
-      aria-hidden
-      className="mx-auto flex size-16 items-center justify-center rounded-full bg-surface-soft"
-    >
-      <Check className="size-7 text-accent-green" />
-    </span>
-  );
-
-  if (failed) return check;
+  if (state === "failed") {
+    return (
+      <span
+        aria-hidden
+        className="mx-auto flex size-16 items-center justify-center rounded-full bg-surface-soft"
+      >
+        <Check className="size-7 text-accent-green" />
+      </span>
+    );
+  }
 
   return (
-    <>
-      <div aria-hidden className="mx-auto size-28 motion-reduce:hidden">
-        <DotLottieReact
-          src={SUCCESS_ANIMATION}
-          autoplay
-          className="size-full"
-          dotLottieRefCallback={onPlayer}
-        />
-      </div>
-      <div className="motion-safe:hidden">{check}</div>
-    </>
+    <div aria-hidden className="mx-auto size-28">
+      <DotLottieReact
+        src={SUCCESS_ANIMATION}
+        className="size-full"
+        dotLottieRefCallback={onPlayer}
+      />
+    </div>
   );
 }
