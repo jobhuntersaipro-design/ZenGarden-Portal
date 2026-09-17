@@ -9,7 +9,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { draftReducer } from "@/components/review/draft-reducer";
-import { confirmWebOrder, declineWebOrder, receiveWebOrder } from "@/actions/web-orders";
+import { confirmWebOrder, declineWebOrder } from "@/actions/web-orders";
 import { todayISO } from "@/lib/dates";
 import { formatMYR } from "@/lib/money";
 import { checkTotals, type PoDraft } from "@/lib/validation/purchase-orders";
@@ -33,12 +33,6 @@ export function WebOrderReviewForm({ order }: { order: OpsWebOrder }) {
   const [pending, startTransition] = useTransition();
   const [acknowledged, setAcknowledged] = useState(false);
   const [declining, setDeclining] = useState(false);
-  // Scopes the Receive button's own spinner, the same shape as `declining`
-  // scopes Decline's — so clicking one button never makes another look busy
-  // too. Reset in a `finally` rather than only on the happy path, so a
-  // thrown action (not just a `{success:false}` result) cannot leave it
-  // stuck true and the spinner stuck on Receive forever.
-  const [receiving, setReceiving] = useState(false);
   const [reason, setReason] = useState("");
   /**
    * The day the team commits to (Phase 38). It is not part of the draft: the
@@ -113,7 +107,6 @@ export function WebOrderReviewForm({ order }: { order: OpsWebOrder }) {
     (field) => missing[field] !== null,
   );
   const blockedByTotals = !totals.matches && !acknowledged;
-  const received = order.status === "RECEIVED";
 
   return (
     <section className="rounded-lg border border-hairline bg-canvas p-lg">
@@ -220,35 +213,12 @@ export function WebOrderReviewForm({ order }: { order: OpsWebOrder }) {
       </div>
 
       <div className="mt-md flex flex-wrap items-center gap-sm">
-        {received ? null : (
-          <Button
-            pending={pending && receiving}
-            onClick={() =>
-              startTransition(async () => {
-                setDeclining(false);
-                setReceiving(true);
-                try {
-                  const result = await receiveWebOrder(order.id);
-                  if (result.success) {
-                    toast.success("Order received. The buyer has been told.");
-                  } else {
-                    toast.error(result.error);
-                  }
-                } finally {
-                  setReceiving(false);
-                }
-              })
-            }
-          >
-            Receive order
-          </Button>
-        )}
+        {/* Straight to Confirm: the Receive step was removed on 2026-09-17. */}
         <Button
-          variant={received ? "default" : "secondary"}
-          pending={pending && !declining && !receiving}
+          pending={pending && !declining}
           // Not disabled for an empty date or terms: a greyed-out button does
           // not say which field is missing. Pressing it does, under the field.
-          disabled={blockedByTotals || !received}
+          disabled={blockedByTotals}
           onClick={() => {
             if (firstMissing) {
               setAttempted(true);
@@ -257,7 +227,6 @@ export function WebOrderReviewForm({ order }: { order: OpsWebOrder }) {
             }
             startTransition(async () => {
               setDeclining(false);
-              setReceiving(false);
               const result = await confirmWebOrder(order.id, submitted, {
                 totalsAcknowledged: acknowledged,
                 deliveryDate,
@@ -276,11 +245,7 @@ export function WebOrderReviewForm({ order }: { order: OpsWebOrder }) {
         <Button variant="secondary" onClick={() => setDeclining((v) => !v)}>
           {declining ? "Cancel" : "Decline"}
         </Button>
-        {!received ? (
-          <p className="text-[length:var(--text-caption)] text-ink-tertiary">
-            Receive this order before confirming it.
-          </p>
-        ) : blockedByTotals ? (
+        {blockedByTotals ? (
           <p className="text-[length:var(--text-caption)] text-ink-tertiary">
             Locked — totals don&rsquo;t match
           </p>
