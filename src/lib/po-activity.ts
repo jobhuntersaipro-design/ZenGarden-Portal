@@ -16,8 +16,6 @@ import { stageIndex, stageLabel } from "@/lib/po-stages";
  * the previous stage actually was.
  */
 
-/** Written by `updatePurchaseOrder` as "Edited: PO date, Payment terms". */
-const EDIT_PREFIX = "Edited: ";
 /** Written by `writePurchaseOrder` when a reviewer accepts a totals mismatch. */
 const MISMATCH_PREFIX = "Confirmed with a totals mismatch";
 
@@ -32,6 +30,25 @@ export type PoActivityEvent = {
   changedByName: string | null;
   changedByImage: string | null;
 };
+
+/**
+ * A sentence in pieces, so the component can draw a stage name as the status
+ * pill the rest of the page uses and leave the words around it as words
+ * (2026-09-18). The wording is unchanged — both ends of a move are still
+ * named, in the same order.
+ */
+export type ActivitySegment =
+  | { kind: "text"; text: string }
+  | { kind: "stage"; stage: PoStage };
+
+const text = (value: string): ActivitySegment => ({ kind: "text", text: value });
+const stageIn = (stage: PoStage): ActivitySegment => ({ kind: "stage", stage });
+
+/** The same sentence as one string — for a test, a title or a screen reader. */
+export const activityText = (segments: ActivitySegment[]): string =>
+  segments
+    .map((part) => (part.kind === "text" ? part.text : stageLabel(part.stage)))
+    .join("");
 
 /**
  * One row per action (2026-09-18). A stage move and the note left with it are
@@ -52,44 +69,57 @@ export type LifecycleItem = {
   actor: string;
   actorImage: string | null;
   at: string;
-  /** The stage the item belongs to, where it belongs to one. */
-  stage: PoStage | null;
   /** The activity sentence. Null on a standalone note, which has none. */
-  title: string | null;
-  /** What the person wrote with this action, where they wrote anything. */
-  note: string | null;
+  title: ActivitySegment[] | null;
+  /**
+   * What was written with this action. A person's note is quoted; one the
+   * system wrote — the fields an edit changed, a totals mismatch's figures —
+   * is not, because quotation marks would put words in somebody's mouth.
+   */
+  note: { text: string; quoted: boolean } | null;
 };
 
 /**
  * One sentence for one recorded event: actor, verb, and both stages where the
  * event moved the order.
  */
-export function describeActivity(event: PoActivityEvent, actor: string): string {
+export function describeActivity(
+  event: PoActivityEvent,
+  actor: string,
+): ActivitySegment[] {
   if (event.kind === "EDIT") {
     const note = event.note ?? "";
-    if (note.startsWith(EDIT_PREFIX)) {
-      return `${actor} edited ${note.slice(EDIT_PREFIX.length)} on this order`;
-    }
     if (note.startsWith(MISMATCH_PREFIX)) {
-      return `${actor} confirmed this order with a totals mismatch`;
+      return [text(`${actor} confirmed this order with a totals mismatch`)];
     }
-    return `${actor} edited this order`;
+    /**
+     * One row, one sentence: an edit says it was an edit, and the fields it
+     * moved ride under it as the note (2026-09-18). They used to be spliced
+     * into the sentence, which made an edit of four fields the longest line
+     * in the feed.
+     */
+    return [text(`${actor} edited this order`)];
   }
 
   // No previous stage: the confirm-time row that opens every lifecycle.
-  if (!event.fromStage) return `${actor} placed the order`;
+  if (!event.fromStage) return [text(`${actor} placed the order`)];
 
-  const from = stageLabel(event.fromStage);
-  const to = stageLabel(event.toStage);
+  const from = stageIn(event.fromStage);
+  const to = stageIn(event.toStage);
   if (stageIndex(event.toStage) > stageIndex(event.fromStage)) {
-    return `${actor} advanced this order from ${from} to ${to}`;
+    return [text(`${actor} advanced this order from `), from, text(" to "), to];
   }
   if (stageIndex(event.toStage) < stageIndex(event.fromStage)) {
-    return `${actor} moved this order back from ${from} to ${to}`;
+    return [
+      text(`${actor} moved this order back from `),
+      from,
+      text(" to "),
+      to,
+    ];
   }
   // Same stage on a STAGE row: nothing writes one today, and inventing a
   // direction for it would be a guess.
-  return `${actor} recorded this order at ${to}`;
+  return [text(`${actor} recorded this order at `), to];
 }
 
 /**
@@ -98,9 +128,9 @@ export function describeActivity(event: PoActivityEvent, actor: string): string 
  *
  * One record per stored event: the note it carried belongs to that same row,
  * under the sentence, rather than to a second row repeating its avatar, actor
- * and timestamp. An "Edited: …" note is dropped, because the sentence already
- * names the fields it lists; a totals-mismatch note is kept, because it
- * carries the figures the sentence does not.
+ * and timestamp. An edit's note — the fields it moved, a totals mismatch's
+ * figures — is the system's own record and reads plainly; a person's note is
+ * quoted.
  */
 export function buildLifecycleFeed(input: {
   events: PoActivityEvent[];
@@ -116,13 +146,14 @@ export function buildLifecycleFeed(input: {
     const title = describeActivity(event, actor);
     items.push({
       id: event.id,
-      type: title ? "activity" : "note",
+      type: title.length > 0 ? "activity" : "note",
       actor,
       actorImage: event.changedByImage,
       at: event.changedAt,
-      stage: event.toStage,
-      title: title || null,
-      note: note && !note.startsWith(EDIT_PREFIX) ? note : null,
+      title: title.length > 0 ? title : null,
+      // An EDIT's note is the system's own record of what moved, not
+      // somebody's words, so it is shown plainly rather than in quotes.
+      note: note ? { text: note, quoted: event.kind !== "EDIT" } : null,
     });
   }
 
@@ -134,8 +165,9 @@ export function buildLifecycleFeed(input: {
     actor: input.confirmedByName ?? SYSTEM_ACTOR,
     actorImage: input.confirmedByImage,
     at: input.confirmedAt,
-    stage: null,
-    title: `${input.confirmedByName ?? SYSTEM_ACTOR} confirmed the order`,
+    title: [
+      { kind: "text", text: `${input.confirmedByName ?? SYSTEM_ACTOR} confirmed the order` },
+    ],
     note: null,
   });
 
