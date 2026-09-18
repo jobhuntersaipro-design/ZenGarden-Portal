@@ -1251,6 +1251,63 @@ file: generating a PDF remains Phase 19, still unbuilt.
   purchase-order file, is also unbuilt.
 
 ## History
+- 2026-09-18: One row per action, stage names as the status pill, and
+  "Lifecycle" renamed "Status" — built and driven on
+  `feature/po-status-rows-and-stage-chips`, not yet committed. Asked for as
+  three changes to the PO detail page, with "do not restyle the whole app".
+  **One row per action:** a stage move and the note left with it were an
+  Activity row followed by a Note row carrying the same avatar, the same name
+  and the same timestamp for a single click. `LifecycleItem` now holds
+  `title` (the sentence) and `note` (what the person wrote) on one record, so
+  the feed is one row per stored event: pill, stage chip, sentence, the note
+  under it in quotes, then actor · time once. An "Edited: …" note is still
+  dropped, because the sentence already names those fields; a totals-mismatch
+  note is kept under its sentence, because it carries figures the sentence
+  does not. The **Note pill is now reserved for a note with no activity to
+  ride on** — `PoEventKind` is `STAGE | EDIT` and nothing writes a note-only
+  event, so no row renders one today; a note without a matching activity is
+  rendered rather than dropped if one ever arrives.
+  **Stage names are the header's pill everywhere on the page:** the Status
+  heading, all six stepper labels and each feed row's stage tag now render
+  `StageBadge`, which gained `state` (`current` = the header's badge
+  unchanged, `done` = `ink-secondary`, `upcoming` = `ink-tertiary` with a
+  hairline dot rather than the stage's ramp colour, which would promise a
+  stage not reached) and a `compact` padding for the six-across row. No
+  second palette: `done`/`upcoming` only step down the ink ramp the stepper's
+  plain labels already used. Advance/Move back permissions, the "from X to Y"
+  sentences, confirm-closes-composer, the document viewer and the emails are
+  untouched.
+  **"Lifecycle" → "Status":** exactly one user-visible string existed, the
+  card's eyebrow. `LifecycleFeed`, `LifecycleActions`, `buildLifecycleFeed`
+  and the code comments keep their names, per the brief.
+  **A defect the browser found:** dropped into the `font-display` heading, the
+  pill inherited Plus Jakarta Sans at weight 650 with the heading's -0.54px
+  tracking, which closed the space in "In production" — the same badge reading
+  differently from the one two rows above it. The pill states its own type now
+  (`font-sans font-normal tracking-normal`), and the design system's rule that
+  the two families are never crossed makes that the correct fix rather than a
+  local override: measured 105px in the heading against 109px in the header,
+  then **109px in the header, the heading and the feed alike**, all Inter at
+  normal tracking.
+  Driven on development, port 3000, as Aisha on `PO-2026-0063`: advancing to
+  QC passed with "QC good — carton 3 repacked." produced **one** feed row —
+  avatar, Activity, the QC passed chip, "Aisha Rahman advanced this order from
+  In production to QC passed", the note beneath it, and "Aisha Rahman · 18 Sep
+  2026, 09:37" once — and the composer closed. Delivered `PO-2025-0001` read
+  its heading as the green pill (`rgb(7, 141, 59)`) beside "· 0 days from
+  order", with all six chips on the track. **No overflow at 768 and 1440**
+  (768/768, 1440/1440) and the six-across stepper measured 670/670 and
+  1070/1070; the phone drops to the vertical stepper with the same chips.
+  **At 390 the page still overflows, 467 against 390** — the header's
+  Download/Edit/Delete row, the defect recorded on 2026-09-18 at 479, not the
+  stepper or the feed, which are inside the viewport at that width. Fixture
+  stage event deleted by id and the stage and `stageChangedAt` restored;
+  counts back to 2323 stage events and 400 POs. 1225/1225 tests (the feed's
+  tests rewritten to the one-row shape, two added), `tsc`, lint (same 2
+  warnings) and `npm run build` clean. **Not verified:** anything on
+  production; a member's view (read as a super admin, and the feed is the same
+  for every staff role); and the Note pill itself, which no stored record can
+  produce today.
 - 2026-09-18: "Print or save as PDF" removed; Download PDF is the only
   purchase-order action — merged from `fix/remove-print-po-button` and pushed.
   There was **one** such control in the app, `PrintOrderButton` on the buyer's

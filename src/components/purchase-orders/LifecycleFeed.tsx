@@ -1,7 +1,7 @@
+import { StageBadge } from "@/components/portal/StatusBadge";
 import { PersonAvatar } from "@/components/ui/person";
 import { formatDateTime } from "@/lib/dates";
 import { buildLifecycleFeed, type PoActivityEvent } from "@/lib/po-activity";
-import { stageLabel } from "@/lib/po-stages";
 
 export type { PoActivityEvent };
 
@@ -13,6 +13,11 @@ export type { PoActivityEvent };
  * showed the *latest* note and nothing else. Every note now has a row here,
  * whichever stage it was left on, and the whole feed is the default view —
  * there is no per-node filter, so nothing is hidden behind a selected stage.
+ *
+ * One row per action (2026-09-18): a stage move and the note left with it are
+ * a single thing that happened, so the sentence is the row's title and the
+ * note sits under it — one avatar, one actor, one timestamp. A Note pill is
+ * for a note that arrives on its own, with no activity to ride on.
  *
  * Newest first, the order this list and its query have always used.
  */
@@ -71,21 +76,22 @@ export function LifecycleFeed({
                   >
                     {item.type === "note" ? "Note" : "Activity"}
                   </span>
-                  {item.stage ? (
-                    <span className="text-[length:var(--text-caption)] text-ink-tertiary">
-                      {stageLabel(item.stage)}
-                    </span>
-                  ) : null}
+                  {/* The stage this belongs to, as the same pill the header
+                      and the stepper use — not raw grey text (2026-09-18). */}
+                  {item.stage ? <StageBadge stage={item.stage} /> : null}
                 </span>
-                <span
-                  className={`text-[length:var(--text-body-sm)] ${
-                    item.type === "note"
-                      ? "whitespace-pre-wrap text-ink-secondary"
-                      : "text-ink"
-                  }`}
-                >
-                  {item.type === "note" ? `“${item.body}”` : item.body}
-                </span>
+                {item.title ? (
+                  <span className="text-[length:var(--text-body-sm)] text-ink">
+                    {item.title}
+                  </span>
+                ) : null}
+                {/* The note the actor left with this action, under its own
+                    sentence rather than in a row of its own. */}
+                {item.note ? (
+                  <span className="whitespace-pre-wrap text-[length:var(--text-body-sm)] text-ink-secondary">
+                    “{item.note}”
+                  </span>
+                ) : null}
                 <span className="text-[length:var(--text-caption)] text-ink-tertiary">
                   {item.actor} · {formatDateTime(item.at)}
                 </span>

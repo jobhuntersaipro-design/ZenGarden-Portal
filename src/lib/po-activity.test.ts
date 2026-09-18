@@ -85,19 +85,27 @@ describe("buildLifecycleFeed", () => {
       confirmedByImage: null,
     });
 
-  it("gives a note its own row under the activity that carried it", () => {
+  /**
+   * The point of the 2026-09-18 change: an advance and the note left with it
+   * are one action, so they are one row. Two rows meant the same avatar, the
+   * same name and the same timestamp printed twice for a single click.
+   */
+  it("keeps an action and its note in one row", () => {
     const items = feed([event({ note: "Line 3 was short-shipped." })]);
-    expect(items.map((item) => [item.type, item.body])).toEqual([
-      ["activity", "Chris Lam advanced this order from Order placed to In production"],
-      ["note", "Line 3 was short-shipped."],
-      ["activity", "Aisha Rahman confirmed the order"],
-    ]);
-    // A note belongs to the stage it was left on, and keeps its actor and time.
-    expect(items[1]).toMatchObject({
+    expect(items).toHaveLength(2); // the move, then the confirmation
+    expect(items[0]).toMatchObject({
+      type: "activity",
+      title:
+        "Chris Lam advanced this order from Order placed to In production",
+      note: "Line 3 was short-shipped.",
       stage: "IN_PRODUCTION",
       actor: "Chris Lam",
       at: "2026-09-18T02:00:00.000Z",
     });
+  });
+
+  it("leaves note null on an action nobody wrote on", () => {
+    expect(feed([event()])[0].note).toBeNull();
   });
 
   it("keeps notes from earlier stages, not only the latest", () => {
@@ -105,21 +113,36 @@ describe("buildLifecycleFeed", () => {
       event({ id: "e2", fromStage: "IN_PRODUCTION", toStage: "QC_PASSED", note: "Second" }),
       event({ id: "e1", note: "First" }),
     ]);
-    expect(items.filter((item) => item.type === "note").map((item) => item.body)).toEqual([
-      "Second",
-      "First",
-    ]);
+    expect(items.map((item) => item.note)).toEqual(["Second", "First", null]);
   });
 
   it("does not repeat an edit's fields as a note", () => {
     const items = feed([event({ kind: "EDIT", note: "Edited: PO date" })]);
-    expect(items.some((item) => item.type === "note")).toBe(false);
+    expect(items[0]).toMatchObject({
+      title: "Chris Lam edited PO date on this order",
+      note: null,
+    });
+  });
+
+  /**
+   * The mismatch note is kept, because it carries the figures the sentence
+   * does not — but on the same row as the sentence, not under a second pill.
+   */
+  it("carries a totals mismatch's figures under its own sentence", () => {
+    const note =
+      "Confirmed with a totals mismatch: computed RM 1.00, document RM 2.00, difference RM 1.00";
+    const items = feed([event({ kind: "EDIT", note })]);
+    expect(items).toHaveLength(2);
+    expect(items[0]).toMatchObject({
+      title: "Chris Lam confirmed this order with a totals mismatch",
+      note,
+    });
   });
 
   it("ends with the confirmation, the oldest thing on the order", () => {
     const items = feed([event()]);
     expect(items.at(-1)).toMatchObject({
-      body: "Aisha Rahman confirmed the order",
+      title: "Aisha Rahman confirmed the order",
       at: "2026-09-01T02:00:00.000Z",
       stage: null,
     });
