@@ -3,7 +3,8 @@
 import { randomUUID } from "node:crypto";
 import { revalidatePath } from "next/cache";
 import { Prisma } from "@/generated/prisma/client";
-import { UnauthorizedError, requireSuperAdmin } from "@/lib/auth-guards";
+import { UnauthorizedError } from "@/lib/auth-guards";
+import { requirePermission } from "@/lib/permissions/require";
 import { prisma } from "@/lib/prisma";
 import {
   PENDING_KEY_PREFIX,
@@ -42,7 +43,7 @@ export type ActionResult<T = undefined> =
  */
 const guard = async () => {
   try {
-    return { user: await requireSuperAdmin(), error: null as string | null };
+    return { user: await requirePermission("product.manage"), error: null as string | null };
   } catch (cause) {
     return {
       user: null,

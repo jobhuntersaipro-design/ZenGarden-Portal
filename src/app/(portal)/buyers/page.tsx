@@ -1,6 +1,6 @@
 import type { Metadata } from "next";
 import Link from "next/link";
-import { Role } from "@/generated/prisma/enums";
+import { can } from "@/lib/permissions/require";
 import { LinkSpinner } from "@/components/portal/LinkSpinner";
 import { PageHeader } from "@/components/portal/PageHeader";
 import { UploadPoButton } from "@/components/portal/UploadPoButton";
@@ -14,7 +14,6 @@ import {
   buyerPreviousPeriod,
   parseBuyerRange,
 } from "@/lib/analytics/buyer-range";
-import { getSessionUser } from "@/lib/auth-guards";
 import { formatDate } from "@/lib/dates";
 import { formatMYR } from "@/lib/money";
 import {
@@ -40,7 +39,7 @@ export default async function BuyersPage({
   searchParams: Promise<SearchParams>;
 }) {
   const params = await searchParams;
-  const user = await getSessionUser();
+  const canManageBuyers = await can("buyer.manage");
   const range = parseBuyerRange(params);
   const previous = buyerPreviousPeriod(range);
 
@@ -63,7 +62,7 @@ export default async function BuyersPage({
         title="Buyers"
         action={
           <div className="flex flex-wrap gap-xs">
-            {user?.role === Role.SUPER_ADMIN ? (
+            {canManageBuyers ? (
               <>
                 {/* A real anchor, not a router push: cmd-click opens a tab for
                     free, the reasoning /products/new already recorded. */}

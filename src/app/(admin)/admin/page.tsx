@@ -1,8 +1,10 @@
 import type { Metadata } from "next";
 import { ContactDetailsCard } from "@/components/admin/ContactDetailsCard";
 import { PendingRequests } from "@/components/admin/PendingRequests";
+import { PermissionGrid } from "@/components/admin/PermissionGrid";
 import { UsersTable } from "@/components/admin/UsersTable";
 import { loadSupplierSettings } from "@/lib/org-settings";
+import { loadPermissionMatrix } from "@/lib/queries/permissions";
 import {
   USER_SORT_KEYS,
   listPendingRequests,
@@ -27,10 +29,11 @@ export default async function AdminPage({
   searchParams: Promise<SearchParams>;
 }) {
   const params = await searchParams;
-  const [users, requests, settings] = await Promise.all([
+  const [users, requests, settings, matrix] = await Promise.all([
     listUsers(),
     listPendingRequests(),
     loadSupplierSettings(),
+    loadPermissionMatrix(),
   ]);
 
   const statusParam = firstParam(params, "status") as UserStatusFilter;
@@ -58,6 +61,8 @@ export default async function AdminPage({
         status={status}
         openUserId={openUserId}
       />
+
+      <PermissionGrid matrix={matrix} />
 
       <ContactDetailsCard settings={settings} />
     </>

@@ -41,6 +41,18 @@ vi.mock("@/lib/auth-guards", () => ({
   UnauthorizedError: class UnauthorizedError extends Error {},
   requireSuperAdmin,
 }));
+const __permissionGuard = () => requireSuperAdmin();
+// Phase 48: the actions ask the permission grid. It delegates to the guard
+// mock above, so every test's existing setup still drives the refusal path.
+const permissionKeys: string[] = [];
+vi.mock("@/lib/permissions/require", () => ({
+  requirePermission: (key: string) => {
+    permissionKeys.push(key);
+    return __permissionGuard();
+  },
+  rolesWithPermission: () => Promise.resolve([]),
+  unauthorizedStatus: () => 403,
+}));
 vi.mock("@/lib/email", () => ({ sendEmail }));
 vi.mock("@/lib/env", () => ({
   env: { APP_URL: "https://www.example.com", SHOP_URL: "https://shop.example.com" },

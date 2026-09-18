@@ -27,6 +27,18 @@ vi.mock("@/lib/auth-guards", () => ({
   UnauthorizedError: class UnauthorizedError extends Error {},
   requireUser,
 }));
+const __permissionGuard = () => requireUser();
+// Phase 48: the actions ask the permission grid. It delegates to the guard
+// mock above, so every test's existing setup still drives the refusal path.
+const permissionKeys: string[] = [];
+vi.mock("@/lib/permissions/require", () => ({
+  requirePermission: (key: string) => {
+    permissionKeys.push(key);
+    return __permissionGuard();
+  },
+  rolesWithPermission: () => Promise.resolve([]),
+  unauthorizedStatus: () => 403,
+}));
 // The writer is exercised by confirm.test.ts; here what matters is *how* it is
 // called — above all, with the document the order carries.
 vi.mock("@/actions/purchase-orders", () => ({ writePurchaseOrder }));
@@ -600,5 +612,22 @@ describe("declineWebOrder", () => {
       id: "w1",
       status: { in: ["SUBMITTED", "RECEIVED"] },
     });
+  });
+});
+
+// Phase 48: without this the permission mock would answer any key, and
+// swapping `po.confirm` for `po.view` would leave the suite green — the
+// vacuous-test failure this project has already shipped three times.
+describe("the permission it asks for", () => {
+  it("asks for po.confirm when confirming", async () => {
+    permissionKeys.length = 0;
+    await confirmWebOrder("wo1", draft(), OPTIONS);
+    expect(permissionKeys).toContain("po.confirm");
+  });
+
+  it("asks for po.confirm when declining", async () => {
+    permissionKeys.length = 0;
+    await declineWebOrder("wo1", { reason: "Out of stock until October." });
+    expect(permissionKeys).toContain("po.confirm");
   });
 });

@@ -1,6 +1,6 @@
 import type { Metadata } from "next";
 import Link from "next/link";
-import { Role } from "@/generated/prisma/enums";
+import { can } from "@/lib/permissions/require";
 import { PageHeader } from "@/components/portal/PageHeader";
 import { TablePagination } from "@/components/portal/TablePagination";
 import { KpiMoney, KpiNumber, KpiTile } from "@/components/dashboard/KpiTile";
@@ -14,7 +14,6 @@ import {
   type ProductBy,
   type ProductView,
 } from "@/components/products/ProductToolbar";
-import { getSessionUser } from "@/lib/auth-guards";
 import { formatMYR } from "@/lib/money";
 import {
   FAMILY_SORT_KEYS,
@@ -58,10 +57,8 @@ export default async function ProductsPage({
   searchParams: Promise<SearchParams>;
 }) {
   const params = await searchParams;
-  const [{ products, families }, user] = await Promise.all([
-    listProducts(),
-    getSessionUser(),
-  ]);
+  const { products, families } = await listProducts();
+  const canManageProducts = await can("product.manage");
 
   const filterParam = firstParam(params, "filter") as ProductFilter;
   const filter = FILTERS.includes(filterParam) ? filterParam : null;
@@ -158,7 +155,7 @@ export default async function ProductsPage({
         eyebrow="Catalog"
         title="Products"
         action={
-          user?.role === Role.SUPER_ADMIN ? (
+          canManageProducts ? (
             // A real link, not a drawer trigger: cmd-click, middle-click and
             // "Open in new tab" all work, and the form has a URL to return to.
             <Button asChild>
@@ -263,7 +260,7 @@ export default async function ProductsPage({
         <FamiliesList
           rows={pagedFamilies}
           sort={sort}
-          canManage={user?.role === Role.SUPER_ADMIN}
+          canManage={canManageProducts}
         />
       ) : view === "grid" ? (
         paged.length === 0 ? (

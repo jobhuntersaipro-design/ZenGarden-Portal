@@ -1,6 +1,10 @@
 import { randomUUID } from "node:crypto";
 import { NextResponse } from "next/server";
-import { UnauthorizedError, requireUser } from "@/lib/auth-guards";
+import { UnauthorizedError } from "@/lib/auth-guards";
+import {
+  requirePermission,
+  unauthorizedStatus,
+} from "@/lib/permissions/require";
 import { prisma } from "@/lib/prisma";
 import { maybeDeleteOrphans } from "@/lib/queries/documents";
 import { PENDING_KEY_PREFIX, documentKey, presignPut } from "@/lib/r2";
@@ -39,10 +43,13 @@ const PUT_TTL_MS = 15 * 60_000;
 export async function POST(request: Request) {
   let user;
   try {
-    user = await requireUser();
+    user = await requirePermission("po.upload");
   } catch (cause) {
     if (cause instanceof UnauthorizedError) {
-      return NextResponse.json({ error: cause.message }, { status: 401 });
+      return NextResponse.json(
+        { error: cause.message },
+        { status: unauthorizedStatus(cause) },
+      );
     }
     throw cause;
   }

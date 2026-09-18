@@ -8,11 +8,9 @@ import {
   PoStage,
   WebOrderStatus,
 } from "@/generated/prisma/enums";
-import {
-  UnauthorizedError,
-  requireSuperAdmin,
-  requireUser,
-} from "@/lib/auth-guards";
+import { UnauthorizedError } from "@/lib/auth-guards";
+import type { PermissionKey } from "@/lib/permissions/actions";
+import { requirePermission } from "@/lib/permissions/require";
 import { extractPurchaseOrder } from "@/lib/extraction/extract-po";
 import { formatMYR } from "@/lib/money";
 import { ORDER_IDENTITY_SELECT, orderIdentity } from "@/lib/order-identity";
@@ -30,9 +28,13 @@ import {
 export type ActionResult<T = undefined> =
   { success: true; data: T } | { success: false; error: string };
 
-const guard = async () => {
+/**
+ * Phase 48: what used to be a bare `requireUser()` now asks the permission
+ * grid. The shape is unchanged so every call site stays two lines.
+ */
+const guardPermission = async (key: PermissionKey) => {
   try {
-    return { user: await requireUser(), error: null as string | null };
+    return { user: await requirePermission(key), error: null as string | null };
   } catch (cause) {
     return {
       user: null,
@@ -52,7 +54,7 @@ export async function saveDraft(
   extractionId: string,
   draft: unknown,
 ): Promise<ActionResult> {
-  const { user, error } = await guard();
+  const { user, error } = await guardPermission("po.review");
   if (!user) return { success: false, error: error! };
 
   if (typeof draft !== "object" || draft === null) {
@@ -112,7 +114,7 @@ export async function checkDuplicate(
   buyerId: string,
   poNumber: string,
 ): Promise<ActionResult<DuplicateMatch | null>> {
-  const { user, error } = await guard();
+  const { user, error } = await guardPermission("po.review");
   if (!user) return { success: false, error: error! };
   if (!buyerId || !poNumber) return { success: true, data: null };
 
@@ -195,6 +197,9 @@ async function nextInQueue(
  * Private on purpose: it takes an open transaction and assumes its caller has
  * already run the guard and the totals gate.
  */
+// Exported but not an entry point: it takes an open transaction, and every
+// caller has already run its own permission guard. Deliberately unguarded —
+// a guard here would run a second query inside every confirm.
 export async function writePurchaseOrder(
   tx: Prisma.TransactionClient,
   input: {
@@ -347,7 +352,7 @@ export async function confirmPurchaseOrder(
   options: unknown = {},
   queue: string[] = [],
 ): Promise<ActionResult<ConfirmResult>> {
-  const { user, error } = await guard();
+  const { user, error } = await guardPermission("po.confirm");
   if (!user) return { success: false, error: error! };
 
   const parsedDraft = PoDraftSchema.safeParse(draft);
@@ -476,7 +481,7 @@ export async function confirmPurchaseOrder(
 export async function discardExtraction(
   extractionId: string,
 ): Promise<ActionResult> {
-  const { user, error } = await guard();
+  const { user, error } = await guardPermission("po.review");
   if (!user) return { success: false, error: error! };
 
   try {
@@ -501,10 +506,14 @@ export type ExtractionStatusResult = {
 };
 
 /** Polled every 3 s by the review screen while an extraction is RUNNING. */
+// `po.upload`, not `po.review`: this is what the upload queue polls to turn a
+// row from "Extracting" into "Ready", so a role that may upload must be able
+// to watch its own upload finish. It reads a status and a failure reason,
+// never the extracted draft.
 export async function getExtractionStatus(
   extractionId: string,
 ): Promise<ActionResult<ExtractionStatusResult>> {
-  const { user, error } = await guard();
+  const { user, error } = await guardPermission("po.upload");
   if (!user) return { success: false, error: error! };
 
   const extraction = await prisma.extraction.findUnique({
@@ -522,7 +531,7 @@ export async function getExtractionStatus(
 export async function retryExtraction(
   extractionId: string,
 ): Promise<ActionResult<ExtractionStatusResult>> {
-  const { user, error } = await guard();
+  const { user, error } = await guardPermission("po.review");
   if (!user) return { success: false, error: error! };
 
   const extraction = await prisma.extraction.findUnique({
@@ -577,7 +586,7 @@ export async function deletePurchaseOrder(input: {
   }
 
   try {
-    await requireSuperAdmin();
+    await requirePermission("po.delete");
 
     const po = await prisma.purchaseOrder.findUnique({
       where: { id: parsed.data.id },
@@ -655,7 +664,7 @@ export async function deleteUpload(
   extractionId: string,
 ): Promise<ActionResult> {
   try {
-    await requireUser();
+    await requirePermission("po.upload");
 
     const extraction = await prisma.extraction.findUnique({
       where: { id: extractionId },

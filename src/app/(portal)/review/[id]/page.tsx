@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import { notFound, redirect } from "next/navigation";
+import { can } from "@/lib/permissions/require";
 import { ExtractionStatus } from "@/generated/prisma/enums";
 import { DocumentPreview } from "@/components/review/DocumentPreviewLoader";
 import { ReviewForm } from "@/components/review/ReviewForm";
@@ -83,6 +84,8 @@ export default async function ReviewPage({
   params: Promise<{ id: string }>;
   searchParams: Promise<Record<string, string | string[] | undefined>>;
 }) {
+  // Phase 48: reviewing an extraction is `po.review`.
+  if (!(await can("po.review"))) notFound();
   const { id } = await params;
   const query = await searchParams;
 

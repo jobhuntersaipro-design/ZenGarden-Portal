@@ -3,9 +3,9 @@
 import { revalidatePath } from "next/cache";
 import { z } from "zod";
 import { Prisma } from "@/generated/prisma/client";
-import { Role } from "@/generated/prisma/enums";
 import { audit, changedFields } from "@/lib/audit";
-import { UnauthorizedError, requireUser } from "@/lib/auth-guards";
+import { UnauthorizedError } from "@/lib/auth-guards";
+import { requirePermission } from "@/lib/permissions/require";
 import { prisma } from "@/lib/prisma";
 
 export type ActionResult<T = undefined> =
@@ -41,7 +41,7 @@ export async function updateBuyer(
 ): Promise<ActionResult> {
   let user;
   try {
-    user = await requireUser();
+    user = await requirePermission("buyer.manage");
   } catch (cause) {
     return {
       success: false,
@@ -59,9 +59,8 @@ export async function updateBuyer(
   }
   const { name, ...rest } = parsed.data;
 
-  if (name !== undefined && user.role !== Role.SUPER_ADMIN) {
-    return { success: false, error: "Only a super admin can rename a buyer." };
-  }
+  // Phase 48: the name used to be super-admin-only while the rest of the row
+  // was any member's. The whole row is `buyer.manage` now.
 
   try {
     const current = await prisma.buyer.findUnique({

@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { roleLabel } from "@/lib/permissions/roles";
 import { usePathname, useSearchParams } from "next/navigation";
 import { toast } from "sonner";
 import { KeyRound } from "lucide-react";
@@ -96,7 +97,7 @@ export function UsersTable({
     {
       key: "role",
       header: "Role",
-      cell: (row) => (row.role === "SUPER_ADMIN" ? "Super admin" : "Member"),
+      cell: (row) => roleLabel(row.role),
     },
     {
       key: "status",

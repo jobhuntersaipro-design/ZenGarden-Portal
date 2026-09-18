@@ -96,6 +96,11 @@ export function auditText(event: {
       return `${actor} resent ${subject}'s invitation`;
     case "RESET_LINK_SENT":
       return `${actor} sent ${subject} a password-reset link`;
+    case "PERMISSIONS_CHANGED":
+      // Portal-wide (Phase 48), written with `buyerId: null`, so it never
+      // reaches a buyer's timeline. Named anyway: this switch is exhaustive on
+      // purpose, and that exhaustiveness is what caught the new value.
+      return `${actor} changed what a role may do`;
   }
 }
 

@@ -5,11 +5,9 @@ import { revalidatePath } from "next/cache";
 import { Prisma } from "@/generated/prisma/client";
 import { WebOrderStatus } from "@/generated/prisma/enums";
 import { writePurchaseOrder } from "@/actions/purchase-orders";
-import {
-  UnauthorizedError,
-  requireSuperAdmin,
-  requireUser,
-} from "@/lib/auth-guards";
+import { UnauthorizedError } from "@/lib/auth-guards";
+import type { PermissionKey } from "@/lib/permissions/actions";
+import { requirePermission } from "@/lib/permissions/require";
 import { prisma } from "@/lib/prisma";
 import { deleteObject, isPendingKey } from "@/lib/r2";
 import { shopPath } from "@/lib/shop-routes";
@@ -42,9 +40,13 @@ export type ActionResult<T = undefined> =
   | { success: true; data: T }
   | { success: false; error: string };
 
-async function guard() {
+/**
+ * Phase 48: what used to be a bare `requireUser()` now asks the permission
+ * grid. The shape is unchanged so every call site stays two lines.
+ */
+async function guardPermission(key: PermissionKey) {
   try {
-    return { user: await requireUser() };
+    return { user: await requirePermission(key) };
   } catch (cause) {
     if (cause instanceof UnauthorizedError) return { error: cause.message };
     throw cause;
@@ -72,7 +74,7 @@ export async function confirmWebOrder(
   draft: PoDraft,
   options: { totalsAcknowledged?: boolean; deliveryDate?: string },
 ): Promise<ActionResult<{ poId: string }>> {
-  const { user, error } = await guard();
+  const { user, error } = await guardPermission("po.confirm");
   if (!user) return { success: false, error: error! };
 
   // The shop draft schema, and the PO number blanked whatever arrives: a
@@ -266,7 +268,7 @@ export async function declineWebOrder(
   webOrderId: string,
   input: { reason: string },
 ): Promise<ActionResult> {
-  const { user, error } = await guard();
+  const { user, error } = await guardPermission("po.confirm");
   if (!user) return { success: false, error: error! };
 
   const parsed = declineSchema.safeParse(input);
@@ -359,7 +361,7 @@ export async function deleteWebOrder(input: {
   }
 
   try {
-    await requireSuperAdmin();
+    await requirePermission("po.delete");
 
     const order = await prisma.webOrder.findUnique({
       where: { id: parsed.data.id },

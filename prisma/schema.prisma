@@ -54,15 +54,28 @@ model User {
   orgSettingsUpdates OrgSettings[]        @relation("orgSettingsUpdatedBy")
   auditActions       AuditEvent[]         @relation("auditActor")
   auditSubjects      AuditEvent[]         @relation("auditSubject")
+  permissionEdits    PermissionGrant[]    @relation("permissionEdits")
   buyer              Buyer?               @relation(fields: [buyerId], references: [id])
 
   @@index([buyerId])
 }
 
+/**
+ * Ops roles and the shop's own.
+ *
+ * MEMBER predates Phase 48 and is kept rather than retired: every
+ * non-super-admin ops user holds it, and retiring it would mean guessing at
+ * each person's job. It is the view-only role now.
+ *
+ * Appended only, never reordered: `ALTER TYPE ... ADD VALUE` cannot insert.
+ */
 enum Role {
   SUPER_ADMIN
   MEMBER
   CLIENT
+  PRODUCTION_PLANNER
+  QC
+  WAREHOUSE
 }
 
 // Auth.js adapter tables. Session table is omitted: JWT strategy.
@@ -500,10 +513,13 @@ enum AuditAction {
   INVITE_RESENT
   RESET_LINK_SENT
   SIGNED_IN
+  PERMISSIONS_CHANGED
 }
 
 /**
- * Who did what to a customer's account, and when a customer signed in.
+ * Who did what to a customer's account, when a customer signed in, and
+ * portal-wide administrative changes such as a permission edit (Phase 48,
+ * which writes `buyerId: null` because the change is about no one customer).
  *
  * This exists because `LoginAttempt` cannot answer either question: it is
  * rate-limit state, swept after 24 hours (`src/lib/rate-limit.ts`), and
@@ -529,4 +545,30 @@ model AuditEvent {
 
   @@index([buyerId, at])
   @@index([actorId, at])
+}
+
+/**
+ * One row per (role, action) cell of the permission grid — Phase 48.
+ *
+ * `action` is a String rather than an enum on purpose: the set of actions is
+ * owned by `src/lib/permissions/actions.ts` and grows with every feature, and
+ * an enum would put a migration in front of every new permission. A row whose
+ * action has left the registry is ignored at read time; a registry key with no
+ * row falls back to its default.
+ *
+ * SUPER_ADMIN rows exist so the grid reads from one source. The runtime never
+ * depends on them — `roleCan` short-circuits that role to true without reading
+ * the table, so no saved edit and no corrupt row can lock the administrators
+ * out.
+ */
+model PermissionGrant {
+  role        Role
+  action      String
+  granted     Boolean
+  updatedAt   DateTime @updatedAt
+  /// Who last changed this cell. Null once that user's row is gone.
+  updatedById String?
+  updatedBy   User?    @relation("permissionEdits", fields: [updatedById], references: [id], onDelete: SetNull)
+
+  @@id([role, action])
 }

@@ -12,6 +12,7 @@ import { PRICE_EPOCH, PRODUCTS } from "./seed/products";
 import { PO_STAGES_ORDER, planDates, planOrder } from "./seed/orders";
 import { createRng } from "./seed/rng";
 import { PRODUCT_CATEGORIES } from "../src/lib/product-categories";
+import { defaultRows } from "../src/lib/permissions/defaults";
 
 const RESET = process.argv.includes("--reset");
 const WINDOW_START = new Date("2025-09-04T00:00:00+08:00");
@@ -360,8 +361,16 @@ async function main() {
     });
   }
 
+  // Phase 48: the grid has to exist on a fresh clone, not only where the
+  // migration ran. Same source as the migration, so the two cannot drift.
+  await prisma.permissionGrant.createMany({
+    data: defaultRows().map((row) => ({ ...row, updatedAt: new Date() })),
+    skipDuplicates: true,
+  });
+
   const counts = {
     users: await prisma.user.count(),
+    permissionGrants: await prisma.permissionGrant.count(),
     buyers: await prisma.buyer.count(),
     products: await prisma.product.count(),
     purchaseOrders: await prisma.purchaseOrder.count(),

@@ -1,4 +1,6 @@
 import type { Metadata } from "next";
+import { notFound } from "next/navigation";
+import { can } from "@/lib/permissions/require";
 import { BackLink } from "@/components/portal/BackLink";
 import { PageHeader } from "@/components/portal/PageHeader";
 import { UploadWorkspace } from "@/components/upload/UploadWorkspace";
@@ -12,6 +14,8 @@ export default async function UploadPage({
 }: {
   searchParams: Promise<Record<string, string | string[] | undefined>>;
 }) {
+  // Phase 48: the view-only role has no business here.
+  if (!(await can("po.upload"))) notFound();
   const params = await searchParams;
   const buyer = params.buyer;
   const hintBuyerId = Array.isArray(buyer) ? buyer[0] : buyer;

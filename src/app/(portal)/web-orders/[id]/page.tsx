@@ -6,6 +6,7 @@ import { DocumentPreview } from "@/components/review/DocumentPreviewLoader";
 import { SubmittedOrderPane } from "@/components/web-orders/SubmittedOrderPane";
 import { WebOrderReviewForm } from "@/components/web-orders/WebOrderReviewForm";
 import { requireUser } from "@/lib/auth-guards";
+import { can } from "@/lib/permissions/require";
 import { prisma } from "@/lib/prisma";
 import { loadWebOrderForReview } from "@/lib/queries/web-orders";
 
@@ -26,6 +27,9 @@ export default async function WebOrderReviewPage({
 }) {
   const { id } = await params;
   await requireUser();
+  // Phase 48: reading a shop order is `po.view`; deciding it is `po.confirm`.
+  // Without it the page is the summary alone, with no form to submit.
+  const canConfirm = await can("po.confirm");
 
   const order = await loadWebOrderForReview(id);
   if (!order) notFound();
@@ -68,14 +72,14 @@ export default async function WebOrderReviewPage({
             />
           </section>
           <div className="flex min-w-0 flex-col gap-lg">
-            <WebOrderReviewForm order={order} />
+            {canConfirm ? <WebOrderReviewForm order={order} /> : null}
             <SubmittedOrderPane order={order} />
           </div>
         </div>
       ) : (
         <div className="mt-lg grid min-w-0 gap-lg lg:grid-cols-2">
           <SubmittedOrderPane order={order} />
-          <WebOrderReviewForm order={order} />
+          {canConfirm ? <WebOrderReviewForm order={order} /> : null}
         </div>
       )}
     </>

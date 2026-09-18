@@ -27,11 +27,17 @@ export function LifecycleActions({
   poId,
   next,
   previous,
+  canAdvance,
+  advanceBlockedReason,
   canMoveBack,
 }: {
   poId: string;
   next: PoStage | null;
   previous: PoStage | null;
+  /** Whether this viewer's role owns the stage the order is in (Phase 48). */
+  canAdvance: boolean;
+  /** Who does advance this stage, when the viewer does not. */
+  advanceBlockedReason: string | null;
   canMoveBack: boolean;
 }) {
   const router = useRouter();
@@ -56,6 +62,14 @@ export function LifecycleActions({
 
   const showMoveBack = canMoveBack && previous !== null;
   if (!next && !showMoveBack) return null;
+
+  /**
+   * Disabled, not hidden, when the role does not own this stage: the same
+   * button was there yesterday on an order at a stage they do own, and a
+   * button that vanishes reads as a broken page rather than as a rule. The
+   * caption below says who to ask.
+   */
+  const blocked = next !== null && !canAdvance;
 
   return (
     <div className="flex flex-col items-end gap-xxs">
@@ -137,7 +151,13 @@ export function LifecycleActions({
           </>
         ) : null}
 
-        {next ? (
+        {blocked ? (
+          <Button disabled title={advanceBlockedReason ?? undefined}>
+            Advance to {stageLabel(next)}
+          </Button>
+        ) : null}
+
+        {next && !blocked ? (
           <Popover open={advanceOpen} onOpenChange={setAdvanceOpen}>
             <PopoverTrigger asChild>
               {/* The label always names the stage it moves to. */}
@@ -195,6 +215,12 @@ export function LifecycleActions({
           </Popover>
         ) : null}
       </div>
+
+      {blocked && advanceBlockedReason ? (
+        <p className="text-[length:var(--text-caption)] text-ink-tertiary">
+          {advanceBlockedReason}
+        </p>
+      ) : null}
 
       {showMoveBack ? (
         <p className="text-[length:var(--text-caption)] text-ink-tertiary">

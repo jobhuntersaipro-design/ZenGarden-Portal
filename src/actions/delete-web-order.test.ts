@@ -23,6 +23,18 @@ vi.mock("@/lib/auth-guards", () => ({
   requireSuperAdmin,
   requireUser: vi.fn(),
 }));
+const __permissionGuard = () => requireSuperAdmin();
+// Phase 48: the actions ask the permission grid. It delegates to the guard
+// mock above, so every test's existing setup still drives the refusal path.
+const permissionKeys: string[] = [];
+vi.mock("@/lib/permissions/require", () => ({
+  requirePermission: (key: string) => {
+    permissionKeys.push(key);
+    return __permissionGuard();
+  },
+  rolesWithPermission: () => Promise.resolve([]),
+  unauthorizedStatus: () => 403,
+}));
 vi.mock("@/lib/r2", () => ({
   deleteObject,
   isPendingKey: (key: string) => key.startsWith("pending:"),

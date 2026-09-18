@@ -1,5 +1,9 @@
 import { NextResponse } from "next/server";
-import { UnauthorizedError, requireUser } from "@/lib/auth-guards";
+import { UnauthorizedError } from "@/lib/auth-guards";
+import {
+  requirePermission,
+  unauthorizedStatus,
+} from "@/lib/permissions/require";
 import { prisma } from "@/lib/prisma";
 import { isPendingKey, presignGet } from "@/lib/r2";
 
@@ -14,10 +18,11 @@ export type DocumentUrlResponse = { url: string; mimeType: string };
  * review (docs/specs/04-extraction-review.md §3). The URL still expires in ten
  * minutes, so it is not something to paste around.
  *
- * **`requireUser()` here is load-bearing and must never become
- * `requireAccount()`.** Since Phase 15 it means *staff*, and that is the only
- * thing standing between a buyer's contact and every other customer's scanned
- * purchase orders — this route has no ownership check of its own, by design.
+ * **The staff guard here is load-bearing and must never become
+ * `requireAccount()`.** Since Phase 15 it means *staff* — Phase 48 narrowed it
+ * further to `po.view` — and that is the only thing standing between a buyer's
+ * contact and every other customer's scanned purchase orders: this route has
+ * no ownership check of its own, by design.
  * If clients ever need their own documents, give them a separate route scoped
  * to `requireClient().buyerId` rather than widening this one.
  */
@@ -26,10 +31,13 @@ export async function GET(
   { params }: { params: Promise<{ documentId: string }> },
 ) {
   try {
-    await requireUser();
+    await requirePermission("po.view");
   } catch (cause) {
     if (cause instanceof UnauthorizedError) {
-      return NextResponse.json({ error: cause.message }, { status: 401 });
+      return NextResponse.json(
+        { error: cause.message },
+        { status: unauthorizedStatus(cause) },
+      );
     }
     throw cause;
   }

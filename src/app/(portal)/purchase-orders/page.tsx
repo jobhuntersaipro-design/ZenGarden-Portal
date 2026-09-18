@@ -1,12 +1,11 @@
 import type { Metadata } from "next";
-import { Role } from "@/generated/prisma/enums";
 import { PageHeader } from "@/components/portal/PageHeader";
 import { UpdatingHint } from "@/components/portal/UpdatingHint";
 import { UploadPoButton } from "@/components/portal/UploadPoButton";
 import { PoFilters, type StatusChip } from "@/components/purchase-orders/PoFilters";
 import { PoTable, type PoRow } from "@/components/purchase-orders/PoTable";
 import { ReviewQueue } from "@/components/purchase-orders/ReviewQueue";
-import { getSessionUser } from "@/lib/auth-guards";
+import { can } from "@/lib/permissions/require";
 import { formatMYR } from "@/lib/money";
 import {
   firstParam,
@@ -78,21 +77,21 @@ export default async function PurchaseOrdersPage({
   });
   const { page, size, skip, take } = parsePagination(params);
 
-  const [{ rows, total, sum }, queue, { buyers, uploaders }, user] =
+  const [{ rows, total, sum }, queue, { buyers, uploaders }] =
     await Promise.all([
       listPurchaseOrders(filters, sort, take, skip),
       listReviewQueue(),
       listFilterOptions(),
-      getSessionUser(),
     ]);
-  const canDeleteOrders = user?.role === Role.SUPER_ADMIN;
+  const canDeleteOrders = await can("po.delete");
+  const canUpload = await can("po.upload");
 
   return (
     <>
       <PageHeader
         eyebrow="Records"
         title="Purchase orders"
-        action={<UploadPoButton />}
+        action={canUpload ? <UploadPoButton /> : null}
       />
 
       <ReviewQueue

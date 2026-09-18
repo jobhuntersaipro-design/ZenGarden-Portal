@@ -1,7 +1,8 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
-import { UnauthorizedError, requireSuperAdmin } from "@/lib/auth-guards";
+import { UnauthorizedError } from "@/lib/auth-guards";
+import { requirePermission } from "@/lib/permissions/require";
 import { prisma } from "@/lib/prisma";
 import { shopPath } from "@/lib/shop-routes";
 import { supplierPatchSchema, type SupplierPatch } from "@/lib/validation/org-settings";
@@ -20,7 +21,7 @@ export async function updateSupplierDetails(
 ): Promise<ActionResult> {
   let user;
   try {
-    user = await requireSuperAdmin();
+    user = await requirePermission("org.settings");
   } catch (cause) {
     if (cause instanceof UnauthorizedError) return { success: false, error: cause.message };
     throw cause;

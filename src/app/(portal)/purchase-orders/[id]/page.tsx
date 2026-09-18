@@ -12,7 +12,9 @@ import { DeletePoDialog } from "@/components/purchase-orders/DeletePoDialog";
 import { EditPurchaseOrderSheet } from "@/components/purchase-orders/EditPurchaseOrderSheet";
 import { LifecycleActions } from "@/components/purchase-orders/LifecycleActions";
 import { StageStepper } from "@/components/purchase-orders/StageStepper";
-import { getSessionUser } from "@/lib/auth-guards";
+import { advanceKeyFor } from "@/lib/permissions/actions";
+import { can, rolesWithPermission } from "@/lib/permissions/require";
+import { roleLabel } from "@/lib/permissions/roles";
 import { formatDate, formatDateTime, TIME_ZONE } from "@/lib/dates";
 import { formatMYR } from "@/lib/money";
 import {
@@ -51,7 +53,6 @@ export default async function PurchaseOrderPage({
   params: Promise<{ id: string }>;
 }) {
   const { id } = await params;
-  const user = await getSessionUser();
 
   const po = await prisma.purchaseOrder.findUnique({
     where: { id },
@@ -84,6 +85,23 @@ export default async function PurchaseOrderPage({
   const label = orderLabel(identity);
 
   const current = po.stage;
+
+  // Phase 48. The Advance button is disabled rather than hidden off-stage, and
+  // the caption names the role that does own it — a refusal that only says
+  // "not you" sends someone to ask an admin instead of a colleague.
+  const advanceKey = advanceKeyFor(current);
+  const canAdvance = advanceKey ? await can(advanceKey) : false;
+  const canDeleteOrder = await can("po.delete");
+  const canEditOrder = await can("po.edit");
+  let advanceBlockedReason: string | null = null;
+  if (advanceKey && !canAdvance) {
+    const owners = (await rolesWithPermission(advanceKey)).filter(
+      (role) => role !== Role.SUPER_ADMIN,
+    );
+    advanceBlockedReason = owners.length
+      ? `${owners.map(roleLabel).join(" or ")} advances this stage.`
+      : "Only a super admin advances this stage.";
+  }
   const daysFromOrder = Math.max(
     0,
     Math.round(
@@ -168,6 +186,7 @@ export default async function PurchaseOrderPage({
             {po.document ? (
               <DownloadOriginal documentId={po.document.id} />
             ) : null}
+            {canEditOrder ? (
             <EditPurchaseOrderSheet
               poId={po.id}
               identity={identity}
@@ -182,8 +201,9 @@ export default async function PurchaseOrderPage({
                 reason: null,
               }}
             />
-            {/* Super admin only, here and in the list's last column. */}
-            {user?.role === Role.SUPER_ADMIN ? (
+            ) : null}
+            {/* `po.delete`, here and in the list's last column. */}
+            {canDeleteOrder ? (
               <DeletePoDialog
                 poId={po.id}
                 orderId={identity.orderId}
@@ -264,7 +284,9 @@ export default async function PurchaseOrderPage({
             poId={po.id}
             next={nextStage(current)}
             previous={prevStage(current)}
-            canMoveBack={user?.role === Role.SUPER_ADMIN}
+            canAdvance={canAdvance}
+            advanceBlockedReason={advanceBlockedReason}
+            canMoveBack={await can("po.revert")}
           />
         </div>
 

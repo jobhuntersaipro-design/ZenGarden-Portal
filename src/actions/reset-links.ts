@@ -6,7 +6,8 @@ import { z } from "zod";
 import { Role } from "@/generated/prisma/enums";
 import { PasswordReset, passwordResetSubject } from "@/emails/PasswordReset";
 import { audit } from "@/lib/audit";
-import { UnauthorizedError, requireSuperAdmin } from "@/lib/auth-guards";
+import { UnauthorizedError } from "@/lib/auth-guards";
+import { requirePermission } from "@/lib/permissions/require";
 import { sendEmail } from "@/lib/email";
 import { env } from "@/lib/env";
 import { RESET_TOKEN_TTL_MS, hashToken } from "@/lib/password-reset";
@@ -49,7 +50,7 @@ export async function sendPasswordResetLink(
 ): Promise<ActionResult<{ sent: boolean; email: string }>> {
   let admin;
   try {
-    admin = await requireSuperAdmin();
+    admin = await requirePermission("user.manage");
   } catch (cause) {
     if (cause instanceof UnauthorizedError) return { success: false, error: cause.message };
     throw cause;

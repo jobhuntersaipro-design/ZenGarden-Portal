@@ -1,6 +1,7 @@
 "use server";
 
-import { UnauthorizedError, requireSuperAdmin } from "@/lib/auth-guards";
+import { UnauthorizedError } from "@/lib/auth-guards";
+import { requirePermission } from "@/lib/permissions/require";
 import { resolveListing, type ListingMatch } from "@/lib/listings";
 import { listingCandidates } from "@/lib/queries/product-families";
 
@@ -29,7 +30,7 @@ export async function lookupListing(input: {
   excludeId?: string;
 }): Promise<ActionResult<ListingMatch>> {
   try {
-    await requireSuperAdmin();
+    await requirePermission("product.manage");
   } catch (cause) {
     return {
       success: false,
