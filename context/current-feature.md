@@ -1251,9 +1251,53 @@ file: generating a PDF remains Phase 19, still unbuilt.
   purchase-order file, is also unbuilt.
 
 ## History
+- 2026-09-18: A carton stepper on the catalogue card — merged from
+  `feature/shop-card-carton-stepper` and pushed. Asked for as part of a review
+  of shop add-to-cart, of which **everything else already held and nothing was
+  rebuilt**: the product page's buy box and each variant row already carried a
+  stepper defaulting to 1, `cartonsSchema` already refused a non-integer or
+  anything below 1 (`.int("Whole cartons only").positive("Order at least one
+  carton")`, capped at 9,999), `WebOrderLine.cartons` already stored the count
+  with no price, `piecesFor` and `lineTotal` already derived pieces and amount
+  from `packSize` and the list price, the cart already used the same
+  `CartonStepper` under a **Cartons** column, and `buildPoDocument` already fed
+  `line.cartons` to `documentQuantities` for Total Cartons, Total Pieces and
+  Total Pallets. Verified as a guest before changing anything: 3 cartons of
+  `MR.KING 1.5L — Lime` read RM 472.50 in the buy box, stored exactly
+  `{"productId":"cmtvclarl…","cartons":3}`, and the cart read 18 pieces and
+  RM 472.50.
+  **The one gap was the card**, whose Add to cart always added one. It now has
+  its own stepper above the pill, under a "Cartons" caption matching the cart's
+  column, and hands that count to `AddToCart`. It **resets to 1 when the buyer
+  picks another flavour** — three of Lemon says nothing about Lime — and
+  otherwise holds, as the buy box does, so a second press adds that many again.
+  `CartonStepper` gained a `card` size: `md`'s 44px buttons, which are not
+  negotiable, with the value taking whatever is left between them, and no
+  pieces caption — a line under every card in a grid to repeat what the card's
+  own pack line says. No admin screen was touched.
+  Driven on development, port 3000, as a guest on `shop.localhost`. A card
+  stepped to 4 and added stored `{"productId":"cmtvcljy5008b03otou4nmilz",
+  "cartons":4}`; the cart then read "1 product · 4 cartons", its own stepper at
+  4, and **RM 840.00** against RM 210.00 per carton. Picking another flavour on
+  the card put it back to **1**. At 390, where cards are two-up in a 165px card,
+  the page did not overflow (390/390) and both stepper buttons measured
+  **44×44** beside a 44px-tall value; 768 and 1440 clean too.
+  **Recorded, not fixed:** that value box is **27px wide** at 390 — the width
+  two 44px buttons leave inside a 165px card. One or two digits read fine and
+  the buttons are the primary control; three would crowd it. Widening it means
+  one card per row on a phone, which is a catalogue layout decision, not this
+  one. The roomier steppers on the product page and in the cart are unchanged.
+  1233/1233 tests (3 new on the card: the stepper is offered, labelled and
+  starts at 1; that count reaches Add to cart; One fewer starts disabled, so no
+  line can be added at zero), `tsc`, lint (same 2 warnings) and `npm run build`
+  clean. Nothing was written to the database and the guest cart was cleared.
+  **Not verified:** anything on production; a signed-in client's card add,
+  which goes through `addToCart` rather than the guest cart (the same `cartons`
+  argument, covered by the action's own tests); and typing a count into the
+  card's box rather than stepping it.
 - 2026-09-18: A moved expected delivery date names both dates and asks why,
-  and the header loses its status pill — built and driven on
-  `feature/po-delivery-reason`, not yet committed. Asked for as: record what
+  and the header loses its status pill — merged from
+  `feature/po-delivery-reason` and pushed. Asked for as: record what
   the date changed from and to, require a remark for it, remove the status
   beside Download original, and rename that button Download.
   **Both dates, and a reason.** `updatePurchaseOrder` used to record

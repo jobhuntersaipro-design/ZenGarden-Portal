@@ -3,6 +3,7 @@
 import { useState } from "react";
 import Link from "next/link";
 import { AddToCart } from "@/components/shop/AddToCart";
+import { CartonStepper } from "@/components/shop/CartonStepper";
 import { ProductThumb } from "@/components/products/ProductThumb";
 import { unitLabel } from "@/lib/cartons";
 import { formatMYR } from "@/lib/money";
@@ -31,6 +32,12 @@ export function ShopProductCard({
   badge?: string;
 }) {
   const [selectedId, setSelectedId] = useState(group.variants[0]?.id);
+  /**
+   * How many cartons this card adds. One by default, so "add the one I am
+   * looking at" stays a single tap, and it goes back to one when the buyer
+   * picks another flavour — three of Lemon says nothing about Lime.
+   */
+  const [cartons, setCartons] = useState(1);
   const selected =
     group.variants.find((variant) => variant.id === selectedId) ?? group.variants[0];
   const labels = variantLabels(group.variants);
@@ -86,7 +93,10 @@ export function ShopProductCard({
           group={group}
           labels={labels}
           selectedId={selected.id}
-          onSelect={setSelectedId}
+          onSelect={(id) => {
+            setSelectedId(id);
+            setCartons(1);
+          }}
         />
       ) : null}
 
@@ -102,7 +112,28 @@ export function ShopProductCard({
         </span>
       </p>
 
-      <div className="mt-auto pt-sm">
+      {/* The quantity is chosen here rather than only on the product page
+          (2026-09-18): a buyer ordering by the carton usually knows how many
+          before they open anything. The label is the column the cart uses. */}
+      <div className="mt-auto flex flex-col gap-xs pt-sm">
+        <div className="flex flex-col gap-xxs">
+          {/* Visual only: each control inside the stepper carries its own
+              accessible name, which already names the product too. */}
+          <span className="text-[length:var(--text-caption)] text-ink-tertiary">
+            Cartons
+          </span>
+          <CartonStepper
+            size="card"
+            value={cartons}
+            packSize={selected.packSize}
+            unit={selected.unit}
+            label={selected.name}
+            onChange={async (next) => {
+              setCartons(next);
+              return { success: true };
+            }}
+          />
+        </div>
         <AddToCart
           key={selected.id}
           productId={selected.id}
@@ -110,6 +141,7 @@ export function ShopProductCard({
           packSize={selected.packSize}
           unit={selected.unit}
           variant="card"
+          cartons={cartons}
         />
       </div>
     </li>
