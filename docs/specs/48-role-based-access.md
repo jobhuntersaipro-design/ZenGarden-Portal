@@ -125,25 +125,31 @@ export type PermissionGroup =
   | "Dashboard" | "Purchase orders" | "Fulfilment"
   | "Catalogue" | "Buyers" | "Administration";
 
+const RAW_ACTIONS = [ ... ] as const;
+
+export type PermissionKey = (typeof RAW_ACTIONS)[number]["key"];
+
 export type PermissionAction = {
   /** Stable. Stored in the database. Never renamed. */
-  key: string;
+  key: PermissionKey;
   /** The grid's first column. */
   label: string;
   /** One line under the label, saying what the row actually permits. */
   description: string;
   group: PermissionGroup;
-  /** Administration rows: shown in the grid, not editable. See §6. */
+  /** Administration rows: shown in the grid, not editable. See §7. */
   locked?: true;
 };
 
-export const PERMISSION_ACTIONS = [ ... ] as const satisfies readonly PermissionAction[];
-export type PermissionKey = (typeof PERMISSION_ACTIONS)[number]["key"];
+export const PERMISSION_ACTIONS: readonly PermissionAction[] = RAW_ACTIONS;
 ```
 
 `PermissionKey` being a union derived from the array is load-bearing: a typo
-in `requirePermission("po.edti")` fails the build rather than denying
-silently at runtime.
+in `requirePermission("po.edti")` fails the build rather than denying silently
+at runtime. The array is declared `as const` and re-exported through a typed
+view because `as const satisfies` narrows each element to its own literal
+type, and `locked` then does not exist on the elements that lack it — which
+`tsc` caught the moment the grid tried to read it.
 
 The twenty rows, in grid order:
 
@@ -480,7 +486,94 @@ Unchanged, on purpose
 10. The whole suite, `tsc --noEmit`, `npm run lint` and `npm run build` are
     clean.
 
-## 13. Verified / Not verified
+## 13. Verified, with the figures
 
-To be rewritten during the build as what was measured, following the house
-convention. §12 states intent until then.
+Development, port 3000, against four throwaway users — one per working role
+and one `MEMBER` — signing in for real and carrying real sessions. Baseline
+before: users **2**, grants **100**, purchase orders **400**, stage events
+**2323**, audit rows **5**, login attempts **68**.
+
+- **The stage table holds, all twenty cells**, read from the server with each
+  role's own session against one real order at each of the five advanceable
+  stages (`PO-2026-0025`, `-0063`, `-0061`, `-0062`, `-0059`):
+
+  | From | Planner | QC | Warehouse | Member |
+  |---|---|---|---|---|
+  | Order placed | **true** | false | false | false |
+  | In production | false | **true** | false | false |
+  | QC passed | false | false | **true** | false |
+  | In warehouse | false | false | **true** | false |
+  | Delivering | false | false | **true** | false |
+
+- **The server refuses, not just the button.** A planner calling
+  `advanceStage` against the QC-passed `PO-2026-0061` — through a temporary
+  route handler holding their real session, because a crafted Server-Action
+  POST is not a valid probe (Phases 40, 41) — got
+  `{ success: false, error: "Warehouse advances this stage." }` with
+  `stageAfter: QC_PASSED`, unchanged. The warehouse role on the same order
+  got `{ success: true, data: { stage: "IN_WAREHOUSE" } }`.
+- **A grid change is live with no deploy and no restart.** With the dev server
+  untouched, `po.advance.qc_passed` for Planner went false → **true** → false
+  across three consecutive requests, the middle one after the grant alone.
+- **A save from the grid reaches the running app.** Turning `po.upload` off
+  for QC and `po.edit` on for Member in the browser and pressing Save wrote
+  both rows (`updatedById` set to the acting super admin) and **one**
+  `PERMISSIONS_CHANGED` audit row with `buyerId: null` and a `detail` of keys
+  and booleans only. QC's `/upload` then read "Page not found" with no upload
+  controls, and Member's PO detail gained the Edit control — both on the next
+  request. Reverted through the grid the same way.
+- **`/admin` is 404** for all four roles, read with
+  `curl -o /dev/null -w '%{http_code}'`: **404, 404, 404, 404**.
+- **The portal hides what it should.** On `PO-2026-0061`, all four roles saw
+  **no** Edit, **no** Delete and **no** Move back. The planner's Advance
+  rendered `disabled` with the caption "Warehouse advances this stage."; the
+  warehouse role's rendered live, with neither the disabled attribute nor the
+  caption.
+- **The review screen refuses.** `/review/[id]` as the planner returned "Page
+  not found" with no "Confirm & save" and no line items.
+- **The grid.** 20 rows in 6 groups × 5 columns; all 20 super-admin cells
+  checked **and** disabled; all three Administration rows disabled across every
+  role; Save disabled at rest, reading "Save 2 changes" after two toggles, with
+  a Discard beside it. The roster reads all six users with the labels Super
+  admin, Production planner, QC, Warehouse and Member.
+- **Sweep:** `/admin` at 390 / 768 / 1440 — `scrollWidth === innerWidth` on all
+  three. At 390 the grid is in role-picker mode with **20** visible checkboxes,
+  **0** touch targets under 44px, and all five role buttons 44px tall. 100
+  visible checkboxes at 768 and 1440.
+- **Cleanup, counted both ends.** Four users, four login attempts and two
+  audit rows deleted **by id**; every grant reset to its default with
+  `updatedById` cleared; the one stage event the live advance wrote deleted and
+  `PO-2026-0061` restored to `QC_PASSED`. Counts back to users **2**, grants
+  **100** (0 off default, 0 still stamped), purchase orders **400**, stage
+  events **2323**, audits **5**, login attempts **68**. The probe route and
+  every temporary script were removed.
+- **1304/1304 tests across 100 files**, `tsc --noEmit`, `npm run lint` (the
+  same 2 pre-existing warnings, 0 errors) and `npm run build` all clean.
+
+**Guards watched failing before they were trusted.** Removing the super-admin
+short circuit failed the lock-out test; removing `advanceStage`'s permission
+call failed nine tests; swapping `po.confirm` for `po.view` failed the two
+key-pinning tests; deleting either refusal in `updatePermissions` failed three.
+The stage table itself was watched catching a misassigned stage in both
+directions.
+
+## 14. Not verified
+
+- **Anything on production.** No production database was read or written and
+  no production screen was opened.
+- **The status code on `/upload` and `/review/[id]`.** Both answer **200** with
+  the "Page not found" body and none of the screen's content — the app-wide
+  streaming-layout gap recorded on 2026-09-10 and again in Phase 25, not
+  something this phase introduced. `/admin` keeps a real 404 because the proxy
+  pins it with a rewrite. Content is correct everywhere; only the status is
+  wrong on the two page-level guards.
+- **A Google access request approved into one of the new roles.** The picker
+  offers all five and `approveAccessRequest` refuses CLIENT as before, but no
+  request was approved live.
+- **Two super admins saving the grid at once.** The last write wins per cell;
+  there is no optimistic-concurrency guard on `PermissionGrant`, by design.
+- **The phone grid's save path**, driven only at desktop width. The same
+  component and action serve both.
+- **`rolesWithPermission` naming two roles at once** — no stage is owned by
+  more than one role under the defaults, so the "Planner or QC advances this
+  stage." wording is covered by unit tests only.

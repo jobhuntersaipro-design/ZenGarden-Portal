@@ -2,7 +2,7 @@
 
 ## Status
 
-**Phase 48 — specced on `feature/role-based-access`, not yet built**
+**Phase 48 — built and driven in a browser on `feature/role-based-access`**
 (2026-09-18). Spec `docs/specs/48-role-based-access.md`. Asked for as: four
 roles; each ops role owns only the status moves that belong to their job;
 everything else view-only or hidden; a super admin user-management screen with
@@ -40,6 +40,49 @@ administrators out.
 **Narrowing on deploy**, and the team needs telling: confirm/decline, editing
 a PO header, editing a buyer and the review screen all become super-admin
 only, and advancing becomes stage-scoped. Nobody's access widens.
+
+## Verified, with the figures
+
+Development, port 3000, with four throwaway users — one per working role and a
+`MEMBER` — signing in for real. Full report in
+`docs/specs/48-role-based-access.md` §13.
+
+- **All twenty stage cells match the brief's table**, read from the server
+  with each role's own session against one real order at each of the five
+  advanceable stages. Planner true only on Order placed, QC only on In
+  production, Warehouse on the last three, Member on none.
+- **The server refuses, not just the button.** A planner calling
+  `advanceStage` on a QC-passed order through a temporary route holding their
+  real session got "Warehouse advances this stage." with the stage unchanged;
+  the warehouse role on the same order moved it.
+- **A grid change is live with no deploy and no restart** — false → true →
+  false across three consecutive requests with the dev server untouched. A
+  save from the browser grid wrote both cells, one `PERMISSIONS_CHANGED` audit
+  row (`buyerId` null, keys and booleans only), and took effect on the next
+  request for the affected sessions.
+- **`/admin` answers 404** for all four roles. No role sees Edit, Delete or
+  Move back; the planner's Advance renders disabled with the caption
+  "Warehouse advances this stage.", the warehouse role's renders live.
+- **Grid:** 20 rows in 6 groups × 5 columns, all super-admin cells checked and
+  disabled, all three Administration rows disabled, Save disabled at rest.
+  No overflow at 390 / 768 / 1440; at 390 it is a role picker with 0 targets
+  under 44px.
+- **Cleanup by id:** four users, four login attempts, two audit rows, one
+  stage event; every grant reset to default with `updatedById` cleared. Counts
+  back to users 2, grants 100, POs 400, stage events 2323, audits 5, login
+  attempts 68.
+- **1304/1304 tests across 100 files**, `tsc`, lint (same 2 warnings) and
+  `npm run build` clean. Every guard was watched failing first.
+
+## Not verified
+
+- **Anything on production.**
+- **The status code on `/upload` and `/review/[id]`** — both answer 200 with
+  the "Page not found" body and none of the screen's content, the app-wide
+  streaming-layout gap recorded on 2026-09-10. `/admin` keeps a real 404
+  because the proxy pins it. Content is right; only the status is wrong.
+- **A Google access request approved into one of the new roles**, two super
+  admins saving the grid at once, and the phone grid's save path.
 
 ## Previous phase
 
