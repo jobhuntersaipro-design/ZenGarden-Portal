@@ -1251,9 +1251,61 @@ file: generating a PDF remains Phase 19, still unbuilt.
   purchase-order file, is also unbuilt.
 
 ## History
+- 2026-09-18: The feed's stage names move into the sentence, an edit says it
+  was an edit, and the list pages at ten — built and driven on
+  `feature/po-feed-pills-and-paging`, not yet committed. Four changes to
+  "Notes and activity" only; the stepper is untouched.
+  **The stage tag beside the Activity pill is gone**, because the sentence now
+  names the stage itself: `describeActivity` returns `ActivitySegment[]`
+  rather than a string, so "advanced this order from [In production] to [QC
+  passed]" draws both ends as the same status pill the header, the Status
+  heading and the stepper use. The wording and the from → to order are
+  unchanged; `activityText` flattens the pieces back to one string for a test
+  or a screen reader. The tag could only ever repeat one end of a move, which
+  is why it was the thing to drop.
+  **A successful header Edit reads "{actor} edited this order"** with the
+  fields it moved underneath as the row's note. `updatePurchaseOrder` already
+  wrote exactly one `EDIT` event per successful save and none when nothing
+  changed, so this is the sentence, not the write path: the field list used to
+  be spliced into the sentence, which made an edit of four fields the longest
+  line in the feed. **An edit's note is not quoted** — the system wrote it, and
+  quotation marks would put words in somebody's mouth — so `LifecycleItem.note`
+  carries `{ text, quoted }`, quoted for a person's note on a stage move and
+  plain for an edit's field list and a totals mismatch's figures.
+  **Ten rows a page, newest first**, with "1–10 of 14" and Previous / Next
+  under the feed. Paged in the browser rather than through the URL: the feed is
+  one card on a page that also holds a document and a summary, and a `?page=`
+  round trip would re-render all of it and scroll the reader back to the top of
+  the order to read the next ten rows of its history. `LifecycleFeed` is a
+  client component for it, and the page is clamped to the last one that exists,
+  so a feed that shortens under a reader cannot strand them past the end.
+  `LifecycleItem.stage` was removed: nothing renders it now.
+  Driven on development, port 3000, as Aisha on `PO-2026-0063`, against ten
+  fixture stage events inserted directly (advances, three moves back, notes on
+  five of them) so there was a second page to turn. Page 1 read **10 rows,
+  "1–10 of 13", "Page 1 of 2"**, every stage name a pill inside its sentence
+  and no tag beside the Activity pill; Next gave **3 rows, "11–13 of 13"**,
+  oldest last ("Aisha Rahman confirmed the order"), Next disabled and Previous
+  live. A **real edit through the header sheet** — payment terms 30 → 45 days
+  and a remark — wrote one row, "Aisha Rahman edited this order" over the plain
+  "Edited: payment terms, remark", and the count went 13 → 14. No overflow at
+  768 (768/768) or 1440 (1440/1440); at 390 the feed's rows end at 345 inside a
+  390 viewport and the sentence wraps with its pills, while **the page still
+  overflows at 480 against 390 from the header's Download/Edit/Delete row** —
+  the defect recorded on 2026-09-18, which measures wider or narrower with the
+  header's stage pill. Ten fixture events and the edit's event deleted by id,
+  `paymentTerms` restored to "30 days" and `notes` to null; counts back to 2323
+  stage events and 400 purchase orders, the PO reading `IN_PRODUCTION` with its
+  original `stageChangedAt` and its two original events. 1225/1225 tests (the
+  sentence tests rewritten to assert both the flattened wording and the
+  segments), `tsc`, lint (same 2 warnings) and `npm run build` clean.
+  **Not verified:** anything on production; a member's view; the Note pill,
+  which no stored record can produce; and whether `PO-2026-0063.notes` was null
+  or "" before the test edit — it was restored to null, which is what
+  `emptyToNull` stores for an empty field anyway.
 - 2026-09-18: One row per action, stage names as the status pill, and
-  "Lifecycle" renamed "Status" — built and driven on
-  `feature/po-status-rows-and-stage-chips`, not yet committed. Asked for as
+  "Lifecycle" renamed "Status" — merged from
+  `feature/po-status-rows-and-stage-chips` and pushed. Asked for as
   three changes to the PO detail page, with "do not restyle the whole app".
   **One row per action:** a stage move and the note left with it were an
   Activity row followed by a Note row carrying the same avatar, the same name

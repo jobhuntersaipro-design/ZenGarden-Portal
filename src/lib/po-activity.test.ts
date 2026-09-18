@@ -1,5 +1,14 @@
 import { describe, expect, it } from "vitest";
-import { buildLifecycleFeed, describeActivity, type PoActivityEvent } from "@/lib/po-activity";
+import {
+  activityText,
+  buildLifecycleFeed,
+  describeActivity,
+  type PoActivityEvent,
+} from "@/lib/po-activity";
+
+/** The sentence as a reader sees it, whatever pieces it is drawn from. */
+const say = (...args: Parameters<typeof describeActivity>) =>
+  activityText(describeActivity(...args));
 
 const event = (over: Partial<PoActivityEvent> = {}): PoActivityEvent => ({
   id: "e1",
@@ -20,17 +29,23 @@ const event = (over: Partial<PoActivityEvent> = {}): PoActivityEvent => ({
  */
 describe("describeActivity", () => {
   it("names who moved it, from where, to where", () => {
-    expect(describeActivity(event(), "Chris Lam")).toBe(
+    expect(say(event(), "Chris Lam")).toBe(
       "Chris Lam advanced this order from Order placed to In production",
     );
+
+    // The two stage names are their own pieces, so the component can draw
+    // them as the status pill rather than as words.
+    expect(describeActivity(event(), "Chris Lam")).toEqual([
+      { kind: "text", text: "Chris Lam advanced this order from " },
+      { kind: "stage", stage: "ORDER_PLACED" },
+      { kind: "text", text: " to " },
+      { kind: "stage", stage: "IN_PRODUCTION" },
+    ]);
   });
 
   it("says a move back is a move back", () => {
     expect(
-      describeActivity(
-        event({ fromStage: "QC_PASSED", toStage: "IN_PRODUCTION" }),
-        "Chris Lam",
-      ),
+      say(event({ fromStage: "QC_PASSED", toStage: "IN_PRODUCTION" }), "Chris Lam"),
     ).toBe("Chris Lam moved this order back from QC passed to In production");
   });
 
@@ -38,34 +53,35 @@ describe("describeActivity", () => {
     // Two stages back at once: derived from the stepper this would read
     // "from In warehouse", which is not where the order was.
     expect(
-      describeActivity(
-        event({ fromStage: "DELIVERING", toStage: "QC_PASSED" }),
-        "Aisha Rahman",
-      ),
+      say(event({ fromStage: "DELIVERING", toStage: "QC_PASSED" }), "Aisha Rahman"),
     ).toContain("from Delivering to QC passed");
   });
 
   it("opens the lifecycle with the order being placed", () => {
     expect(
-      describeActivity(
+      say(
         event({ fromStage: null, toStage: "ORDER_PLACED", changedByName: null }),
         "System",
       ),
     ).toBe("System placed the order");
   });
 
-  it("names the fields an edit changed", () => {
+  /**
+   * The fields ride under the sentence as the row's note (2026-09-18), so an
+   * edit of four of them is no longer the longest line in the feed.
+   */
+  it("says an edit was an edit, without listing the fields", () => {
     expect(
-      describeActivity(
+      say(
         event({ kind: "EDIT", note: "Edited: PO date, Payment terms" }),
         "Chris Lam",
       ),
-    ).toBe("Chris Lam edited PO date, Payment terms on this order");
+    ).toBe("Chris Lam edited this order");
   });
 
   it("names a totals mismatch for what it is", () => {
     expect(
-      describeActivity(
+      say(
         event({
           kind: "EDIT",
           note: "Confirmed with a totals mismatch: computed RM 1.00, document RM 2.00, difference RM 1.00",
@@ -95,13 +111,13 @@ describe("buildLifecycleFeed", () => {
     expect(items).toHaveLength(2); // the move, then the confirmation
     expect(items[0]).toMatchObject({
       type: "activity",
-      title:
-        "Chris Lam advanced this order from Order placed to In production",
-      note: "Line 3 was short-shipped.",
-      stage: "IN_PRODUCTION",
+      note: { text: "Line 3 was short-shipped.", quoted: true },
       actor: "Chris Lam",
       at: "2026-09-18T02:00:00.000Z",
     });
+    expect(activityText(items[0].title!)).toBe(
+      "Chris Lam advanced this order from Order placed to In production",
+    );
   });
 
   it("leaves note null on an action nobody wrote on", () => {
@@ -113,15 +129,21 @@ describe("buildLifecycleFeed", () => {
       event({ id: "e2", fromStage: "IN_PRODUCTION", toStage: "QC_PASSED", note: "Second" }),
       event({ id: "e1", note: "First" }),
     ]);
-    expect(items.map((item) => item.note)).toEqual(["Second", "First", null]);
+    expect(items.map((item) => item.note?.text ?? null)).toEqual([
+      "Second",
+      "First",
+      null,
+    ]);
   });
 
-  it("does not repeat an edit's fields as a note", () => {
+  /**
+   * The system wrote it, so it is not put in quotation marks as if somebody
+   * had said it.
+   */
+  it("carries an edit's fields as its own plain note", () => {
     const items = feed([event({ kind: "EDIT", note: "Edited: PO date" })]);
-    expect(items[0]).toMatchObject({
-      title: "Chris Lam edited PO date on this order",
-      note: null,
-    });
+    expect(activityText(items[0].title!)).toBe("Chris Lam edited this order");
+    expect(items[0].note).toEqual({ text: "Edited: PO date", quoted: false });
   });
 
   /**
@@ -133,18 +155,17 @@ describe("buildLifecycleFeed", () => {
       "Confirmed with a totals mismatch: computed RM 1.00, document RM 2.00, difference RM 1.00";
     const items = feed([event({ kind: "EDIT", note })]);
     expect(items).toHaveLength(2);
-    expect(items[0]).toMatchObject({
-      title: "Chris Lam confirmed this order with a totals mismatch",
-      note,
-    });
+    expect(activityText(items[0].title!)).toBe(
+      "Chris Lam confirmed this order with a totals mismatch",
+    );
+    expect(items[0].note).toEqual({ text: note, quoted: false });
   });
 
   it("ends with the confirmation, the oldest thing on the order", () => {
     const items = feed([event()]);
-    expect(items.at(-1)).toMatchObject({
-      title: "Aisha Rahman confirmed the order",
-      at: "2026-09-01T02:00:00.000Z",
-      stage: null,
-    });
+    expect(activityText(items.at(-1)!.title!)).toBe(
+      "Aisha Rahman confirmed the order",
+    );
+    expect(items.at(-1)).toMatchObject({ at: "2026-09-01T02:00:00.000Z" });
   });
 });
