@@ -224,9 +224,21 @@ describe("updatePurchaseOrder — the expected delivery date", () => {
     deliveryDate: "2026-10-02",
     paymentTerms: "30 days",
     notes: null,
+    // Every patch that moves the date carries one; the action refuses it
+    // otherwise, which is its own test below.
+    reason: "Buyer asked for another week.",
   };
 
   const transaction = vi.fn();
+
+  /** The `poStageEvent.create` argument from the transaction's writes. */
+  const eventWrite = () => {
+    const create = vi.mocked(
+      (globalThis as unknown as { __poEventCreate: ReturnType<typeof vi.fn> })
+        .__poEventCreate,
+    );
+    return create.mock.calls.at(-1)![0].data as { note: string };
+  };
 
   beforeEach(async () => {
     poFindUnique.mockResolvedValue(existing);
@@ -235,8 +247,10 @@ describe("updatePurchaseOrder — the expected delivery date", () => {
     transaction.mockResolvedValue([{}, {}]);
     (prisma as unknown as { purchaseOrder: Record<string, unknown> }).purchaseOrder.update =
       vi.fn();
+    const create = vi.fn();
+    (globalThis as unknown as { __poEventCreate: unknown }).__poEventCreate = create;
     (prisma as unknown as { poStageEvent: Record<string, unknown> }).poStageEvent = {
-      create: vi.fn(),
+      create,
     };
   });
 
@@ -323,6 +337,56 @@ describe("updatePurchaseOrder — the expected delivery date", () => {
     await updatePurchaseOrder("po1", { ...patch, deliveryDate: "2026-10-09" });
     const writes = transaction.mock.calls[0][0];
     expect(writes).toHaveLength(2);
+  });
+
+  /**
+   * The date the buyer is waiting on does not move unattributed, and the row
+   * that records it has to answer what it moved *from* — which the field's
+   * name alone never could.
+   */
+  it("refuses a moved delivery date with no reason, and writes nothing", async () => {
+    const result = await updatePurchaseOrder("po1", {
+      ...patch,
+      deliveryDate: "2026-10-09",
+      reason: "   ",
+    });
+    expect(result).toEqual({
+      success: false,
+      error: "Say why the expected delivery date is moving.",
+    });
+    expect(transaction).not.toHaveBeenCalled();
+    expect(sendEmail).not.toHaveBeenCalled();
+  });
+
+  it("records both dates and the reason on the activity entry", async () => {
+    await updatePurchaseOrder("po1", {
+      ...patch,
+      deliveryDate: "2026-10-09",
+      reason: "Buyer asked for another week.",
+    });
+    const { note } = eventWrite();
+    expect(note).toBe(
+      "Expected delivery 2 Oct 2026 → 9 Oct 2026\nBuyer asked for another week.",
+    );
+  });
+
+  it("says so when a date is set for the first time, or cleared", async () => {
+    poFindUnique.mockResolvedValue({ ...existing, deliveryDate: null });
+    await updatePurchaseOrder("po1", { ...patch, deliveryDate: "2026-10-09" });
+    expect(eventWrite().note).toContain("Expected delivery set to 9 Oct 2026");
+
+    transaction.mockClear();
+    poFindUnique.mockResolvedValue(existing);
+    await updatePurchaseOrder("po1", { ...patch, deliveryDate: null });
+    expect(eventWrite().note).toContain(
+      "Expected delivery cleared (was 2 Oct 2026)",
+    );
+  });
+
+  /** A reason is asked for only when the date moves, so it is not recorded. */
+  it("keeps the old field list when the date did not move", async () => {
+    await updatePurchaseOrder("po1", { ...patch, paymentTerms: "45 days" });
+    expect(eventWrite().note).toBe("Edited: payment terms");
   });
 
   /**

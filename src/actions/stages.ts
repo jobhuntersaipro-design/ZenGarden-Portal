@@ -8,7 +8,8 @@ import { PoEventKind, PoStage, Role } from "@/generated/prisma/enums";
 import { UnauthorizedError, requireUser } from "@/lib/auth-guards";
 import { prisma } from "@/lib/prisma";
 import { nextStage, prevStage, stageLabel } from "@/lib/po-stages";
-import { isoDate } from "@/lib/validation/purchase-orders";
+import { composeEditNote } from "@/lib/po-activity";
+import { REASON_REQUIRED, isoDate } from "@/lib/validation/purchase-orders";
 import {
   WebOrderConfirmed,
   webOrderConfirmedSubject,
@@ -44,6 +45,18 @@ const purchaseOrderPatchSchema = z.object({
     z
       .string()
       .max(2000, "That remark is too long — 2000 characters at most")
+      .nullable(),
+  ),
+  /**
+   * Why the expected delivery date is moving. Required only when it moves —
+   * see the check below, which needs the order's stored date to know that —
+   * and kept on the activity row rather than on the order, so every past move
+   * keeps its own reason instead of one standing remark overwriting them.
+   */
+  reason: emptyToNull.pipe(
+    z
+      .string()
+      .max(2000, "That reason is too long — 2000 characters at most")
       .nullable(),
   ),
 }).refine(
@@ -199,14 +212,35 @@ export type PurchaseOrderPatch = {
   deliveryDate: string | null;
   paymentTerms: string | null;
   notes: string | null;
+  /** Why the expected delivery date is moving; required when it is. */
+  reason: string | null;
 };
 
-const FIELD_LABELS: Record<keyof PurchaseOrderPatch, string> = {
+const FIELD_LABELS: Record<
+  Exclude<keyof PurchaseOrderPatch, "reason">,
+  string
+> = {
   poDate: "PO date",
   deliveryDate: "expected delivery",
   paymentTerms: "payment terms",
   notes: "remark",
 };
+
+/**
+ * A moved delivery date is recorded with both dates, not just the field's
+ * name: "it changed" cannot answer what it changed from, and that is the
+ * question anyone reads this row to settle.
+ */
+function describeDeliveryMove(
+  before: Date | null,
+  after: string | null,
+): string {
+  const to = after ? formatDate(new Date(after)) : null;
+  const from = before ? formatDate(before) : null;
+  if (from && to) return `Expected delivery ${from} → ${to}`;
+  if (to) return `Expected delivery set to ${to}`;
+  return `Expected delivery cleared (was ${from})`;
+}
 
 /**
  * Edits the header fields of a confirmed PO. Every edit appends an activity
@@ -259,14 +293,33 @@ export async function updatePurchaseOrder(
     const changed: string[] = [];
     if (asDay(po.poDate) !== data.poDate) changed.push(FIELD_LABELS.poDate);
     const deliveryMoved = asDay(po.deliveryDate) !== data.deliveryDate;
-    if (deliveryMoved) changed.push(FIELD_LABELS.deliveryDate);
     if ((po.paymentTerms ?? null) !== data.paymentTerms) {
       changed.push(FIELD_LABELS.paymentTerms);
     }
     if ((po.notes ?? null) !== data.notes) changed.push(FIELD_LABELS.notes);
 
     // Nothing moved: no write, and no activity entry claiming one.
-    if (changed.length === 0) return { success: true, data: undefined };
+    if (!deliveryMoved && changed.length === 0) {
+      return { success: true, data: undefined };
+    }
+
+    // The date the buyer is waiting on does not move unattributed. Checked
+    // here as well as in the sheet, because the sheet is not the only thing
+    // that can call this.
+    if (deliveryMoved && !data.reason) {
+      return { success: false, error: REASON_REQUIRED };
+    }
+
+    /**
+     * The delivery move leads the record and names both dates; anything else
+     * that changed follows it by name, as it always did.
+     */
+    const detail = [
+      deliveryMoved ? describeDeliveryMove(po.deliveryDate, data.deliveryDate) : null,
+      changed.length > 0 ? `Edited: ${changed.join(", ")}` : null,
+    ]
+      .filter(Boolean)
+      .join(" · ");
 
     await prisma.$transaction([
       prisma.purchaseOrder.update({
@@ -287,7 +340,10 @@ export async function updatePurchaseOrder(
           fromStage: po.stage,
           toStage: po.stage,
           changedById: user.id,
-          note: `Edited: ${changed.join(", ")}`,
+          note: composeEditNote({
+            detail,
+            reason: deliveryMoved ? data.reason : null,
+          }),
         },
       }),
     ]);

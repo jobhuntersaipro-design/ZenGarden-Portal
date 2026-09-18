@@ -1251,10 +1251,63 @@ file: generating a PDF remains Phase 19, still unbuilt.
   purchase-order file, is also unbuilt.
 
 ## History
+- 2026-09-18: A moved expected delivery date names both dates and asks why,
+  and the header loses its status pill — built and driven on
+  `feature/po-delivery-reason`, not yet committed. Asked for as: record what
+  the date changed from and to, require a remark for it, remove the status
+  beside Download original, and rename that button Download.
+  **Both dates, and a reason.** `updatePurchaseOrder` used to record
+  "Edited: expected delivery" — the field's name, which cannot answer what it
+  changed *from*, the one question that row is read to settle. The activity
+  note now leads with `Expected delivery 21 Sep 2026 → 28 Sep 2026`
+  (`Expected delivery set to …` where there was none, `… cleared (was …)` where
+  it is removed), and any other fields that moved follow it by name as before.
+  A **reason is required whenever that date moves**: a new box on the edit
+  sheet that appears only then, refused by the action as well as the form
+  (`REASON_REQUIRED`). It is deliberately **not** the order's own Remark, which
+  is one standing field the next edit would overwrite — the reason belongs to
+  the change, so every past move keeps its own.
+  The reason rides in the same `note` column as the system's line, after a
+  newline: `composeEditNote` writes it and `splitEditNote` reads it back, both
+  in `po-activity.ts` so the two cannot drift. `LifecycleItem` dropped the
+  `{ text, quoted }` note for two named fields — `detail`, the system's record,
+  shown plainly, and `note`, the person's words, quoted — which is what the
+  row needs to show both at once. No migration.
+  **The status pill left the page header**: the Status card immediately below
+  opens with the same badge, so the header's row is its actions alone.
+  **"Download original" is "Download"**, on the header button and on the
+  document pane's error card, which share the component.
+  **A compile error `tsc` and the tests both passed over:** `REASON_REQUIRED`
+  was first exported from `src/actions/stages.ts`, and a `"use server"` file
+  may export nothing but async functions. 1230 unit tests and `tsc --noEmit`
+  were clean while every page carrying the edit sheet answered **500**; only
+  the Next compiler says so. The constant lives in
+  `src/lib/validation/purchase-orders.ts` now, imported by both sides.
+  Driven on development, port 3000, as Aisha on `PO-2026-0063`. The header read
+  **"Download | Edit | Delete"** with no pill. In the edit sheet the reason box
+  was **absent until the date changed**, then appeared captioned "Recorded with
+  this change, beside the old and new dates."; Save with it blank showed **"Say
+  why the expected delivery date is moving."**, set `aria-invalid`, moved focus
+  to the box, left the sheet open and sent **0 POST requests**. Filled in, the
+  save wrote **one** row: "Aisha Rahman edited this order" over
+  "Expected delivery 21 Sep 2026 → 28 Sep 2026" and
+  "Buyer asked to push it a week." in quotes, actor and time once. The server
+  guard was **watched failing** with the check disabled — the new test reported
+  `{ success: true }` where it expected the refusal — and passes with it back.
+  The test edit's event deleted by id and `deliveryDate` restored to 21 Sep
+  2026; counts back to 2323 stage events and 400 purchase orders. 1230/1230
+  tests (5 new: the refusal, both dates and the reason on the row, the set and
+  cleared wordings, and the field list unchanged when the date holds still),
+  `tsc`, lint (same 2 warnings) and `npm run build` clean.
+  **Not verified:** anything on production; a member's view; the buyer's
+  "delivery date has moved" email, which is **unchanged and does not carry the
+  reason** — the reason is an internal record, and telling the buyer was not
+  asked for; and a shop order's confirm screen, which sets a delivery date
+  through `confirmWebOrder` rather than this action and so asks for no reason.
 - 2026-09-18: The feed's stage names move into the sentence, an edit says it
   was an edit, and the list pages at ten — built and driven on
   `feature/po-feed-pills-and-paging`, not yet committed. Four changes to
-  "Notes and activity" only; the stepper is untouched.
+  "Notes and activity" only; the stepper is untouched. Merged and pushed.
   **The stage tag beside the Activity pill is gone**, because the sentence now
   names the stage itself: `describeActivity` returns `ActivitySegment[]`
   rather than a string, so "advanced this order from [In production] to [QC

@@ -158,7 +158,8 @@ export default async function PurchaseOrderPage({
         title={po.buyer.name}
         action={
           <div className="flex items-center gap-sm">
-            <StageBadge stage={current} />
+            {/* No status pill here (2026-09-18): the Status card below opens
+                with the same badge, and the header's job is the actions. */}
             {po.revision > 1 ? (
               <span className="rounded-full bg-surface-soft px-sm py-xxs text-[length:var(--text-caption)] text-ink-secondary">
                 Rev {po.revision}
@@ -177,6 +178,8 @@ export default async function PurchaseOrderPage({
                   : null,
                 paymentTerms: po.paymentTerms,
                 notes: po.notes,
+                // Typed per edit, never prefilled from the order.
+                reason: null,
               }}
             />
             {/* Super admin only, here and in the list's last column. */}

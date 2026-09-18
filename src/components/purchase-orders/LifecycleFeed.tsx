@@ -114,11 +114,17 @@ export function LifecycleFeed({
                       ))}
                     </span>
                   ) : null}
-                  {/* The note left with this action, under its own sentence
-                      rather than in a row of its own. */}
+                  {/* What was left with this action, under its own sentence
+                      rather than in a row of its own: the system's record of
+                      what moved, then the person's own words. */}
+                  {item.detail ? (
+                    <span className="text-[length:var(--text-body-sm)] text-ink-secondary">
+                      {item.detail}
+                    </span>
+                  ) : null}
                   {item.note ? (
                     <span className="whitespace-pre-wrap text-[length:var(--text-body-sm)] text-ink-secondary">
-                      {item.note.quoted ? `“${item.note.text}”` : item.note.text}
+                      “{item.note}”
                     </span>
                   ) : null}
                   <span className="text-[length:var(--text-caption)] text-ink-tertiary">

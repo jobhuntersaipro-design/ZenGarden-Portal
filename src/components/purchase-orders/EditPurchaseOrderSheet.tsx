@@ -6,6 +6,7 @@ import { toast } from "sonner";
 import { formatDate } from "@/lib/dates";
 import type { OrderIdentity } from "@/lib/order-identity";
 import { updatePurchaseOrder, type PurchaseOrderPatch } from "@/actions/stages";
+import { REASON_REQUIRED } from "@/lib/validation/purchase-orders";
 import { ReadOnlyField } from "@/components/review/Field";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -51,9 +52,19 @@ export function EditPurchaseOrderSheet({
   const [open, setOpen] = useState(false);
   const [patch, setPatch] = useState(initial);
   const [pending, setPending] = useState(false);
+  const [reasonMissing, setReasonMissing] = useState(false);
 
   const set = (key: keyof PurchaseOrderPatch, value: string) =>
     setPatch((current) => ({ ...current, [key]: value || null }));
+
+  /**
+   * The date the buyer is waiting on does not move unattributed: the reason
+   * appears the moment the date differs from the one the order holds, and it
+   * is recorded on that edit's own activity row — not in the order's standing
+   * Remark, which the next edit would overwrite.
+   */
+  const deliveryMoved = (patch.deliveryDate ?? null) !== (initial.deliveryDate ?? null);
+  const reasonBlank = !patch.reason?.trim();
 
   return (
     <Sheet open={open} onOpenChange={setOpen}>
@@ -116,9 +127,50 @@ export function EditPurchaseOrderSheet({
             />
           </div>
 
+          {deliveryMoved ? (
+            <div className="flex flex-col gap-xxs">
+              <label
+                htmlFor="edit-reason"
+                className="font-mono text-[length:var(--text-eyebrow)] text-ink-tertiary"
+              >
+                Why is the date moving?
+              </label>
+              <Textarea
+                id="edit-reason"
+                rows={2}
+                maxLength={2000}
+                aria-invalid={reasonMissing || undefined}
+                aria-describedby={reasonMissing ? "edit-reason-error" : undefined}
+                value={patch.reason ?? ""}
+                onChange={(event) => {
+                  set("reason", event.target.value);
+                  if (reasonMissing) setReasonMissing(false);
+                }}
+              />
+              <p
+                id={reasonMissing ? "edit-reason-error" : undefined}
+                className={`text-[length:var(--text-caption)] ${
+                  reasonMissing ? "text-accent-red" : "text-ink-tertiary"
+                }`}
+              >
+                {reasonMissing
+                  ? REASON_REQUIRED
+                  : "Recorded with this change, beside the old and new dates."}
+              </p>
+            </div>
+          ) : null}
+
           <Button
             pending={pending}
             onClick={async () => {
+              // Pressable, then told what is missing — the pattern the shop's
+              // confirm form settled on (2026-09-17) rather than a button that
+              // sits greyed out saying nothing.
+              if (deliveryMoved && reasonBlank) {
+                setReasonMissing(true);
+                document.getElementById("edit-reason")?.focus();
+                return;
+              }
               setPending(true);
               const result = await updatePurchaseOrder(poId, patch);
               setPending(false);
@@ -127,6 +179,10 @@ export function EditPurchaseOrderSheet({
                 return;
               }
               setOpen(false);
+              setReasonMissing(false);
+              // Typed per edit: the next one starts blank rather than
+              // re-using the last reason.
+              setPatch((current) => ({ ...current, reason: null }));
               toast.success("Changes saved");
               router.refresh();
             }}
