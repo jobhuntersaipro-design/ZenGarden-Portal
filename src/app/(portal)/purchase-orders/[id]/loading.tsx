@@ -5,7 +5,7 @@ import {
 } from "@/components/portal/Skeletons";
 
 /**
- * The detail shell: breadcrumb, header, the Lifecycle card with its stepper,
+ * The detail shell: breadcrumb, header, the Status card with its stepper,
  * then the document / data split (brief §4).
  */
 export default function PurchaseOrderLoading() {

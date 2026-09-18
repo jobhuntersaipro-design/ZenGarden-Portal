@@ -1,7 +1,8 @@
 import { Check } from "lucide-react";
 import type { PoStage } from "@/generated/prisma/enums";
 import { formatDate } from "@/lib/dates";
-import { PO_STAGES, stageIndex, stageLabel } from "@/lib/po-stages";
+import { StageBadge, type StageBadgeState } from "@/components/portal/StatusBadge";
+import { PO_STAGES, stageIndex } from "@/lib/po-stages";
 
 export type StageEvent = {
   toStage: PoStage;
@@ -41,14 +42,15 @@ function StageNode({ done, isCurrent }: { done: boolean; isCurrent: boolean }) {
   );
 }
 
-function labelClass(done: boolean, isCurrent: boolean) {
-  return `text-[length:var(--text-body-sm)] ${
-    isCurrent
-      ? "font-semibold text-ink"
-      : done
-        ? "text-ink"
-        : "text-ink-tertiary"
-  }`;
+/**
+ * Every stage name on a purchase-order page is the status pill (2026-09-18),
+ * so the stepper's labels are the header's badge rather than plain text in
+ * three weights of ink. The state is what the stepper already drew with those
+ * weights: reached, here now, still to come.
+ */
+function stageState(done: boolean, isCurrent: boolean): StageBadgeState {
+  if (isCurrent) return "current";
+  return done ? "done" : "upcoming";
 }
 
 /**
@@ -113,7 +115,7 @@ export function StageStepper({
             ) : null}
             <StageNode done={done} isCurrent={isCurrent} />
             <div className="min-w-0 flex-1">
-              <p className={labelClass(done, isCurrent)}>{stageLabel(stage)}</p>
+              <StageBadge stage={stage} state={stageState(done, isCurrent)} />
               {/* Upcoming nodes carry no caption — there is nothing to say yet. */}
               {event && (done || isCurrent) ? (
                 <p className="text-[length:var(--text-caption)] text-ink-tertiary">
@@ -145,12 +147,17 @@ export function StageStepper({
           {stages.map(({ stage, done, isCurrent, event }) => (
             <li
               key={stage}
-              className="flex flex-col items-center gap-xxs text-center"
+              // A grid item defaults to `min-width: auto`, so without this the
+              // column refuses to shrink below its pill and the six push the
+              // card sideways at `sm`.
+              className="flex min-w-0 flex-col items-center gap-xxs text-center"
             >
               <StageNode done={done} isCurrent={isCurrent} />
-              <span className={labelClass(done, isCurrent)}>
-                {stageLabel(stage)}
-              </span>
+              <StageBadge
+                stage={stage}
+                state={stageState(done, isCurrent)}
+                compact
+              />
               {event && (done || isCurrent) ? (
                 <span className="text-[length:var(--text-caption)] text-ink-tertiary">
                   {caption(event)}

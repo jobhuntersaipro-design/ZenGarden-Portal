@@ -33,16 +33,31 @@ export type PoActivityEvent = {
   changedByImage: string | null;
 };
 
+/**
+ * One row per action (2026-09-18). A stage move and the note left with it are
+ * one thing that happened, so they are one record: the sentence is the row's
+ * title and the note sits under it, with the actor and the time said once.
+ * Splitting them gave the reader two rows carrying the same avatar, the same
+ * name and the same timestamp for a single click.
+ */
 export type LifecycleItem = {
   id: string;
-  /** A note is what a person wrote; an activity is what the system recorded. */
+  /**
+   * An activity is something the system recorded; a note is something a
+   * person wrote on its own. Today every stored record is an action with a
+   * sentence, so `note` is reserved for a note that arrives with no activity
+   * to ride on — it is rendered rather than dropped.
+   */
   type: "activity" | "note";
   actor: string;
   actorImage: string | null;
   at: string;
   /** The stage the item belongs to, where it belongs to one. */
   stage: PoStage | null;
-  body: string;
+  /** The activity sentence. Null on a standalone note, which has none. */
+  title: string | null;
+  /** What the person wrote with this action, where they wrote anything. */
+  note: string | null;
 };
 
 /**
@@ -81,11 +96,11 @@ export function describeActivity(event: PoActivityEvent, actor: string): string 
  * The feed, newest first — the order the page's activity list has always used,
  * and the order the query returns.
  *
- * A note rides on the event that carried it, so it is listed as its own row
- * directly under that activity: same actor, same moment, same stage, and the
- * reader can tell at a glance what a person wrote from what the system did.
- * An "Edited: …" note is not repeated, because its sentence already names the
- * fields.
+ * One record per stored event: the note it carried belongs to that same row,
+ * under the sentence, rather than to a second row repeating its avatar, actor
+ * and timestamp. An "Edited: …" note is dropped, because the sentence already
+ * names the fields it lists; a totals-mismatch note is kept, because it
+ * carries the figures the sentence does not.
  */
 export function buildLifecycleFeed(input: {
   events: PoActivityEvent[];
@@ -97,28 +112,18 @@ export function buildLifecycleFeed(input: {
 
   for (const event of input.events) {
     const actor = event.changedByName ?? SYSTEM_ACTOR;
+    const note = event.note?.trim();
+    const title = describeActivity(event, actor);
     items.push({
       id: event.id,
-      type: "activity",
+      type: title ? "activity" : "note",
       actor,
       actorImage: event.changedByImage,
       at: event.changedAt,
       stage: event.toStage,
-      body: describeActivity(event, actor),
+      title: title || null,
+      note: note && !note.startsWith(EDIT_PREFIX) ? note : null,
     });
-
-    const note = event.note?.trim();
-    if (note && !note.startsWith(EDIT_PREFIX)) {
-      items.push({
-        id: `${event.id}-note`,
-        type: "note",
-        actor,
-        actorImage: event.changedByImage,
-        at: event.changedAt,
-        stage: event.toStage,
-        body: note,
-      });
-    }
   }
 
   // Confirming is not a stage event, so it has no row of its own to read; it
@@ -130,7 +135,8 @@ export function buildLifecycleFeed(input: {
     actorImage: input.confirmedByImage,
     at: input.confirmedAt,
     stage: null,
-    body: `${input.confirmedByName ?? SYSTEM_ACTOR} confirmed the order`,
+    title: `${input.confirmedByName ?? SYSTEM_ACTOR} confirmed the order`,
+    note: null,
   });
 
   return items;

@@ -20,7 +20,6 @@ import {
   nextStage,
   prevStage,
   stageIndex,
-  stageLabel,
 } from "@/lib/po-stages";
 import { PO_STAGES } from "@/lib/po-stages";
 import { ORDER_IDENTITY_SELECT, orderIdentity, orderLabel } from "@/lib/order-identity";
@@ -217,12 +216,16 @@ export default async function PurchaseOrderPage({
         <div className="flex flex-wrap items-start justify-between gap-md">
           <div>
             <p className="font-mono text-[length:var(--text-eyebrow)] text-ink-tertiary">
-              Lifecycle
+              Status
             </p>
-            <h2 className="font-display text-[length:var(--text-heading-sm)] font-[650] tracking-[-0.54px] text-ink">
+            {/* The stage is the status pill here too, so the name reads the
+                same on the heading, the stepper and every feed row
+                (2026-09-18); the counter beside it stays heading text. */}
+            <h2 className="flex flex-wrap items-center gap-xs font-display text-[length:var(--text-heading-sm)] font-[650] tracking-[-0.54px] text-ink">
+              <StageBadge stage={current} />
               {isFinalStage(current)
-                ? `Delivered · ${daysFromOrder} days from order`
-                : `${stageLabel(current)} · stage ${stageIndex(current) + 1} of ${PO_STAGES.length}`}
+                ? `· ${daysFromOrder} days from order`
+                : `· stage ${stageIndex(current) + 1} of ${PO_STAGES.length}`}
             </h2>
             <p className="mt-xxs text-[length:var(--text-caption)] text-ink-tertiary">
               {latestStageEvent?.changedBy?.name ? (
