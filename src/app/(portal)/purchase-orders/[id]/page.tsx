@@ -6,7 +6,7 @@ import { DocumentPreview } from "@/components/review/DocumentPreviewLoader";
 import { BackLink } from "@/components/portal/BackLink";
 import { PageHeader } from "@/components/portal/PageHeader";
 import { StageBadge } from "@/components/portal/StatusBadge";
-import { ActivityList } from "@/components/purchase-orders/ActivityList";
+import { LifecycleFeed } from "@/components/purchase-orders/LifecycleFeed";
 import { DownloadOriginal } from "@/components/purchase-orders/DownloadOriginal";
 import { DeletePoDialog } from "@/components/purchase-orders/DeletePoDialog";
 import { EditPurchaseOrderSheet } from "@/components/purchase-orders/EditPurchaseOrderSheet";
@@ -238,7 +238,9 @@ export default async function PurchaseOrderPage({
               )}{" "}
               on {formatDate(enteredStageAt)} · {daysInStage}{" "}
               {daysInStage === 1 ? "day" : "days"} in this stage
-              {latestStageEvent?.note ? ` · “${latestStageEvent.note}”` : ""}
+              {/* The note that came with the move is no longer repeated here:
+                  every note has a row in the feed below, where the ones left
+                  on earlier stages are too (2026-09-18). */}
             </p>
             {/* Overdue is red, the one status palette — not a second scheme
                 invented here. On time is the caption's own quiet grey: it is
@@ -270,6 +272,24 @@ export default async function PurchaseOrderPage({
               changedByName: event.changedBy?.name ?? null,
               changedByImage: event.changedBy?.image ?? null,
             }))}
+        />
+
+        {/* Notes and activity live with the lifecycle they describe
+            (2026-09-18), not at the foot of the page. */}
+        <LifecycleFeed
+          events={po.stageEvents.map((event) => ({
+            id: event.id,
+            kind: event.kind,
+            fromStage: event.fromStage,
+            toStage: event.toStage,
+            note: event.note,
+            changedAt: event.changedAt.toISOString(),
+            changedByName: event.changedBy?.name ?? null,
+            changedByImage: event.changedBy?.image ?? null,
+          }))}
+          confirmedAt={po.confirmedAt.toISOString()}
+          confirmedByName={po.confirmedBy?.name ?? null}
+          confirmedByImage={po.confirmedBy?.image ?? null}
         />
       </section>
 
@@ -467,21 +487,6 @@ export default async function PurchaseOrderPage({
         </div>
       </div>
 
-      <ActivityList
-        events={po.stageEvents.map((event) => ({
-          id: event.id,
-          kind: event.kind,
-          fromStage: event.fromStage,
-          toStage: event.toStage,
-          note: event.note,
-          changedAt: event.changedAt.toISOString(),
-          changedByName: event.changedBy?.name ?? null,
-          changedByImage: event.changedBy?.image ?? null,
-        }))}
-        confirmedAt={po.confirmedAt.toISOString()}
-        confirmedByName={po.confirmedBy?.name ?? null}
-        confirmedByImage={po.confirmedBy?.image ?? null}
-      />
     </>
   );
 }

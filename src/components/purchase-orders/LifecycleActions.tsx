@@ -45,6 +45,14 @@ export function LifecycleActions({
    */
   const [advancing, setAdvancing] = useState(false);
   const [reverting, setReverting] = useState(false);
+  /**
+   * The Advance popover is controlled so that confirming closes it
+   * (2026-09-18). Left to itself it stayed open over an empty textarea after
+   * a successful save, which reads as a form that has not been submitted. A
+   * failed save leaves it open with the draft still in it, so nothing typed is
+   * lost — the same rule the Move back dialog follows.
+   */
+  const [advanceOpen, setAdvanceOpen] = useState(false);
 
   const showMoveBack = canMoveBack && previous !== null;
   if (!next && !showMoveBack) return null;
@@ -81,7 +89,13 @@ export function LifecycleActions({
                   A note is required when moving back
                 </p>
                 <DialogFooter>
-                  <Button variant="secondary" onClick={() => setBackOpen(false)}>
+                  <Button
+                    variant="secondary"
+                    onClick={() => {
+                      setBackOpen(false);
+                      setBackNote("");
+                    }}
+                  >
                     Cancel
                   </Button>
                   {/* Not a second dark pill on the page: the drawer-save button. */}
@@ -92,16 +106,27 @@ export function LifecycleActions({
                     pending={reverting}
                     onClick={async () => {
                       setReverting(true);
-                      const result = await revertStage(poId, backNote);
-                      setReverting(false);
-                      if (!result.success) {
-                        toast.error(result.error);
-                        return;
+                      try {
+                        const result = await revertStage(poId, backNote);
+                        if (!result.success) {
+                          toast.error(result.error);
+                          return;
+                        }
+                        setBackOpen(false);
+                        setBackNote("");
+                        toast.success(
+                          `Moved back to ${stageLabel(result.data.stage)}`,
+                        );
+                        router.refresh();
+                      } catch {
+                        // An action that throws — an unreachable server, a
+                        // deploy mid-click — rejects the promise, and without
+                        // this the dialog sat on "Moving back…" for ever with
+                        // nothing said (2026-09-08's avatar defect again).
+                        toast.error("We couldn't reach the server. Try again.");
+                      } finally {
+                        setReverting(false);
                       }
-                      setBackOpen(false);
-                      setBackNote("");
-                      toast.success(`Moved back to ${stageLabel(result.data.stage)}`);
-                      router.refresh();
                     }}
                   >
                     {reverting ? "Moving back…" : "Move back"}
@@ -113,7 +138,7 @@ export function LifecycleActions({
         ) : null}
 
         {next ? (
-          <Popover>
+          <Popover open={advanceOpen} onOpenChange={setAdvanceOpen}>
             <PopoverTrigger asChild>
               {/* The label always names the stage it moves to. */}
               <Button>Advance to {stageLabel(next)}</Button>
@@ -126,26 +151,46 @@ export function LifecycleActions({
                 value={note}
                 onChange={(event) => setNote(event.target.value)}
               />
-              <Button
-                className="mt-sm w-full"
-                pending={advancing}
-                onClick={async () => {
-                  setAdvancing(true);
-                  const result = await advanceStage(poId, note);
-                  setAdvancing(false);
-                  if (!result.success) {
-                    toast.error(result.error);
-                    return;
-                  }
-                  setNote("");
-                  toast.success(`Moved to ${stageLabel(result.data.stage)}`);
-                  router.refresh();
-                }}
-              >
-                {/* Names the work, and stays disabled while it runs, so a
+              <div className="mt-sm flex items-center gap-sm">
+                <Button
+                  variant="secondary"
+                  className="flex-1"
+                  onClick={() => {
+                    // Closes and discards, like the dialog's Cancel.
+                    setAdvanceOpen(false);
+                    setNote("");
+                  }}
+                >
+                  Cancel
+                </Button>
+                <Button
+                  className="flex-1"
+                  pending={advancing}
+                  onClick={async () => {
+                    setAdvancing(true);
+                    try {
+                      const result = await advanceStage(poId, note);
+                      if (!result.success) {
+                        // Open, with the draft: the note is the reader's work.
+                        toast.error(result.error);
+                        return;
+                      }
+                      setAdvanceOpen(false);
+                      setNote("");
+                      toast.success(`Moved to ${stageLabel(result.data.stage)}`);
+                      router.refresh();
+                    } catch {
+                      toast.error("We couldn't reach the server. Try again.");
+                    } finally {
+                      setAdvancing(false);
+                    }
+                  }}
+                >
+                  {/* Names the work, and stays disabled while it runs, so a
                     second click cannot post the same move twice (brief §4). */}
-                {advancing ? "Advancing…" : "Confirm"}
-              </Button>
+                  {advancing ? "Advancing…" : "Confirm"}
+                </Button>
+              </div>
             </PopoverContent>
           </Popover>
         ) : null}
