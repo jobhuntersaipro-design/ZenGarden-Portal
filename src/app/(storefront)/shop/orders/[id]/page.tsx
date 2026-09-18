@@ -4,7 +4,6 @@ import Link from "next/link";
 import { ArrowLeft, Download } from "lucide-react";
 import { CheckoutSteps } from "@/components/shop/checkout/CheckoutSteps";
 import { PurchaseOrderPreview } from "@/components/shop/checkout/PurchaseOrderPreview";
-import { PrintOrderButton } from "@/components/shop/orders/PrintOrderButton";
 import { StageStepper } from "@/components/purchase-orders/StageStepper";
 import { requireClient } from "@/lib/auth-guards";
 import { buyerOrderStatus } from "@/lib/buyer-order-status";
@@ -106,8 +105,10 @@ export default async function OrderDetailPage({
           {/* A real link, not a fetch: the route answers a 302 to a
               short-lived presigned URL, so no key is ever rendered into the
               page and the browser does the rest. Offered only when the file
-              exists — an order placed before Phase 37, or one whose render
-              failed, still has Print. */}
+              exists: an order placed before Phase 37, or one whose render
+              failed, has no file to give and so no action here — Print or
+              save as PDF, which used to cover that case, was removed on the
+              user's instruction (2026-09-18). */}
           {order.documentId ? (
             <a
               href={shopHref.documentDownload(order.documentId)}
@@ -117,15 +118,14 @@ export default async function OrderDetailPage({
               Download PDF
             </a>
           ) : null}
-          {documentIsSound ? <PrintOrderButton /> : null}
         </div>
       </div>
 
       {/* The document leads (2026-09-17): it is the record the buyer asked to
           be able to review, so it comes before the progress and the lines,
           full width and fitted to it. The lines card below says the same thing
-          on purpose — the quick read. `data-print-region` is what Print
-          keeps. */}
+          on purpose — the quick read. `data-print-region` is what the
+          browser's own print keeps; the app offers no print control. */}
       <section className="mt-lg min-w-0" data-print-region>
         <div className="flex flex-wrap items-baseline justify-between gap-sm">
           <h2 className="font-display text-[length:var(--text-heading-sm)] font-[650] text-ink">
