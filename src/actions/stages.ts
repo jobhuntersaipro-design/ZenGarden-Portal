@@ -5,7 +5,10 @@ import { revalidatePath } from "next/cache";
 import { z } from "zod";
 import { Prisma } from "@/generated/prisma/client";
 import { PoEventKind, PoStage, Role } from "@/generated/prisma/enums";
-import { UnauthorizedError, requireUser } from "@/lib/auth-guards";
+import { UnauthorizedError } from "@/lib/auth-guards";
+import { advanceKeyFor, type PermissionKey } from "@/lib/permissions/actions";
+import { requirePermission, rolesWithPermission } from "@/lib/permissions/require";
+import { roleLabel } from "@/lib/permissions/roles";
 import { prisma } from "@/lib/prisma";
 import { nextStage, prevStage, stageLabel } from "@/lib/po-stages";
 import { composeEditNote } from "@/lib/po-activity";
@@ -67,9 +70,13 @@ const purchaseOrderPatchSchema = z.object({
   { message: "Expected delivery can't be before the PO date.", path: ["deliveryDate"] },
 );
 
-const guard = async () => {
+/**
+ * Phase 48: what used to be a bare `requireUser()` now asks the permission
+ * grid. The shape is unchanged so every call site stays two lines.
+ */
+const guardPermission = async (key: PermissionKey, message?: string) => {
   try {
-    return { user: await requireUser(), error: null as string | null };
+    return { user: await requirePermission(key, message), error: null as string | null };
   } catch (cause) {
     return {
       user: null,
@@ -79,6 +86,19 @@ const guard = async () => {
   }
 };
 
+/**
+ * Who *does* advance this stage — a refusal that only says "not you" sends
+ * someone to ask an admin; one that names the role sends them to the right
+ * colleague.
+ */
+async function advanceDeniedMessage(key: PermissionKey): Promise<string> {
+  const owners = (await rolesWithPermission(key)).filter(
+    (role) => role !== Role.SUPER_ADMIN,
+  );
+  if (owners.length === 0) return "Only a super admin advances this stage.";
+  return `${owners.map(roleLabel).join(" or ")} advances this stage.`;
+}
+
 function revalidate(poId: string) {
   revalidatePath(`/purchase-orders/${poId}`);
   revalidatePath("/purchase-orders");
@@ -86,7 +106,11 @@ function revalidate(poId: string) {
 }
 
 /**
- * Moves an order one stage forward. Any member may do this.
+ * Moves an order one stage forward. Only a role that owns this stage may.
+ *
+ * The permission key is derived from the stage the database holds, never from
+ * anything the caller sent, so a planner forging a request against a
+ * QC-passed order is refused by the same fact that hides their button.
  *
  * The update is conditional on the stage the caller last saw. That `where` is
  * the whole concurrency story: the second of two simultaneous clicks matches
@@ -97,9 +121,6 @@ export async function advanceStage(
   poId: string,
   note?: string,
 ): Promise<ActionResult<{ stage: PoStage }>> {
-  const { user, error } = await guard();
-  if (!user) return { success: false, error: error! };
-
   try {
     const po = await prisma.purchaseOrder.findUnique({
       where: { id: poId },
@@ -108,9 +129,16 @@ export async function advanceStage(
     if (!po) return { success: false, error: "That order is gone." };
 
     const target = nextStage(po.stage);
-    if (!target) {
+    const key = advanceKeyFor(po.stage);
+    if (!target || !key) {
       return { success: false, error: "This order is already delivered." };
     }
+
+    const { user, error } = await guardPermission(
+      key,
+      await advanceDeniedMessage(key),
+    );
+    if (!user) return { success: false, error: error! };
 
     const moved = await prisma.$transaction(async (tx) => {
       const { count } = await tx.purchaseOrder.updateMany({
@@ -150,13 +178,11 @@ export async function revertStage(
   poId: string,
   note: string,
 ): Promise<ActionResult<{ stage: PoStage }>> {
-  const { user, error } = await guard();
-  if (!user) return { success: false, error: error! };
   // Checked here, not only in the UI: the button being hidden is not a
-  // permission check.
-  if (user.role !== Role.SUPER_ADMIN) {
-    return { success: false, error: "Only a super admin can move an order back." };
-  }
+  // permission check. Phase 48 moved this off an inline role comparison —
+  // the codebase's last one — and onto the grid.
+  const { user, error } = await guardPermission("po.revert");
+  if (!user) return { success: false, error: error! };
   if (!note.trim()) {
     return { success: false, error: "A note is required when moving back." };
   }
@@ -251,7 +277,7 @@ export async function updatePurchaseOrder(
   poId: string,
   patch: PurchaseOrderPatch,
 ): Promise<ActionResult> {
-  const { user, error } = await guard();
+  const { user, error } = await guardPermission("po.edit");
   if (!user) return { success: false, error: error! };
 
   const parsed = purchaseOrderPatchSchema.safeParse(patch);

@@ -17,10 +17,20 @@ vi.mock("@/lib/prisma", () => ({
   },
 }));
 
+class UnauthorizedErrorStub extends Error {}
 const requireUser = vi.fn();
 vi.mock("@/lib/auth-guards", () => ({
-  UnauthorizedError: class UnauthorizedError extends Error {},
+  UnauthorizedError: UnauthorizedErrorStub,
   requireUser: () => requireUser(),
+}));
+
+// Phase 48: the guards ask the permission grid, not the role.
+const requirePermission = vi.fn();
+const rolesWithPermission = vi.fn();
+vi.mock("@/lib/permissions/require", () => ({
+  requirePermission: (key: string, message?: string) =>
+    requirePermission(key, message),
+  rolesWithPermission: (key: string) => rolesWithPermission(key),
 }));
 vi.mock("next/cache", () => ({ revalidatePath: vi.fn() }));
 // Phase 38: a delivery date that moves emails the buyer, so this module now
@@ -93,6 +103,8 @@ beforeEach(() => {
   afterTasks.length = 0;
   sendEmail.mockResolvedValue({ sent: true });
   requireUser.mockResolvedValue(member);
+  requirePermission.mockResolvedValue(member);
+  rolesWithPermission.mockResolvedValue([]);
   poFindUnique.mockResolvedValue({ stage: "IN_PRODUCTION" });
   poUpdateMany.mockResolvedValue({ count: 1 });
   eventCreate.mockResolvedValue({});
@@ -145,20 +157,92 @@ describe("advanceStage", () => {
     await advanceStage("po-1", "   ");
     expect(eventCreate.mock.calls[0][0].data.note).toBeNull();
   });
+
+  // Phase 48. The key comes from the row, never from the caller.
+  it("asks for the key of the stage it just read, not the one it moves to", async () => {
+    poFindUnique.mockResolvedValue({ stage: "QC_PASSED" });
+    const result = await advanceStage("po-1");
+    expect(result).toEqual({ success: true, data: { stage: "IN_WAREHOUSE" } });
+    expect(requirePermission).toHaveBeenCalledWith(
+      "po.advance.qc_passed",
+      expect.any(String),
+    );
+  });
+
+  it.each([
+    ["ORDER_PLACED", "po.advance.order_placed"],
+    ["IN_PRODUCTION", "po.advance.in_production"],
+    ["QC_PASSED", "po.advance.qc_passed"],
+    ["IN_WAREHOUSE", "po.advance.in_warehouse"],
+    ["DELIVERING", "po.advance.delivering"],
+  ])("keys an advance out of %s on %s", async (stage, key) => {
+    poFindUnique.mockResolvedValue({ stage });
+    await advanceStage("po-1");
+    expect(requirePermission).toHaveBeenCalledWith(key, expect.any(String));
+  });
+
+  it("refuses, and writes nothing, when the role does not own the stage", async () => {
+    poFindUnique.mockResolvedValue({ stage: "QC_PASSED" });
+    requirePermission.mockRejectedValue(
+      new UnauthorizedErrorStub("Warehouse advances this stage."),
+    );
+    const result = await advanceStage("po-1");
+    expect(result).toEqual({
+      success: false,
+      error: "Warehouse advances this stage.",
+    });
+    expect(poUpdateMany).not.toHaveBeenCalled();
+    expect(eventCreate).not.toHaveBeenCalled();
+  });
+
+  it("names the role that does own the stage in the refusal", async () => {
+    poFindUnique.mockResolvedValue({ stage: "QC_PASSED" });
+    rolesWithPermission.mockResolvedValue(["SUPER_ADMIN", "WAREHOUSE"]);
+    await advanceStage("po-1");
+    expect(requirePermission).toHaveBeenCalledWith(
+      "po.advance.qc_passed",
+      "Warehouse advances this stage.",
+    );
+  });
+
+  it("says a super admin owns it when nobody else does", async () => {
+    poFindUnique.mockResolvedValue({ stage: "QC_PASSED" });
+    rolesWithPermission.mockResolvedValue(["SUPER_ADMIN"]);
+    await advanceStage("po-1");
+    expect(requirePermission).toHaveBeenCalledWith(
+      "po.advance.qc_passed",
+      "Only a super admin advances this stage.",
+    );
+  });
+
+  it("asks for no permission at all on a delivered order", async () => {
+    poFindUnique.mockResolvedValue({ stage: "DELIVERED" });
+    await advanceStage("po-1");
+    expect(requirePermission).not.toHaveBeenCalled();
+  });
 });
 
 describe("revertStage", () => {
-  it("refuses a member even though the button is hidden from them", async () => {
+  it("asks the grid for po.revert", async () => {
+    requirePermission.mockResolvedValue(admin);
+    await revertStage("po-1", "QC failed");
+    expect(requirePermission.mock.calls[0][0]).toBe("po.revert");
+  });
+
+  it("refuses a role without it, even though the button is hidden from them", async () => {
+    requirePermission.mockRejectedValue(
+      new UnauthorizedErrorStub("Your role can't move an order back a stage."),
+    );
     const result = await revertStage("po-1", "Wrong batch");
     expect(result).toEqual({
       success: false,
-      error: "Only a super admin can move an order back.",
+      error: "Your role can't move an order back a stage.",
     });
     expect(poUpdateMany).not.toHaveBeenCalled();
   });
 
   it("refuses an empty note", async () => {
-    requireUser.mockResolvedValue(admin);
+    requirePermission.mockResolvedValue(admin);
     const result = await revertStage("po-1", "   ");
     expect(result).toEqual({
       success: false,
@@ -168,7 +252,7 @@ describe("revertStage", () => {
   });
 
   it("moves back one stage for a super admin and names them in the event", async () => {
-    requireUser.mockResolvedValue(admin);
+    requirePermission.mockResolvedValue(admin);
     const result = await revertStage("po-1", "QC failed on batch 2");
     expect(result).toEqual({ success: true, data: { stage: "ORDER_PLACED" } });
     expect(eventCreate.mock.calls[0][0].data).toMatchObject({
@@ -180,7 +264,7 @@ describe("revertStage", () => {
   });
 
   it("refuses to move back from the first stage", async () => {
-    requireUser.mockResolvedValue(admin);
+    requirePermission.mockResolvedValue(admin);
     poFindUnique.mockResolvedValue({ stage: "ORDER_PLACED" });
     const result = await revertStage("po-1", "Nope");
     expect(result).toEqual({
@@ -190,7 +274,7 @@ describe("revertStage", () => {
   });
 
   it("applies the same race guard as advancing", async () => {
-    requireUser.mockResolvedValue(admin);
+    requirePermission.mockResolvedValue(admin);
     poUpdateMany.mockResolvedValue({ count: 0 });
     const result = await revertStage("po-1", "QC failed");
     expect(result).toEqual({
