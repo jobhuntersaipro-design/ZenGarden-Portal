@@ -17,7 +17,8 @@ import {
   TemporaryPassword,
   temporaryPasswordSubject,
 } from "@/emails/TemporaryPassword";
-import { UnauthorizedError, requireSuperAdmin } from "@/lib/auth-guards";
+import { UnauthorizedError } from "@/lib/auth-guards";
+import { requirePermission } from "@/lib/permissions/require";
 import { sendEmail } from "@/lib/email";
 import { env } from "@/lib/env";
 import { prisma } from "@/lib/prisma";
@@ -37,7 +38,7 @@ export type ActionResult<T = undefined> =
 
 const guard = async () => {
   try {
-    return { user: await requireSuperAdmin(), error: null as string | null };
+    return { user: await requirePermission("user.manage"), error: null as string | null };
   } catch (cause) {
     return {
       user: null,

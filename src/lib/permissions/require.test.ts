@@ -151,27 +151,21 @@ describe("rolesWithPermission", () => {
   });
 });
 
-describe("requirePermissionResponse", () => {
-  it("answers 403 for a signed-in user who may not", async () => {
-    requireUser.mockResolvedValue({ id: "u1", role: Role.MEMBER });
-    findMany.mockResolvedValue([]);
-    const { requirePermissionResponse } = await load();
-    const gate = await requirePermissionResponse("po.upload");
-    expect("response" in gate && gate.response.status).toBe(403);
+describe("unauthorizedStatus", () => {
+  it("is 401 only when there is no session", async () => {
+    const { unauthorizedStatus } = await load();
+    expect(unauthorizedStatus(new UnauthorizedErrorStub("You are not signed in."))).toBe(
+      401,
+    );
   });
 
-  it("answers 401 for a guest", async () => {
-    requireUser.mockRejectedValue(new UnauthorizedErrorStub("You are not signed in."));
-    const { requirePermissionResponse } = await load();
-    const gate = await requirePermissionResponse("po.upload");
-    expect("response" in gate && gate.response.status).toBe(401);
-  });
-
-  it("hands the user back when allowed", async () => {
-    requireUser.mockResolvedValue({ id: "u1", role: Role.QC });
-    findMany.mockResolvedValue([{ action: "po.upload" }]);
-    const { requirePermissionResponse } = await load();
-    const gate = await requirePermissionResponse("po.upload");
-    expect("user" in gate && gate.user.id).toBe("u1");
+  it("is 403 when the caller is signed in and simply may not", async () => {
+    const { unauthorizedStatus } = await load();
+    expect(
+      unauthorizedStatus(new UnauthorizedErrorStub("Your role can't upload a purchase order.")),
+    ).toBe(403);
+    expect(
+      unauthorizedStatus(new UnauthorizedErrorStub("This is not a portal account.")),
+    ).toBe(403);
   });
 });

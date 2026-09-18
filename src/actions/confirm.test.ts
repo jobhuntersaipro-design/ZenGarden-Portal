@@ -44,6 +44,29 @@ vi.mock("@/lib/auth-guards", () => ({
     mustChangePassword: false,
   }),
 }));
+// This file defines its guard inline in the factory above, so the permission
+// mock resolves the same reviewer rather than delegating to a name that is
+// not in scope here.
+const __permissionGuard = () =>
+  Promise.resolve({
+    id: "user-1",
+    email: "aisha@lovinghandsportal.com",
+    name: "Aisha Rahman",
+    image: null,
+    role: "MEMBER",
+    mustChangePassword: false,
+  });
+// Phase 48: the actions ask the permission grid. It delegates to the guard
+// mock above, so every test's existing setup still drives the refusal path.
+const permissionKeys: string[] = [];
+vi.mock("@/lib/permissions/require", () => ({
+  requirePermission: (key: string) => {
+    permissionKeys.push(key);
+    return __permissionGuard();
+  },
+  rolesWithPermission: () => Promise.resolve([]),
+  unauthorizedStatus: () => 403,
+}));
 vi.mock("@/lib/env", () => ({
   env: { ANTHROPIC_API_KEY: "k", EXTRACTION_MODEL: "m" },
 }));

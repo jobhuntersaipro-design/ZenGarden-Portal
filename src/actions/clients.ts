@@ -5,7 +5,8 @@ import { z } from "zod";
 import { Prisma } from "@/generated/prisma/client";
 import { Role, WebOrderStatus } from "@/generated/prisma/enums";
 import { audit, changedFields } from "@/lib/audit";
-import { UnauthorizedError, requireSuperAdmin } from "@/lib/auth-guards";
+import { UnauthorizedError } from "@/lib/auth-guards";
+import { requirePermission } from "@/lib/permissions/require";
 import {
   hashPassword,
   sendInviteEmail,
@@ -29,7 +30,7 @@ const idSchema = z.string().min(1);
 
 async function guard() {
   try {
-    return { user: await requireSuperAdmin() };
+    return { user: await requirePermission("buyer.manage") };
   } catch (cause) {
     if (cause instanceof UnauthorizedError) return { error: cause.message };
     throw cause;

@@ -1,5 +1,9 @@
 import { NextResponse } from "next/server";
-import { UnauthorizedError, requireUser } from "@/lib/auth-guards";
+import { UnauthorizedError } from "@/lib/auth-guards";
+import {
+  requirePermission,
+  unauthorizedStatus,
+} from "@/lib/permissions/require";
 import { prisma } from "@/lib/prisma";
 import { findOwnedDocument } from "@/lib/queries/documents";
 import { deleteObject, isPendingKey } from "@/lib/r2";
@@ -15,10 +19,13 @@ export async function DELETE(
 ) {
   let user;
   try {
-    user = await requireUser();
+    user = await requirePermission("po.upload");
   } catch (cause) {
     if (cause instanceof UnauthorizedError) {
-      return NextResponse.json({ error: cause.message }, { status: 401 });
+      return NextResponse.json(
+        { error: cause.message },
+        { status: unauthorizedStatus(cause) },
+      );
     }
     throw cause;
   }

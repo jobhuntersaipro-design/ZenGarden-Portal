@@ -5,7 +5,8 @@ import { z } from "zod";
 import { Prisma } from "@/generated/prisma/client";
 import { Role, WebOrderStatus } from "@/generated/prisma/enums";
 import { audit } from "@/lib/audit";
-import { UnauthorizedError, requireSuperAdmin } from "@/lib/auth-guards";
+import { UnauthorizedError } from "@/lib/auth-guards";
+import { requirePermission } from "@/lib/permissions/require";
 import {
   hashPassword,
   sendInviteEmail,
@@ -47,7 +48,7 @@ export async function createBuyer(
 ): Promise<ActionResult<CreatedBuyer>> {
   let admin;
   try {
-    admin = await requireSuperAdmin();
+    admin = await requirePermission("buyer.manage");
   } catch (cause) {
     if (cause instanceof UnauthorizedError) return { success: false, error: cause.message };
     throw cause;
@@ -165,7 +166,7 @@ export async function deleteBuyer(
 ): Promise<ActionResult> {
   let admin;
   try {
-    admin = await requireSuperAdmin();
+    admin = await requirePermission("buyer.manage");
   } catch (cause) {
     if (cause instanceof UnauthorizedError) return { success: false, error: cause.message };
     throw cause;

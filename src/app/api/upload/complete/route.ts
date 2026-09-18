@@ -1,6 +1,10 @@
 import { NextResponse } from "next/server";
 import { ExtractionStatus } from "@/generated/prisma/enums";
-import { UnauthorizedError, requireUser } from "@/lib/auth-guards";
+import { UnauthorizedError } from "@/lib/auth-guards";
+import {
+  requirePermission,
+  unauthorizedStatus,
+} from "@/lib/permissions/require";
 import { prisma } from "@/lib/prisma";
 import { extractPurchaseOrder } from "@/lib/extraction/extract-po";
 import { runExtraction } from "@/lib/extraction/run";
@@ -27,10 +31,13 @@ export type CompleteResponse = {
 export async function POST(request: Request) {
   let user;
   try {
-    user = await requireUser();
+    user = await requirePermission("po.upload");
   } catch (cause) {
     if (cause instanceof UnauthorizedError) {
-      return NextResponse.json({ error: cause.message }, { status: 401 });
+      return NextResponse.json(
+        { error: cause.message },
+        { status: unauthorizedStatus(cause) },
+      );
     }
     throw cause;
   }

@@ -1,6 +1,10 @@
 import { randomUUID } from "node:crypto";
 import { NextResponse } from "next/server";
-import { UnauthorizedError, requireSuperAdmin } from "@/lib/auth-guards";
+import { UnauthorizedError } from "@/lib/auth-guards";
+import {
+  requirePermission,
+  unauthorizedStatus,
+} from "@/lib/permissions/require";
 import { prisma } from "@/lib/prisma";
 import { PENDING_KEY_PREFIX, presignPut, productImageKey } from "@/lib/r2";
 import {
@@ -39,10 +43,13 @@ export async function POST(
   { params }: { params: Promise<{ id: string }> },
 ) {
   try {
-    await requireSuperAdmin();
+    await requirePermission("product.manage");
   } catch (cause) {
     if (cause instanceof UnauthorizedError) {
-      return NextResponse.json({ error: cause.message }, { status: 401 });
+      return NextResponse.json(
+        { error: cause.message },
+        { status: unauthorizedStatus(cause) },
+      );
     }
     throw cause;
   }

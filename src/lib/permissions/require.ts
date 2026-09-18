@@ -84,21 +84,11 @@ export async function rolesWithPermission(key: PermissionKey): Promise<Role[]> {
 }
 
 /**
- * For route handlers, which answer with a status rather than an envelope.
+ * The status a refused route handler should answer with.
  *
  * 403, not 401, when the caller is authenticated and simply may not do this —
- * the brief's own requirement that a Planner's forged advance be refused by
- * the API and not only by a hidden button.
+ * the brief's own requirement that a planner's forged advance be refused by
+ * the API and not only by a hidden button. 401 is reserved for "no session".
  */
-export async function requirePermissionResponse(
-  key: PermissionKey,
-): Promise<{ user: SessionUser } | { response: Response }> {
-  try {
-    return { user: await requirePermission(key) };
-  } catch (cause) {
-    const message =
-      cause instanceof UnauthorizedError ? cause.message : "You are not signed in.";
-    const status = message === "You are not signed in." ? 401 : 403;
-    return { response: Response.json({ error: message }, { status }) };
-  }
-}
+export const unauthorizedStatus = (cause: UnauthorizedError): 401 | 403 =>
+  cause.message === "You are not signed in." ? 401 : 403;

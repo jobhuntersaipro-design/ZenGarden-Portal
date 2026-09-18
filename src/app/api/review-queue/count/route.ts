@@ -1,5 +1,9 @@
 import { NextResponse } from "next/server";
-import { UnauthorizedError, requireUser } from "@/lib/auth-guards";
+import { UnauthorizedError } from "@/lib/auth-guards";
+import {
+  requirePermission,
+  unauthorizedStatus,
+} from "@/lib/permissions/require";
 import { reviewQueueCount } from "@/lib/queries/purchase-orders";
 
 export const dynamic = "force-dynamic";
@@ -16,10 +20,13 @@ export const dynamic = "force-dynamic";
  */
 export async function GET() {
   try {
-    await requireUser();
+    await requirePermission("po.view");
   } catch (cause) {
     if (cause instanceof UnauthorizedError) {
-      return NextResponse.json({ error: cause.message }, { status: 401 });
+      return NextResponse.json(
+        { error: cause.message },
+        { status: unauthorizedStatus(cause) },
+      );
     }
     throw cause;
   }

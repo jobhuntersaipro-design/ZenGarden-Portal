@@ -23,9 +23,22 @@ vi.mock("@/lib/prisma", () => ({
     $transaction: transaction,
   },
 }));
+class UnauthorizedError extends Error {}
 vi.mock("@/lib/auth-guards", () => ({
-  UnauthorizedError: class UnauthorizedError extends Error {},
+  UnauthorizedError,
   requireUser,
+}));
+const __permissionGuard = () => requireUser();
+// Phase 48: the actions ask the permission grid. It delegates to the guard
+// mock above, so every test's existing setup still drives the refusal path.
+const permissionKeys: string[] = [];
+vi.mock("@/lib/permissions/require", () => ({
+  requirePermission: (key: string) => {
+    permissionKeys.push(key);
+    return __permissionGuard();
+  },
+  rolesWithPermission: () => Promise.resolve([]),
+  unauthorizedStatus: () => 403,
 }));
 vi.mock("next/cache", () => ({ revalidatePath: vi.fn() }));
 
@@ -64,11 +77,17 @@ describe("updateBuyer", () => {
     expect(buyerUpdate.mock.calls[0][0].data.remark).toBeNull();
   });
 
-  it("still refuses a member renaming the buyer", async () => {
-    const result = await updateBuyer("b1", { name: "New Name" });
+  // Phase 48 replaced the inline "only a super admin may rename" check with
+  // `buyer.manage` over the whole row, so a role without it writes nothing at
+  // all — not even the fields it used to be allowed.
+  it("refuses a role without buyer.manage, and writes nothing", async () => {
+    requireUser.mockRejectedValue(
+      new UnauthorizedError("Your role can't manage buyers."),
+    );
+    const result = await updateBuyer("b1", { remark: "internal" });
     expect(result).toEqual({
       success: false,
-      error: "Only a super admin can rename a buyer.",
+      error: "Your role can't manage buyers.",
     });
     expect(buyerUpdate).not.toHaveBeenCalled();
   });
