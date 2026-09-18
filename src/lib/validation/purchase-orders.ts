@@ -210,3 +210,13 @@ export const deletePurchaseOrderSchema = z.object({
   id: z.string().min(1),
   typedReference: z.string().min(1),
 });
+
+/**
+ * Asked for whenever the expected delivery date moves, and refused without —
+ * by the edit sheet before it sends, and by `updatePurchaseOrder` after.
+ *
+ * Here rather than beside the action: a `"use server"` file may export
+ * nothing but async functions, so a constant shared with the form has to live
+ * outside it.
+ */
+export const REASON_REQUIRED = "Say why the expected delivery date is moving.";

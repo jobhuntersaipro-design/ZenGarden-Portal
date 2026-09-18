@@ -19,6 +19,35 @@ import { stageIndex, stageLabel } from "@/lib/po-stages";
 /** Written by `writePurchaseOrder` when a reviewer accepts a totals mismatch. */
 const MISMATCH_PREFIX = "Confirmed with a totals mismatch";
 
+/**
+ * An edit's note carries two things in one column: the system's record of
+ * what moved, then — when the editor had to give one — the reason they typed.
+ * The first line is the record and everything after it is their words, so a
+ * reason may itself run to several lines.
+ *
+ * `updatePurchaseOrder` writes it through `composeEditNote` and the feed reads
+ * it back through `splitEditNote`, so the two cannot drift apart.
+ */
+export function composeEditNote(input: {
+  detail: string;
+  reason: string | null;
+}): string {
+  const reason = input.reason?.trim();
+  return reason ? `${input.detail}\n${reason}` : input.detail;
+}
+
+export function splitEditNote(note: string): {
+  detail: string;
+  reason: string | null;
+} {
+  const breakAt = note.indexOf("\n");
+  if (breakAt === -1) return { detail: note, reason: null };
+  return {
+    detail: note.slice(0, breakAt),
+    reason: note.slice(breakAt + 1).trim() || null,
+  };
+}
+
 export type PoActivityEvent = {
   id: string;
   kind: PoEventKind;
@@ -72,11 +101,13 @@ export type LifecycleItem = {
   /** The activity sentence. Null on a standalone note, which has none. */
   title: ActivitySegment[] | null;
   /**
-   * What was written with this action. A person's note is quoted; one the
-   * system wrote — the fields an edit changed, a totals mismatch's figures —
-   * is not, because quotation marks would put words in somebody's mouth.
+   * The system's own record of the action — the dates an expected delivery
+   * moved between, the fields an edit changed, a totals mismatch's figures.
+   * Shown plainly: quotation marks would put words in somebody's mouth.
    */
-  note: { text: string; quoted: boolean } | null;
+  detail: string | null;
+  /** What the person wrote, in their words, and shown as a quotation. */
+  note: string | null;
 };
 
 /**
@@ -126,11 +157,10 @@ export function describeActivity(
  * The feed, newest first — the order the page's activity list has always used,
  * and the order the query returns.
  *
- * One record per stored event: the note it carried belongs to that same row,
- * under the sentence, rather than to a second row repeating its avatar, actor
- * and timestamp. An edit's note — the fields it moved, a totals mismatch's
- * figures — is the system's own record and reads plainly; a person's note is
- * quoted.
+ * One record per stored event: what was written with it belongs to that same
+ * row, under the sentence, rather than to a second row repeating its avatar,
+ * actor and timestamp. The system's record of what moved reads plainly; a
+ * person's words are quoted.
  */
 export function buildLifecycleFeed(input: {
   events: PoActivityEvent[];
@@ -144,6 +174,12 @@ export function buildLifecycleFeed(input: {
     const actor = event.changedByName ?? SYSTEM_ACTOR;
     const note = event.note?.trim();
     const title = describeActivity(event, actor);
+    // An edit's note is the system's record, optionally followed by the
+    // reason its editor was asked for; a stage move's note is a person's.
+    const split =
+      note && event.kind === "EDIT"
+        ? splitEditNote(note)
+        : { detail: null, reason: note ?? null };
     items.push({
       id: event.id,
       type: title.length > 0 ? "activity" : "note",
@@ -151,9 +187,8 @@ export function buildLifecycleFeed(input: {
       actorImage: event.changedByImage,
       at: event.changedAt,
       title: title.length > 0 ? title : null,
-      // An EDIT's note is the system's own record of what moved, not
-      // somebody's words, so it is shown plainly rather than in quotes.
-      note: note ? { text: note, quoted: event.kind !== "EDIT" } : null,
+      detail: split.detail,
+      note: split.reason,
     });
   }
 
@@ -168,6 +203,7 @@ export function buildLifecycleFeed(input: {
     title: [
       { kind: "text", text: `${input.confirmedByName ?? SYSTEM_ACTOR} confirmed the order` },
     ],
+    detail: null,
     note: null,
   });
 

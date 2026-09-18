@@ -32,7 +32,7 @@ export function DownloadOriginal({ documentId }: { documentId: string }) {
         }
       }}
     >
-      {pending ? "Preparing…" : "Download original"}
+      {pending ? "Preparing…" : "Download"}
     </Button>
   );
 }

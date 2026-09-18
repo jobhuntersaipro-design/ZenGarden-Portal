@@ -111,7 +111,8 @@ describe("buildLifecycleFeed", () => {
     expect(items).toHaveLength(2); // the move, then the confirmation
     expect(items[0]).toMatchObject({
       type: "activity",
-      note: { text: "Line 3 was short-shipped.", quoted: true },
+      detail: null,
+      note: "Line 3 was short-shipped.",
       actor: "Chris Lam",
       at: "2026-09-18T02:00:00.000Z",
     });
@@ -129,7 +130,7 @@ describe("buildLifecycleFeed", () => {
       event({ id: "e2", fromStage: "IN_PRODUCTION", toStage: "QC_PASSED", note: "Second" }),
       event({ id: "e1", note: "First" }),
     ]);
-    expect(items.map((item) => item.note?.text ?? null)).toEqual([
+    expect(items.map((item) => item.note)).toEqual([
       "Second",
       "First",
       null,
@@ -140,10 +141,27 @@ describe("buildLifecycleFeed", () => {
    * The system wrote it, so it is not put in quotation marks as if somebody
    * had said it.
    */
-  it("carries an edit's fields as its own plain note", () => {
+  it("carries an edit's fields as the system's own plain record", () => {
     const items = feed([event({ kind: "EDIT", note: "Edited: PO date" })]);
     expect(activityText(items[0].title!)).toBe("Chris Lam edited this order");
-    expect(items[0].note).toEqual({ text: "Edited: PO date", quoted: false });
+    expect(items[0]).toMatchObject({ detail: "Edited: PO date", note: null });
+  });
+
+  /**
+   * A moved delivery date is recorded with both dates and the reason its
+   * editor was asked for — the record plainly, their words quoted.
+   */
+  it("splits a moved delivery date from the reason given for it", () => {
+    const items = feed([
+      event({
+        kind: "EDIT",
+        note: "Expected delivery 2 Oct 2026 → 9 Oct 2026\nBuyer asked for another week.",
+      }),
+    ]);
+    expect(items[0]).toMatchObject({
+      detail: "Expected delivery 2 Oct 2026 → 9 Oct 2026",
+      note: "Buyer asked for another week.",
+    });
   });
 
   /**
@@ -158,7 +176,7 @@ describe("buildLifecycleFeed", () => {
     expect(activityText(items[0].title!)).toBe(
       "Chris Lam confirmed this order with a totals mismatch",
     );
-    expect(items[0].note).toEqual({ text: note, quoted: false });
+    expect(items[0]).toMatchObject({ detail: note, note: null });
   });
 
   it("ends with the confirmation, the oldest thing on the order", () => {
