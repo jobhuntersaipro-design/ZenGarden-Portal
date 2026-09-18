@@ -15,13 +15,19 @@ describe("the registry", () => {
     expect(new Set(keys).size).toBe(20);
   });
 
-  // One line, not one sentence: `po.upload` reads "Upload a PO for auto
-  // extraction" with no full stop, at the user's wording (2026-09-18).
   it("gives every action a label and a one-line description", () => {
     for (const action of PERMISSION_ACTIONS) {
       expect(action.label.length).toBeGreaterThan(0);
       expect(action.description.length).toBeGreaterThan(0);
       expect(action.description).not.toMatch(/\n/);
+      expect(action.description.endsWith(".")).toBe(true);
+    }
+  });
+
+  // The product never names the model in copy a user reads (2026-09-18).
+  it("names no model in any label or description", () => {
+    for (const action of PERMISSION_ACTIONS) {
+      expect(`${action.label} ${action.description}`).not.toMatch(/claude/i);
     }
   });
 

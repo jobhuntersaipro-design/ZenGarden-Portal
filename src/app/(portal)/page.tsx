@@ -63,7 +63,7 @@ export default async function DashboardPage({
             Upload your first purchase order
           </h2>
           <p className="mx-auto mt-xs max-w-[48ch] text-[length:var(--text-body-md)] text-ink-secondary">
-            Drop a PDF or a photo and Claude reads it into a draft you can check
+            Drop a PDF or a photo and it is read into a draft you can check
             before it becomes a record.
           </p>
           {/* The only gradient button in the app. */}

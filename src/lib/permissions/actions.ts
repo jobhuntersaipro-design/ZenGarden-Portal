@@ -38,13 +38,13 @@ const RAW_ACTIONS = [
   {
     key: "po.upload",
     label: "Upload a purchase order",
-    description: "Upload a PO for auto extraction",
+    description: "Upload a PO for auto extraction.",
     group: "Purchase orders",
   },
   {
     key: "po.review",
     label: "Review an extracted order",
-    description: "Correct Claude's reading on the review screen and save a draft.",
+    description: "Correct value on the review screen and save a draft.",
     group: "Purchase orders",
   },
   {
