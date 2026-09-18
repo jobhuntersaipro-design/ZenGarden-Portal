@@ -11,29 +11,17 @@ export const PERMISSION_GROUPS = [
 
 export type PermissionGroup = (typeof PERMISSION_GROUPS)[number];
 
-export type PermissionAction = {
-  /** Stable. Stored in the database. Never renamed. */
-  key: string;
-  /** The grid's first column. */
-  label: string;
-  /** One line under the label, saying what the row actually permits. */
-  description: string;
-  group: PermissionGroup;
-  /**
-   * Shown in the grid, not editable. Everything under `/admin` is
-   * super-admin-only structurally — `src/proxy.ts` imports no Prisma and
-   * cannot consult the grid. See `docs/specs/48-role-based-access.md` §7.
-   */
-  locked?: true;
-};
-
 /**
  * Every permission the portal knows about — Phase 48.
  *
  * Adding one is a code change and no migration: an unseeded key falls back to
  * its default in `defaults.ts` until somebody saves the grid.
+ *
+ * Declared `as const` and re-exported through a typed view below, so `key`
+ * stays a literal union (a typo in `requirePermission` fails the build) while
+ * `locked` is still readable on every element.
  */
-export const PERMISSION_ACTIONS = [
+const RAW_ACTIONS = [
   {
     key: "dashboard.view",
     label: "Dashboard",
@@ -160,9 +148,27 @@ export const PERMISSION_ACTIONS = [
     group: "Administration",
     locked: true,
   },
-] as const satisfies readonly PermissionAction[];
+] as const;
 
-export type PermissionKey = (typeof PERMISSION_ACTIONS)[number]["key"];
+export type PermissionKey = (typeof RAW_ACTIONS)[number]["key"];
+
+export type PermissionAction = {
+  /** Stable. Stored in the database. Never renamed. */
+  key: PermissionKey;
+  /** The grid's first column. */
+  label: string;
+  /** One line under the label, saying what the row actually permits. */
+  description: string;
+  group: PermissionGroup;
+  /**
+   * Shown in the grid, not editable. Everything under `/admin` is
+   * super-admin-only structurally — `src/proxy.ts` imports no Prisma and
+   * cannot consult the grid. See `docs/specs/48-role-based-access.md` §7.
+   */
+  locked?: true;
+};
+
+export const PERMISSION_ACTIONS: readonly PermissionAction[] = RAW_ACTIONS;
 
 const KEYS: ReadonlySet<string> = new Set(
   PERMISSION_ACTIONS.map((action) => action.key),
