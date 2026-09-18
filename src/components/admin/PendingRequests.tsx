@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { OPS_ROLES, roleLabel } from "@/lib/permissions/roles";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
 import { approveAccessRequest, declineAccessRequest } from "@/actions/users";
@@ -86,8 +87,11 @@ export function PendingRequests({ requests }: { requests: PendingRequest[] }) {
               }
               className="h-control-md sm:h-control-sm rounded-sm border border-hairline-strong bg-transparent px-xs text-[length:var(--text-body-sm)] text-ink focus-visible:border-focus focus-visible:outline-2 focus-visible:outline-focus"
             >
-              <option value={Role.MEMBER}>Member</option>
-              <option value={Role.SUPER_ADMIN}>Super admin</option>
+              {OPS_ROLES.map((role) => (
+                <option key={role} value={role}>
+                  {roleLabel(role)}
+                </option>
+              ))}
             </select>
 
             <label className="flex items-center gap-xxs text-[length:var(--text-caption)] text-ink-secondary">

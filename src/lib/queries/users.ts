@@ -1,6 +1,6 @@
 import { prisma } from "@/lib/prisma";
 import { deriveUserStatus } from "@/lib/validation/users";
-import { Role } from "@/generated/prisma/enums";
+import { OPS_ROLES } from "@/lib/permissions/roles";
 import type { StaffRole } from "@/lib/validation/users";
 
 export type AdminUserRow = {
@@ -33,7 +33,8 @@ export async function listUsers(): Promise<AdminUserRow[]> {
     // Portal accounts only. A CLIENT is a buyer's own contact, managed from
     // that buyer's page — listing them here would offer the drawer a role it
     // cannot represent, and invite someone to promote a customer to staff.
-    where: { role: { in: [Role.SUPER_ADMIN, Role.MEMBER] } },
+    // Phase 48: the list is `OPS_ROLES`, so a new role cannot be invisible here.
+    where: { role: { in: [...OPS_ROLES] } },
     select: {
       id: true,
       name: true,

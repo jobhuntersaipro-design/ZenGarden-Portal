@@ -141,6 +141,19 @@ describe("updateUser — the last super admin", () => {
     );
   });
 
+  // Phase 48: `demoting` is "the role moved away from SUPER_ADMIN", not "the
+  // role became MEMBER", so the three new roles trip the same rule. Pinned
+  // because a narrower check would have let a super admin demote themselves
+  // to Warehouse and leave the portal unadministrable.
+  it.each(["PRODUCTION_PLANNER", "QC", "WAREHOUSE"] as const)(
+    "refuses to demote the last one to %s",
+    async (role) => {
+      expect(await updateUser("other", { ...base, role })).toEqual(
+        lastAdminError,
+      );
+    },
+  );
+
   it("refuses to disable the last one", async () => {
     expect(
       await updateUser("other", { ...base, role: "SUPER_ADMIN", active: false }),

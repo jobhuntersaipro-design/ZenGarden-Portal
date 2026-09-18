@@ -1,13 +1,16 @@
 import { z } from "zod";
-import { Role } from "@/generated/prisma/enums";
+import { OPS_ROLES } from "@/lib/permissions/roles";
 import { emailSchema, passwordSchema } from "@/lib/validation/auth";
 
 /**
  * Portal roles only. CLIENT is deliberately absent: the admin drawer must not
  * be able to mint a customer contact or promote one to staff, and a client is
  * created from the buyer's page with a buyer attached (Phase 15).
+ *
+ * Phase 48 widened this from two roles to five. `OPS_ROLES` is the one list,
+ * so a role cannot exist in the grid and be unassignable here.
  */
-export const userRoleSchema = z.enum([Role.MEMBER, Role.SUPER_ADMIN]);
+export const userRoleSchema = z.enum(OPS_ROLES);
 
 export type StaffRole = z.infer<typeof userRoleSchema>;
 
