@@ -20,10 +20,14 @@ import { NAV, REVIEW_QUEUE_HREF, isActive } from "@/components/portal/nav";
 /** Wordmark and account, sticky so the way home survives a 5,000px page. */
 export function MobileTopBar({
   userName,
+  userEmail,
+  userRoleName,
   userIsSuperAdmin,
   userImage = null,
 }: {
   userName: string;
+  userEmail: string;
+  userRoleName: string;
   userIsSuperAdmin: boolean;
   userImage?: string | null;
 }) {
@@ -46,6 +50,8 @@ export function MobileTopBar({
       <div className="shrink-0">
         <UserMenu
           name={userName}
+          email={userEmail}
+          roleName={userRoleName}
           isSuperAdmin={userIsSuperAdmin}
           image={userImage}
           collapsed

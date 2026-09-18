@@ -1,6 +1,7 @@
 import type { ReactNode } from "react";
 import { redirect } from "next/navigation";
 import { Role } from "@/generated/prisma/enums";
+import { roleLabel } from "@/lib/permissions/roles";
 import { getSessionUser } from "@/lib/auth-guards";
 import { env } from "@/lib/env";
 import { prisma } from "@/lib/prisma";
@@ -43,12 +44,19 @@ export default async function PortalLayout({
   const [profile, reviewCount] = await Promise.all([
     prisma.user.findUnique({
       where: { id: user.id },
-      select: { name: true, image: true },
+      // email and role ride along for the account menu's identity header.
+      // The role is read here rather than taken from the token for the same
+      // reason the name is: the JWT is up to five minutes stale, and a menu
+      // that labels someone Member while still offering them the Admin row
+      // would be contradicting itself.
+      select: { name: true, image: true, email: true, role: true },
     }),
     reviewQueueCount(),
   ]);
   const displayName = profile?.name ?? user.name;
   const displayImage = profile?.image ?? null;
+  const displayEmail = profile?.email ?? user.email ?? "";
+  const displayRole = profile?.role ?? user.role;
 
   return (
     <TooltipProvider delayDuration={200}>
@@ -70,7 +78,9 @@ export default async function PortalLayout({
           <div className="flex min-h-dvh bg-canvas">
             <Sidebar
               userName={displayName}
-              userIsSuperAdmin={user.role === Role.SUPER_ADMIN}
+              userEmail={displayEmail}
+              userRoleName={roleLabel(displayRole)}
+              userIsSuperAdmin={displayRole === Role.SUPER_ADMIN}
               userImage={displayImage}
             />
             {/* `min-w-0` on the column, not just the main: a flex child defaults
@@ -79,7 +89,9 @@ export default async function PortalLayout({
             <div className="flex min-w-0 flex-1 flex-col">
               <MobileTopBar
                 userName={displayName}
-                userIsSuperAdmin={user.role === Role.SUPER_ADMIN}
+                userEmail={displayEmail}
+                userRoleName={roleLabel(displayRole)}
+                userIsSuperAdmin={displayRole === Role.SUPER_ADMIN}
                 userImage={displayImage}
               />
               {/* Padding steps with the viewport. A flat `p-xl` spent 80px of a

@@ -20,10 +20,14 @@ import { NAV, REVIEW_QUEUE_HREF, isActive } from "@/components/portal/nav";
  */
 export function Sidebar({
   userName,
+  userEmail,
+  userRoleName,
   userIsSuperAdmin,
   userImage = null,
 }: {
   userName: string;
+  userEmail: string;
+  userRoleName: string;
   userIsSuperAdmin: boolean;
   userImage?: string | null;
 }) {
@@ -87,6 +91,8 @@ export function Sidebar({
 
       <UserMenu
         name={userName}
+        email={userEmail}
+        roleName={userRoleName}
         isSuperAdmin={userIsSuperAdmin}
         image={userImage}
       />

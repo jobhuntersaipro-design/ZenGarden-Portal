@@ -1,8 +1,81 @@
-# Current Feature: The supplier record removed
+# Current Feature: The account menu says who you are
 
 ## Status
 
-**Built and driven in a browser on `feature/remove-supplier-info`**
+**Built and driven in a browser on `feature/account-menu-identity`**
+(2026-09-19). Asked for as: "for the avatar on the bottom left, make it same
+style as claude, attachment included. Need to show email, role, settings,
+logout and etc."
+
+The sidebar's account menu carried three bare text rows — Admin, Settings,
+Sign out — and named nobody. It now opens with the signed-in person's **email**
+and **role** as a two-line header, then icon rows, Sign out last, matching the
+Claude menu in the attachment.
+
+Decisions the user made (all three taken as recommended):
+
+- **Role on its own header line under the email**, not as a badge on the
+  sidebar chip. On the chip it would vanish the moment the rail collapses to
+  icons; in the header it is always there, and neither line is clickable
+  because neither is an action.
+- **Admin stays super-admin-only**, unchanged. It hides a link, never a
+  permission — the `(admin)` layout redirects and `src/proxy.ts` rewrites to a
+  404 regardless.
+- **lucide icons** on every row, which is what the shop's own account menu
+  already does, so the two menus finally match.
+
+Decided without asking: **"Sign out", not the attachment's "Log out"** — it
+pairs with the Sign in it undoes, and the shop says the same. **The role is
+read from the `User` row, not the session token.** That is the load-bearing
+change: `isSuperAdmin` used to come from the JWT, which is up to five minutes
+stale, so a menu could have labelled someone Member while still offering them
+the Admin row. Both now come from the same row, falling back to the token if
+the read returns nothing.
+
+**A deviation from the canvas**, recorded rather than hidden: there is no
+artboard for this menu, and `CLAUDE.md` makes the canvas the source of truth
+for visuals. The layout follows the attachment and the design system's tokens;
+the canvas is behind the code until someone draws it.
+
+## Verified, with the figures
+
+Development, port 3000, as the seeded super admin.
+
+- **The menu reads** `aisha@lovinghandsportal.com` / `Super admin`, then
+  **Admin · Settings · Sign out** with **3 SVGs**, one per row.
+- **The staleness fix was watched working.** Aisha demoted to `MEMBER`
+  directly in the database with **no re-sign-in**, so the session token still
+  said `SUPER_ADMIN`: the header re-read **"Member"** and the Admin row was
+  **absent (0 matches)**. Under the old code it would have kept offering Admin
+  for up to five minutes. Restored to `SUPER_ADMIN` afterwards and **read
+  back**, both users confirmed.
+- **A defect found by measuring, pre-existing and fixed here.** The rows were
+  **28px** tall at 390 — under this project's 44px phone floor since the
+  2026-09-06 mobile pass. All three now measure **44px** at both 390 and 1440.
+  The height is applied on this menu, *not* on the shared `DropdownMenuItem`
+  primitive, which every other dropdown in the portal uses for desktop sort
+  and row-action menus.
+- **And a second one:** at 390 the menu's right edge sat at exactly **390** —
+  flush against the screen. `collisionPadding={12}` moves it to **378**.
+- **No overflow** at 390 or 1440, menu open or closed.
+- **1285/1285 tests across 97 files**, `tsc`, lint (the same 2 pre-existing
+  warnings) and `npm run build` clean.
+
+## Not verified
+
+- **Anything on production.** Not deployed.
+- **A real member's own session.** The member case was driven by demoting a
+  super admin in the database, not by signing in as a seeded member.
+- **The four other ops roles' labels** (Production planner, QC, Warehouse).
+  They come from `roleLabel()`, which the permission grid already renders, and
+  only `Super admin` and `Member` were seen in the menu.
+- **An email long enough to truncate.** The header carries `truncate` and a
+  `title`, unexercised — the only two addresses in development are short.
+
+## Previous phase
+
+**The supplier record removed — built, driven in a browser and merged to
+`main` as `886aaf1`** on `feature/remove-supplier-info`
 (2026-09-18). Asked for as: "please remove all supplier info. There shouldn't
 have any supplier in the first place. We are the supplier."
 
