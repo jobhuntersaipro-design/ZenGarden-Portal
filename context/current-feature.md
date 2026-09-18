@@ -1251,6 +1251,44 @@ file: generating a PDF remains Phase 19, still unbuilt.
   purchase-order file, is also unbuilt.
 
 ## History
+- 2026-09-18: Notes and activity under the lifecycle, and stage sentences that
+  name both stages — merged from `feature/po-lifecycle-feed` and pushed. Asked
+  for as: put the notes and activity feed under the stepper, write "from X to
+  Y" with the actor, and close the note composer on confirm. The old
+  "Activity" card at the foot of `/purchase-orders/[id]` is now "Notes and
+  activity" inside the lifecycle section, under the stepper: newest first (the
+  order it always used), one row per event plus a row of its own for each
+  note, each row carrying its type (Note / Activity), the stage it belongs to,
+  the actor, the timestamp and the body. Every note is in the feed, whichever
+  stage it was left on — the header caption used to show the latest one and no
+  others, and no longer repeats it. No per-node filter; the whole feed is the
+  view. Sentences come from a pure `src/lib/po-activity.ts`, reading the
+  `fromStage` `PoStageEvent` has stored since Phase 05 rather than guessing
+  from the stepper: "{actor} advanced this order from X to Y", "{actor} moved
+  this order back from X to Y", "System placed the order", "{actor} edited
+  {fields} on this order", "{actor} confirmed this order with a totals
+  mismatch", "{actor} confirmed the order". The Advance popover is controlled
+  now: Confirm closes it, a failed save keeps it open with the draft, and a
+  new Cancel closes and discards (the Move back dialog's Cancel discards too).
+  **A defect the browser found:** both handlers awaited the action with no
+  try/catch, so an unreachable server left the button on "Advancing…" /
+  "Moving back…", disabled for ever, with nothing said — the 2026-09-08 avatar
+  defect again; both now toast "We couldn't reach the server. Try again." and
+  reset in `finally`. Driven as Aisha on development against `PO-2026-0063`:
+  advancing with a note closed the composer (0 textareas), toasted "Moved to
+  QC passed" and put the activity and the note in the feed; an aborted POST
+  kept the draft ("draft that must survive") and showed the error; Cancel
+  discarded it; Move back closed its dialog and read "Aisha Rahman moved this
+  order back from QC passed to In production"; `PO-2026-0025` reads "Aisha
+  Rahman edited buyer reference on this order". Both fixture stage events
+  deleted by id and the stage and `stageChangedAt` restored; counts back to
+  2323 events and 400 POs. 1223/1223 tests (10 new on the sentences and the
+  feed), `tsc`, lint (same 2 warnings) and build clean. **Not verified:**
+  anything on production; a member's view (the feed is the same for every
+  staff role, read as a super admin); the empty state, which no real purchase
+  order can reach because the confirm row always exists. **Pre-existing, not
+  fixed:** `/purchase-orders/[id]` still overflows at 390px — measured 479
+  against 390, from the header's Download/Edit/Delete row, not the feed.
 - 2026-09-18: Fix — the line under a purchase-order email's heading reads
   only "Order ID W-…" — merged from `fix/po-email-meta-order-id` and pushed.
   Asked for as: keep the Order ID, remove "· 3 lines · RM 200.00 · your PO

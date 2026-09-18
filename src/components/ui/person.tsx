@@ -1,6 +1,7 @@
 import { Cog } from "lucide-react";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { initials } from "@/lib/avatar";
+import { SYSTEM_ACTOR } from "@/lib/system-actor";
 import { cn } from "@/lib/utils";
 
 export type PersonSize = "sm" | "md" | "lg";
@@ -18,10 +19,11 @@ const GLYPH_SIZE: Record<PersonSize, string> = {
 };
 
 /**
- * "System" is not a person. An automated lifecycle event gets a neutral glyph
- * rather than initials, so it is never mistaken for a colleague's action.
+ * Re-exported so every caller of these components keeps one import. "System"
+ * gets a neutral glyph rather than initials, so an automated event is never
+ * mistaken for a colleague's action.
  */
-export const SYSTEM_ACTOR = "System";
+export { SYSTEM_ACTOR };
 
 export function PersonAvatar({
   name,
