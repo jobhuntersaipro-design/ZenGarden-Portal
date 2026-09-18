@@ -32,8 +32,14 @@ export function CartonStepper({
   /** `lg` is the product page's buy box (§5.4): 52px buttons and value fused
    * into one `rounded-pill` frame, matching the canvas exactly. `md` (the
    * default) keeps every existing caller — the cart table's own row —
-   * unchanged, including the "N pieces" line under it. */
-  size?: "md" | "lg";
+   * unchanged, including the "N pieces" line under it. `card` is `md` across
+   * the width of a catalogue card, whose inner width is about 165px at 390px
+   * with two cards to a row: the 44px buttons are kept, because the touch
+   * floor is not negotiable, and the value between them takes whatever is
+   * left rather than a fixed 64px that would not fit beside them. It carries
+   * no pieces caption — a line under every card in a grid, to say what the
+   * card's own pack line already says. */
+  size?: "md" | "lg" | "card";
   /** A cart row whose product has left the shop (§5.5): both buttons and the
    * input go truly `disabled`, so a keyboard `Enter` on a focused button
    * cannot commit a change — a wrapping `pointer-events-none` only blocks a
@@ -92,6 +98,9 @@ export function CartonStepper({
     );
   }
 
+  // Across a card's width, the value takes what the two buttons leave.
+  const fill = size === "card";
+
   return (
     <div className="flex flex-col gap-xxs">
       <div className="flex items-center gap-xxs">
@@ -100,7 +109,7 @@ export function CartonStepper({
           aria-label={`One fewer ${unit} — ${label}`}
           disabled={disabled || pending || optimistic <= min}
           onClick={() => commit(optimistic - 1)}
-          className="size-11 p-0 sm:size-control-sm"
+          className="size-11 shrink-0 p-0 sm:size-control-sm"
         >
           <Minus className="size-4" aria-hidden />
         </Button>
@@ -114,23 +123,27 @@ export function CartonStepper({
             if (typed !== null && typed !== "") commit(Number(typed));
             setTyped(null);
           }}
-          className="h-11 w-16 rounded-sm border border-hairline-strong bg-transparent text-center text-[length:var(--text-body-sm)] tabular-nums text-ink focus-visible:border-focus focus-visible:outline-2 focus-visible:outline-focus disabled:pointer-events-none disabled:opacity-50 sm:h-control-sm"
+          className={`h-11 rounded-sm border border-hairline-strong bg-transparent text-center text-[length:var(--text-body-sm)] tabular-nums text-ink focus-visible:border-focus focus-visible:outline-2 focus-visible:outline-focus disabled:pointer-events-none disabled:opacity-50 sm:h-control-sm ${
+            fill ? "min-w-0 flex-1" : "w-16"
+          }`}
         />
         <Button
           variant="secondary"
           aria-label={`One more ${unit} — ${label}`}
           disabled={disabled || pending}
           onClick={() => commit(optimistic + 1)}
-          className="size-11 p-0 sm:size-control-sm"
+          className="size-11 shrink-0 p-0 sm:size-control-sm"
         >
           <Plus className="size-4" aria-hidden />
         </Button>
       </div>
-      <p className="text-[length:var(--text-caption)] text-ink-tertiary">
-        {pieces === null
-          ? `${optimistic} ${unit}${optimistic === 1 ? "" : "s"}`
-          : `${pieces} piece${pieces === 1 ? "" : "s"}`}
-      </p>
+      {fill ? null : (
+        <p className="text-[length:var(--text-caption)] text-ink-tertiary">
+          {pieces === null
+            ? `${optimistic} ${unit}${optimistic === 1 ? "" : "s"}`
+            : `${pieces} piece${pieces === 1 ? "" : "s"}`}
+        </p>
+      )}
     </div>
   );
 }

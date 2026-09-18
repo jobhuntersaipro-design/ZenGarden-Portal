@@ -2,9 +2,12 @@ import { renderToStaticMarkup } from "react-dom/server";
 import { describe, expect, it, vi } from "vitest";
 import type { ShopProduct, ShopProductGroup } from "@/lib/queries/shop-catalogue";
 
-// The button reaches a server action and the cart's context; the price is
-// what is under test, so it is stubbed to nothing.
-vi.mock("@/components/shop/AddToCart", () => ({ AddToCart: () => null }));
+// The button reaches a server action and the cart's context, so it is stubbed
+// — but it prints the carton count handed to it, which is the one thing the
+// card has to get right about quantity.
+vi.mock("@/components/shop/AddToCart", () => ({
+  AddToCart: ({ cartons }: { cartons?: number }) => <>{`add:${cartons ?? 1}`}</>,
+}));
 
 const { ShopProductCard } = await import("@/components/shop/ShopProductCard");
 
@@ -68,5 +71,36 @@ describe("ShopProductCard price", () => {
     const html = renderToStaticMarkup(<ShopProductCard group={cheapFirst} />);
     expect(html).toContain("RM 5.00");
     expect(html).not.toContain("RM 10.00");
+  });
+});
+
+/**
+ * The card chooses a quantity too (2026-09-18). A buyer ordering by the
+ * carton usually knows how many before they open the product page, and the
+ * count the card shows is the count Add to cart hands over.
+ */
+describe("ShopProductCard quantity", () => {
+  const one = group([variant({})]);
+
+  it("offers a carton stepper, labelled and starting at one", () => {
+    const html = renderToStaticMarkup(<ShopProductCard group={one} />);
+    expect(html).toContain("Cartons");
+    expect(html).toContain('value="1"');
+    // Named for a screen reader against the product it belongs to.
+    expect(html).toContain("cartons — Zen Garden Shower Cream 2.1L — CARROT");
+  });
+
+  it("hands that count to Add to cart", () => {
+    expect(renderToStaticMarkup(<ShopProductCard group={one} />)).toContain("add:1");
+  });
+
+  /** A stepper cannot go below one, so no line is ever added at zero. */
+  it("starts with One fewer disabled", () => {
+    const html = renderToStaticMarkup(<ShopProductCard group={one} />);
+    // React writes `disabled` before the attributes that identify the button,
+    // so the whole element is what has to be read, not the text after it.
+    const upTo = html.slice(0, html.indexOf("One fewer carton"));
+    const button = upTo.slice(upTo.lastIndexOf("<button"));
+    expect(button).toContain("disabled");
   });
 });
