@@ -38,7 +38,7 @@ const RAW_ACTIONS = [
   {
     key: "po.upload",
     label: "Upload a purchase order",
-    description: "Send a PDF or photo of a customer PO in for Claude to read.",
+    description: "Upload a PO for auto extraction",
     group: "Purchase orders",
   },
   {

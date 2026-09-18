@@ -15,11 +15,13 @@ describe("the registry", () => {
     expect(new Set(keys).size).toBe(20);
   });
 
+  // One line, not one sentence: `po.upload` reads "Upload a PO for auto
+  // extraction" with no full stop, at the user's wording (2026-09-18).
   it("gives every action a label and a one-line description", () => {
     for (const action of PERMISSION_ACTIONS) {
       expect(action.label.length).toBeGreaterThan(0);
       expect(action.description.length).toBeGreaterThan(0);
-      expect(action.description.endsWith(".")).toBe(true);
+      expect(action.description).not.toMatch(/\n/);
     }
   });
 

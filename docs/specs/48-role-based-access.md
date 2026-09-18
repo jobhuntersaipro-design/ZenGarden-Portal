@@ -157,7 +157,7 @@ The twenty rows, in grid order:
 |---|---|---|---|
 | Dashboard | `dashboard.view` | Dashboard | See sales, fulfilment and buyer trends on the home page. |
 | Purchase orders | `po.view` | Purchase orders | Open the order list and any order's detail, document and download. |
-| | `po.upload` | Upload a purchase order | Send a PDF or photo of a customer PO in for Claude to read. |
+| | `po.upload` | Upload a purchase order | Upload a PO for auto extraction |
 | | `po.review` | Review an extracted order | Correct Claude's reading on the review screen and save a draft. |
 | | `po.confirm` | Confirm or decline an order | Turn a draft or a shop order into a live purchase order, or decline it. |
 | | `po.edit` | Edit a purchase order | Change PO date, expected delivery, payment terms and the remark. |
