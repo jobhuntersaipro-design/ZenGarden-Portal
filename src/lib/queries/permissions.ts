@@ -2,10 +2,10 @@ import { prisma } from "@/lib/prisma";
 import { PERMISSION_ACTIONS } from "@/lib/permissions/actions";
 import { OPS_ROLES } from "@/lib/permissions/roles";
 import { defaultGranted } from "@/lib/permissions/defaults";
+import { cellKey, type PermissionMatrix } from "@/lib/permissions/matrix";
 
-export const cellKey = (role: string, action: string) => `${role}|${action}`;
-
-export type PermissionMatrix = Record<string, boolean>;
+export { cellKey };
+export type { PermissionMatrix };
 
 /**
  * Every cell the grid draws, keyed `role|action`.
