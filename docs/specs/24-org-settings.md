@@ -1,5 +1,14 @@
 # Phase 24 — Organisation settings
 
+> **RETIRED 2026-09-18.** Everything below was built and shipped, and then
+> removed whole: the `OrgSettings` table, the four `ZEN_GARDEN_*` fallbacks,
+> the `/admin` Contact details card, the `org.settings` permission and the
+> purchase-order document's Supplier block. The reason is that the premise was
+> wrong — **we are the supplier**, so there was never a second company for
+> those four fields to describe. Kept as the record of what was built; read it
+> as history, not as a description of the app. See
+> `docs/specs/SETUP-CHECKLIST.md` §6.2.
+
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
 **Goal:** A super admin edits the supplier contact details the public shop

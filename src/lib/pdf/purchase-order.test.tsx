@@ -22,7 +22,6 @@ const document: PoDocumentData = {
     address: "12 Jalan Perindustrian\n40150 Shah Alam\nSelangor",
     contact: "Aisha Rahman · orders@acme.test",
   },
-  supplier: { name: "ZEN GARDEN TRADING (M) SDN BHD", address: null, contact: null },
   lines: [
     {
       position: 1,

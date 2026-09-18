@@ -28,13 +28,6 @@ const line = (over: Partial<CartLine> = {}): CartLine => ({
   ...over,
 });
 
-const supplier = {
-  name: "Zen Garden",
-  address: "1 Jalan Satu",
-  email: "orders@lovinghands.my",
-  phone: "+60 3-0000 0000",
-};
-
 const buyer = {
   name: "Acme Industrial Sdn Bhd",
   address: "12 Jalan Perindustrian 4\n47100 Puchong",
@@ -48,7 +41,6 @@ const build = (over: Partial<Parameters<typeof buildPoDocument>[0]> = {}) =>
     lines: [line()],
     subtotal: "676.50",
     buyer,
-    supplier,
     poNumber: null,
     orderId: "W-2609-00007",
     notes: null,
@@ -164,9 +156,25 @@ describe("buildPoDocument", () => {
     expect(doc.buyer).toEqual({ name: "—", address: null, contact: null });
   });
 
-  it("falls back to a supplier name when the org settings hold none", () => {
-    const doc = build({ supplier: { ...supplier, name: null } });
-    expect(doc.supplier.name).toBe("ZEN GARDEN TRADING (M) SDN BHD");
+  // We are the supplier and the masthead says so, so the document carries no
+  // supplier party at all (2026-09-18). Pinned by equality: putting one back
+  // has to be a deliberate edit to this list.
+  it("names one party only — the buyer", () => {
+    expect(Object.keys(build())).toEqual([
+      "orderId",
+      "poNumber",
+      "orderDate",
+      "deliveryDate",
+      "awaitingConfirmation",
+      "paymentTerms",
+      "currency",
+      "buyer",
+      "lines",
+      "subtotal",
+      "tax",
+      "total",
+      "notes",
+    ]);
   });
 
   it("treats blank notes and blank payment terms as absent", () => {
@@ -212,7 +220,6 @@ describe("buildPoDocumentFromOrder", () => {
   const fromOrder = (over: Partial<StoredOrder> = {}) =>
     buildPoDocumentFromOrder({
       order: order(over),
-      supplier,
       orderDate: "15 Sep 2026",
       awaitingConfirmation: true,
     });
@@ -231,7 +238,6 @@ describe("buildPoDocumentFromOrder", () => {
     expect(
       buildPoDocumentFromOrder({
         order: order(),
-        supplier,
         orderDate: "15 Sep 2026",
         awaitingConfirmation: false,
       }).awaitingConfirmation,
@@ -315,7 +321,6 @@ describe("buildPoDocumentFromOrder", () => {
     expect(
       buildPoDocumentFromOrder({
         order: order(),
-        supplier,
         orderDate: "15 Sep 2026",
         deliveryDate: "2 Oct 2026",
         awaitingConfirmation: false,

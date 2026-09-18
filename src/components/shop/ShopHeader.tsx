@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { KeyRound, List, LogOut, Mail, ShoppingCart, User } from "lucide-react";
+import { KeyRound, List, LogOut, ShoppingCart, User } from "lucide-react";
 import { signOut } from "next-auth/react";
 import { Wordmark } from "@/components/portal/Wordmark";
 import { CartBadge } from "@/components/shop/CartBadge";
@@ -19,11 +19,10 @@ import { shopHref } from "@/lib/shop-routes";
  * written.
  *
  * `useShopViewer()` decides Sign in vs. the account menu; `client` component
- * for that reason alone — everything else here (categories, the cart
- * summary, the supplier's contact address) is data the server already loaded
- * and hands down as props.
+ * for that reason alone — everything else here (the categories and the cart
+ * summary) is data the server already loaded and hands down as props.
  */
-const accountRows = (supplierEmail: string | null): ShopAccountMenuRow[] => [
+const ACCOUNT_ROWS: ShopAccountMenuRow[] = [
   { key: "orders", label: "My orders", icon: List, href: shopHref.orders() },
   { key: "sep-orders", separator: true },
   {
@@ -36,18 +35,6 @@ const accountRows = (supplierEmail: string | null): ShopAccountMenuRow[] => [
     href: "/account/password",
   },
   { key: "sep-password", separator: true },
-  ...(supplierEmail
-    ? ([
-        {
-          key: "contact",
-          label: "Talk to our team",
-          icon: Mail,
-          href: `mailto:${supplierEmail}`,
-          external: true,
-        },
-        { key: "sep-contact", separator: true },
-      ] satisfies ShopAccountMenuRow[])
-    : []),
   {
     key: "sign-out",
     label: "Sign out",
@@ -59,14 +46,12 @@ const accountRows = (supplierEmail: string | null): ShopAccountMenuRow[] => [
 export function ShopHeader({
   categories,
   summary,
-  supplierEmail,
 }: {
   categories: string[];
   summary: CartSummary | null;
-  supplierEmail: string | null;
 }) {
   const viewer = useShopViewer();
-  const rows = viewer.kind === "client" ? accountRows(supplierEmail) : [];
+  const rows = viewer.kind === "client" ? ACCOUNT_ROWS : [];
 
   return (
     <header className="sticky top-0 z-30 border-b border-hairline bg-canvas">

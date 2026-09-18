@@ -1,30 +1,24 @@
 import Link from "next/link";
 import { Wordmark } from "@/components/portal/Wordmark";
-import type { SupplierDetails } from "@/lib/org-settings";
 import { shopHref } from "@/lib/shop-routes";
 
 const FOOTER_LINK =
   "text-[length:var(--text-caption)] text-ink-secondary hover:text-ink focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-focus";
 
 /**
- * A server component. `supplier` is resolved once by the shop layout
- * (`loadSupplierDetails`, per field: the database row, else the matching
- * `ZEN_GARDEN_*` env var, else null) and passed down here and to `ShopHeader`'s
- * "Talk to our team" row, so both read the same figures a super admin's
- * `/admin` edit can change with no redeploy.
+ * A server component.
+ *
+ * It carried a fourth "Contact" column until 2026-09-18, printing the four
+ * `OrgSettings` supplier fields. That whole record is gone — we are the
+ * supplier, so there was nobody for it to describe — and the footer is three
+ * columns.
  */
-export function ShopFooter({
-  categories,
-  supplier,
-}: {
-  categories: string[];
-  supplier: SupplierDetails;
-}) {
+export function ShopFooter({ categories }: { categories: string[] }) {
   const shopCategories = categories.slice(0, 3);
 
   return (
     <footer className="mt-xxl border-t border-hairline bg-surface">
-      <div className="mx-auto grid max-w-page grid-cols-1 gap-lg px-md py-xl sm:grid-cols-2 sm:px-lg md:grid-cols-4">
+      <div className="mx-auto grid max-w-page grid-cols-1 gap-lg px-md py-xl sm:grid-cols-2 sm:px-lg md:grid-cols-3">
         <div>
           <Wordmark />
           <p className="mt-sm text-[length:var(--text-caption)] text-ink-tertiary">
@@ -57,32 +51,6 @@ export function ShopFooter({
           <Link href={shopHref.signIn()} className={FOOTER_LINK}>
             Request an account
           </Link>
-        </div>
-
-        <div className="flex flex-col gap-xs">
-          <p className="text-[length:var(--text-caption)] font-semibold text-ink">Contact</p>
-          {/* First, so the column reads as an address block: who you are
-              contacting, then how. Omitted when unset like every row below. */}
-          {supplier.name ? (
-            <p className="text-[length:var(--text-caption)] text-ink-secondary">
-              {supplier.name}
-            </p>
-          ) : null}
-          {supplier.phone ? (
-            <p className="text-[length:var(--text-caption)] text-ink-secondary">
-              {supplier.phone}
-            </p>
-          ) : null}
-          {supplier.email ? (
-            <p className="text-[length:var(--text-caption)] text-ink-secondary">
-              {supplier.email}
-            </p>
-          ) : null}
-          {supplier.address ? (
-            <p className="whitespace-pre-line text-[length:var(--text-caption)] text-ink-secondary">
-              {supplier.address}
-            </p>
-          ) : null}
         </div>
       </div>
 

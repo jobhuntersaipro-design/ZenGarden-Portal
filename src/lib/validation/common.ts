@@ -10,9 +10,9 @@ export const optionalText = (max: number) =>
     .pipe(z.string().max(max).nullable());
 
 /**
- * Optional, but a real address when it is there — a company inbox or a
- * supplier contact may be blank, and `emailSchema` alone rejects `""`, but a
- * typo in one must still be caught.
+ * Optional, but a real address when it is there — a contact's inbox may be
+ * blank, and `emailSchema` alone rejects `""`, but a typo in one must still
+ * be caught.
  *
  * Written as a `transform` rather than `.pipe(z.union([z.null(), emailSchema]))`:
  * `emailSchema` is itself a `z.preprocess`, whose declared input type is

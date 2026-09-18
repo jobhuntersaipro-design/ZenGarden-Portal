@@ -19,12 +19,6 @@ const schema = z.object({
   SHOP_HOST: emptyAsUndefined(z.string()),
   SHOP_URL: emptyAsUndefined(z.url()),
 
-  // Storefront (Phase 17)
-  ZEN_GARDEN_NAME: emptyAsUndefined(z.string()),
-  ZEN_GARDEN_EMAIL: emptyAsUndefined(z.email()),
-  ZEN_GARDEN_PHONE: emptyAsUndefined(z.string()),
-  ZEN_GARDEN_ADDRESS: emptyAsUndefined(z.string()),
-
   AUTH_SECRET: z.string().min(1),
   AUTH_GOOGLE_ID: z.string().min(1),
   AUTH_GOOGLE_SECRET: z.string().min(1),

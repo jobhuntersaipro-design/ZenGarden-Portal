@@ -4,7 +4,6 @@ import { redirect } from "next/navigation";
 import { CheckoutSteps } from "@/components/shop/checkout/CheckoutSteps";
 import { ReviewSendForm } from "@/components/shop/checkout/ReviewSendForm";
 import { formatDate } from "@/lib/dates";
-import { loadSupplierDetails } from "@/lib/org-settings";
 import { loadCart } from "@/lib/queries/cart";
 import { loadReviewBuyer } from "@/lib/queries/shop-checkout";
 import { shopHref } from "@/lib/shop-routes";
@@ -29,10 +28,9 @@ export default async function CheckoutReviewPage() {
     redirect(shopHref.signIn(shopHref.checkoutReview()));
   }
 
-  const [cart, buyer, supplier] = await Promise.all([
+  const [cart, buyer] = await Promise.all([
     loadCart(viewer.id),
     loadReviewBuyer(viewer.buyerId),
-    loadSupplierDetails(),
   ]);
 
   if (cart.lines.length === 0) redirect(shopHref.cart());
@@ -64,7 +62,6 @@ export default async function CheckoutReviewPage() {
       <ReviewSendForm
         cart={cart}
         buyer={buyer}
-        supplier={supplier}
         orderDate={formatDate(new Date())}
       />
     </div>

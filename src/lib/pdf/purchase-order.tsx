@@ -21,7 +21,7 @@ import {
  * `PurchaseOrderPreview` draws in Tailwind: one builder decides what a
  * purchase order says, and the screen and the file cannot disagree about it.
  * Section for section this mirrors that component — masthead, four-cell meta
- * strip, the two parties, the ten-column line grid, the totals column, the
+ * strip, the buyer's block, the ten-column line grid, the totals column, the
  * notes and the footer carrying our own reference. Landscape since Phase 45,
  * when the line grid gained five quantity columns that portrait could not
  * hold beside a readable description.
@@ -93,7 +93,9 @@ const styles = StyleSheet.create({
     borderBottomColor: COLORS.hairline,
     paddingVertical: 12,
   },
-  party: { flexGrow: 1, flexBasis: 0, paddingRight: 24 },
+  // A fixed half, not `flexGrow: 1`: there is only one party left, and a
+  // grower would stretch the buyer's block across the whole sheet.
+  party: { width: "50%", paddingRight: 24 },
   partyHeading: { fontSize: 7, color: COLORS.inkTertiary, letterSpacing: 0.6 },
   partyName: { fontFamily: "Helvetica-Bold", fontSize: 10, marginTop: 3 },
   partyLine: { fontSize: 9, color: COLORS.inkSecondary, marginTop: 3 },
@@ -184,7 +186,7 @@ export function PurchaseOrderPdf({
   return (
     <Document
       title={`Purchase order ${document.orderId ?? document.poNumber ?? ""}`.trim()}
-      author={document.supplier.name}
+      author={DOCUMENT_COMPANY_NAME}
       subject={`Purchase order for ${document.buyer.name}`}
     >
       <Page size="A4" orientation="landscape" style={styles.page}>
@@ -213,9 +215,10 @@ export function PurchaseOrderPdf({
           ) : null}
         </View>
 
+        {/* One party, half width: we are the supplier and the masthead
+            already says so, so there is no second block (2026-09-18). */}
         <View style={styles.parties}>
           <Party heading="Buyer" party={document.buyer} />
-          <Party heading="Supplier" party={document.supplier} />
         </View>
 
         <View style={{ paddingTop: 12 }}>

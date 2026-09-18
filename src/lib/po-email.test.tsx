@@ -21,7 +21,6 @@ const document: PoDocumentData = {
   paymentTerms: null,
   currency: "MYR",
   buyer: { name: "Acme Industrial Sdn Bhd", address: null, contact: null },
-  supplier: { name: "ZEN GARDEN TRADING (M) SDN BHD", address: null, contact: null },
   lines: [
     {
       position: 1,

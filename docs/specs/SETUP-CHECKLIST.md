@@ -219,32 +219,19 @@ portal", which is what makes previews work at all. Locally, leave them unset or
 use `SHOP_HOST=shop.localhost` — Chrome and Safari resolve `*.localhost` to
 127.0.0.1 with no `/etc/hosts` edit.
 
-### 6.2 Supplier details on the storefront
+### 6.2 Supplier details on the storefront — removed
 
-Four optional variables populate the storefront footer's contact column and the
-account menu's "Talk to our team" mailto. The purchase-order PDF (Phase 19) also
-prints them. An unset variable omits its row.
+There is nothing to set. Four `ZEN_GARDEN_*` variables and an `OrgSettings`
+table used to feed the storefront footer's contact column, the account menu's
+"Talk to our team" mailto and a Supplier block on the purchase-order document.
+All of it went on 2026-09-18, at the user's request: **we are the supplier**,
+so there was never a second company for those fields to describe. The document
+names `ZEN GARDEN TRADING (M) SDN BHD` in its masthead and nowhere else, and
+the footer is three columns with no contact block.
 
-- `ZEN_GARDEN_NAME` — displays as the first row of the footer's contact column.
-  (It claimed the account menu too; it never appeared there, and Phase 24
-  corrected the line rather than leaving it describing something that does not
-  happen.)
-- `ZEN_GARDEN_EMAIL` — displays in the footer and powers the account menu's `mailto:` link.
-- `ZEN_GARDEN_PHONE` — displays in the footer contact column.
-- `ZEN_GARDEN_ADDRESS` — displays in the footer; use `\n` for line breaks (e.g. `Line 1\nLine 2\nLine 3`).
-
-All four are left blank in `.env.example` and are production-only — you never
-need to set them locally.
-
-**Since Phase 24, these four are fallback only.** A super admin can leave all
-four blank here and instead fill in **Contact details** on `/admin`, after the
-first deploy — that screen writes to the `OrgSettings` table and the shop reads
-it with no redeploy and no restart. The resolver falls back **per field**, not
-per row: saving only the email from `/admin` leaves a phone number still set
-here showing on the shop untouched. The env vars are not being retired — a
-preview deployment and a fresh local clone have no `OrgSettings` row yet, so
-they are exactly what those environments show until someone fills in the
-admin screen.
+Nothing was lost — both databases held **zero** `OrgSettings` rows and
+production had none of the four variables set, so none of it was ever
+displaying anything.
 
 ## 7. Local first run (after Phase 01 is merged)
 

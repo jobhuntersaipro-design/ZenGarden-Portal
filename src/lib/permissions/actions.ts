@@ -141,13 +141,6 @@ const RAW_ACTIONS = [
     group: "Administration",
     locked: true,
   },
-  {
-    key: "org.settings",
-    label: "Company details",
-    description: "Edit the supplier name, address and contact shown to buyers.",
-    group: "Administration",
-    locked: true,
-  },
 ] as const;
 
 export type PermissionKey = (typeof RAW_ACTIONS)[number]["key"];

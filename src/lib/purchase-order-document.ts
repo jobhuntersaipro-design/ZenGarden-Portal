@@ -8,7 +8,6 @@ import { Prisma } from "@/generated/prisma/browser";
 import { groupName } from "@/lib/product-groups";
 import type { CartLine } from "@/lib/queries/cart";
 import type { ReviewBuyer } from "@/lib/queries/shop-checkout";
-import type { SupplierDetails } from "@/lib/org-settings";
 
 /**
  * The purchase order, as data (Phase 33).
@@ -29,9 +28,13 @@ import type { SupplierDetails } from "@/lib/org-settings";
  */
 
 /**
- * The seller named on the document (Phase 42): its masthead, and the supplier
- * block wherever `/admin` holds no name. The shop and the portal keep "Zen
- * Garden" as their wordmark; a purchase order carries the registered company.
+ * The seller named on the document (Phase 42): its masthead, and the only
+ * place we name ourselves on it. The shop and the portal keep "Zen Garden" as
+ * their wordmark; a purchase order carries the registered company.
+ *
+ * There is no supplier block and no supplier record (2026-09-18, at the
+ * user's request): we *are* the supplier, so the masthead says it once and
+ * nothing is configurable.
  */
 export const DOCUMENT_COMPANY_NAME = "ZEN GARDEN TRADING (M) SDN BHD";
 
@@ -101,7 +104,6 @@ export type PoDocumentData = {
   paymentTerms: string | null;
   currency: string;
   buyer: PoDocumentParty;
-  supplier: PoDocumentParty;
   lines: PoDocumentLine[];
   subtotal: string;
   /**
@@ -170,12 +172,6 @@ export function describeLine(input: {
   };
 }
 
-const supplierParty = (supplier: SupplierDetails): PoDocumentParty => ({
-  name: supplier.name ?? DOCUMENT_COMPANY_NAME,
-  address: supplier.address ?? null,
-  contact: joinContact(supplier.email, supplier.phone),
-});
-
 /**
  * Builds the document from what the review screen already holds.
  *
@@ -187,7 +183,6 @@ export function buildPoDocument(input: {
   lines: CartLine[];
   subtotal: string;
   buyer: ReviewBuyer | null;
-  supplier: SupplierDetails;
   /** The client's own PO number, when they typed one. */
   poNumber: string | null;
   /** Our Order ID, `W-…`, minted when the cart was opened. */
@@ -226,7 +221,6 @@ export function buildPoDocument(input: {
       address: input.buyer?.address ?? null,
       contact: joinContact(input.buyer?.contactName ?? null, input.buyer?.email ?? null),
     },
-    supplier: supplierParty(input.supplier),
     lines,
     subtotal: summed,
     // A cart quotes no tax. Delivery and any tax are settled when the team
@@ -282,7 +276,6 @@ export function buildPoDocumentFromOrder(input: {
       amount: string;
     }[];
   };
-  supplier: SupplierDetails;
   /** Already formatted, so the page and the document agree on the day. */
   orderDate: string;
   /** Already formatted too. Null until the team has confirmed the order. */
@@ -322,7 +315,6 @@ export function buildPoDocumentFromOrder(input: {
     paymentTerms: order.paymentTerms?.trim() || null,
     currency: order.currency,
     buyer: order.buyer,
-    supplier: supplierParty(input.supplier),
     lines,
     subtotal: summed.toFixed(2),
     tax: taxed?.toFixed(2) ?? null,

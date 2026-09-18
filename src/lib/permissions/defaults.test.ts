@@ -9,10 +9,12 @@ import { OPS_ROLES, roleLabel } from "@/lib/permissions/roles";
 import { defaultGranted, defaultRows } from "@/lib/permissions/defaults";
 
 describe("the registry", () => {
-  it("holds twenty actions with unique keys", () => {
-    expect(PERMISSION_ACTIONS).toHaveLength(20);
+  // Nineteen since 2026-09-18: `org.settings` went with the supplier record
+  // it was the only gate on.
+  it("holds nineteen actions with unique keys", () => {
+    expect(PERMISSION_ACTIONS).toHaveLength(19);
     const keys = PERMISSION_ACTIONS.map((action) => action.key);
-    expect(new Set(keys).size).toBe(20);
+    expect(new Set(keys).size).toBe(19);
   });
 
   it("gives every action a label and a one-line description", () => {
@@ -31,11 +33,11 @@ describe("the registry", () => {
     }
   });
 
-  it("locks exactly the three administration rows", () => {
+  it("locks exactly the two administration rows", () => {
     const locked = PERMISSION_ACTIONS.filter((action) => action.locked).map(
       (action) => action.key,
     );
-    expect(locked).toEqual(["user.manage", "permission.manage", "org.settings"]);
+    expect(locked).toEqual(["user.manage", "permission.manage"]);
   });
 
   it("narrows an unknown key", () => {
@@ -119,7 +121,6 @@ describe("the default grants", () => {
         "buyer.manage",
         "user.manage",
         "permission.manage",
-        "org.settings",
       ] as const) {
         expect(defaultGranted(role, key)).toBe(false);
       }

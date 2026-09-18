@@ -14,7 +14,6 @@ import { buildPoDocument, documentAgreesWithOrder } from "@/lib/purchase-order-d
 import { shopHref } from "@/lib/shop-routes";
 import type { Cart } from "@/lib/queries/cart";
 import type { ReviewBuyer } from "@/lib/queries/shop-checkout";
-import type { SupplierDetails } from "@/lib/org-settings";
 
 /**
  * Review and send (Phase 32, from the Phase 18 design).
@@ -32,13 +31,10 @@ import type { SupplierDetails } from "@/lib/org-settings";
 export function ReviewSendForm({
   cart,
   buyer,
-  supplier,
   orderDate,
 }: {
   cart: Cart;
   buyer: ReviewBuyer | null;
-  /** Printed on the purchase order, and behind "Ask us to change this". */
-  supplier: SupplierDetails;
   /** Today, already formatted, so the document and the server agree on it. */
   orderDate: string;
 }) {
@@ -48,7 +44,6 @@ export function ReviewSendForm({
   const [notes, setNotes] = useState("");
 
   const cartonCount = cart.lines.reduce((sum, line) => sum + line.cartons, 0);
-  const supplierEmail = supplier.email;
 
   // Rebuilt on every keystroke, which is the point: the document above is the
   // one that will be filed, so the PO number and the note appear on
@@ -57,7 +52,6 @@ export function ReviewSendForm({
     lines: cart.lines,
     subtotal: cart.subtotal,
     buyer,
-    supplier,
     poNumber: buyerReference || null,
     orderId: cart.reference,
     notes: notes || null,
@@ -150,19 +144,13 @@ export function ReviewSendForm({
                   {[buyer.contactName, buyer.email].filter(Boolean).join(" · ")}
                 </p>
               ) : null}
+              {/* The "Ask us to change this" mailto went with the supplier
+                  record on 2026-09-18 — there is no address left to send to. */}
               <p className="mt-sm text-[length:var(--text-caption)] text-ink-tertiary">
-                This is the address we hold for your company. Changing it is a
-                message to our team rather than an edit, so your invoicing
+                This is the address we hold for your company. It is not edited
+                here — tell our team if it has changed, so your invoicing
                 details stay correct.
               </p>
-              {supplierEmail ? (
-                <a
-                  href={`mailto:${supplierEmail}?subject=${encodeURIComponent(`Change of details for ${buyer.name}`)}`}
-                  className="mt-sm flex h-control-md w-fit items-center rounded-pill border border-hairline-strong px-md text-[length:var(--text-button-md)] font-semibold text-ink hover:border-ink focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-focus"
-                >
-                  Ask us to change this
-                </a>
-              ) : null}
             </Card>
           </div>
         ) : null}

@@ -84,7 +84,7 @@ export function ShopAccountMenu({
 
         {/* Always rendered here, not as a leading entry in `rows` — §5.7
             lists a separator between the identity block and the first row
-            for every client, with or without `supplierEmail`, and putting it
+            for every client, whatever `rows` holds, and putting it
             here means every caller building `rows` (this phase's `ShopHeader`
             and 19–21's later insertions) can just append/insert rows in menu
             order without remembering to lead with one. */}

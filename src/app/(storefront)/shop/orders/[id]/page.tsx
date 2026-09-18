@@ -9,7 +9,6 @@ import { requireClient } from "@/lib/auth-guards";
 import { buyerOrderStatus } from "@/lib/buyer-order-status";
 import { formatDate } from "@/lib/dates";
 import { formatMYR } from "@/lib/money";
-import { loadSupplierDetails } from "@/lib/org-settings";
 import {
   buildPoDocumentFromOrder,
   documentAgreesWithOrder,
@@ -53,10 +52,8 @@ export default async function OrderDetailPage({
   // The same document the buyer read before confirming, drawn from the order
   // as it now stands. One builder and one `PurchaseOrderPreview` serve both
   // screens, so a checkout version and a history version cannot drift apart.
-  const supplier = await loadSupplierDetails();
   const document = buildPoDocumentFromOrder({
     order: { ...order, poNumber: order.buyerReference },
-    supplier,
     orderDate: order.date ? formatDate(order.date) : "—",
     deliveryDate: order.deliveryDate ? formatDate(order.deliveryDate) : null,
     // A declined order is not waiting on anyone, so it makes no promise.

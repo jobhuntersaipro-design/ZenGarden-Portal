@@ -1,6 +1,107 @@
-# Current Feature: Role-based access and the permission grid
+# Current Feature: The supplier record removed
 
 ## Status
+
+**Built and driven in a browser on `feature/remove-supplier-info`**
+(2026-09-18). Asked for as: "please remove all supplier info. There shouldn't
+have any supplier in the first place. We are the supplier."
+
+The premise of Phase 24 was wrong. `OrgSettings` held four fields — supplier
+name, email, phone, address — describing a company that does not exist
+separately from us, and five surfaces read them: the purchase-order document's
+**Supplier** party block (which only ever repeated the masthead), the `/admin`
+**Contact details** card, the shop footer's **Contact** column, the account
+menu's **"Talk to our team"** mailto, and the review screen's **"Ask us to
+change this"** button. All five are gone, with the table, the four
+`ZEN_GARDEN_*` fallbacks and the `org.settings` permission.
+
+Decisions the user made (all three taken as recommended):
+
+- **Everything, the storefront contact included.** Not "keep the footer on a
+  hardcoded constant": the fields were empty in both databases, so the footer's
+  Contact column and the mailto were already rendering nothing. Keeping a
+  surface that shows nothing is worse than not having it.
+- **Buyer alone, half width.** The party row keeps its two-column grid and the
+  buyer keeps the line length it was designed for, rather than an address
+  running the full 1070px of a landscape sheet. In the PDF that needed
+  `width: "50%"` in place of `flexGrow: 1` — one child of a flex row grows to
+  fill it.
+- **Drop the table.** A migration, `20260922090000_drop_org_settings`, rather
+  than a dead table left in the schema.
+
+Decided without asking: the migration also **deletes the five orphaned
+`PermissionGrant` rows** for `org.settings` — `action` is a plain String with
+no foreign key, so they would have sat unread for ever. `DOCUMENT_COMPANY_NAME`
+stays and is now the document's **only** naming of us. `optionalEmail` in
+`src/lib/validation/common.ts` is left in place though it now has no caller: it
+is a generic helper, and deleting it is beyond what was asked.
+
+**What is lost: nothing that was displaying.** Both databases held **zero**
+`OrgSettings` rows and production has **none** of the four `ZEN_GARDEN_*`
+variables set, so every one of those five surfaces was already blank or
+printing only the fallback company name.
+
+## Verified, with the figures
+
+Development, port 3000, as the seeded super admin and a throwaway `CLIENT`
+against Kelana Steel. **The dev server was restarted first**, because the one
+running predated `prisma generate`.
+
+- **Read before dropping, both databases.** `OrgSettings` **0 rows on
+  development and 0 on production** (production read through
+  `vercel env pull --environment=production`, a read-only query, credentials
+  deleted straight after); `org.settings` grants **5 of 100** on each. After
+  the migration on development: the table is **gone** from
+  `information_schema`, `org.settings` grants **0**, total grants **100 → 95**.
+- **The PDF, through the real renderer.** 4,099 bytes, one landscape A4 page:
+  masthead `ZEN GARDEN TRADING (M) SDN BHD`, then `BUYER` alone, and
+  **`pdftotext | grep -ci supplier` returns 0**. Rendered again with a
+  120-character single-line address to measure the block rather than assume it:
+  it wrapped at **x = 383.9 on an 841.89pt page**, against a half-width
+  boundary of ~396 — half, not stretched.
+- **The on-screen document, live on `/checkout/review`.** Sheet 1070px, party
+  grid **475px + 475px** with one child at **475px**; masthead reads
+  `ZEN GARDEN TRADING (M) SDN BHD`; `/supplier/i` matches **0 times** in the
+  sheet and 0 times in `main`; **"Ask us to change this" is absent**.
+- **The account menu** reads My orders / Change password / Sign out, hrefs
+  `/orders` and `/account/password` — **no "Talk to our team" and no
+  `mailto:`**.
+- **The footer is three columns**, `354.664px × 3` at 1440 and one column at
+  390, headings the strapline / Shop / Your account, and **no "Contact"**.
+- **`/admin`** carries no Contact details card and no "Supplier" anywhere; the
+  permission grid reads **19 actions**, with Administration down to **Manage
+  users** and **Manage permissions**.
+- **No overflow** on `/checkout/review` and the shop home at 390 / 768 / 1440 —
+  six combinations, `scrollWidth === innerWidth` on all.
+- **Cleanup by id:** the throwaway client, its `DRAFT` cart `W-2609-00050` and
+  its line, one login attempt and one audit row; counts back to users **2**,
+  `CLIENT` **0**, web orders **0**, web order lines **0**, buyers **11**, POs
+  **400**. Three temporary scripts and the temporary render test were deleted;
+  `git status` carries only this change.
+- **1285/1285 tests across 97 files**, `tsc`, lint (the same 2 pre-existing
+  warnings) and `npm run build` clean — re-run on the rebased tree. The browser
+  work above was driven on a tree that also carried the unmerged Phase 49
+  (stage coverage), because this branch was cut from it; **only this one commit
+  was taken to `main`**, rebased onto it, and the three conflicts that caused
+  (`/admin`'s query tuple, the `User` relation list, this file) were resolved
+  by hand. What that changes about the measurements: `/admin` here has no Stage
+  coverage section, and the permission grid's **19 actions** and two-row
+  Administration group are the same either way.
+
+## Not verified
+
+- **Anything on production.** Not deployed. Production was **read** (0
+  `OrgSettings` rows, 5 `org.settings` grants) and not written; the migration
+  has not run there. Per the note carried since 2026-09-17, only production
+  builds migrate, so the table drops on the `main` deploy and not on a preview.
+- **A stored PDF drawn before today.** Files already in R2 keep their Supplier
+  block until their order is confirmed or its delivery date moves, which is
+  Phase 42's redraw rule and unchanged here.
+- **The five emails**, whose PO preview image is rasterised from the same
+  renderer. Unit tests cover the data; none was sent or rendered to a client.
+- **A member's view** — `/admin` was read as a super admin.
+
+## Previous phase
 
 **Phase 48 — built and driven in a browser on `feature/role-based-access`**
 (2026-09-18). Spec `docs/specs/48-role-based-access.md`. Asked for as: four

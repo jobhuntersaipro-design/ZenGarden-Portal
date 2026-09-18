@@ -89,9 +89,10 @@ export function PurchaseOrderPreview({
           ) : null}
         </div>
 
+        {/* One party, half width: we are the supplier and the masthead
+            already says so, so there is no second block (2026-09-18). */}
         <div className="grid grid-cols-2 gap-xl border-b border-hairline py-md">
           <Party heading="Buyer" party={document.buyer} />
-          <Party heading="Supplier" party={document.supplier} />
         </div>
 
         <div className="pt-md">

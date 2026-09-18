@@ -26,10 +26,6 @@ vi.mock("@/lib/prisma", () => ({
 }));
 vi.mock("@/lib/queries/web-orders", () => ({ loadWebOrderDocumentSource }));
 vi.mock("@/lib/pdf/purchase-order", () => ({ renderPurchaseOrderPdf }));
-vi.mock("@/lib/org-settings", () => ({
-  loadSupplierDetails: () =>
-    Promise.resolve({ name: "Zen Garden", address: null, email: null, phone: null }),
-}));
 vi.mock("@/lib/r2", () => ({
   putObject,
   getObjectBytes,

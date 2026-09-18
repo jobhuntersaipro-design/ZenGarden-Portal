@@ -12,7 +12,6 @@ import { ShopHeader } from "@/components/shop/ShopHeader";
 import { ShopUtilityBar } from "@/components/shop/ShopUtilityBar";
 import { ShopViewerProvider } from "@/components/shop/ShopViewer";
 import { env } from "@/lib/env";
-import { loadSupplierDetails } from "@/lib/org-settings";
 import { cartSummary } from "@/lib/queries/cart";
 import { listShopCategories } from "@/lib/queries/shop-catalogue";
 import { loadShopViewer } from "@/lib/shop-viewer";
@@ -51,10 +50,9 @@ export default async function StorefrontLayout({
   // loops against the same host (measured 2026-09-09).
   if (viewer === "staff") redirect(env.APP_URL);
 
-  const [categories, summary, supplier] = await Promise.all([
+  const [categories, summary] = await Promise.all([
     listShopCategories(),
     viewer.kind === "client" ? cartSummary(viewer.id) : Promise.resolve(null),
-    loadSupplierDetails(),
   ]);
 
   return (
@@ -68,11 +66,7 @@ export default async function StorefrontLayout({
               ever reaching the page they asked for. */}
           <SkipLink />
           <ShopUtilityBar />
-          <ShopHeader
-            categories={categories}
-            summary={summary}
-            supplierEmail={supplier.email}
-          />
+          <ShopHeader categories={categories} summary={summary} />
           <NavProgressProvider>
             {/* pb-section, not pb-xxl: MobileCartBar is taller than the old
                 60px floor once its own safe-area padding is added, and it is
@@ -84,7 +78,7 @@ export default async function StorefrontLayout({
               <PageTransition>{children}</PageTransition>
             </main>
           </NavProgressProvider>
-          <ShopFooter categories={categories} supplier={supplier} />
+          <ShopFooter categories={categories} />
           <MobileCartBar />
           {/* Renders nothing; moves a guest's localStorage cart into their
               account the moment they sign in. */}

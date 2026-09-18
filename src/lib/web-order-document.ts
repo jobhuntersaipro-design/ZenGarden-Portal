@@ -1,7 +1,6 @@
 import "server-only";
 import { WebOrderStatus } from "@/generated/prisma/enums";
 import { formatDate } from "@/lib/dates";
-import { loadSupplierDetails } from "@/lib/org-settings";
 import { renderPurchaseOrderPdf } from "@/lib/pdf/purchase-order";
 import { prisma } from "@/lib/prisma";
 import {
@@ -60,11 +59,10 @@ type WebOrderDocumentSource = NonNullable<
  * What the file prints, as data. Shared by the renderer and the emails, so a
  * mail's line table and the PDF on it cannot say different things.
  */
-async function documentDataFor(source: WebOrderDocumentSource): Promise<PoDocumentData> {
+function documentDataFor(source: WebOrderDocumentSource): PoDocumentData {
   const confirmed = source.status === WebOrderStatus.CONFIRMED;
   return buildPoDocumentFromOrder({
     order: source.order,
-    supplier: await loadSupplierDetails(),
     orderDate: source.submittedAt ? formatDate(source.submittedAt) : "—",
     // Only once the team has confirmed: before that there is no promise
     // to print, and the cell reads "—".
@@ -88,7 +86,7 @@ export async function loadWebOrderDocumentData(
   try {
     const source = await loadWebOrderDocumentSource(webOrderId);
     if (!source || source.status === WebOrderStatus.DRAFT) return null;
-    return await documentDataFor(source);
+    return documentDataFor(source);
   } catch (cause) {
     console.error("[web-order-document] loadWebOrderDocumentData", cause);
     return null;
@@ -147,7 +145,7 @@ export async function attachWebOrderDocument(
     const confirmed = source.status === WebOrderStatus.CONFIRMED;
     const render = async () =>
       renderPurchaseOrderPdf(
-        await documentDataFor(source),
+        documentDataFor(source),
         confirmed ? CONFIRMED_FOOTNOTE : SENT_FOOTNOTE,
       );
 
