@@ -705,9 +705,11 @@
 /**
  * Printing a purchase order (Phase 35).
  *
- * A buyer reviewing an order can press Print and get the document alone —
- * which is also "Save as PDF" in every desktop browser, and is the only way to
- * keep a copy until Phase 19 generates a real file.
+ * The app offers no print control: "Print or save as PDF" was removed on
+ * 2026-09-18 at the user's request, leaving Download PDF as the way to keep a
+ * copy. What remains here shapes the browser's own print — a reader who
+ * presses Ctrl-P on an order gets the document alone rather than the page's
+ * navigation around it.
  *
  * `visibility` rather than `display: none` on the chrome: hiding the ancestors
  * of the thing you want to keep is impossible with `display`, because hiding a

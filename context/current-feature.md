@@ -1251,6 +1251,29 @@ file: generating a PDF remains Phase 19, still unbuilt.
   purchase-order file, is also unbuilt.
 
 ## History
+- 2026-09-18: "Print or save as PDF" removed; Download PDF is the only
+  purchase-order action — merged from `fix/remove-print-po-button` and pushed.
+  There was **one** such control in the app, `PrintOrderButton` on the buyer's
+  order page (`/orders/[id]`); the admin PO detail, the shop-order review and
+  the checkout review have never had one, checked by grep and in a browser.
+  The component and its `window.print()` are deleted, and no print control
+  replaced it. The `@media print` block in `globals.css` stays — it is not a
+  control, and it is what makes a reader's own Ctrl-P print the document
+  rather than the page's navigation; its comment now says so. **A consequence
+  worth knowing:** an order with no stored file (placed before Phase 37, or
+  one whose render failed) now shows no action at all, where Print used to
+  cover it. Driven on development as a throwaway shop contact: on a fixture
+  shop order with a real 4,129-byte PDF the only pill is Download PDF, its
+  route answered 302 to R2 and the browser downloaded
+  `W-2609-09980 purchase order.pdf` (4,129 bytes, `%PDF-1.3`); the viewer's
+  −/100%/+/Fit is untouched; `/purchase-orders/[id]` and `/web-orders/[id]`
+  as Aisha carry no print control, and PO detail keeps Download original. The
+  production build contains no "Print or save as PDF" (0 matches). Fixture web
+  order, its line, its `Document`, the R2 object (`NotFound`), the client and
+  one login attempt deleted by id; counts back to users 2, `CLIENT` 0, web
+  orders 0, documents 406, POs 400, stage events 2323, products 308, login
+  attempts 68. 1223/1223 tests, `tsc`, lint (same 2 warnings) and build clean.
+  Not verified on production, where the report came from.
 - 2026-09-18: Notes and activity under the lifecycle, and stage sentences that
   name both stages — merged from `feature/po-lifecycle-feed` and pushed. Asked
   for as: put the notes and activity feed under the stepper, write "from X to
