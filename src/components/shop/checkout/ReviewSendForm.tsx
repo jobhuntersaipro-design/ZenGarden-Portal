@@ -5,6 +5,14 @@ import { useRouter } from "next/navigation";
 import { Send } from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { PurchaseOrderPreview } from "@/components/shop/checkout/PurchaseOrderPreview";
@@ -31,6 +39,14 @@ const PO_FIELD_ID = "buyerReference";
  * date when they confirm, and the buyer is told it then.
  *
  * Nothing is written until Send. Local state only, one Server Action.
+ *
+ * Confirm order asks a second time (2026-09-20). Sending is the one
+ * irreversible thing a buyer does here — it files a purchase order against
+ * their company and emails our team — and it is a full-width pill at the
+ * bottom of a phone screen, where it is reached by the same thumb that has
+ * been scrolling. The dialog restates what is about to be sent, so it is a
+ * check rather than a speed bump: the PO number the order is filed under,
+ * the counts, and the total the prices are fixed at.
  */
 export function ReviewSendForm({
   cart,
@@ -53,6 +69,8 @@ export function ReviewSendForm({
    * confirm form's own required-field gate.
    */
   const [attempted, setAttempted] = useState(false);
+  /** The second ask. Opened only once the form has nothing left to correct. */
+  const [confirmOpen, setConfirmOpen] = useState(false);
 
   const missingPoNumber = buyerReference.trim() ? null : PO_NUMBER_REQUIRED;
 
@@ -74,7 +92,13 @@ export function ReviewSendForm({
   // Refuse to draw a document that contradicts the figure beside Confirm.
   const documentIsSound = documentAgreesWithOrder(document, cart.subtotal);
 
-  const send = () => {
+  /**
+   * What Confirm order does. The field gate runs *before* the dialog opens —
+   * asking someone to confirm an order and only then telling them the PO
+   * number is missing would make the second ask the thing that found the
+   * mistake, two taps after the one that should have.
+   */
+  const requestConfirm = () => {
     // Nothing is sent while the PO number is missing: the message under the
     // field says which one, where a greyed-out button could not.
     if (missingPoNumber) {
@@ -84,6 +108,10 @@ export function ReviewSendForm({
       window.document.getElementById(PO_FIELD_ID)?.focus();
       return;
     }
+    setConfirmOpen(true);
+  };
+
+  const send = () => {
     startTransition(async () => {
       const result = await submitWebOrder({
         buyerReference: buyerReference.trim(),
@@ -239,7 +267,7 @@ export function ReviewSendForm({
         <div className="mt-md sm:flex sm:justify-center">
           <Button
             pending={pending}
-            onClick={send}
+            onClick={requestConfirm}
             className="h-control-lg w-full gap-xs sm:w-auto sm:min-w-80"
           >
             <Send className="size-4 shrink-0" aria-hidden />
@@ -252,6 +280,82 @@ export function ReviewSendForm({
           is quoted separately when our team confirms.
         </p>
       </section>
+
+      {/* The second ask. While the order is in flight the dialog cannot be
+          dismissed — by the ✕, by Escape or by a tap outside — because all
+          three route through `onOpenChange`, and closing it would leave the
+          buyer on a page whose Confirm button is still spinning with nothing
+          to say whether the order went. */}
+      <Dialog
+        open={confirmOpen}
+        onOpenChange={(next) => {
+          if (!pending) setConfirmOpen(next);
+        }}
+      >
+        <DialogContent showCloseButton={!pending}>
+          <DialogHeader>
+            <DialogTitle>Send this order?</DialogTitle>
+            <DialogDescription>
+              Your purchase order goes to our team and can&rsquo;t be changed
+              here afterwards. They confirm the expected delivery date and
+              payment terms, and email you.
+            </DialogDescription>
+          </DialogHeader>
+
+          {/* The three facts worth re-reading: what it is filed under, how
+              much of it there is, and the figure the prices are fixed at. */}
+          <dl className="flex flex-col gap-xs">
+            <SummaryRow label="Your PO number" value={buyerReference.trim()} mono />
+            <SummaryRow
+              label="Order"
+              value={`${cart.lines.length} product${cart.lines.length === 1 ? "" : "s"} · ${cartonCount} carton${cartonCount === 1 ? "" : "s"}`}
+            />
+            <SummaryRow label="Total" value={formatMYR(cart.subtotal)} />
+          </dl>
+
+          <DialogFooter>
+            <Button
+              variant="secondary"
+              disabled={pending}
+              onClick={() => setConfirmOpen(false)}
+            >
+              Cancel
+            </Button>
+            <Button
+              variant="secondary"
+              className="gap-xs bg-ink text-canvas hover:bg-ink-deep"
+              pending={pending}
+              onClick={send}
+            >
+              <Send className="size-4 shrink-0" aria-hidden />
+              Send order
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+    </div>
+  );
+}
+
+/** One line of the confirm dialog's summary. */
+function SummaryRow({
+  label,
+  value,
+  mono = false,
+}: {
+  label: string;
+  value: string;
+  mono?: boolean;
+}) {
+  return (
+    <div className="flex items-baseline justify-between gap-sm">
+      <dt className="text-[length:var(--text-caption)] text-ink-tertiary">{label}</dt>
+      <dd
+        className={`min-w-0 truncate text-[length:var(--text-body-sm)] font-semibold text-ink ${mono ? "font-mono" : "tabular-nums"}`}
+        title={value}
+      >
+        {value}
+      </dd>
     </div>
   );
 }
