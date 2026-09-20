@@ -56,3 +56,22 @@ export function orderLabel({ orderId, poNumber }: OrderIdentity): string {
   if (poNumber) return `PO number ${poNumber}`;
   return "Purchase order";
 }
+
+/**
+ * What an email's subject and heading call the order (2026-09-20).
+ *
+ * The buyer's own PO number, because that is what they filed it under and what
+ * they will search their inbox for. It falls back to our Order ID for the
+ * orders placed before the PO number became required: a subject reading
+ * "We have your order —" is unusable, and those orders can still be emailed
+ * about whenever their delivery date moves.
+ *
+ * Bare, with no "PO number"/"Order ID" prefix — the templates read
+ * "your order X", and the labelled form is `PoMetaLine`'s job.
+ */
+export function emailOrderName(
+  poNumber: string | null | undefined,
+  reference: string,
+): string {
+  return poNumber?.trim() || reference;
+}

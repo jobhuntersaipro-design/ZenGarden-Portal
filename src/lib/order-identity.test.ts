@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { orderIdentity, orderLabel } from "@/lib/order-identity";
+import { emailOrderName, orderIdentity, orderLabel } from "@/lib/order-identity";
 
 /**
  * Order ID and PO number are never interchangeable (2026-09-17): a shop
@@ -59,5 +59,33 @@ describe("orderLabel", () => {
       "PO number SVPPPO26090009",
     );
     expect(orderLabel({ orderId: null, poNumber: null })).toBe("Purchase order");
+  });
+});
+
+describe("emailOrderName", () => {
+  /**
+   * The buyer's own PO number names the order in an email's subject and
+   * heading (2026-09-20) — it is what they filed it under.
+   */
+  it("prefers the buyer's PO number", () => {
+    expect(emailOrderName("ACME-PO-771", "W-2609-00014")).toBe("ACME-PO-771");
+  });
+
+  /**
+   * Falls back to the Order ID rather than a dash. Orders placed before the PO
+   * number became required have none, and they can still be emailed about
+   * whenever their delivery date moves — "your order —" is unfindable.
+   */
+  it.each([
+    ["null", null],
+    ["undefined", undefined],
+    ["empty", ""],
+    ["whitespace alone", "   "],
+  ])("falls back to the Order ID when the PO number is %s", (_label, poNumber) => {
+    expect(emailOrderName(poNumber, "W-2609-00014")).toBe("W-2609-00014");
+  });
+
+  it("trims what it returns", () => {
+    expect(emailOrderName("  ACME-PO-771  ", "W-2609-00014")).toBe("ACME-PO-771");
   });
 });

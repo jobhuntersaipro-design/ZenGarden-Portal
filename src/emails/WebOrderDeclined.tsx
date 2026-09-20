@@ -1,10 +1,17 @@
 import { Layout } from "@/emails/Layout";
 import { ButtonLink, Heading, Paragraph } from "@/emails/parts";
 import { PoFooter, PoMetaLine, PoPreview, PoSummary } from "@/emails/po-parts";
+import { emailOrderName } from "@/lib/order-identity";
 import type { PoDocumentData } from "@/lib/purchase-order-document";
 
 export type WebOrderDeclinedProps = {
   reference: string;
+  /**
+   * The buyer's own PO number (2026-09-20). Names the order in the subject and
+   * heading, falling back to `reference`; shown labelled, or "—", by
+   * `PoMetaLine`.
+   */
+  poNumber?: string | null;
   /** The reason the reviewer typed. Required of them, and shown verbatim. */
   reason: string;
   orderUrl: string;
@@ -32,6 +39,7 @@ export type WebOrderDeclinedProps = {
  */
 export function WebOrderDeclined({
   reference,
+  poNumber = null,
   reason,
   orderUrl,
   document = null,
@@ -40,8 +48,8 @@ export function WebOrderDeclined({
 }: WebOrderDeclinedProps) {
   return (
     <Layout>
-      <Heading>{`About your order ${reference}`}</Heading>
-      <PoMetaLine reference={reference} />
+      <Heading>{`About your order ${emailOrderName(poNumber, reference)}`}</Heading>
+      <PoMetaLine poNumber={poNumber} />
       <Paragraph>
         We are sorry — we cannot take this order on as it stands.
       </Paragraph>
@@ -58,7 +66,7 @@ export function WebOrderDeclined({
   );
 }
 
-export const webOrderDeclinedSubject = (reference: string) =>
-  `About your order ${reference}`;
+export const webOrderDeclinedSubject = (poNumber: string | null, reference: string) =>
+  `About your order ${emailOrderName(poNumber, reference)}`;
 
 export default WebOrderDeclined;

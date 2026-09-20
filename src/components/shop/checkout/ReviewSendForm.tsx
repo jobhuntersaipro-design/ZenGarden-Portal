@@ -9,11 +9,15 @@ import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { PurchaseOrderPreview } from "@/components/shop/checkout/PurchaseOrderPreview";
 import { submitWebOrder } from "@/actions/cart";
+import { PO_NUMBER_REQUIRED } from "@/lib/validation/cart";
 import { formatMYR } from "@/lib/money";
 import { buildPoDocument, documentAgreesWithOrder } from "@/lib/purchase-order-document";
 import { shopHref } from "@/lib/shop-routes";
 import type { Cart } from "@/lib/queries/cart";
 import type { ReviewBuyer } from "@/lib/queries/shop-checkout";
+
+/** Also the anchor for the error message and the focus target. */
+const PO_FIELD_ID = "buyerReference";
 
 /**
  * Review and send (Phase 32, from the Phase 18 design).
@@ -42,6 +46,15 @@ export function ReviewSendForm({
   const [pending, startTransition] = useTransition();
   const [buyerReference, setBuyerReference] = useState("");
   const [notes, setNotes] = useState("");
+  /**
+   * Set by the first Confirm pressed with the PO number empty (2026-09-20).
+   * Until then nothing is red: an untouched form is not a mistake yet. The
+   * message clears the moment the field is filled. Same shape as the ops
+   * confirm form's own required-field gate.
+   */
+  const [attempted, setAttempted] = useState(false);
+
+  const missingPoNumber = buyerReference.trim() ? null : PO_NUMBER_REQUIRED;
 
   const cartonCount = cart.lines.reduce((sum, line) => sum + line.cartons, 0);
 
@@ -61,10 +74,19 @@ export function ReviewSendForm({
   // Refuse to draw a document that contradicts the figure beside Confirm.
   const documentIsSound = documentAgreesWithOrder(document, cart.subtotal);
 
-  const send = () =>
+  const send = () => {
+    // Nothing is sent while the PO number is missing: the message under the
+    // field says which one, where a greyed-out button could not.
+    if (missingPoNumber) {
+      setAttempted(true);
+      // `window.` because `document` in this scope is the purchase order
+      // being previewed, not the DOM.
+      window.document.getElementById(PO_FIELD_ID)?.focus();
+      return;
+    }
     startTransition(async () => {
       const result = await submitWebOrder({
-        buyerReference: buyerReference.trim() || null,
+        buyerReference: buyerReference.trim(),
         notes: notes.trim() || null,
       });
       if (!result.success) {
@@ -73,6 +95,7 @@ export function ReviewSendForm({
       }
       router.push(shopHref.orderSent(result.data.reference));
     });
+  };
 
   return (
     <div className="mt-lg flex flex-col gap-xl">
@@ -110,19 +133,26 @@ export function ReviewSendForm({
         <div className="min-w-0">
           <Card title="Order details">
             <Field
-              label="Your own PO number (optional)"
+              id={PO_FIELD_ID}
+              label="Your own PO number"
               hint={
                 cart.reference
-                  ? `Printed on your purchase order as its PO number. Leave it blank if you don't have one — the order is still tracked by its Order ID, ${cart.reference}.`
-                  : "Printed on your purchase order as its PO number. Leave it blank if you don't have one."
+                  ? `Printed on your purchase order as its PO number. We also track this order by its Order ID, ${cart.reference}.`
+                  : "Printed on your purchase order as its PO number."
               }
+              error={attempted ? (missingPoNumber ?? undefined) : undefined}
             >
               <Input
+                id={PO_FIELD_ID}
                 value={buyerReference}
                 onChange={(event) => setBuyerReference(event.target.value)}
                 maxLength={64}
                 className="font-mono"
                 aria-label="Your own PO number"
+                aria-invalid={attempted && missingPoNumber ? true : undefined}
+                aria-describedby={
+                  attempted && missingPoNumber ? `${PO_FIELD_ID}-error` : undefined
+                }
               />
             </Field>
           </Card>
@@ -236,19 +266,36 @@ function Card({ title, children }: { title: string; children: React.ReactNode })
 }
 
 function Field({
+  id,
   label,
   hint,
+  error,
   children,
 }: {
+  id?: string;
   label: string;
   hint: string;
+  error?: string;
   children: React.ReactNode;
 }) {
   return (
     <div>
       <p className="text-[length:var(--text-caption)] font-semibold text-ink">{label}</p>
       <div className="mt-xxs">{children}</div>
-      <p className="mt-xxs text-[length:var(--text-caption)] text-ink-tertiary">{hint}</p>
+      {/* The error replaces the hint rather than stacking under it: the hint
+          explains the field, and once it is wrong the correction is the only
+          thing worth reading. */}
+      {error ? (
+        <p
+          id={id ? `${id}-error` : undefined}
+          role="alert"
+          className="mt-xxs text-[length:var(--text-caption)] text-accent-red"
+        >
+          {error}
+        </p>
+      ) : (
+        <p className="mt-xxs text-[length:var(--text-caption)] text-ink-tertiary">{hint}</p>
+      )}
     </div>
   );
 }

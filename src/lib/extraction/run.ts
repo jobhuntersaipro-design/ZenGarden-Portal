@@ -155,7 +155,16 @@ async function toDraft(extraction: PoExtraction, extractionId: string) {
       amount: money(line.amount),
     })),
     subtotal: money(extraction.subtotal),
-    tax: money(extraction.tax),
+    // Zero since 2026-09-20: we charge no tax, and the review screen no longer
+    // offers a field to correct one. Left at the extracted value it would be
+    // written to a purchase order that nobody could see or fix.
+    //
+    // A scanned document that *does* print tax therefore disagrees with its own
+    // subtotal, the totals banner says so, and the reviewer confirms with the
+    // mismatch acknowledged — which is the existing path for a document whose
+    // figures do not add up, and it records an audit note. `extraction.tax` is
+    // still captured, so nothing is lost if this is ever reversed.
+    tax: "0.00",
     total: money(extraction.total),
   };
 }

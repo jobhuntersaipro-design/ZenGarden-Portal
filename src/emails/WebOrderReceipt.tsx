@@ -1,10 +1,17 @@
 import { Layout } from "@/emails/Layout";
 import { ButtonLink, Heading, Paragraph } from "@/emails/parts";
 import { PoFooter, PoMetaLine, PoPreview, PoSummary } from "@/emails/po-parts";
+import { emailOrderName } from "@/lib/order-identity";
 import type { PoDocumentData } from "@/lib/purchase-order-document";
 
 export type WebOrderReceiptProps = {
   reference: string;
+  /**
+   * The buyer's own PO number (2026-09-20). Names the order in the subject and
+   * heading, falling back to `reference`; shown labelled, or "—", by
+   * `PoMetaLine`.
+   */
+  poNumber?: string | null;
   orderUrl: string;
   /**
    * Whether the purchase order is on this email (Phase 37). Said only when
@@ -28,6 +35,7 @@ export type WebOrderReceiptProps = {
  */
 export function WebOrderReceipt({
   reference,
+  poNumber = null,
   orderUrl,
   attached = false,
   document = null,
@@ -35,8 +43,8 @@ export function WebOrderReceipt({
 }: WebOrderReceiptProps) {
   return (
     <Layout>
-      <Heading>{`We have your order ${reference}`}</Heading>
-      <PoMetaLine reference={reference} />
+      <Heading>{`We have your order ${emailOrderName(poNumber, reference)}`}</Heading>
+      <PoMetaLine poNumber={poNumber} />
       {attached ? (
         <Paragraph>Your purchase order is attached to this email.</Paragraph>
       ) : null}
@@ -52,7 +60,7 @@ export function WebOrderReceipt({
   );
 }
 
-export const webOrderReceiptSubject = (reference: string) =>
-  `We have your order ${reference}`;
+export const webOrderReceiptSubject = (poNumber: string | null, reference: string) =>
+  `We have your order ${emailOrderName(poNumber, reference)}`;
 
 export default WebOrderReceipt;

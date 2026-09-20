@@ -306,6 +306,8 @@ export async function updatePurchaseOrder(
           select: {
             id: true,
             reference: true,
+            // Names the order in the subject and heading (2026-09-20).
+            buyerReference: true,
             placedBy: { select: { email: true } },
           },
         },
@@ -396,10 +398,16 @@ export async function updatePurchaseOrder(
         const mail = await preparePoEmail(order.id, order.reference, redrawn);
         await sendEmail({
           to: [order.placedBy.email],
-          subject: webOrderConfirmedSubject(order.reference, when, true),
+          subject: webOrderConfirmedSubject(
+            order.buyerReference,
+            order.reference,
+            when,
+            true,
+          ),
           attachments: mail.attachments,
           react: WebOrderConfirmed({
             reference: order.reference,
+            poNumber: order.buyerReference,
             expectedDelivery: when,
             total: formatMYR(po.total.toNumber()),
             orderUrl: `${env.SHOP_URL ?? env.APP_URL}/orders/${poId}`,

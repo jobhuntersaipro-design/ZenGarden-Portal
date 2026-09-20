@@ -45,12 +45,17 @@ const label: CSSProperties = {
 };
 
 /**
- * "Order ID W-2609-00015" under the heading, named for what it is (2026-09-17:
- * the Order ID is never the PO number). Only the Order ID since 2026-09-18, at
- * the user's request: the lines, total and the buyer's PO number are all in
- * the summary below.
+ * "PO number ACME-PO-771" under the heading, named for what it is (2026-09-17:
+ * the Order ID is never the PO number).
+ *
+ * The buyer's own PO number since 2026-09-20, at the user's request, where it
+ * was the Order ID before. Every order placed since then carries one; an order
+ * placed while the field was still optional reads "—" rather than borrowing
+ * our Order ID, which would be exactly the confusion the 2026-09-17 fix
+ * removed. The subject and heading do fall back to the Order ID, because an
+ * unnamed order is unfindable in an inbox.
  */
-export function PoMetaLine({ reference }: { reference: string }) {
+export function PoMetaLine({ poNumber }: { poNumber: string | null }) {
   return (
     <p
       style={{
@@ -61,8 +66,10 @@ export function PoMetaLine({ reference }: { reference: string }) {
         color: inkSecondary,
       }}
     >
-      {"Order ID "}
-      <span style={{ fontFamily: monoFont, color: ink, whiteSpace: "nowrap" }}>{reference}</span>
+      {"PO number "}
+      <span style={{ fontFamily: monoFont, color: ink, whiteSpace: "nowrap" }}>
+        {poNumber?.trim() || "—"}
+      </span>
     </p>
   );
 }

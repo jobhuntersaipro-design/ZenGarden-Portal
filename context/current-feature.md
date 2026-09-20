@@ -1,6 +1,137 @@
-# Current Feature: The account menu says who you are
+# Current Feature: The PO number is required, names the emails, and tax is gone
 
 ## Status
+
+**Built and driven in a browser on `feature/po-number-required-and-no-tax`**
+(2026-09-20). Asked for as: "for PO number, it's no longer optional, buyer must
+include it"; "For the email content, please replace the order id with PO
+number"; "When admin confirming the order, remove the tax section, no need
+tax".
+
+**The PO number is required at checkout.** `submitOrderSchema` went from
+`.nullable().optional()` to `.trim().min(1)`, so whitespace alone is refused
+rather than stored, and `submitWebOrder` lost its `= {}` default — with the
+field required, a default empty object would let a caller send an order
+carrying none. The form drops "(optional)" and the "leave it blank" hint, and
+on Confirm with the field empty it shows "Enter your PO number." in place of
+the hint, sets `aria-invalid`, focuses the field and sends **nothing**. Same
+shape as the ops confirm form's own required-field gate.
+
+**No migration.** `WebOrder.buyerReference` stays nullable: a DRAFT cart exists
+long before this form is reached, and every order placed while the field was
+optional still holds null. Those orders keep their `—` everywhere downstream.
+
+**The emails name the buyer's PO number**, where they named our Order ID
+before. `PoMetaLine` reads `PO number ACME-PO-771`, and the four templates'
+headings and subject lines follow through `emailOrderName` in
+`src/lib/order-identity.ts`. Decisions the user made:
+
+- **Body and subject, not the attachment filenames.** The PDF and preview PNG
+  are still `W-….pdf` — a typed PO number can carry a slash or a space, which
+  breaks a filename, and the Order ID is unique by construction where a buyer's
+  own number is not.
+- **The summary's "PO number" row stays**, so the value is printed twice, a few
+  lines apart. Offered the swap to Order ID and the deletion; chose to keep it.
+- **A dash for an order with no PO number**, rather than borrowing the Order ID
+  — which is the confusion the 2026-09-17 split exists to remove.
+
+Decided without asking, and flagged before building: **the subject and heading
+fall back to the Order ID** where the meta line shows its dash. "We have your
+order —" is unusable in an inbox, and those orders are still emailed about
+whenever their delivery date moves.
+
+**Tax is gone from both review screens**, at the user's choice when offered
+shop-only. The two `Field`s are deleted, the drafts keep `tax: "0.00"`, and
+`PurchaseOrder.tax` — still `NOT NULL` — keeps receiving zero. The scan review
+also stopped *reading* the extracted tax (`run.ts` now seeds the draft with
+`"0.00"`): left as it was, a value nobody could see or correct would still have
+been written. `extraction.tax` is still captured, so nothing is lost if this is
+reversed. The PO detail page's Tax row, the one place that printed
+`Tax MYR 0.00` unconditionally, is now conditional on a non-zero tax — the rule
+the document, the PDF and the emails have always followed.
+
+**The consequence, stated rather than buried:** a scanned purchase order that
+prints SST now disagrees with its own subtotal, so the totals banner opens and
+the reviewer confirms with the mismatch acknowledged, which records an audit
+note. That is the existing path for a document whose figures do not add up, not
+a new dead end — but every such scan will need that acknowledgement.
+
+## Verified, with the figures
+
+Development, port 3000, as a throwaway `CLIENT` against Kelana Steel and as the
+seeded super admin. **Read before changing anything: 0 of 400 purchase orders
+carry a non-zero tax**, so the tax change costs nothing on existing data and
+the new conditional row never renders in development.
+
+- **The gate sends nothing.** With `fetch` instrumented, Confirm on an empty PO
+  number produced **0 requests**, the error "Enter your PO number." with
+  `role="alert"`, `aria-invalid="true"`, `aria-describedby` wired to it, the
+  field focused, and the URL still `/checkout/review`. **Whitespace alone
+  (`"   "`) was refused the same way** — 0 requests again. Filling it cleared
+  the message and put the value on the live document preview within 300ms.
+- **Stored trimmed.** Sent as `"  KS-PO-9001  "`, read back from the database as
+  exactly `"KS-PO-9001"`, status `SUBMITTED`, subtotal `472.50` (3 cartons ×
+  RM 157.50).
+- **Both real email subjects, off the live send path** (Resend rejected the
+  `@example.com` recipient, as recorded since Phase 25, but the subject is
+  composed by the real code): **"We have your order KS-PO-9001"** and, after
+  confirm, **"Order KS-PO-9001 confirmed · delivery expected 2 Oct 2026"**.
+- **The confirm form has no Tax.** Its editable labels are **Expected delivery**
+  and **Payment terms** only; `getElementById("tax")` is **null** and the word
+  "Tax" appears **nowhere on the page**. Order ID `W-2609-00051` and PO number
+  `KS-PO-9001` read in their own separate read-only fields.
+- **The scan review has no Tax either.** `/review/[id]` reads **Subtotal** and
+  **Total on the document**, and its block re-laid from three columns to
+  **438px + 438px** — two even columns, no empty cell.
+- **What confirm wrote:** `poNumber` **null** (the Order ID is still never
+  copied in), `buyerReference` `KS-PO-9001`, **`tax 0.00`**, subtotal `472.50` =
+  total `472.50`. The PO detail page's totals read **Subtotal → Total** with no
+  Tax row, and "Tax" appears nowhere on it.
+- **Phone.** At 390 the error state shows red under a red-bordered input, the
+  input measures **44px** tall, and `scrollWidth === innerWidth` (390/390);
+  768/768 and 1440/1440 clean too. The preview above it reads Subtotal → Total
+  with no Tax row.
+- **Two guards watched failing first.** Reverting the schema to optional made
+  all three refusal tests fail with `{ success: true }` — an order with no PO
+  number sailing through. Changing `emailOrderName`'s `||` to `??` made the
+  empty-string and whitespace cases fail, which is exactly the bug that would
+  put a blank in a subject line.
+- **Cleanup by id:** two web orders and their lines, one purchase order with its
+  line items and stage events, one `Document`, its R2 object (re-checked:
+  **NotFound**), the client, one login attempt and one audit row. Counts back to
+  users **2**, `CLIENT` **0**, web orders **0**, POs **400**, buyers **11**,
+  documents **406**, line items **1606**, stage events **2323**, non-zero-tax
+  POs **0**. Five temporary scripts and the screenshot were deleted; `git
+  status` carries only this change's 20 files.
+- **1298/1298 tests across 97 files**, `tsc`, lint (the same 2 pre-existing
+  warnings in files this branch never touched) and `npm run build` clean.
+
+## Not verified
+
+- **Anything on production.** Not deployed, and no production row was read or
+  written. **Production may hold purchase orders with a real tax figure** — the
+  read above was development only. Those keep their stored tax and still show
+  the Tax row, which is why it was made conditional rather than deleted; worth
+  a read there before the deploy.
+- **A scanned PO that prints SST, driven.** The mismatch-and-acknowledge path is
+  argued from `checkTotals` and its existing tests, not watched on a real
+  document — every seeded document 404s from R2 (the `seed/*.pdf` keys were
+  never uploaded), so no scan could be re-extracted.
+- **The emails as they arrive.** Both subjects were read off the live send path;
+  no inbox was opened, and the rendered bodies are covered by
+  `po-email.test.tsx` rather than by a mail client.
+- **The staff notification's subject, live.** Only the buyer's two errored into
+  the log; the team's went to a non-test domain and was not echoed. Its wording
+  rests on `webOrderPlacedSubject`'s own test.
+- **The declined email**, whose subject and heading changed with the other
+  three. Unit tests only — no order was declined.
+- **A buyer reusing the same PO number.** Nothing enforces uniqueness, and
+  nothing did before: `@@unique([buyerId, poNumber, revision])` is deliberately
+  not the column a shop order's PO lands in.
+
+## Previous phase
+
+**The account menu says who you are**
 
 **Built and driven in a browser on `feature/account-menu-identity`**
 (2026-09-19). Asked for as: "for the avatar on the bottom left, make it same

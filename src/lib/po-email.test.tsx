@@ -9,7 +9,17 @@ const { poEmailAttachments, preparePoEmail, renderPoPreviewPng } = await import(
   "@/lib/po-email"
 );
 const { renderPurchaseOrderPdf } = await import("@/lib/pdf/purchase-order");
-const { WebOrderReceipt } = await import("@/emails/WebOrderReceipt");
+const { WebOrderReceipt, webOrderReceiptSubject } = await import(
+  "@/emails/WebOrderReceipt"
+);
+
+/**
+ * The line under the heading, stripped of its markup. Matched as one `<p>`
+ * whose text begins "PO number", so a wrapper change or an extra element is a
+ * failure rather than a silent pass.
+ */
+const metaLine = (html: string) =>
+  (html.match(/<p[^>]*>PO number .*?<\/p>/)?.[0] ?? "").replace(/<[^>]+>/g, "");
 const { WebOrderDeclined } = await import("@/emails/WebOrderDeclined");
 
 const document: PoDocumentData = {
@@ -120,10 +130,13 @@ describe("preparePoEmail", () => {
   });
 });
 
-const receipt = (over: { preview?: boolean; attached?: boolean } = {}) =>
+const receipt = (
+  over: { preview?: boolean; attached?: boolean; poNumber?: string | null } = {},
+) =>
   renderToStaticMarkup(
     WebOrderReceipt({
       reference: "W-2609-00015",
+      poNumber: "ACME-PO-771",
       orderUrl: "https://shop.example.com/orders/wo1",
       document,
       preview: true,
@@ -137,8 +150,7 @@ describe("purchase-order emails", () => {
   it("carries the facts, lines and total as text", () => {
     const html = receipt();
     for (const text of [
-      "We have your order W-2609-00015",
-      "Order ID",
+      "We have your order ACME-PO-771",
       "PO number",
       "ACME-PO-771",
       "Acme Industrial Sdn Bhd",
@@ -157,12 +169,50 @@ describe("purchase-order emails", () => {
     }
   });
 
-  /** Only the Order ID under the heading (2026-09-18): the rest is in the summary. */
-  it("keeps the line under the heading to the Order ID", () => {
-    const html = receipt();
-    const meta = html.match(/<p[^>]*>Order ID .*?<\/p>/)?.[0] ?? "";
-    expect(meta.replace(/<[^>]+>/g, "")).toBe("Order ID W-2609-00015");
-    expect(html).not.toContain("your PO number");
+  /**
+   * The buyer's own PO number under the heading (2026-09-20), where it was the
+   * Order ID before. One `<p>`, the words then a mono span.
+   */
+  it("names the buyer's PO number under the heading", () => {
+    const meta = metaLine(receipt());
+    expect(meta).toBe("PO number ACME-PO-771");
+    expect(meta).not.toContain("W-2609-00015");
+  });
+
+  /**
+   * An order placed before the PO number became required has none. The line
+   * reads "—" rather than borrowing the Order ID, which is the confusion the
+   * 2026-09-17 split exists to prevent.
+   */
+  it("reads a dash under the heading when the order carries no PO number", () => {
+    expect(metaLine(receipt({ poNumber: null }))).toBe("PO number —");
+  });
+
+  /**
+   * ...but the subject and heading do fall back to the Order ID: "your order —"
+   * is unfindable in an inbox, and these orders can still be emailed about
+   * whenever their delivery date moves.
+   */
+  it("falls back to the Order ID in the heading and subject, never a dash", () => {
+    const html = receipt({ poNumber: null });
+    expect(html).toContain("We have your order W-2609-00015");
+    expect(webOrderReceiptSubject(null, "W-2609-00015")).toBe(
+      "We have your order W-2609-00015",
+    );
+    expect(webOrderReceiptSubject("ACME-PO-771", "W-2609-00015")).toBe(
+      "We have your order ACME-PO-771",
+    );
+  });
+
+  /** The Order ID still names the files, where a typed PO number could not. */
+  it("keeps the Order ID on the attachment filenames", () => {
+    expect(
+      poEmailAttachments({
+        poNumber: "W-2609-00015",
+        pdfBytes: new Uint8Array([1]),
+        previewPng: Buffer.from("png"),
+      }).map((file) => file.filename),
+    ).toEqual(["W-2609-00015.pdf", "W-2609-00015-preview.png"]);
   });
 
   it("draws the inline preview, with no preload hoisted into the head", () => {

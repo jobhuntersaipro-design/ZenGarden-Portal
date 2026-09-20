@@ -25,6 +25,7 @@ import {
   addManyToCartSchema,
   addToCartSchema,
   guestCartLinesSchema,
+  PO_NUMBER_REQUIRED,
   setCartonsSchema,
   submitOrderSchema,
   type SubmitOrderInput,
@@ -384,14 +385,24 @@ export async function clearCart(): Promise<ActionResult> {
  * here, inside the transaction, and cannot have drifted in between.
  */
 export async function submitWebOrder(
-  input: SubmitOrderInput = {},
+  // No default (2026-09-20): the PO number is required, and a default `{}`
+  // would let a caller send an order carrying none.
+  input: SubmitOrderInput,
 ): Promise<ActionResult<{ reference: string }>> {
   const { user, error } = await guard();
   if (!user) return { success: false, error: error! };
 
   const parsed = submitOrderSchema.safeParse(input);
   if (!parsed.success) {
-    return { success: false, error: "That order could not be sent." };
+    // A missing PO number says so by name. The form refuses it first; this is
+    // the guard for anything that calls the action directly.
+    const missingPo = parsed.error.issues.some(
+      (issue) => issue.path[0] === "buyerReference",
+    );
+    return {
+      success: false,
+      error: missingPo ? PO_NUMBER_REQUIRED : "That order could not be sent.",
+    };
   }
 
   try {
@@ -451,7 +462,8 @@ export async function submitWebOrder(
           status: WebOrderStatus.SUBMITTED,
           submittedAt: new Date(),
           subtotal,
-          buyerReference: parsed.data.buyerReference?.trim() || null,
+          // Already trimmed and non-empty by the schema.
+          buyerReference: parsed.data.buyerReference,
           notes: parsed.data.notes?.trim() || null,
         },
       });
@@ -515,6 +527,8 @@ async function notify(
       where: { reference },
       select: {
         reference: true,
+        // Names the order in both emails' subject and heading (2026-09-20).
+        buyerReference: true,
         buyer: { select: { name: true } },
         placedBy: { select: { name: true, email: true } },
         id: true,
@@ -536,10 +550,15 @@ async function notify(
     if (staff.length > 0) {
       await sendEmail({
         to: staff.map((person) => person.email),
-        subject: webOrderPlacedSubject(order.buyer.name, order.reference),
+        subject: webOrderPlacedSubject(
+          order.buyer.name,
+          order.buyerReference,
+          order.reference,
+        ),
         attachments: po.attachments,
         react: WebOrderPlaced({
           reference: order.reference,
+          poNumber: order.buyerReference,
           buyerName: order.buyer.name,
           placedByName: order.placedBy.name,
           reviewUrl: `${env.APP_URL}/web-orders/${order.id}`,
@@ -554,10 +573,11 @@ async function notify(
     // only host their session exists on (Phase 15 — the cookie is host-only).
     await sendEmail({
       to: [order.placedBy.email],
-      subject: webOrderReceiptSubject(order.reference),
+      subject: webOrderReceiptSubject(order.buyerReference, order.reference),
       attachments: po.attachments,
       react: WebOrderReceipt({
         reference: order.reference,
+        poNumber: order.buyerReference,
         orderUrl: `${env.SHOP_URL ?? env.APP_URL}/orders/${order.id}`,
         // Said only when it is true, so the email never promises a file that
         // is not on it.

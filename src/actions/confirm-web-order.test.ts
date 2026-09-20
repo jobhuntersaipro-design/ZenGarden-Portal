@@ -187,16 +187,21 @@ describe("confirmWebOrder — Order ID is never the PO number", () => {
   });
 
   /**
-   * The line under the heading names the Order ID and nothing else
-   * (2026-09-18, at the user's request). The buyer's PO number is printed in
-   * the order summary, labelled "PO number" — see `po-email.test.tsx`.
+   * The email names the buyer's own PO number (2026-09-20, at the user's
+   * request), where it named the Order ID before. The stored `buyerReference`
+   * is the source — never the draft, which an old client may still fill with
+   * the Order ID.
    */
-  it("names the Order ID in the email for what it is", async () => {
-    await confirmWebOrder("wo1", draft(), OPTIONS);
+  it("names the buyer's PO number in the email, not the Order ID", async () => {
+    await confirmWebOrder("wo1", draft({ poNumber: "W-2609-00001" }), OPTIONS);
     await flushAfter();
     const body = mailBody();
-    expect(body).toContain("Order ID");
-    expect(body).toContain("W-2609-00001");
+    expect(body).toContain("PO number");
+    expect(body).toContain("ACME-PO-771");
+    expect(body).toContain("Order ACME-PO-771 is confirmed");
+    // Only on the preview image's alt text and the attachment, never as the
+    // name the buyer is asked to recognise.
+    expect(body).not.toContain("Order ID");
     expect(body).not.toContain("your PO number");
     expect(body).not.toContain("our reference");
   });
@@ -400,12 +405,14 @@ describe("confirmWebOrder", () => {
 
     const call = sendEmail.mock.calls[0][0];
     expect(call.to).toEqual(["buyer@acme.test"]);
+    // The buyer's own PO number since 2026-09-20 — what they filed the order
+    // under, and what they will search their inbox for.
     expect(call.subject).toBe(
-      "Order W-2609-00001 confirmed · delivery expected 2 Oct 2026",
+      "Order ACME-PO-771 confirmed · delivery expected 2 Oct 2026",
     );
     const body = mailBody();
     expect(body).toContain("2 Oct 2026");
-    expect(body).toContain("Order W-2609-00001 is confirmed");
+    expect(body).toContain("Order ACME-PO-771 is confirmed");
     // Not the "date has moved" wording: this is the first confirmation.
     expect(body).not.toContain("has moved");
   });

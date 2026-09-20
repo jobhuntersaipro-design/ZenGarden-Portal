@@ -427,7 +427,7 @@ export function ReviewForm({
         </section>
 
         <section
-          className={`grid gap-md rounded-lg border p-md sm:grid-cols-3 ${
+          className={`grid gap-md rounded-lg border p-md sm:grid-cols-2 ${
             totals.matches ? "border-hairline" : "border-accent-red"
           }`}
         >
@@ -440,14 +440,6 @@ export function ReviewForm({
             onChange={(value) => dispatch({ type: "field", field: "subtotal", value })}
           />
           <Field
-            id="tax"
-            label="Tax"
-            value={draft.tax}
-            confidence={confidence.tax}
-            error={fieldError("tax")}
-            onChange={(value) => dispatch({ type: "field", field: "tax", value })}
-          />
-          <Field
             id="total"
             label="Total on the document"
             value={draft.total}
@@ -455,7 +447,7 @@ export function ReviewForm({
             error={fieldError("total")}
             onChange={(value) => dispatch({ type: "field", field: "total", value })}
           />
-          <div className="sm:col-span-3">
+          <div className="sm:col-span-2">
             <LineItemSum lineItems={draft.lineItems} />
             {totals.matches ? null : (
               <p className="mt-xxs text-[length:var(--text-caption)] text-accent-red">

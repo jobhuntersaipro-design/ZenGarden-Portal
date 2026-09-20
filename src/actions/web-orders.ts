@@ -217,10 +217,15 @@ export async function confirmWebOrder(
       const po = await preparePoEmail(webOrderId, confirmed.order.reference, redrawn);
       await sendEmail({
         to: [confirmed.order.placedBy.email],
-        subject: webOrderConfirmedSubject(confirmed.order.reference, formatDate(deliveryDate)),
+        subject: webOrderConfirmedSubject(
+          confirmed.order.buyerReference,
+          confirmed.order.reference,
+          formatDate(deliveryDate),
+        ),
         attachments: po.attachments,
         react: WebOrderConfirmed({
           reference: confirmed.order.reference,
+          poNumber: confirmed.order.buyerReference,
           expectedDelivery: formatDate(deliveryDate),
           total: formatMYR(Number(data.total)),
           orderUrl: `${env.SHOP_URL ?? env.APP_URL}/orders/${confirmed.poId}`,
@@ -309,7 +314,12 @@ export async function declineWebOrder(
     // update so the recipient is whoever actually placed it.
     const order = await prisma.webOrder.findUnique({
       where: { id: webOrderId },
-      select: { reference: true, placedBy: { select: { email: true } } },
+      // `buyerReference` names the order in the subject and heading (2026-09-20).
+      select: {
+        reference: true,
+        buyerReference: true,
+        placedBy: { select: { email: true } },
+      },
     });
     if (order) {
       after(async () => {
@@ -319,10 +329,11 @@ export async function declineWebOrder(
         const po = await preparePoEmail(webOrderId, order.reference, sent);
         await sendEmail({
           to: [order.placedBy.email],
-          subject: webOrderDeclinedSubject(order.reference),
+          subject: webOrderDeclinedSubject(order.buyerReference, order.reference),
           attachments: po.attachments,
           react: WebOrderDeclined({
             reference: order.reference,
+            poNumber: order.buyerReference,
             reason: parsed.data.reason,
             orderUrl: `${env.SHOP_URL ?? env.APP_URL}/orders/${webOrderId}`,
             document: po.document,

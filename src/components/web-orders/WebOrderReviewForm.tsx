@@ -71,6 +71,9 @@ export function WebOrderReviewForm({ order }: { order: OpsWebOrder }) {
       productDecision: "linked" as const,
     })),
     subtotal: order.subtotal,
+    // Always zero since 2026-09-20: we charge no tax, and the field that used
+    // to let a reviewer type one is gone. Kept on the draft because
+    // `PurchaseOrder.tax` is NOT NULL and `checkTotals` takes it.
     tax: "0.00",
     total: order.subtotal,
   } satisfies PoDraft);
@@ -150,17 +153,13 @@ export function WebOrderReviewForm({ order }: { order: OpsWebOrder }) {
           }
           error={attempted ? (missing.paymentTerms ?? undefined) : undefined}
         />
-        <Field
-          id="tax"
-          label="Tax"
-          value={draft.tax}
-          onChange={(value) => dispatch({ type: "field", field: "tax", value })}
-        />
       </div>
 
-      {/* No line inputs and no total below Tax (2026-09-17, at the user's
-          request): the confirmed purchase order carries the lines exactly as
-          the buyer sent them, shown with their total in the left pane. */}
+      {/* No line inputs and no total (2026-09-17, at the user's request): the
+          confirmed purchase order carries the lines exactly as the buyer sent
+          them, shown with their total in the left pane. No Tax field either
+          since 2026-09-20 — we charge none, so it is written as zero and no
+          tax row is printed on the document. */}
       <div className="mt-md">
         <TotalsBanner
           totals={totals}

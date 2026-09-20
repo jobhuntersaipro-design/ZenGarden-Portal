@@ -499,7 +499,14 @@ export default async function PurchaseOrderPage({
             <dl className="pt-xs">
               {[
                 { label: "Subtotal", value: po.subtotal, strong: false },
-                { label: "Tax", value: po.tax, strong: false },
+                // A zero tax is no tax — the same rule the document, the PDF
+                // and the emails have always followed, and this was the one
+                // place that printed "Tax MYR 0.00" anyway. Every order
+                // confirmed since 2026-09-20 carries zero; an older one that
+                // really has tax still shows it.
+                ...(po.tax.isZero()
+                  ? []
+                  : [{ label: "Tax", value: po.tax, strong: false }]),
                 { label: "Total", value: po.total, strong: true },
               ].map(({ label, value, strong }) => (
                 <div

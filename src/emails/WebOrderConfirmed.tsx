@@ -1,11 +1,18 @@
 import { Layout } from "@/emails/Layout";
 import { ButtonLink, Heading, Paragraph } from "@/emails/parts";
 import { PoFooter, PoMetaLine, PoPreview, PoSummary } from "@/emails/po-parts";
+import { emailOrderName } from "@/lib/order-identity";
 import type { PoDocumentData } from "@/lib/purchase-order-document";
 
 export type WebOrderConfirmedProps = {
   /** Our Order ID, `W-2609-00014`. */
   reference: string;
+  /**
+   * The buyer's own PO number (2026-09-20). Names the order in the subject,
+   * heading and opening line, falling back to `reference`; shown labelled, or
+   * "—", by `PoMetaLine`.
+   */
+  poNumber?: string | null;
   /** Already formatted — "2 Oct 2026" — so the email and the screen agree. */
   expectedDelivery: string;
   total: string;
@@ -43,6 +50,7 @@ export type WebOrderConfirmedProps = {
  */
 export function WebOrderConfirmed({
   reference,
+  poNumber = null,
   expectedDelivery,
   total,
   orderUrl,
@@ -51,17 +59,18 @@ export function WebOrderConfirmed({
   document = null,
   preview = false,
 }: WebOrderConfirmedProps) {
+  const name = emailOrderName(poNumber, reference);
   return (
     <Layout>
       <Heading>
         {updated
-          ? `Delivery of order ${reference} has moved to ${expectedDelivery}`
-          : `Order ${reference} is confirmed`}
+          ? `Delivery of order ${name} has moved to ${expectedDelivery}`
+          : `Order ${name} is confirmed`}
       </Heading>
-      <PoMetaLine reference={reference} />
+      <PoMetaLine poNumber={poNumber} />
       <Paragraph>
         {updated
-          ? `We have had to change the delivery date on order ${reference}. It is now expected on ${expectedDelivery}. Nothing else on the order has changed.`
+          ? `We have had to change the delivery date on order ${name}. It is now expected on ${expectedDelivery}. Nothing else on the order has changed.`
           : `We have accepted your order at ${total} and expect to deliver it on ${expectedDelivery}.`}
       </Paragraph>
       {attached ? (
@@ -85,12 +94,15 @@ export function WebOrderConfirmed({
 
 /** The date is in the subject: an inbox should not need to be opened to read it. */
 export const webOrderConfirmedSubject = (
+  poNumber: string | null,
   reference: string,
   expectedDelivery: string,
   updated = false,
-) =>
-  updated
-    ? `Updated: order ${reference} · delivery now expected ${expectedDelivery}`
-    : `Order ${reference} confirmed · delivery expected ${expectedDelivery}`;
+) => {
+  const name = emailOrderName(poNumber, reference);
+  return updated
+    ? `Updated: order ${name} · delivery now expected ${expectedDelivery}`
+    : `Order ${name} confirmed · delivery expected ${expectedDelivery}`;
+};
 
 export default WebOrderConfirmed;

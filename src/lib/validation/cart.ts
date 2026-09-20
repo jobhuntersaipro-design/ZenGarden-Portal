@@ -39,8 +39,20 @@ export const addManyToCartSchema = z.object({
     .max(MAX_GUEST_LINES),
 });
 
+/** The message the form shows under the field and the server answers with. */
+export const PO_NUMBER_REQUIRED = "Enter your PO number.";
+
 export const submitOrderSchema = z.object({
-  buyerReference: z.string().trim().max(64).nullable().optional(),
+  /**
+   * Required since 2026-09-20, at the customer's request: every order placed
+   * on the shop carries the buyer's own PO number. `trim()` runs before
+   * `min(1)`, so whitespace alone is refused rather than stored.
+   *
+   * `WebOrder.buyerReference` stays nullable regardless — a DRAFT cart exists
+   * long before this form is reached, and orders placed while the field was
+   * optional still hold null.
+   */
+  buyerReference: z.string().trim().min(1, PO_NUMBER_REQUIRED).max(64),
   notes: z.string().trim().max(2000).nullable().optional(),
 });
 

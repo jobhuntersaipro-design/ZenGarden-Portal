@@ -232,6 +232,11 @@ describe("submitWebOrder", () => {
     );
     return renderToStaticMarkup(call![0].react);
   };
+  /**
+   * A valid submission. The PO number is required since 2026-09-20, so every
+   * test that is not about that rule has to carry one.
+   */
+  const SENT = { buyerReference: "ACME-PO-771" };
   /** What `notify` re-reads once the order is written. */
   const notifiable = {
     id: "w1",
@@ -245,7 +250,7 @@ describe("submitWebOrder", () => {
 
   it("snapshots today's price onto every line — the only place a price is written", async () => {
     webOrderFindFirst.mockResolvedValue(cartWith([line()]));
-    await submitWebOrder();
+    await submitWebOrder(SENT);
     const written = lineUpdate.mock.calls[0][0].data;
     expect(written.unitPrice.toFixed(2)).toBe("189.00");
     expect(written.amount.toFixed(2)).toBe("2268.00"); // 12 x 189.00
@@ -257,7 +262,7 @@ describe("submitWebOrder", () => {
     webOrderFindFirst.mockResolvedValue(
       cartWith([line(), line({ id: "l2", cartons: 1 })]),
     );
-    await submitWebOrder();
+    await submitWebOrder(SENT);
     const update = webOrderUpdate.mock.calls.at(-1)![0].data;
     expect(update.subtotal.toFixed(2)).toBe("2457.00"); // 2268.00 + 189.00
     expect(update.status).toBe("SUBMITTED");
@@ -266,7 +271,7 @@ describe("submitWebOrder", () => {
 
   it("refuses an empty cart", async () => {
     webOrderFindFirst.mockResolvedValue(cartWith([]));
-    const result = await submitWebOrder();
+    const result = await submitWebOrder(SENT);
     expect(result).toEqual({ success: false, error: "Your order is empty." });
     expect(webOrderUpdate).not.toHaveBeenCalled();
   });
@@ -275,15 +280,34 @@ describe("submitWebOrder", () => {
     webOrderFindFirst.mockResolvedValue(
       cartWith([line({ product: { packSize: 6, unit: "carton", ...sellable, active: false } })]),
     );
-    const result = await submitWebOrder();
+    const result = await submitWebOrder(SENT);
     expect(result.success).toBe(false);
     expect(webOrderUpdate).not.toHaveBeenCalled();
   });
 
   it("writes no requested delivery date — the team sets the date at confirm", async () => {
     webOrderFindFirst.mockResolvedValue(cartWith([line()]));
-    await submitWebOrder({});
+    await submitWebOrder(SENT);
     expect(webOrderUpdate.mock.calls.at(-1)![0].data).not.toHaveProperty("requestedDate");
+  });
+
+  // Required since 2026-09-20. The form refuses it first; these pin the server,
+  // which is what a caller bypassing the form meets.
+  it.each([
+    ["missing", {}],
+    ["empty", { buyerReference: "" }],
+    ["whitespace alone", { buyerReference: "   " }],
+  ])("refuses an order whose PO number is %s", async (_label, input) => {
+    webOrderFindFirst.mockResolvedValue(cartWith([line()]));
+    const result = await submitWebOrder(input as { buyerReference: string });
+    expect(result).toEqual({ success: false, error: "Enter your PO number." });
+    expect(webOrderUpdate).not.toHaveBeenCalled();
+  });
+
+  it("stores the PO number trimmed", async () => {
+    webOrderFindFirst.mockResolvedValue(cartWith([line()]));
+    await submitWebOrder({ buyerReference: "  ACME-PO-771  " });
+    expect(webOrderUpdate.mock.calls.at(-1)![0].data.buyerReference).toBe("ACME-PO-771");
   });
 
   it("sends the client their own receipt, not just the ops notification", async () => {
@@ -299,7 +323,7 @@ describe("submitWebOrder", () => {
     });
     userFindMany.mockResolvedValue([{ email: "ops@lovinghands.test" }]);
 
-    await submitWebOrder();
+    await submitWebOrder(SENT);
     await flushAfter();
 
     const recipients = sendEmail.mock.calls.map((call) => call[0].to);
@@ -320,7 +344,7 @@ describe("submitWebOrder", () => {
     });
     userFindMany.mockResolvedValue([]);
 
-    await submitWebOrder();
+    await submitWebOrder(SENT);
     await flushAfter();
 
     expect(sendEmail.mock.calls.map((call) => call[0].to)).toEqual([
@@ -333,7 +357,7 @@ describe("submitWebOrder", () => {
     prismaWebOrderFindUnique.mockResolvedValue(notifiable);
     userFindMany.mockResolvedValue([{ email: "ops@lovinghands.test" }]);
 
-    await submitWebOrder();
+    await submitWebOrder(SENT);
     await flushAfter();
 
     expect(attachWebOrderDocument).toHaveBeenCalledExactlyOnceWith("cart1");
@@ -368,7 +392,7 @@ describe("submitWebOrder", () => {
     prismaWebOrderFindUnique.mockResolvedValue(notifiable);
     userFindMany.mockResolvedValue([{ email: "ops@lovinghands.test" }]);
 
-    const result = await submitWebOrder();
+    const result = await submitWebOrder(SENT);
     await flushAfter();
 
     expect(result.success).toBe(true);
@@ -384,7 +408,7 @@ describe("submitWebOrder", () => {
     attachWebOrderDocument.mockRejectedValue(new Error("R2 is down"));
     webOrderFindFirst.mockResolvedValue(cartWith([line()]));
 
-    const result = await submitWebOrder();
+    const result = await submitWebOrder(SENT);
     await flushAfter().catch(() => {});
 
     expect(result).toEqual({ success: true, data: { reference: "W-2609-00001" } });
@@ -395,7 +419,7 @@ describe("submitWebOrder", () => {
   it("refuses a caller who is not a client", async () => {
     const { UnauthorizedError } = await import("@/lib/auth-guards");
     requireClient.mockRejectedValue(new UnauthorizedError("not a shop account"));
-    const result = await submitWebOrder();
+    const result = await submitWebOrder(SENT);
     expect(result).toEqual({ success: false, error: "not a shop account" });
   });
 });

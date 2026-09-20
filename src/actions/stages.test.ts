@@ -380,8 +380,9 @@ describe("updatePurchaseOrder — the expected delivery date", () => {
 
     const call = sendEmail.mock.calls[0][0];
     expect(call.to).toEqual(["buyer@acme.test"]);
+    // Named by the buyer's own PO number since 2026-09-20.
     expect(call.subject).toBe(
-      "Updated: order W-2609-00001 · delivery now expected 9 Oct 2026",
+      "Updated: order ACME-PO-771 · delivery now expected 9 Oct 2026",
     );
     const body = renderToStaticMarkup(call.react);
     expect(body).toContain("9 Oct 2026");
