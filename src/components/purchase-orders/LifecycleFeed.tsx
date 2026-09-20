@@ -1,9 +1,11 @@
 "use client";
 
 import { useState } from "react";
+import type { Role } from "@/generated/prisma/enums";
 import { StageBadge } from "@/components/portal/StatusBadge";
 import { PersonAvatar } from "@/components/ui/person";
 import { formatDateTime } from "@/lib/dates";
+import { roleLabel } from "@/lib/permissions/roles";
 import {
   buildLifecycleFeed,
   type ActivitySegment,
@@ -41,17 +43,20 @@ export function LifecycleFeed({
   confirmedAt,
   confirmedByName,
   confirmedByImage,
+  confirmedByRole,
 }: {
   events: PoActivityEvent[];
   confirmedAt: string;
   confirmedByName: string | null;
   confirmedByImage: string | null;
+  confirmedByRole: Role | null;
 }) {
   const items = buildLifecycleFeed({
     events,
     confirmedAt,
     confirmedByName,
     confirmedByImage,
+    confirmedByRole,
   });
 
   /**
@@ -127,8 +132,15 @@ export function LifecycleFeed({
                       “{item.note}”
                     </span>
                   ) : null}
+                  {/* Who, in what job, and when. The role sits between the
+                      two because it belongs to the name, not to the clock:
+                      four ops roles own different stage moves, so "who
+                      advanced this" is only half an answer without it. System
+                      has no role and prints none. */}
                   <span className="text-[length:var(--text-caption)] text-ink-tertiary">
-                    {item.actor} · {formatDateTime(item.at)}
+                    {item.actor}
+                    {item.actorRole ? ` · ${roleLabel(item.actorRole)}` : ""} ·{" "}
+                    {formatDateTime(item.at)}
                   </span>
                 </span>
               </li>

@@ -60,14 +60,18 @@ export default async function PurchaseOrderPage({
       buyer: true,
       document: { select: { id: true, originalName: true } },
       webOrder: { select: { id: true, reference: true } },
-      confirmedBy: { select: { name: true, image: true } },
+      confirmedBy: { select: { name: true, image: true, role: true } },
       lineItems: {
         orderBy: { position: "asc" },
         include: { product: { select: { name: true, sku: true } } },
       },
       stageEvents: {
         orderBy: { changedAt: "desc" },
-        include: { changedBy: { select: { name: true, image: true } } },
+        // `role` rides along with the name and picture: every row of the
+        // feed below records what somebody did, and on this portal four ops
+        // roles own different stage moves (Phase 48), so the job is part of
+        // reading the history.
+        include: { changedBy: { select: { name: true, image: true, role: true } } },
       },
       supersededBy: { select: { id: true, revision: true } },
       revisionOf: {
@@ -257,6 +261,7 @@ export default async function PurchaseOrderPage({
                   <PersonChip
                     name={latestStageEvent.changedBy.name}
                     image={latestStageEvent.changedBy.image}
+                    role={latestStageEvent.changedBy.role}
                   />
                 </span>
               ) : (
@@ -314,10 +319,12 @@ export default async function PurchaseOrderPage({
             changedAt: event.changedAt.toISOString(),
             changedByName: event.changedBy?.name ?? null,
             changedByImage: event.changedBy?.image ?? null,
+            changedByRole: event.changedBy?.role ?? null,
           }))}
           confirmedAt={po.confirmedAt.toISOString()}
           confirmedByName={po.confirmedBy?.name ?? null}
           confirmedByImage={po.confirmedBy?.image ?? null}
+          confirmedByRole={po.confirmedBy?.role ?? null}
         />
       </section>
 

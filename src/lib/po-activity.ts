@@ -1,4 +1,4 @@
-import type { PoEventKind, PoStage } from "@/generated/prisma/enums";
+import type { PoEventKind, PoStage, Role } from "@/generated/prisma/enums";
 import { SYSTEM_ACTOR } from "@/lib/system-actor";
 import { stageIndex, stageLabel } from "@/lib/po-stages";
 
@@ -58,6 +58,12 @@ export type PoActivityEvent = {
   changedAt: string;
   changedByName: string | null;
   changedByImage: string | null;
+  /**
+   * The job the actor holds, shown beside their name on the row. Null for
+   * System and for an actor whose user row is gone — a role is a fact about a
+   * person, so there is nothing to print without one.
+   */
+  changedByRole: Role | null;
 };
 
 /**
@@ -97,6 +103,8 @@ export type LifecycleItem = {
   type: "activity" | "note";
   actor: string;
   actorImage: string | null;
+  /** `roleLabel`'s input, drawn beside the actor's name. Null for System. */
+  actorRole: Role | null;
   at: string;
   /** The activity sentence. Null on a standalone note, which has none. */
   title: ActivitySegment[] | null;
@@ -167,6 +175,7 @@ export function buildLifecycleFeed(input: {
   confirmedAt: string;
   confirmedByName: string | null;
   confirmedByImage: string | null;
+  confirmedByRole: Role | null;
 }): LifecycleItem[] {
   const items: LifecycleItem[] = [];
 
@@ -185,6 +194,7 @@ export function buildLifecycleFeed(input: {
       type: title.length > 0 ? "activity" : "note",
       actor,
       actorImage: event.changedByImage,
+      actorRole: event.changedByRole,
       at: event.changedAt,
       title: title.length > 0 ? title : null,
       detail: split.detail,
@@ -199,6 +209,7 @@ export function buildLifecycleFeed(input: {
     type: "activity",
     actor: input.confirmedByName ?? SYSTEM_ACTOR,
     actorImage: input.confirmedByImage,
+    actorRole: input.confirmedByRole,
     at: input.confirmedAt,
     title: [
       { kind: "text", text: `${input.confirmedByName ?? SYSTEM_ACTOR} confirmed the order` },

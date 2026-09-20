@@ -11,7 +11,7 @@ const entry = (over: Partial<ActivityEntry>): ActivityEntry => ({
   kind: "change",
   at: "2026-09-12T02:00:00.000Z",
   text: "Chris Lam edited phone",
-  actor: { name: "Chris Lam", image: null },
+  actor: { name: "Chris Lam", image: null, role: "WAREHOUSE" },
   href: null,
   ...over,
 });
