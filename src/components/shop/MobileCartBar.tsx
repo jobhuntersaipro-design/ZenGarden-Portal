@@ -16,6 +16,13 @@ import { shopHref } from "@/lib/shop-routes";
  * The total is blank (not "RM 0.00") while a guest's cart is still pricing —
  * `priced` starts `null` and a fresh debounce clears it to null on every
  * change, so a blank total beats a wrong one for the half-second it takes.
+ *
+ * View cart is deliberately the *secondary* pill, not the ink one (2026-09-20).
+ * This bar is pinned to every storefront page below `md`, so an ink pill here
+ * sat beside the ink pill the page itself was asking for — Add to cart on a
+ * catalogue card, Confirm order on /checkout/review — and on a phone it was
+ * the lower and larger of the two. One ink pill per screen, and it belongs to
+ * the page: this is navigation back to the cart, not the action being taken.
  */
 export function MobileCartBar() {
   const viewer = useShopViewer();
@@ -50,7 +57,7 @@ export function MobileCartBar() {
       </div>
       <Link
         href={shopHref.cart()}
-        className="flex h-12 flex-1 items-center justify-center pressable rounded-pill bg-ink text-[length:var(--text-body-sm)] font-semibold text-canvas hover:bg-ink-deep"
+        className="flex h-12 flex-1 items-center justify-center pressable rounded-pill border border-hairline bg-surface-soft text-[length:var(--text-body-sm)] font-semibold text-ink hover:border-hairline-strong focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-focus"
       >
         View cart
       </Link>
