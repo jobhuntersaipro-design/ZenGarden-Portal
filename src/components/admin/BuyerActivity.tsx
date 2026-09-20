@@ -88,8 +88,16 @@ export function BuyerActivity({
               <span className="shrink-0 font-mono text-[length:var(--text-caption)] text-ink-tertiary">
                 {formatDateTime(entry.at)}
               </span>
+              {/* The role rides with the name: this list mixes a buyer's own
+                  contacts signing in and ordering with ops staff confirming,
+                  editing and advancing, and the avatar alone does not say
+                  which side of that a row came from. */}
               {entry.actor ? (
-                <PersonChip name={entry.actor.name} image={entry.actor.image} />
+                <PersonChip
+                  name={entry.actor.name}
+                  image={entry.actor.image}
+                  role={entry.actor.role}
+                />
               ) : null}
               <span className="min-w-0 flex-1 text-[length:var(--text-body-sm)] text-ink">
                 {entry.href ? (

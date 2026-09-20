@@ -1,4 +1,128 @@
-# Current Feature: The PO number is required, names the emails, and tax is gone
+# Current Feature: An activity says the role, not just the name
+
+## Status
+
+**Built on `claude/session-cloud-location-aszckl`** (2026-09-20). Asked for as:
+"For any activity recorded with a user avatar, show their role too".
+
+**Every activity row that carries a person's avatar now carries their job
+beside their name**, in `roleLabel`'s one spelling — Super admin, Production
+planner, QC, Warehouse, Member, Buyer contact — read from the actor's own
+`User` row. Three surfaces:
+
+- **The purchase order's Notes and activity feed.** Each row's meta line went
+  from `Aisha Rahman · 18 Sep 2026, 09:37` to
+  `Aisha Rahman · Super admin · 18 Sep 2026, 09:37`. The role sits between the
+  name and the clock because it belongs to the name.
+- **"Moved here by" in the Status card**, the latest stage event, through the
+  same chip.
+- **The buyer's Activity timeline** on `/admin/buyers/[id]`, where the role is
+  the thing the avatar could never say: that list mixes the buyer's own
+  contacts signing in and ordering with ops staff confirming, editing and
+  advancing, and until now both sides read as a name and a monogram.
+
+**The role is the `Role` enum, carried to the component, not a string composed
+in the query.** `PersonChip` gained a `role` prop that spells it through
+`roleLabel`, so this timeline, the user roster and the permission grid cannot
+drift on the wording; `ActivityEntry.actor` and `PoActivityEvent`/
+`LifecycleItem` gained the enum. It deliberately breaks the
+"the query composes the wording" rule that `ActivityEntry.text` follows — a
+role is a value with one canonical label, not a sentence.
+
+**Read off the actor's own row, never inferred from the move.** A super admin
+may make any stage move (Phase 48 short-circuits `can()` for them), so the
+role that *owns* a stage is no evidence of who actually advanced it. Five
+selects gained `role: true` — the two `AuditEvent` actor reads, `WebOrder
+.placedBy`, `PurchaseOrder.confirmedBy` and `PoStageEvent.changedBy` — plus
+`confirmedBy` and `changedBy` on the purchase-order detail page. No migration:
+`User.role` has been there since Phase 01.
+
+**System prints no role.** It is not a person and holds no job, so the chip and
+the meta line show the name alone rather than an empty separator; a row with no
+actor at all — a failed sign-in, which is an email address and nothing more —
+is untouched.
+
+**Left alone, on purpose:** the purchase-order table's *Uploaded by* and
+*Confirmed by* columns and the buyer's contacts card, which are a table and a
+roster rather than records of an action; the *Confirmed by* row in the PO
+summary, whose person is named with their role one card below in the feed; and
+the shop-order pane's "placed by", where every person is the buyer's own
+contact by construction and their email is already beside them.
+
+## Verified, with the figures
+
+**No browser drive, and the reason matters:** this container has no Neon
+endpoint. A local Postgres 16 cluster took the 22 migrations cleanly, but
+`src/lib/prisma.ts` connects through `PrismaNeon`, which speaks the Neon
+serverless WebSocket protocol rather than plain TCP, so the app itself could not
+be signed into. The cluster was stopped and deleted. What follows was measured
+instead on the **real components, rendered through `renderToStaticMarkup` and
+laid out in headless Chromium against the production stylesheet** from
+`npm run build` — the same markup and CSS the app serves.
+
+- **The feed's meta lines, read off the rendered page:**
+  `Chris Lam · QC · 18 Sep 2026, 09:37`,
+  `Nurul Izzati Binti Abdullah · Production planner · 18 Sep 2026, 09:37`,
+  `Aisha Rahman · Super admin · 18 Sep 2026, 09:37` and, for the confirm row,
+  `Aisha Rahman · Super admin · 1 Sep 2026, 10:00`.
+- **System's row reads `System · 18 Sep 2026, 09:37`** — one separator, and
+  the word "undefined" appears **nowhere** in the markup.
+- **The timeline tells the two sides apart:** `Siti Nurhaliza` / **Buyer
+  contact** beside `Aisha Rahman` / **Super admin** and
+  `Nurul Izzati Binti Abdullah` / **Production planner**, with the failed
+  sign-in row carrying neither avatar nor role.
+- **No overflow** at 390, 768 and 1440 — `scrollWidth === innerWidth` on all
+  three — and the feed does not scroll sideways inside a 352px rail
+  (262 = 262). The longest meta line wraps inside the column's 226px rather
+  than pushing it.
+- **A measured cost, recorded rather than hidden.** In the timeline's chip the
+  role is `shrink-0` and the name `truncate`, so at 390 a 27-character name
+  clips to **160px of its 176px** where it did not before; the full value is
+  in `title`, which is 00-master §4's truncation-recovery rule. The row is
+  *shorter* for it (96px against 128px), because without the role the name
+  takes the full width and pushes the sentence onto another line. Names up to
+  ~20 characters do not clip at any width, and nothing clips at 768 or above.
+- **Three of the five new tests were watched failing first**, with the role
+  removed from `PersonChip` and from the feed's meta line: `expected … to
+  contain 'Chris Lam · QC · 18 Sep 2026'`, `… 'Chris Lam · Super admin ·'` and
+  `… 'Buyer contact'`. The two that assert *absence* — System's row, and a row
+  with no actor — correctly still passed, which is what they are for.
+- **1286/1286 tests across 98 files** (5 new), `tsc --noEmit`, lint (the same
+  2 pre-existing warnings, in files this change never touched) and
+  `npm run build` clean. The 99th file, `catalog-import.test.ts`, fails to
+  import in this container because `xlsx` is not installed and its CDN is
+  blocked — confirmed on the unmodified tree too, so it is the environment and
+  not this change.
+- **Type flow, not just rendering:** `tsc` found all three test fixtures that
+  had to learn the new field, which is the evidence that no call site was left
+  guessing a role.
+
+## Not verified
+
+- **Anything on production**, and no production or development database was
+  read or written. `User.role` needs no migration, but the roles on real rows
+  are what the portal will print — worth a look at `/purchase-orders/[id]` on
+  the first deploy rather than trusting the seeded names above.
+- **A real signed-in journey.** No screen was opened in the running app, for
+  the Neon reason above; the components were measured, the pages they sit on
+  were not. In particular the **"Moved here by" caption** was not laid out —
+  it is the same `PersonChip`, inside a wrapping caption paragraph, and its
+  role adds text that wraps like the rest of that line.
+- **The four ops roles on real events.** Every figure above comes from a
+  fixture actor. Development's own history only ever carries Aisha (super
+  admin) and Chris Lam, so `Production planner`, `QC` and `Warehouse` have
+  been read out of `roleLabel` rather than off a stored row.
+- **A member's view.** The feed is the same for every staff role and was
+  rendered without a session at all; `/admin/buyers/[id]` stays super-admin
+  only.
+- **Web fonts.** The measurement page loads the production CSS from `file://`,
+  so Plus Jakarta Sans and Inter fell back to the system serif; widths above
+  are therefore indicative of wrapping, not exact to the deployed typeface.
+
+## Previous phase
+
+**The PO number is required, names the emails, and tax is gone**
+
 
 ## Status
 

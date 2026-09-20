@@ -14,7 +14,7 @@
  * `prisma` imports — a **type-only** import of a Prisma enum (erased at
  * compile time) is fine; a value import is not.
  */
-import type { AuditAction } from "@/generated/prisma/enums";
+import type { AuditAction, Role } from "@/generated/prisma/enums";
 
 export const ACTIVITY_KINDS = ["sign-in", "shop-order", "purchase-order", "change"] as const;
 export type ActivityKind = (typeof ACTIVITY_KINDS)[number];
@@ -28,7 +28,13 @@ export type ActivityEntry = {
   at: string;
   /** Composed here: the component renders, it does not decide wording. */
   text: string;
-  actor: { name: string; image: string | null } | null;
+  /**
+   * Whoever did it, with the job they did it in. `role` is the enum, not a
+   * label: the component spells it through `roleLabel`, so this timeline and
+   * the user roster cannot drift on the wording. A row with no actor — a
+   * failed sign-in, which is an email and nothing more — stays null.
+   */
+  actor: { name: string; image: string | null; role: Role } | null;
   href: string | null;
 };
 

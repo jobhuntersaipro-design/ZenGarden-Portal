@@ -19,6 +19,7 @@ const event = (over: Partial<PoActivityEvent> = {}): PoActivityEvent => ({
   changedAt: "2026-09-18T02:00:00.000Z",
   changedByName: "Chris Lam",
   changedByImage: null,
+  changedByRole: "WAREHOUSE",
   ...over,
 });
 
@@ -99,6 +100,7 @@ describe("buildLifecycleFeed", () => {
       confirmedAt: "2026-09-01T02:00:00.000Z",
       confirmedByName: "Aisha Rahman",
       confirmedByImage: null,
+      confirmedByRole: "SUPER_ADMIN",
     });
 
   /**
@@ -177,6 +179,24 @@ describe("buildLifecycleFeed", () => {
       "Chris Lam confirmed this order with a totals mismatch",
     );
     expect(items[0]).toMatchObject({ detail: note, note: null });
+  });
+
+  /**
+   * Shown beside the name on every row (2026-09-20). The role is read off the
+   * actor's own row rather than inferred from the move, because the grid lets
+   * a super admin make any move and a stage's usual owner is not proof of who
+   * made it.
+   */
+  it("carries each actor's role, and none for System", () => {
+    const items = feed([
+      event(),
+      event({ id: "e0", fromStage: null, toStage: "ORDER_PLACED", changedByName: null, changedByRole: null }),
+    ]);
+    expect(items.map((item) => [item.actor, item.actorRole])).toEqual([
+      ["Chris Lam", "WAREHOUSE"],
+      ["System", null],
+      ["Aisha Rahman", "SUPER_ADMIN"],
+    ]);
   });
 
   it("ends with the confirmation, the oldest thing on the order", () => {

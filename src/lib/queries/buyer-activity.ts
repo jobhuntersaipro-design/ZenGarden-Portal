@@ -67,7 +67,7 @@ export async function loadBuyerActivity(
         action: true,
         at: true,
         detail: true,
-        actor: { select: { name: true, image: true } },
+        actor: { select: { name: true, image: true, role: true } },
         subjectUser: { select: { name: true } },
       },
     }),
@@ -80,7 +80,7 @@ export async function loadBuyerActivity(
         action: true,
         at: true,
         detail: true,
-        actor: { select: { name: true, image: true } },
+        actor: { select: { name: true, image: true, role: true } },
         subjectUser: { select: { name: true } },
       },
     }),
@@ -95,7 +95,7 @@ export async function loadBuyerActivity(
         submittedAt: true,
         createdAt: true,
         subtotal: true,
-        placedBy: { select: { name: true, image: true } },
+        placedBy: { select: { name: true, image: true, role: true } },
       },
     }),
     prisma.purchaseOrder.findMany({
@@ -111,7 +111,7 @@ export async function loadBuyerActivity(
         // whoever *confirmed* the order — two different people on this
         // model, exactly why PoTable renders them as two separate columns.
         document: { select: { uploadedBy: { select: { name: true } } } },
-        confirmedBy: { select: { name: true, image: true } },
+        confirmedBy: { select: { name: true, image: true, role: true } },
       },
     }),
     prisma.poStageEvent.findMany({
@@ -125,7 +125,7 @@ export async function loadBuyerActivity(
         id: true,
         toStage: true,
         changedAt: true,
-        changedBy: { select: { name: true, image: true } },
+        changedBy: { select: { name: true, image: true, role: true } },
         purchaseOrder: { select: { id: true, ...ORDER_IDENTITY_SELECT } },
       },
     }),
