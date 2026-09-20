@@ -321,6 +321,13 @@ model Product {
   unit             String
   market           String? // country or customer the formulation is made for; free-growing list, see listMarkets()
   listPrice        Decimal        @db.Decimal(14, 2)
+  /**
+   * Pieces on hand, as the team counts them — typed and corrected in the
+   * portal, never derived from orders and never shown on the shop. Null means
+   * nobody has counted this product yet, which is not the same as zero: zero
+   * is a count, and the low-stock flag reads it as one.
+   */
+  stockPieces      Int?
   description      String?
   active           Boolean        @default(true)
   needsReview      Boolean        @default(false) // created from a PO; details not filled in yet

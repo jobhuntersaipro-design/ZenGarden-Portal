@@ -28,6 +28,9 @@ const CHIPS: { value: ProductFilter; label: string }[] = [
   { value: "inactive", label: "Unpublished" },
   { value: "price-moved", label: "Price moved > 3%" },
   { value: "not-sold-60d", label: "Not sold in 60 days" },
+  // Counted and running out. A product nobody has counted is not in here —
+  // see `needsAttention`.
+  { value: "low-stock", label: "Low stock" },
 ];
 
 const SORTS: { value: ProductSortKey; label: string }[] = [
@@ -35,6 +38,7 @@ const SORTS: { value: ProductSortKey; label: string }[] = [
   { value: "units", label: "Units" },
   { value: "drift", label: "Drift" },
   { value: "listPrice", label: "Price" },
+  { value: "stock", label: "Stock" },
   { value: "name", label: "Name" },
 ];
 

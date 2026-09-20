@@ -1,4 +1,150 @@
-# Current Feature: An activity says the role, not just the name
+# Current Feature: Stock count, in the portal only
+
+## Status
+
+**Built on `claude/session-cloud-location-aszckl`** (2026-09-20). Asked for as:
+"lets add stock count for each products. Buyer cant see it on shop. Only show
+it in portal".
+
+`Product.stockPieces`, nullable, in one additive migration
+(`20260923090000_product_stock`). **Four decisions were the user's**, asked
+before building:
+
+- **Typed by the team, never derived.** Nothing deducts it — not confirming a
+  purchase order, not a fulfilment stage. It is a stocktake figure somebody
+  keeps current, so no reversal rules were needed for a declined, deleted or
+  edited order.
+- **Pieces**, not cartons, and no carton figure printed beside it.
+- **The shop is untouched.** Buyers order exactly as they did; nothing is
+  blocked at a zero and no "out of stock" label appears, so the number cannot
+  be inferred by trying.
+- **All four portal surfaces:** the edit drawer and the new-product form, the
+  product detail page, a column on `/products`, and a low-stock chip.
+
+**Null is not zero, and the whole feature turns on it.** NULL means nobody has
+counted; 0 means somebody counted and there is none. The detail page prints
+`—` against a null and `0 pieces` against a zero, the list column prints `—`
+and `0`, and the low-stock flag ignores a null while treating a zero as the
+most urgent count there is. Without that split the flag would have lit up all
+308 products the day it shipped — none of them carries a figure yet — and said
+nothing about any of them.
+
+**Stock is per variant on the create form, not shared.** Phase 39's form
+enters one product and every flavour of it in one submit, and `stockPieces`
+would have been a shared field like pack size — writing one count onto six
+`Product` rows, a number nobody counted. It moved into `variantRowSchema`
+beside the flavour, the code and the price, so the Variants table has a fourth
+narrow column and the single-variant path has the field in the details card,
+following the list price's own rule that a per-variant field lives in exactly
+one place at a time.
+
+**The low-stock line is measured in cartons and converted** —
+`LOW_STOCK_CARTONS = 10`, times the pack size, falling back to ten pieces where
+the pack size is unknown. A flat piece threshold reads the wrong way round: at
+100 pieces a 6-per-carton product flags with sixteen cartons left and a
+72-per-carton one with barely one, when the big pack runs out of sellable
+cartons first. **Ten cartons is a figure I chose, not one anybody asked for.**
+It is one exported constant in one place.
+
+**A blank sinks in both sort directions**, as blanks do everywhere in the
+portal since Phase 35 — an uncounted product is not a product with none, and
+sorting it as 0 would fill the low end (the end somebody sorts to when they
+want to know what is running out) with rows that say nothing.
+
+**Nothing on the shop reads the column**, and a test enforces it rather than a
+comment: `shop-stock-leak.test.ts` reads the selects the catalogue, the
+variant list, the related-products rail and the shop home actually send to
+Prisma, plus the cart's two exported priced-product selects, and refuses
+`stockPieces` anywhere inside them at any depth. It asserts absence rather
+than pinning each select by equality, so it does not break on unrelated
+columns a later phase adds.
+
+**The `/products` "Needs attention" total now counts low stock**, beside
+missing image, unpublished and not sold — decided without asking, because a
+shelf running out is the most actionable thing on that tile. It sits before
+"not sold 60d" in the breakdown and on the grid card's corner pill for the
+same reason: running out is this week's problem, nothing ordered in two months
+is this quarter's.
+
+## Verified, with the figures
+
+**No browser drive of the running app, for the same reason as the previous
+phase:** `src/lib/prisma.ts` connects through `PrismaNeon`, which speaks the
+Neon serverless WebSocket protocol, and this container has no Neon endpoint —
+so no screen could be signed into and no form submitted. What was measured
+instead:
+
+- **The migration, applied for real.** A throwaway Postgres 16 cluster took all
+  **26 migrations** including this one, `prisma migrate status` then read
+  **"Database schema is up to date!"** — so the hand-written SQL and the schema
+  agree, which is the thing a generated migration would have guaranteed.
+  `\d+ "Product"` reads `stockPieces | integer | nullable | no default`, and a
+  row inserted at 0 and one at NULL read back **0 / uncounted false** and
+  **NULL / uncounted true**. The cluster was stopped and deleted.
+- **Written by hand on purpose.** `prisma migrate dev` would have folded in the
+  `PurchaseOrder_documentId_fkey` drift carried since Phase 16 — a separate
+  decision about what deleting a document does, recorded in Phase 41's notes.
+- **The list column and the cards, in headless Chromium against the production
+  stylesheet** from `npm run build`: headers read
+  `… List price · Stock↑ · Drift · 12m …`, and the four fixture rows printed
+  **1,284,000** in ink `rgb(41, 45, 52)`, **54** and **0** in brand-amber
+  `rgb(253, 154, 70)`, and **—** in ink-tertiary `rgb(111, 111, 111)`. The two
+  amber rows also read **"1 to fix"** in the Status column, which is the same
+  flag counted once.
+- **The grid card**, which matters because grid is the default view: a
+  **"Low stock"** corner pill in the same amber on the two flagged products and
+  none on the others, and the footer strip reading
+  `1,200 sold · 6 buyers · RM 24,500.50 · stock 54` — with the stock clause
+  **absent entirely** on the uncounted product rather than printed as a dash.
+- **No overflow** at 390, 768 and 1440 — `scrollWidth === innerWidth` on all
+  three, with the card grid two-up at 165px a card on a phone.
+- **Every new guard was watched failing first**, against the plausible wrong
+  implementation rather than against nothing:
+  - `stockPieces: true` added to the shop catalogue's select — the leak test
+    failed on `keysOf(select) not.toContain("stockPieces")`;
+  - the sort rewritten as `stockPieces ?? 0` — two sort tests failed, the
+    uncounted product landing first;
+  - the flag rewritten as `(stockPieces ?? 0) < …` — two flag tests failed,
+    an uncounted product reading as empty.
+- **A break nothing but running the tests would have caught.** `stockPieces` is
+  nullable-never-optional, per this project's rule, and `safeParse` takes
+  `unknown` — so the twelve existing `productSchema` fixtures compiled fine and
+  failed at runtime until the key was added. `tsc` found the twenty-odd typed
+  fixtures; only the suite found those twelve.
+- **1299/1299 tests across 100 files** (14 new), `tsc --noEmit`, lint (the same
+  2 pre-existing warnings, in files this change never touched) and
+  `npm run build` clean. The 101st file, `catalog-import.test.ts`, fails to
+  import because `xlsx` is not installed in this container and its CDN is
+  blocked — confirmed on the unmodified tree, so it is the environment.
+
+## Not verified
+
+- **Anything on production, and the migration has not run there.** It is
+  additive and nullable, so it cannot fail on existing rows, and `vercel.json`
+  has run `migrate deploy` on production builds only since 2026-09-17.
+- **A figure entered through either form, in a browser.** The edit drawer's
+  field, the create form's per-variant column and the single-variant field were
+  not typed into: the write paths are covered by the actions' own tests
+  (including that three rows write **240 / null / 0** and not one shared
+  figure) and the schema by its own, but no submit was driven.
+- **The detail page's Stock row, laid out.** It is one more cell in a `dl` that
+  already carries nine, and the page needs a database to render.
+- **The chip and the tile, clicked.** `low-stock` is in `ProductToolbar`'s
+  chips, the page's own `FILTERS` allow-list (the two are separate lists, and
+  a chip missing from the second is the Phase 11 defect) and the tile's
+  breakdown, and the filter is unit-tested — but no URL was exercised.
+- **Ten cartons as the right threshold.** Nobody has said what "low" means for
+  this business.
+- **The customer's own STOCK column.** Their inventory sheet carries one, and
+  `catalog-import.ts` still ignores it, as it has since the catalogue was
+  imported. Importing figures rather than typing them was not asked for.
+- **The seed.** `prisma/seed.ts` writes no stock, so a fresh development
+  database has 308 products reading `—` and no low-stock flags anywhere.
+
+## Previous phase
+
+**An activity says the role, not just the name**
+
 
 ## Status
 

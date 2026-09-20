@@ -149,11 +149,20 @@ async function joinListing(
 /** The fields a `Product.create` shares whether it is one row or a batch of them. */
 type ProductRowShared = Omit<
   ProductParsed,
-  "sku" | "listPrice" | "variant" | "familyId" | "newFamily"
+  "sku" | "listPrice" | "variant" | "stockPieces" | "familyId" | "newFamily"
 >;
 
-/** The fields that are genuinely per-row: `createProduct` has exactly one. */
-type ProductRowVariant = { sku: string; variant: string | null; listPrice: string };
+/**
+ * The fields that are genuinely per-row: `createProduct` has exactly one.
+ * Stock is one of them — a count belongs to a SKU on a shelf, not to a batch
+ * of flavours entered together (2026-09-20).
+ */
+type ProductRowVariant = {
+  sku: string;
+  variant: string | null;
+  listPrice: string;
+  stockPieces: number | null;
+};
 
 /**
  * The thirteen-field `Product.create` payload, assembled once so
@@ -178,6 +187,7 @@ function productRowData(
     cartonsPerPallet: shared.cartonsPerPallet,
     market: shared.market,
     listPrice: new Prisma.Decimal(row.listPrice),
+    stockPieces: row.stockPieces,
     description: shared.description,
     active: shared.active,
   };
@@ -662,6 +672,7 @@ export async function updateProduct(
           cartonsPerPallet: data.cartonsPerPallet,
           market: data.market,
           listPrice: nextPrice,
+          stockPieces: data.stockPieces,
           description: data.description,
           active: data.active,
           // Saving is the review. A product created from a purchase order

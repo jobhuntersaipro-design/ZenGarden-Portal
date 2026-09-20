@@ -46,6 +46,9 @@ const FILTERS: ProductFilter[] = [
   "inactive",
   "price-moved",
   "not-sold-60d",
+  // A chip added to ProductToolbar and not to this list changes the URL and
+  // is then ignored by the page — the Phase 11 defect. The two belong together.
+  "low-stock",
 ];
 
 /** Grid pages differ from the table's, because cards are cheaper to scan. */

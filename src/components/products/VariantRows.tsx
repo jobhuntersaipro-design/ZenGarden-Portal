@@ -7,7 +7,8 @@ import { Input } from "@/components/ui/input";
 
 /** One row of the create form's Variants section. Local state only: `key` is
  *  a React key and the handle staged images are filed under, and never leaves
- *  the browser — the submit maps a row to `{ variant, sku, listPrice }`. */
+ *  the browser — the submit maps a row to
+ *  `{ variant, sku, listPrice, stockPieces }`. */
 export type VariantRowState = {
   key: string;
   variant: string | null;
@@ -16,6 +17,9 @@ export type VariantRowState = {
    *  following the proposal from then on, and only this row. */
   skuTouched: boolean;
   listPrice: string;
+  /** Pieces on hand, per row: a count belongs to a SKU on a shelf, and one
+   *  figure applied to six flavours is a number nobody counted. */
+  stockPieces: string;
   staged: (StagedImage & { file: File })[];
 };
 
@@ -98,7 +102,7 @@ export function VariantRows({
               </button>
             </div>
 
-            <div className="mt-sm grid gap-sm sm:grid-cols-[2fr_2fr_1fr]">
+            <div className="mt-sm grid gap-sm sm:grid-cols-[2fr_2fr_1fr_1fr]">
               <div className="flex flex-col gap-xxs">
                 <span className={label}>Variant</span>
                 <GrowingListPicker
@@ -137,6 +141,22 @@ export function VariantRows({
                   placeholder="0.00"
                   value={row.listPrice}
                   onChange={(event) => onPatch(row.key, { listPrice: event.target.value })}
+                  className="tabular-nums"
+                />
+              </div>
+
+              <div className="flex flex-col gap-xxs">
+                <label htmlFor={`variant-stock-${row.key}`} className={label}>
+                  Stock
+                </label>
+                <Input
+                  id={`variant-stock-${row.key}`}
+                  inputMode="numeric"
+                  placeholder="Pieces"
+                  value={row.stockPieces}
+                  onChange={(event) =>
+                    onPatch(row.key, { stockPieces: event.target.value })
+                  }
                   className="tabular-nums"
                 />
               </div>

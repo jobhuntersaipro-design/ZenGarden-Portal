@@ -172,6 +172,7 @@ export default async function ProductPage({
                   cartonsPerPallet: data.product.cartonsPerPallet,
                   market: data.product.market,
                   listPrice: data.product.listPrice.toFixed(2),
+                  stockPieces: data.product.stockPieces,
                   description: data.product.description,
                   active: data.product.active,
                   needsReview: data.product.needsReview,
@@ -264,6 +265,18 @@ export default async function ProductPage({
                 data.product.cartonsPerPallet
                   ? `${data.product.cartonsPerPallet} cartons`
                   : "—",
+              ],
+              /**
+               * Pieces, as counted. A dash is "nobody has counted", which is
+               * why a zero prints as "0 pieces" rather than falling into the
+               * same blank — the two mean different things and the difference
+               * is the whole point of the row.
+               */
+              [
+                "Stock",
+                data.product.stockPieces === null
+                  ? "—"
+                  : `${data.product.stockPieces.toLocaleString("en-MY")} pieces`,
               ],
               [
                 "First sold",

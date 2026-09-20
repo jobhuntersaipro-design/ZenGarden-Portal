@@ -32,6 +32,8 @@ export type ProductRow = {
   packSize: number | null;
   market: string | null;
   listPrice: number;
+  /** Pieces on hand (2026-09-20), null where nobody has counted. Ops-only. */
+  stockPieces: number | null;
   active: boolean;
   imageCount: number;
   thumbKey: string | null;
@@ -43,6 +45,7 @@ export const PRODUCT_SORT_KEYS = [
   "name",
   "category",
   "listPrice",
+  "stock",
   "drift",
   "units",
   "revenue",
@@ -58,6 +61,7 @@ export type ProductFilter =
   | "price-moved"
   | "not-sold-60d"
   | "needs-review"
+  | "low-stock"
   | null;
 
 const LATEST_ONLY = { supersededBy: { is: null } } as const;
@@ -94,6 +98,7 @@ export async function listProducts(
         packSize: true,
         market: true,
         listPrice: true,
+        stockPieces: true,
         active: true,
         needsReview: true,
         images: {
@@ -168,6 +173,8 @@ export async function listProducts(
         active: product.active,
         imageCount: product.images.length,
         needsReview: product.needsReview,
+        stockPieces: product.stockPieces,
+        packSize: product.packSize,
       })),
       new Map(
         withStats.map(({ product, stats }) => [
@@ -191,6 +198,7 @@ export async function listProducts(
     packSize: product.packSize,
     market: product.market,
     listPrice: product.listPrice.toNumber(),
+    stockPieces: product.stockPieces,
     active: product.active,
     imageCount: product.images.length,
     thumbKey: product.images[0]?.thumbKey ?? product.images[0]?.r2Key ?? null,
@@ -304,6 +312,18 @@ export function selectProducts(
         return product.category.toLowerCase();
       case "listPrice":
         return product.listPrice;
+      case "stock":
+        /**
+         * An uncounted product is not a product with none. Sorting it as 0
+         * would fill the low end — where the reader is looking for the
+         * shelves actually running out — with products nobody has counted.
+         * A blank sinks in both directions instead, as it does everywhere
+         * else in the portal (Phase 35), and that takes opposite values
+         * either way because the comparator negates itself for `desc`: the
+         * largest possible count under ascending, below zero under
+         * descending.
+         */
+        return product.stockPieces ?? (sort.dir === "asc" ? Number.MAX_SAFE_INTEGER : -1);
       case "drift":
         return product.stats.driftPercent ?? 0;
       case "units":
@@ -354,6 +374,7 @@ export function summarise(products: ProductRow[]) {
       notSold: products.filter((p) => p.flags.includes("not-sold-60d")).length,
       priceMoved: products.filter((p) => p.flags.includes("price-moved")).length,
       needsReview: products.filter((p) => p.flags.includes("needs-review")).length,
+      lowStock: products.filter((p) => p.flags.includes("low-stock")).length,
     },
     /**
      * Products a client cannot order, and why.

@@ -1,6 +1,8 @@
 import { describe, expect, it } from "vitest";
 import {
+  LOW_STOCK_CARTONS,
   boughtTogether,
+  lowStockBelow,
   needsAttention,
   priceTrend,
   productStats,
@@ -174,7 +176,7 @@ describe("boughtTogether", () => {
 describe("needsAttention", () => {
   it("flags a product created from a purchase order", () => {
     const [flags] = needsAttention(
-      [{ id: "p1", active: true, imageCount: 1, needsReview: true }],
+      [{ id: "p1", active: true, imageCount: 1, needsReview: true, stockPieces: null, packSize: null }],
       new Map([["p1", { lastSold: new Date(), driftPercent: 0 }]]),
     );
     expect(flags.flags).toContain("needs-review");
@@ -182,7 +184,7 @@ describe("needsAttention", () => {
 
   it("does not flag an ordinary product for review", () => {
     const [flags] = needsAttention(
-      [{ id: "p1", active: true, imageCount: 1, needsReview: false }],
+      [{ id: "p1", active: true, imageCount: 1, needsReview: false, stockPieces: null, packSize: null }],
       new Map([["p1", { lastSold: new Date(), driftPercent: 0 }]]),
     );
     expect(flags.flags).not.toContain("needs-review");
@@ -195,9 +197,73 @@ describe("needsAttention", () => {
     driftPercent: "driftPercent" in over ? over.driftPercent! : 0,
   });
 
+  /**
+   * Counted, and down to less than ten cartons' worth. The count is in
+   * pieces because that is how a warehouse counts; the threshold is in
+   * cartons because that is how the portal sells — see `lowStockBelow`.
+   */
+  it("flags a counted product below ten cartons' worth", () => {
+    const [flags] = needsAttention(
+      // 6 per carton, so the line is 60 pieces; 54 is nine cartons.
+      [{ id: "p1", active: true, imageCount: 1, needsReview: false, stockPieces: 54, packSize: 6 }],
+      new Map([["p1", { lastSold: new Date(), driftPercent: 0 }]]),
+    );
+    expect(flags.flags).toContain("low-stock");
+  });
+
+  it("leaves a healthy count alone, and the line itself is not below it", () => {
+    const at = needsAttention(
+      [{ id: "p1", active: true, imageCount: 1, needsReview: false, stockPieces: 60, packSize: 6 }],
+      new Map([["p1", { lastSold: new Date(), driftPercent: 0 }]]),
+    );
+    expect(at[0].flags).not.toContain("low-stock");
+
+    const over = needsAttention(
+      [{ id: "p1", active: true, imageCount: 1, needsReview: false, stockPieces: 600, packSize: 6 }],
+      new Map([["p1", { lastSold: new Date(), driftPercent: 0 }]]),
+    );
+    expect(over[0].flags).not.toContain("low-stock");
+  });
+
+  /**
+   * The distinction the whole column rests on. Null is "nobody has counted",
+   * and flagging it would have lit up all 308 products in the catalogue on the
+   * day this shipped; zero is a count, and the one most worth flagging.
+   */
+  it("flags a zero but says nothing about a product nobody has counted", () => {
+    const [none] = needsAttention(
+      [{ id: "p1", active: true, imageCount: 1, needsReview: false, stockPieces: 0, packSize: 6 }],
+      new Map([["p1", { lastSold: new Date(), driftPercent: 0 }]]),
+    );
+    expect(none.flags).toContain("low-stock");
+
+    const [uncounted] = needsAttention(
+      [{ id: "p2", active: true, imageCount: 1, needsReview: false, stockPieces: null, packSize: 6 }],
+      new Map([["p2", { lastSold: new Date(), driftPercent: 0 }]]),
+    );
+    expect(uncounted.flags).not.toContain("low-stock");
+  });
+
+  /**
+   * A pack size is optional on this model, and a missing one must not make
+   * the threshold zero — which would silence the flag for exactly the
+   * half-filled-in products most likely to be wrong.
+   */
+  it("falls back to ten pieces where the pack size is unknown", () => {
+    expect(lowStockBelow(null)).toBe(LOW_STOCK_CARTONS);
+    expect(lowStockBelow(0)).toBe(LOW_STOCK_CARTONS);
+    expect(lowStockBelow(12)).toBe(12 * LOW_STOCK_CARTONS);
+
+    const [flags] = needsAttention(
+      [{ id: "p1", active: true, imageCount: 1, needsReview: false, stockPieces: 4, packSize: null }],
+      new Map([["p1", { lastSold: new Date(), driftPercent: 0 }]]),
+    );
+    expect(flags.flags).toContain("low-stock");
+  });
+
   it("flags a product with no images", () => {
     const flags = needsAttention(
-      [{ id: "p1", active: true, imageCount: 0, needsReview: false }],
+      [{ id: "p1", active: true, imageCount: 0, needsReview: false, stockPieces: null, packSize: null }],
       new Map([["p1", stats({})]]),
       NOW,
     );
@@ -206,7 +272,7 @@ describe("needsAttention", () => {
 
   it("flags an inactive product", () => {
     const flags = needsAttention(
-      [{ id: "p1", active: false, imageCount: 2, needsReview: false }],
+      [{ id: "p1", active: false, imageCount: 2, needsReview: false, stockPieces: null, packSize: null }],
       new Map([["p1", stats({})]]),
       NOW,
     );
@@ -215,14 +281,14 @@ describe("needsAttention", () => {
 
   it("flags a product not sold in sixty days, and one never sold at all", () => {
     const stale = needsAttention(
-      [{ id: "p1", active: true, imageCount: 1, needsReview: false }],
+      [{ id: "p1", active: true, imageCount: 1, needsReview: false, stockPieces: null, packSize: null }],
       new Map([["p1", stats({ lastSold: new Date("2026-06-01T04:00:00Z") })]]),
       NOW,
     );
     expect(stale[0].flags).toContain("not-sold-60d");
 
     const never = needsAttention(
-      [{ id: "p2", active: true, imageCount: 1, needsReview: false }],
+      [{ id: "p2", active: true, imageCount: 1, needsReview: false, stockPieces: null, packSize: null }],
       new Map([["p2", stats({ lastSold: null })]]),
       NOW,
     );
@@ -231,12 +297,12 @@ describe("needsAttention", () => {
 
   it("flags a price that moved more than three percent, either way", () => {
     const up = needsAttention(
-      [{ id: "p1", active: true, imageCount: 1, needsReview: false }],
+      [{ id: "p1", active: true, imageCount: 1, needsReview: false, stockPieces: null, packSize: null }],
       new Map([["p1", stats({ driftPercent: 4 })]]),
       NOW,
     );
     const down = needsAttention(
-      [{ id: "p1", active: true, imageCount: 1, needsReview: false }],
+      [{ id: "p1", active: true, imageCount: 1, needsReview: false, stockPieces: null, packSize: null }],
       new Map([["p1", stats({ driftPercent: -4 })]]),
       NOW,
     );
@@ -246,7 +312,7 @@ describe("needsAttention", () => {
 
   it("leaves a healthy product unflagged", () => {
     const flags = needsAttention(
-      [{ id: "p1", active: true, imageCount: 3, needsReview: false }],
+      [{ id: "p1", active: true, imageCount: 3, needsReview: false, stockPieces: null, packSize: null }],
       new Map([["p1", stats({ driftPercent: 1 })]]),
       NOW,
     );

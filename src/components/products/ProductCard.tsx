@@ -9,6 +9,11 @@ function flagFor(product: ProductRow) {
   if (product.flags.includes("missing-image")) {
     return { label: "No image", tone: "text-brand-amber" };
   }
+  // Above "not sold": a shelf running out is this week's problem, where a
+  // product nothing has been ordered of in two months is this quarter's.
+  if (product.flags.includes("low-stock")) {
+    return { label: "Low stock", tone: "text-brand-amber" };
+  }
   if (product.flags.includes("not-sold-60d")) {
     return { label: "Not sold 60d", tone: "text-brand-amber" };
   }
@@ -89,6 +94,14 @@ export function ProductCard({
         {Math.round(product.stats.units).toLocaleString("en-MY")} sold ·{" "}
         {product.stats.buyers} buyers ·{" "}
         {formatMYR(product.stats.revenue.toFixed(2))}
+        {/* The grid is the default view, so a count only in the table's own
+            column would be a count most readers never see. Left out entirely
+            where nobody has counted, rather than printed as a dash: the three
+            figures beside it are a twelve-month record and this one is today,
+            and an empty clause is not worth the confusion. */}
+        {product.stockPieces === null
+          ? null
+          : ` · stock ${product.stockPieces.toLocaleString("en-MY")}`}
       </p>
     </Link>
   );

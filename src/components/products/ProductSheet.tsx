@@ -371,6 +371,24 @@ export function ProductSheet({
                 As printed on the label — 60CTNS/PALLET
               </p>
             </div>
+
+            {/* Ops-only, and nothing derives it: it is what the team counted.
+                Blank is "not counted yet", which is not the same as 0. */}
+            <div className="flex flex-col gap-xxs">
+              <label htmlFor="product-stock" className={label}>
+                Stock
+              </label>
+              <Input
+                id="product-stock"
+                inputMode="numeric"
+                value={form.stockPieces === null ? "" : String(form.stockPieces)}
+                onChange={(event) => set("stockPieces", event.target.value)}
+                className="tabular-nums"
+              />
+              <p className="text-[length:var(--text-caption)] text-ink-tertiary">
+                Pieces on hand · never shown on the shop
+              </p>
+            </div>
           </div>
 
           <div className="flex flex-col gap-xxs">

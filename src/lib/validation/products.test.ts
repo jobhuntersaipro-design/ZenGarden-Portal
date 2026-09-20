@@ -11,6 +11,7 @@ const valid = {
   variant: "Goat's Milk",
   packSize: 6,
   cartonsPerPallet: 60,
+  stockPieces: null,
   market: "Malaysia",
   description: "Flamed finish.",
   active: true,
@@ -77,6 +78,31 @@ describe("productSchema", () => {
     expect(
       productSchema.safeParse({ ...valid, category: "x".repeat(57) }).success,
     ).toBe(false);
+  });
+
+  /**
+   * Stock differs from every other count on this schema in taking zero:
+   * somebody looked at the shelf and there was none. Blank still means
+   * nobody has looked, which is why it stays null rather than becoming 0.
+   */
+  it("takes a stock count of zero, and blank stays null", () => {
+    const counted = productSchema.parse({ ...valid, stockPieces: "0" });
+    expect(counted.stockPieces).toBe(0);
+
+    for (const blank of ["", null]) {
+      expect(productSchema.parse({ ...valid, stockPieces: blank }).stockPieces).toBeNull();
+    }
+
+    // As typed, from a text field, and as a number from anything else.
+    expect(productSchema.parse({ ...valid, stockPieces: " 240 " }).stockPieces).toBe(240);
+    expect(productSchema.parse({ ...valid, stockPieces: 240 }).stockPieces).toBe(240);
+  });
+
+  it("refuses a negative or fractional stock count", () => {
+    for (const bad of ["-1", "12.5", "lots"]) {
+      const parsed = productSchema.safeParse({ ...valid, stockPieces: bad });
+      expect(parsed.success).toBe(false);
+    }
   });
 
   it("refuses a list price of zero or below", () => {

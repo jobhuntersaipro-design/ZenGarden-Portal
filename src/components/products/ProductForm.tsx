@@ -56,6 +56,9 @@ const blankRow = (listPrice = ""): VariantRowState => ({
   sku: "",
   skuTouched: false,
   listPrice,
+  // Not inherited from the row above, unlike the price: a count is a fact
+  // about one shelf, and copying it down would invent five more.
+  stockPieces: "",
   staged: [],
 });
 
@@ -425,6 +428,7 @@ export function ProductForm({
         variant: row.variant,
         sku: skuOf(row),
         listPrice: row.listPrice,
+        stockPieces: row.stockPieces,
       })),
     });
     if (!result.success) {
@@ -642,6 +646,31 @@ export function ProductForm({
               </div>
               <p className="text-[length:var(--text-caption)] text-ink-tertiary">
                 Recorded as the first entry in this product&rsquo;s price history
+              </p>
+            </div>
+          )}
+
+          {/* Stock is per variant for the same reason the price is, so it
+              follows the price between here and the Variants table rather
+              than sitting in the shared grid above. */}
+          {many ? null : (
+            <div className="mt-md flex flex-col gap-xxs">
+              <label htmlFor="product-stock" className={label}>
+                Stock
+              </label>
+              <Input
+                id="product-stock"
+                inputMode="numeric"
+                placeholder="Pieces"
+                value={first.stockPieces}
+                onChange={(event) =>
+                  patchRow(first.key, { stockPieces: event.target.value })
+                }
+                className="tabular-nums"
+              />
+              <p className="text-[length:var(--text-caption)] text-ink-tertiary">
+                Pieces on hand · never shown on the shop. Leave it blank if
+                nobody has counted yet.
               </p>
             </div>
           )}

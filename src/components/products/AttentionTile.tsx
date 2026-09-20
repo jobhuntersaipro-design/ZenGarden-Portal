@@ -13,7 +13,14 @@ import { usePendingChoice } from "@/hooks/usePendingChoice";
 export function AttentionTile({
   counts,
 }: {
-  counts: { missingImage: number; inactive: number; notSold: number };
+  counts: {
+    missingImage: number;
+    inactive: number;
+    notSold: number;
+    /** Counted and running out (2026-09-20) — a product nobody has counted
+     *  is not in here, so a catalogue with no figures reads 0. */
+    lowStock: number;
+  };
 }) {
   const pathname = usePathname();
   const searchParams = useSearchParams();
@@ -30,10 +37,14 @@ export function AttentionTile({
       label: "missing image",
     },
     { filter: "inactive", count: counts.inactive, label: "unpublished" },
+    // Before "not sold": a shelf running out is this week's problem, where
+    // nothing ordered in two months is this quarter's.
+    { filter: "low-stock", count: counts.lowStock, label: "low stock" },
     { filter: "not-sold-60d", count: counts.notSold, label: "not sold 60d" },
   ];
 
-  const total = counts.missingImage + counts.inactive + counts.notSold;
+  const total =
+    counts.missingImage + counts.inactive + counts.lowStock + counts.notSold;
 
   const apply = (filter: Exclude<ProductFilter, null>) => {
     const params = new URLSearchParams(searchParams.toString());

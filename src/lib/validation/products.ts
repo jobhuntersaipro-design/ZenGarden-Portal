@@ -61,16 +61,23 @@ export const growingLabel = (limit: number) =>
  * A count of whole things — pieces per carton, cartons per pallet. Arrives as
  * a string from a text field or as a number from an import, and either way
  * must be a whole number above zero: "1.5 per carton" is a typo, not a pack.
+ *
+ * `zero` opens it to nought for a count of stock, where zero is a real
+ * answer — somebody looked and there was none — and only a negative one is a
+ * mistake. Empty stays null in both cases: a pack size nobody knows and a
+ * product nobody has counted are both "no figure", not "none".
  */
-const wholeCount = (noun: string) => z
+const wholeCount = (noun: string, { zero = false }: { zero?: boolean } = {}) => z
   .union([z.number(), z.string(), z.null()])
   .transform((value, ctx) => {
     if (value === null || value === "") return null;
     const number = typeof value === "number" ? value : Number(value.trim());
-    if (!Number.isInteger(number) || number <= 0) {
+    if (!Number.isInteger(number) || number < (zero ? 0 : 1)) {
       ctx.addIssue({
         code: "custom",
-        message: `${noun} must be a whole number above zero`,
+        message: zero
+          ? `${noun} must be a whole number, zero or more`
+          : `${noun} must be a whole number above zero`,
       });
       return z.NEVER;
     }
@@ -84,6 +91,14 @@ const wholeCount = (noun: string) => z
  * a per-variant row. Refinements do not survive `omit`, so the rule below is
  * restated there rather than inherited.
  */
+/**
+ * Pieces on hand (2026-09-20). Ops-only: no shop query selects it, and
+ * nothing derives it from orders — it is what the team counted. Exported
+ * because the batch-create form carries it per variant row rather than once
+ * for the batch, and both must refuse the same values.
+ */
+export const stockPiecesSchema = wholeCount("Stock", { zero: true });
+
 export const productObject = z.object({
   name: z.string().min(1, "A name is required").max(120),
   sku: skuSchema,
@@ -106,6 +121,7 @@ export const productObject = z.object({
   packSize: wholeCount("Pack size"),
   /** "60CTNS/PALLET", as the customer's own labels and sheet print it. */
   cartonsPerPallet: wholeCount("Cartons per pallet"),
+  stockPieces: stockPiecesSchema,
   /**
    * The market a formulation is made for — a country (Vietnam, India) or a
    * customer (Mydin, Hero Market), which is how the ops team's own sheet

@@ -206,7 +206,9 @@ export type AttentionFlag =
   | "not-sold-60d"
   | "price-moved"
   /** Created from a purchase order code; its category and price are guesses. */
-  | "needs-review";
+  | "needs-review"
+  /** Counted, and down to less than ten cartons' worth — see LOW_STOCK_CARTONS. */
+  | "low-stock";
 
 export type ProductFlags = {
   productId: string;
@@ -216,6 +218,22 @@ export type ProductFlags = {
 const NOT_SOLD_DAYS = 60;
 const PRICE_MOVED_PERCENT = 3;
 
+/**
+ * Stock is counted in pieces, but ordered in cartons — every price, every
+ * order line and every document quantity on this portal is per carton — so
+ * "running low" is measured in cartons and converted. A flat piece threshold
+ * would flag a 6-per-carton product at sixteen cartons and a 72-per-carton
+ * one at barely one, which is the wrong way round: the big pack runs out of
+ * sellable cartons first.
+ *
+ * Ten is a starting figure, not a finding. It is one number in one place.
+ */
+export const LOW_STOCK_CARTONS = 10;
+
+/** The piece count below which a product counts as running low. */
+export const lowStockBelow = (packSize: number | null): number =>
+  (packSize && packSize > 0 ? packSize : 1) * LOW_STOCK_CARTONS;
+
 /** The maintenance to-do list behind the quick-filter chips. */
 export function needsAttention(
   products: {
@@ -223,6 +241,10 @@ export function needsAttention(
     active: boolean;
     imageCount: number;
     needsReview: boolean;
+    /** Pieces on hand, null where nobody has counted (2026-09-20). */
+    stockPieces: number | null;
+    /** Pieces per carton, which is what the piece count is measured against. */
+    packSize: number | null;
   }[],
   statsById: Map<string, { lastSold: Date | null; driftPercent: number | null }>,
   now: Date = new Date(),
@@ -236,6 +258,17 @@ export function needsAttention(
     // rather than saying something about a real catalogue entry.
     if (product.needsReview) flags.push("needs-review");
     if (product.imageCount === 0) flags.push("missing-image");
+    /**
+     * Only where a figure exists. A null is "nobody has counted", and
+     * flagging it would light up all 308 products the day this ships and say
+     * nothing about any of them; zero *is* a count, and a real one to act on.
+     */
+    if (
+      product.stockPieces !== null &&
+      product.stockPieces < lowStockBelow(product.packSize)
+    ) {
+      flags.push("low-stock");
+    }
     if (!product.active) flags.push("inactive");
     // Never sold counts as not sold: there is nothing more to wait for.
     if (!stats?.lastSold || stats.lastSold < cutoff) flags.push("not-sold-60d");

@@ -57,6 +57,31 @@ export function ProductsList({
       cell: (row) => formatMYR(row.listPrice.toFixed(2)),
     },
     {
+      /**
+       * Pieces on hand, counted by the team. A dash is "not counted yet"; a
+       * zero is a count, so it prints as 0 and reads amber like any other
+       * figure under the low-stock line.
+       */
+      key: "stock",
+      header: "Stock",
+      align: "right",
+      defaultDir: "asc",
+      cell: (row) =>
+        row.stockPieces === null ? (
+          <span className="text-ink-tertiary" title="Not counted yet">
+            —
+          </span>
+        ) : (
+          <span
+            className={`tabular-nums ${
+              row.flags.includes("low-stock") ? "text-brand-amber" : "text-ink"
+            }`}
+          >
+            {row.stockPieces.toLocaleString("en-MY")}
+          </span>
+        ),
+    },
+    {
       key: "drift",
       header: "Drift · 12m",
       align: "right",

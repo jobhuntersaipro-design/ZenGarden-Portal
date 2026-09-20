@@ -24,6 +24,7 @@ const row = (variant: string, sku: string, listPrice = "189.00") => ({
   variant,
   sku,
   listPrice,
+  stockPieces: null,
 });
 
 /** The first issue's message, which is what the action reports. */

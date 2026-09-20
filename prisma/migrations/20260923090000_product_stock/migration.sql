@@ -1,0 +1,16 @@
+-- Stock on hand, in pieces, for the ops team alone (2026-09-20).
+--
+-- Additive and nullable on purpose. NULL means nobody has counted this
+-- product yet; 0 means somebody counted and there is none left. The
+-- low-stock flag on /products reads a zero as a count and a NULL as nothing
+-- to say, so a catalogue where no figure has been entered — all 308 products
+-- today — raises no flags rather than 308 of them.
+--
+-- No default and no backfill for the same reason: a default of 0 would claim
+-- a count that was never taken.
+--
+-- Written by hand rather than generated. `prisma migrate dev` would fold in
+-- the PurchaseOrder_documentId_fkey drift carried since Phase 16, which is a
+-- separate decision about what deleting a document does (see
+-- context/current-feature.md, Phase 41's notes).
+ALTER TABLE "Product" ADD COLUMN "stockPieces" INTEGER;
