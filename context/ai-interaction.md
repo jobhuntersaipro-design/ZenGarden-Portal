@@ -8,6 +8,24 @@
 - Don't add features not in the project spec
 - Never delete files without clarification
 
+### Always show a screenshot
+
+**Every UI change ships with a screenshot of it**, sent with the reply rather
+than described in it (2026-09-21, standing instruction). A measurement proves
+a thing is *true*; a screenshot is the only thing that shows it *reads* right,
+and it is the difference between "the label is Title Case" and seeing the
+sidebar.
+
+- **Before and after**, where something changed rather than appeared. The old
+  state is worth the extra minute — a rename or a re-layout is invisible in a
+  single frame.
+- **Cropped to the change.** A full page at 1440 with one new select in it
+  shows nothing; crop to the control and its neighbours.
+- **The phone too** where the layout moves, since 390 is where this project's
+  layout defects have always been.
+- A **rendered page** for anything that prints or is downloaded — the PDF
+  rasterised, not the screen that produced it.
+
 ## Workflow
 
 This is the common workflow that we will use for every single feature/fix:
