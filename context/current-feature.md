@@ -2276,6 +2276,52 @@ file: generating a PDF remains Phase 19, still unbuilt.
   purchase-order file, is also unbuilt.
 
 ## History
+- 2026-09-21: Fix — an expanded demand row names its order in full, and the
+  identifier is the link — on `claude/relaxed-gates-re4j5c`. Reported from the
+  board: a sub-row read `Order ID …`. The identifier shared one caption line
+  with the expected date and the lateness, both `shrink-0`, so in a 288px
+  product column it was the only part with anywhere to give — and it is the one
+  thing a planner opens the sub-row for. It has the line to itself now, and it
+  is the link to `/purchase-orders/{id}`; the buyer's name leads the row as
+  plain text, where it used to carry the link. **One link per sub-row, not
+  two**: the name and the number pointing at the same order would be the same
+  destination twice, and the number is what somebody clicks. The date, the
+  lateness and the stage pill share the third line, wrapping rather than
+  clipping — the pill drops to its own line under about 700px, which is the
+  graceful end of that trade.
+  **No browser drive**, for the reason carried since 2026-09-20: `src/lib/prisma.ts`
+  connects through `PrismaNeon` and this container has no Neon endpoint.
+  Measured instead on the **real component, rendered through
+  `renderToStaticMarkup` into the real table and laid out in headless Chromium
+  against the production stylesheet** from `npm run build`. At 1440 / 768 / 390
+  the identifiers read in full — `Order ID W-2609-00012` and the longest thing
+  the catalogue holds, `PO number SVPPPO26090009` — with `scrollWidth ===
+  clientWidth` on every one of them and on every buyer name; no page overflow
+  (1440/1440, 768/768, 390/390). **The clipping probe was proved to
+  discriminate** rather than trusted: a 54-character identifier reads
+  `clipped: true` at all three widths and falls back to its `title`, which is
+  00-master §4's truncation-recovery rule. The sub-row is 94px tall at 1440 and
+  116px where the pill wraps.
+  **Three of the five new guards were watched failing first**, against the old
+  layout: the identifier not inside an anchor, the PO-number case, and the one
+  that says the link closes before the date's block opens. A fourth version of
+  that last guard **passed against the defect** and was strengthened — it
+  searched for the identifier's text, which the old link carried in its `title`
+  attribute, so it matched inside the anchor it was meant to prove it was
+  outside of.
+  1323/1323 tests across 102 files (5 new), `tsc`, lint (the same 2 pre-existing
+  warnings) and `npm run build` clean, `/demand` still a dynamic route. The
+  103rd file, `catalog-import.test.ts`, fails in this container only:
+  `xlsx` installs from cdn.sheetjs.com, which the network policy answers 403 to,
+  and the local stand-in throws by design rather than returning wrong
+  spreadsheet data. Nothing to do with this change — that file does not read the
+  demand board.
+  **Not verified:** anything on production, and no screen was opened in the
+  running app — the component was measured, the page it sits on was not. The
+  caret itself was not clicked: the sub-rows were rendered into the table
+  directly, because this suite renders markup rather than driving a DOM. A
+  shop order's sub-row on a real board still reads `Order ID W-…` only in a
+  unit test — every seeded open order in development is a scan.
 - 2026-09-18: A carton stepper on the catalogue card — merged from
   `feature/shop-card-carton-stepper` and pushed. Asked for as part of a review
   of shop add-to-cart, of which **everything else already held and nothing was

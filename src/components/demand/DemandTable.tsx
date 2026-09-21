@@ -228,37 +228,56 @@ function ProductRows({
 /**
  * One open order's share, in the same columns as the total above it.
  *
+ * **The identifier is the link, and it has the line to itself.** It shared a
+ * line with the expected date and the lateness, and in a column this narrow it
+ * was the half that got cut — `Order ID …`, a sub-row naming no order at all,
+ * which is the one thing a planner reads it for. It leads to the order for the
+ * same reason: the identifier is what somebody is going to open.
+ *
  * On hand and Short by stay empty rather than reading `—`: stock is held per
  * product, not per order, so a dash here would be answering a question that
  * was never asked of this row.
+ *
+ * Exported for its own render test — a sub-row only exists once a reader has
+ * clicked, and this suite renders to markup rather than driving a DOM. The
+ * table above is its only caller.
  */
-function OrderRow({ line, board }: { line: DemandLine; board: DemandBoard }) {
+export function OrderRow({ line, board }: { line: DemandLine; board: DemandBoard }) {
   return (
     <tr className="border-b border-hairline bg-surface-soft/40 last:border-0">
       <td className="sticky left-0 z-10 max-w-72 bg-canvas py-sm pl-lg pr-md">
-        <div className="pl-[calc(var(--spacing-xs)+1.5rem)]">
-          <Link
-            href={`/purchase-orders/${line.purchaseOrderId}`}
-            className="block truncate text-[length:var(--text-body-sm)] text-ink hover:text-brand-link focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-focus"
-            title={`${line.buyerName} · ${line.label}`}
+        <div className="min-w-0 pl-[calc(var(--spacing-xs)+1.5rem)]">
+          <p
+            className="truncate text-[length:var(--text-body-sm)] text-ink"
+            title={line.buyerName}
           >
             {line.buyerName}
+          </p>
+          <Link
+            href={`/purchase-orders/${line.purchaseOrderId}`}
+            className="block truncate text-[length:var(--text-caption)] text-ink-secondary hover:text-brand-link focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-focus"
+            title={`${line.label} — ${line.buyerName}`}
+          >
+            {line.label}
           </Link>
-          <p className="flex items-center gap-xxs truncate text-[length:var(--text-caption)] text-ink-tertiary">
-            <span className="truncate">{line.label}</span>
-            <span aria-hidden>·</span>
-            <span className="shrink-0">{line.deliveryDate}</span>
+          <p className="mt-xxs flex flex-wrap items-center gap-x-xxs gap-y-xxs text-[length:var(--text-caption)] text-ink-tertiary">
+            <span>{line.deliveryDate}</span>
             {/* How late, beside the date it is measured from rather than in
                 the Overdue column: a numeric column that also carries words
                 cannot be read across, copied, or totalled by eye. */}
             {line.daysLate > 0 ? (
-              <span className="shrink-0 font-medium text-accent-red">
-                · {line.daysLate} day{line.daysLate === 1 ? "" : "s"} late
-              </span>
+              <>
+                <span aria-hidden>·</span>
+                <span className="font-medium text-accent-red">
+                  {line.daysLate} day{line.daysLate === 1 ? "" : "s"} late
+                </span>
+              </>
             ) : null}
-          </p>
-          <p className="mt-xxs">
-            <StageBadge stage={line.stage} state="done" compact />
+            {/* The pill needs its own air; the date and its lateness sit a
+                separator apart. */}
+            <span className="ml-xxs">
+              <StageBadge stage={line.stage} state="done" compact />
+            </span>
           </p>
         </div>
       </td>
