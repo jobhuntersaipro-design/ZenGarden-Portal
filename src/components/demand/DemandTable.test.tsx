@@ -1,6 +1,6 @@
 import { renderToStaticMarkup } from "react-dom/server";
 import { describe, expect, it } from "vitest";
-import { OrderRow } from "@/components/demand/DemandTable";
+import { DemandTable, OrderRow } from "@/components/demand/DemandTable";
 import type { DemandBoard, DemandLine } from "@/lib/queries/demand";
 
 const board: DemandBoard = {
@@ -14,6 +14,8 @@ const board: DemandBoard = {
   totals: { overdue: 0, byColumn: {}, committed: 0 },
   openOrders: 0,
   counted: 0,
+  families: [],
+  products: [],
 };
 
 const line = (over: Partial<DemandLine> = {}): DemandLine => ({
@@ -22,10 +24,12 @@ const line = (over: Partial<DemandLine> = {}): DemandLine => ({
   orderIdLabel: null,
   buyerName: "Meridian Chemicals",
   stage: "DELIVERING",
+  poDate: "1 Sep 2026",
   deliveryDate: "12 Sep 2026",
   cartons: 27,
   columnKey: null,
   daysLate: 9,
+  dueInDays: null,
   ...over,
 });
 
@@ -112,5 +116,77 @@ describe("a demand sub-row's order identifier", () => {
   it("says nothing about lateness on an order that is not late", () => {
     const markup = row({ daysLate: 0, columnKey: "2026-W39" });
     expect(markup).not.toContain("late");
+  });
+});
+
+describe("a demand sub-row's dates", () => {
+  it("labels both dates, so neither can be read as the other", () => {
+    const text = row().replace(/<[^>]+>/g, " ").replace(/\s+/g, " ");
+    expect(text).toContain("PO date 1 Sep 2026");
+    expect(text).toContain("Expected 12 Sep 2026");
+  });
+
+  it("says how long until an order is due, in words", () => {
+    const text = (over: Parameters<typeof row>[0]) =>
+      row(over).replace(/<[^>]+>/g, " ").replace(/\s+/g, " ");
+    expect(text({ daysLate: 0, dueInDays: 5 })).toContain("· due in 5 days");
+    expect(text({ daysLate: 0, dueInDays: 1 })).toContain("· due in 1 day");
+    expect(text({ daysLate: 0, dueInDays: 0 })).toContain("· due today");
+  });
+
+  /**
+   * Grain-relative lateness, told the truth about. On a monthly board an
+   * order a fortnight past its date is still September rather than Overdue,
+   * and "due today" would be the board rounding in its own favour.
+   */
+  it("counts backwards where the grain says an order is not yet late", () => {
+    const text = row({ daysLate: 0, dueInDays: -14 }).replace(/<[^>]+>/g, " ");
+    expect(text).toContain("due 14 days ago");
+    expect(text).not.toContain("late");
+  });
+
+  it("shows lateness instead of a due count, never both", () => {
+    const text = row({ daysLate: 9, dueInDays: null }).replace(/<[^>]+>/g, " ");
+    expect(text).toContain("9 days late");
+    expect(text).not.toContain("due");
+  });
+});
+
+describe("the board's stock column", () => {
+  it("names the unit it is counted in", () => {
+    const markup = renderToStaticMarkup(
+      <DemandTable board={{ ...board, rows: [], openOrders: 0 }} />,
+    );
+    // Empty board renders its own card, so the header only exists with a row.
+    expect(markup).not.toContain("On hand");
+  });
+
+  it("reads \"Stock count (carton)\", not \"On hand\"", () => {
+    const markup = renderToStaticMarkup(
+      <DemandTable
+        board={{
+          ...board,
+          openOrders: 1,
+          rows: [
+            {
+              productId: "p1",
+              sku: "SKU-1",
+              name: "ZEN 2.1L",
+              variant: null,
+              market: null,
+              stockCartons: null,
+              byColumn: {},
+              overdue: 27,
+              committed: 27,
+              orders: 1,
+              shortBy: null,
+              lines: [line()],
+            },
+          ],
+        }}
+      />,
+    );
+    expect(markup).toContain("Stock count (carton)");
+    expect(markup).not.toContain("On hand");
   });
 });

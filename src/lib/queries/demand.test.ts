@@ -11,8 +11,11 @@ const NOW = new Date("2026-09-07T04:00:00Z");
 const line = (over: {
   productId?: string | null;
   sku?: string;
+  name?: string;
   cartons?: number;
   deliveryDate?: string;
+  poDate?: string;
+  family?: { id: string; code: string; name: string } | null;
   orderId?: string;
   stockCartons?: number | null;
   buyer?: string;
@@ -24,6 +27,7 @@ const line = (over: {
   productId: "productId" in over ? over.productId : "p1",
   purchaseOrderId: over.orderId ?? "po1",
   purchaseOrder: {
+    poDate: new Date(`${over.poDate ?? "2026-09-01"}T00:00:00Z`),
     deliveryDate: new Date(`${over.deliveryDate ?? "2026-09-09"}T00:00:00Z`),
     stage: "ORDER_PLACED",
     buyer: { name: over.buyer ?? "Acme Industrial Sdn Bhd" },
@@ -33,17 +37,18 @@ const line = (over: {
   },
   product: {
     sku: over.sku ?? "SKU-1",
-    name: "ZEN 2.1L",
+    name: over.name ?? "ZEN 2.1L",
     variant: null,
     market: null,
     stockCartons: "stockCartons" in over ? over.stockCartons! : null,
+    family: "family" in over ? over.family! : null,
   },
 });
 
 describe("loadDemandBoard", () => {
   it("only reads orders that are open and dated", async () => {
     findMany.mockResolvedValue([]);
-    await loadDemandBoard("week", DEMAND_SPAN.week, NOW);
+    await loadDemandBoard({ grain: "week", window: DEMAND_SPAN.week, now: NOW });
     const where = findMany.mock.calls.at(-1)![0].where;
     expect(where.productId).toEqual({ not: null });
     expect(where.purchaseOrder.stage).toEqual({ not: "DELIVERED" });
@@ -56,7 +61,7 @@ describe("loadDemandBoard", () => {
       line({ cartons: 8, deliveryDate: "2026-09-11", orderId: "b" }),
       line({ cartons: 5, deliveryDate: "2026-09-16", orderId: "a" }),
     ]);
-    const board = await loadDemandBoard("week", DEMAND_SPAN.week, NOW);
+    const board = await loadDemandBoard({ grain: "week", window: DEMAND_SPAN.week, now: NOW });
     const [row] = board.rows;
     // 9 and 11 Sep are the same week; 16 Sep is the next one.
     expect(row.byColumn["2026-09-07"]).toBe(20);
@@ -77,7 +82,7 @@ describe("loadDemandBoard", () => {
       line({ cartons: 30, deliveryDate: "2026-08-24" }),
       line({ cartons: 4, deliveryDate: "2026-09-09" }),
     ]);
-    const board = await loadDemandBoard("week", DEMAND_SPAN.week, NOW);
+    const board = await loadDemandBoard({ grain: "week", window: DEMAND_SPAN.week, now: NOW });
     expect(board.anyOverdue).toBe(true);
     expect(board.rows[0].overdue).toBe(30);
     expect(board.rows[0].byColumn["2026-09-07"]).toBe(4);
@@ -90,7 +95,7 @@ describe("loadDemandBoard", () => {
       line({ cartons: 7, deliveryDate: "2026-12-25" }),
       line({ cartons: 3, deliveryDate: "2026-08-01" }),
     ]);
-    const board = await loadDemandBoard("week", DEMAND_SPAN.week, NOW);
+    const board = await loadDemandBoard({ grain: "week", window: DEMAND_SPAN.week, now: NOW });
     expect(board.totals.committed).toBe(3);
     expect(board.rows[0].overdue).toBe(3);
 
@@ -98,7 +103,7 @@ describe("loadDemandBoard", () => {
       line({ cartons: 7, deliveryDate: "2026-12-25" }),
       line({ cartons: 3, deliveryDate: "2026-08-01" }),
     ]);
-    const all = await loadDemandBoard("week", "all", NOW);
+    const all = await loadDemandBoard({ grain: "week", window: "all", now: NOW });
     expect(all.totals.committed).toBe(10);
   });
 
@@ -108,17 +113,17 @@ describe("loadDemandBoard", () => {
    */
   it("says nothing about a shortfall until stock is counted", async () => {
     findMany.mockResolvedValue([line({ cartons: 40, stockCartons: null })]);
-    const uncounted = await loadDemandBoard("week", DEMAND_SPAN.week, NOW);
+    const uncounted = await loadDemandBoard({ grain: "week", window: DEMAND_SPAN.week, now: NOW });
     expect(uncounted.rows[0].shortBy).toBeNull();
     expect(uncounted.counted).toBe(0);
 
     findMany.mockResolvedValue([line({ cartons: 40, stockCartons: 12 })]);
-    const short = await loadDemandBoard("week", DEMAND_SPAN.week, NOW);
+    const short = await loadDemandBoard({ grain: "week", window: DEMAND_SPAN.week, now: NOW });
     expect(short.rows[0].shortBy).toBe(28);
     expect(short.counted).toBe(1);
 
     findMany.mockResolvedValue([line({ cartons: 40, stockCartons: 100 })]);
-    const covered = await loadDemandBoard("week", DEMAND_SPAN.week, NOW);
+    const covered = await loadDemandBoard({ grain: "week", window: DEMAND_SPAN.week, now: NOW });
     // A surplus is not a negative shortfall.
     expect(covered.rows[0].shortBy).toBe(0);
   });
@@ -128,13 +133,13 @@ describe("loadDemandBoard", () => {
       { ...line({ cartons: 5 }), productId: "small", product: { ...line({}).product, sku: "B" } },
       { ...line({ cartons: 50 }), productId: "big", product: { ...line({}).product, sku: "A" } },
     ]);
-    const board = await loadDemandBoard("week", DEMAND_SPAN.week, NOW);
+    const board = await loadDemandBoard({ grain: "week", window: DEMAND_SPAN.week, now: NOW });
     expect(board.rows.map((r) => r.productId)).toEqual(["big", "small"]);
   });
 
   it("shows every week in the window, including the empty ones", async () => {
     findMany.mockResolvedValue([line({ cartons: 4, deliveryDate: "2026-09-09" })]);
-    const board = await loadDemandBoard("week", DEMAND_SPAN.week, NOW);
+    const board = await loadDemandBoard({ grain: "week", window: DEMAND_SPAN.week, now: NOW });
     expect(board.columns).toHaveLength(DEMAND_SPAN.week);
     expect(board.columns[0]).toEqual({ key: "2026-09-07", label: "7–13 Sep" });
     // A week nobody promised anything in still gets a column.
@@ -148,7 +153,7 @@ describe("loadDemandBoard, by day", () => {
       line({ cartons: 12, deliveryDate: "2026-09-09", orderId: "a" }),
       line({ cartons: 8, deliveryDate: "2026-09-11", orderId: "b" }),
     ]);
-    const board = await loadDemandBoard("day", 14, NOW);
+    const board = await loadDemandBoard({ grain: "day", window: 14, now: NOW });
     expect(board.grain).toBe("day");
     // The same two lines were one 20-carton week; they are two days apart.
     expect(board.rows[0].byColumn["2026-09-09"]).toBe(12);
@@ -158,7 +163,7 @@ describe("loadDemandBoard, by day", () => {
 
   it("names a day the way every chart in the portal does", async () => {
     findMany.mockResolvedValue([line({ cartons: 4, deliveryDate: "2026-09-09" })]);
-    const board = await loadDemandBoard("day", 7, NOW);
+    const board = await loadDemandBoard({ grain: "day", window: 7, now: NOW });
     expect(board.columns).toHaveLength(7);
     expect(board.columns[0]).toEqual({ key: "2026-09-07", label: "7 Sep" });
     expect(board.columns[2]).toEqual({ key: "2026-09-09", label: "9 Sep" });
@@ -173,28 +178,28 @@ describe("loadDemandBoard, by day", () => {
   it("calls yesterday late by day, and not by week", async () => {
     const yesterday = { cartons: 9, deliveryDate: "2026-09-06" };
     findMany.mockResolvedValue([line(yesterday)]);
-    const daily = await loadDemandBoard("day", 14, NOW);
+    const daily = await loadDemandBoard({ grain: "day", window: 14, now: NOW });
     expect(daily.rows[0].overdue).toBe(9);
 
     findMany.mockResolvedValue([line(yesterday)]);
-    const weekly = await loadDemandBoard("week", DEMAND_SPAN.week, NOW);
+    const weekly = await loadDemandBoard({ grain: "week", window: DEMAND_SPAN.week, now: NOW });
     // 6 Sep is the Sunday of the week before; still late either way.
     expect(weekly.rows[0].overdue).toBe(9);
 
     // Thursday of this week is not late by week, and not late by day either.
     findMany.mockResolvedValue([line({ cartons: 5, deliveryDate: "2026-09-10" })]);
-    const ahead = await loadDemandBoard("day", 14, NOW);
+    const ahead = await loadDemandBoard({ grain: "day", window: 14, now: NOW });
     expect(ahead.rows[0].overdue).toBe(0);
     expect(ahead.rows[0].byColumn["2026-09-10"]).toBe(5);
   });
 
   it("drops a delivery beyond the day window that the week window would keep", async () => {
     findMany.mockResolvedValue([line({ cartons: 6, deliveryDate: "2026-09-25" })]);
-    const daily = await loadDemandBoard("day", 7, NOW);
+    const daily = await loadDemandBoard({ grain: "day", window: 7, now: NOW });
     expect(daily.totals.committed).toBe(0);
 
     findMany.mockResolvedValue([line({ cartons: 6, deliveryDate: "2026-09-25" })]);
-    const weekly = await loadDemandBoard("week", DEMAND_SPAN.week, NOW);
+    const weekly = await loadDemandBoard({ grain: "week", window: DEMAND_SPAN.week, now: NOW });
     expect(weekly.totals.committed).toBe(6);
   });
 });
@@ -206,7 +211,7 @@ describe("loadDemandBoard, by month", () => {
       line({ cartons: 8, deliveryDate: "2026-09-28", orderId: "b" }),
       line({ cartons: 5, deliveryDate: "2026-10-02", orderId: "c" }),
     ]);
-    const board = await loadDemandBoard("month", DEMAND_SPAN.month, NOW);
+    const board = await loadDemandBoard({ grain: "month", window: DEMAND_SPAN.month, now: NOW });
     expect(board.grain).toBe("month");
     // Three separate weeks; two months.
     expect(board.rows[0].byColumn["2026-09-01"]).toBe(20);
@@ -217,7 +222,7 @@ describe("loadDemandBoard, by month", () => {
 
   it("names a month the way every chart in the portal does", async () => {
     findMany.mockResolvedValue([line({ cartons: 4, deliveryDate: "2026-09-09" })]);
-    const board = await loadDemandBoard("month", DEMAND_SPAN.month, NOW);
+    const board = await loadDemandBoard({ grain: "month", window: DEMAND_SPAN.month, now: NOW });
     expect(board.columns).toHaveLength(DEMAND_SPAN.month);
     expect(board.columns[0]).toEqual({ key: "2026-09-01", label: "Sep 2026" });
     // Six months from September reaches February, not March.
@@ -226,11 +231,11 @@ describe("loadDemandBoard, by month", () => {
 
   it("keeps a December delivery that the four-week window drops", async () => {
     findMany.mockResolvedValue([line({ cartons: 7, deliveryDate: "2026-12-25" })]);
-    const monthly = await loadDemandBoard("month", DEMAND_SPAN.month, NOW);
+    const monthly = await loadDemandBoard({ grain: "month", window: DEMAND_SPAN.month, now: NOW });
     expect(monthly.totals.byColumn["2026-12-01"]).toBe(7);
 
     findMany.mockResolvedValue([line({ cartons: 7, deliveryDate: "2026-12-25" })]);
-    const weekly = await loadDemandBoard("week", DEMAND_SPAN.week, NOW);
+    const weekly = await loadDemandBoard({ grain: "week", window: DEMAND_SPAN.week, now: NOW });
     expect(weekly.totals.committed).toBe(0);
   });
 
@@ -243,18 +248,18 @@ describe("loadDemandBoard, by month", () => {
   it("counts an earlier day of this month as this month, not as late", async () => {
     const earlier = { cartons: 9, deliveryDate: "2026-09-02" };
     findMany.mockResolvedValue([line(earlier)]);
-    const monthly = await loadDemandBoard("month", DEMAND_SPAN.month, NOW);
+    const monthly = await loadDemandBoard({ grain: "month", window: DEMAND_SPAN.month, now: NOW });
     expect(monthly.rows[0].overdue).toBe(0);
     expect(monthly.rows[0].byColumn["2026-09-01"]).toBe(9);
     expect(monthly.anyOverdue).toBe(false);
 
     findMany.mockResolvedValue([line(earlier)]);
-    const daily = await loadDemandBoard("day", 14, NOW);
+    const daily = await loadDemandBoard({ grain: "day", window: 14, now: NOW });
     expect(daily.rows[0].overdue).toBe(9);
 
     // Last month is late at every grain.
     findMany.mockResolvedValue([line({ cartons: 30, deliveryDate: "2026-08-24" })]);
-    const august = await loadDemandBoard("month", DEMAND_SPAN.month, NOW);
+    const august = await loadDemandBoard({ grain: "month", window: DEMAND_SPAN.month, now: NOW });
     expect(august.rows[0].overdue).toBe(30);
   });
 });
@@ -267,7 +272,7 @@ describe("the breakdown behind each figure", () => {
       line({ cartons: 8, orderId: "a", deliveryDate: "2026-09-09" }),
       line({ cartons: 5, orderId: "b", deliveryDate: "2026-09-09" }),
     ]);
-    const board = await loadDemandBoard("week", DEMAND_SPAN.week, NOW);
+    const board = await loadDemandBoard({ grain: "week", window: DEMAND_SPAN.week, now: NOW });
     const [row] = board.rows;
     // Three line items, two promises.
     expect(row.lines).toHaveLength(2);
@@ -290,7 +295,7 @@ describe("the breakdown behind each figure", () => {
       line({ cartons: 5, orderId: "c", deliveryDate: "2026-09-16" }),
       line({ cartons: 30, orderId: "d", deliveryDate: "2026-08-24" }),
     ]);
-    const board = await loadDemandBoard("week", DEMAND_SPAN.week, NOW);
+    const board = await loadDemandBoard({ grain: "week", window: DEMAND_SPAN.week, now: NOW });
     const [row] = board.rows;
 
     // One entry per order, and that count is the figure the Orders column shows.
@@ -326,7 +331,7 @@ describe("the breakdown behind each figure", () => {
         webOrder: "W-2609-00014",
       }),
     ]);
-    const board = await loadDemandBoard("week", DEMAND_SPAN.week, NOW);
+    const board = await loadDemandBoard({ grain: "week", window: DEMAND_SPAN.week, now: NOW });
     const [worst, next] = board.rows[0].lines;
 
     // Worst lateness first: 7 Sep less 27 Aug is eleven days.
@@ -360,7 +365,7 @@ describe("the breakdown behind each figure", () => {
         webOrder: "W-2609-00014",
       }),
     ]);
-    const board = await loadDemandBoard("week", DEMAND_SPAN.week, NOW);
+    const board = await loadDemandBoard({ grain: "week", window: DEMAND_SPAN.week, now: NOW });
     const [only] = board.rows[0].lines;
 
     expect(only.label).toBe("PO number ACME-PO-771");
@@ -376,7 +381,7 @@ describe("the breakdown behind each figure", () => {
     findMany.mockResolvedValue([
       line({ poNumber: null, buyerReference: "not-a-po-number" }),
     ]);
-    const board = await loadDemandBoard("week", DEMAND_SPAN.week, NOW);
+    const board = await loadDemandBoard({ grain: "week", window: DEMAND_SPAN.week, now: NOW });
     const [only] = board.rows[0].lines;
 
     expect(only.label).toBe("Purchase order");
@@ -390,8 +395,184 @@ describe("the breakdown behind each figure", () => {
    */
   it("reads the buyer's name and nothing else off that row", async () => {
     findMany.mockResolvedValue([]);
-    await loadDemandBoard("week", DEMAND_SPAN.week, NOW);
+    await loadDemandBoard({ grain: "week", window: DEMAND_SPAN.week, now: NOW });
     const select = findMany.mock.calls.at(-1)![0].select;
     expect(select.purchaseOrder.select.buyer).toEqual({ select: { name: true } });
+  });
+});
+
+/**
+ * The board's figures have to be the figures it is showing. A search that
+ * narrowed the breakdown while leaving Committed whole would put 550 above
+ * three sub-rows summing to 46 — the exact failure the per-order grouping
+ * exists to prevent, arriving by another door.
+ */
+describe("narrowing the board", () => {
+  const twoBuyers = [
+    line({ orderId: "a", buyer: "Hong Tong Sdn Bhd", cartons: 30, deliveryDate: "2026-09-09" }),
+    line({ orderId: "b", buyer: "Kelana Steel", cartons: 12, deliveryDate: "2026-09-10" }),
+  ];
+
+  it("counts only what the search matches, in every figure", async () => {
+    findMany.mockResolvedValue(twoBuyers);
+    const all = await loadDemandBoard({ grain: "week", window: 4, now: NOW });
+    expect(all.totals.committed).toBe(42);
+    expect(all.rows[0].orders).toBe(2);
+
+    findMany.mockResolvedValue(twoBuyers);
+    const one = await loadDemandBoard({
+      grain: "week",
+      window: 4,
+      filters: { q: "hong tong" },
+      now: NOW,
+    });
+    expect(one.totals.committed).toBe(30);
+    expect(one.rows[0].committed).toBe(30);
+    expect(one.rows[0].orders).toBe(1);
+    expect(one.rows[0].lines).toHaveLength(1);
+    expect(one.openOrders).toBe(1);
+  });
+
+  it("searches the product, the family and both identifiers, not just the buyer", async () => {
+    const family = { id: "f1", code: "ZEN-SC-2100", name: "Zen Garden Shower Cream 2.1L" };
+    const fixture = [line({ sku: "ZS-SC-2100-CR-ID", family, poNumber: "ACME-PO-771" })];
+    for (const q of ["zs-sc-2100", "shower cream", "ZEN-SC-2100", "acme-po-771", "zen 2.1l"]) {
+      findMany.mockResolvedValue(fixture);
+      const board = await loadDemandBoard({ grain: "week", window: 4, filters: { q }, now: NOW });
+      expect(board.rows, `searching ${q}`).toHaveLength(1);
+    }
+  });
+
+  it("finds nothing rather than everything when nothing matches", async () => {
+    findMany.mockResolvedValue(twoBuyers);
+    const board = await loadDemandBoard({
+      grain: "week",
+      window: 4,
+      filters: { q: "zzzznothingmatches" },
+      now: NOW,
+    });
+    expect(board.rows).toHaveLength(0);
+    expect(board.totals.committed).toBe(0);
+    expect(board.openOrders).toBe(0);
+  });
+
+  it("filters to one family, and to one product", async () => {
+    const zen = { id: "f1", code: "ZEN-SC-2100", name: "Zen shower cream" };
+    const king = { id: "f2", code: "MRK-DW-1500", name: "Mr King dishwash" };
+    const fixture = [
+      line({ productId: "p1", orderId: "a", family: zen, cartons: 30 }),
+      line({ productId: "p2", orderId: "b", family: king, cartons: 12, name: "MR.KING" }),
+    ];
+
+    findMany.mockResolvedValue(fixture);
+    const byFamily = await loadDemandBoard({
+      grain: "week",
+      window: 4,
+      filters: { family: "f2" },
+      now: NOW,
+    });
+    expect(byFamily.rows.map((r) => r.productId)).toEqual(["p2"]);
+    expect(byFamily.totals.committed).toBe(12);
+
+    findMany.mockResolvedValue(fixture);
+    const byProduct = await loadDemandBoard({
+      grain: "week",
+      window: 4,
+      filters: { productId: "p1" },
+      now: NOW,
+    });
+    expect(byProduct.rows.map((r) => r.productId)).toEqual(["p1"]);
+    expect(byProduct.totals.committed).toBe(30);
+  });
+
+  /**
+   * The pickers read the whole board, never the filtered one. A family list
+   * that shrank to the family already chosen would be a filter you cannot
+   * undo from the control that set it.
+   */
+  it("offers every family and product even while filtered to one", async () => {
+    const zen = { id: "f1", code: "ZEN-SC-2100", name: "Zen shower cream" };
+    const king = { id: "f2", code: "MRK-DW-1500", name: "Mr King dishwash" };
+    findMany.mockResolvedValue([
+      line({ productId: "p1", orderId: "a", family: zen }),
+      line({ productId: "p2", orderId: "b", family: king, name: "MR.KING" }),
+    ]);
+    const board = await loadDemandBoard({
+      grain: "week",
+      window: 4,
+      filters: { family: "f1" },
+      now: NOW,
+    });
+    expect(board.rows).toHaveLength(1);
+    expect(board.families.map((f) => f.value)).toEqual(["f2", "f1"]);
+    expect(board.products.map((p) => p.label)).toEqual(["MR.KING", "ZEN 2.1L"]);
+  });
+
+  /**
+   * Overdue narrows rows, not lines — on purpose. The orders that are *not*
+   * late are the context for chasing the one that is: when it gets made, and
+   * what is queued behind it.
+   */
+  it("keeps a late product's whole breakdown, and drops the products with none", async () => {
+    findMany.mockResolvedValue([
+      line({ productId: "p1", orderId: "late", deliveryDate: "2026-08-27", cartons: 30 }),
+      line({ productId: "p1", orderId: "soon", deliveryDate: "2026-09-09", cartons: 4 }),
+      line({ productId: "p2", orderId: "ontime", deliveryDate: "2026-09-10", cartons: 99, name: "MR.KING" }),
+    ]);
+    const board = await loadDemandBoard({
+      grain: "week",
+      window: 4,
+      filters: { overdueOnly: true },
+      now: NOW,
+    });
+    expect(board.rows.map((r) => r.productId)).toEqual(["p1"]);
+    expect(board.rows[0].lines).toHaveLength(2);
+    expect(board.rows[0].committed).toBe(34);
+    // The footer is the rows above it, not what the lines added up to before
+    // the filter ran.
+    expect(board.totals.committed).toBe(34);
+    expect(board.openOrders).toBe(2);
+  });
+});
+
+describe("a sub-row's dates", () => {
+  it("carries the buyer's PO date beside our expected date", async () => {
+    findMany.mockResolvedValue([
+      line({ poDate: "2026-08-24", deliveryDate: "2026-09-09" }),
+    ]);
+    const board = await loadDemandBoard({ grain: "week", window: 4, now: NOW });
+    const [only] = board.rows[0].lines;
+    expect(only.poDate).toBe("24 Aug 2026");
+    expect(only.deliveryDate).toBe("9 Sep 2026");
+  });
+
+  it("counts the days until an order is due, and none once it is late", async () => {
+    findMany.mockResolvedValue([
+      line({ orderId: "soon", deliveryDate: "2026-09-09" }),
+      line({ orderId: "today", deliveryDate: "2026-09-07" }),
+      line({ orderId: "late", deliveryDate: "2026-08-27" }),
+    ]);
+    const board = await loadDemandBoard({ grain: "week", window: 4, now: NOW });
+    const by = new Map(board.rows[0].lines.map((l) => [l.purchaseOrderId, l]));
+    expect(by.get("soon")!.dueInDays).toBe(2);
+    expect(by.get("today")!.dueInDays).toBe(0);
+    // An overdue order reads its lateness instead; the two never both show.
+    expect(by.get("late")!.dueInDays).toBeNull();
+    expect(by.get("late")!.daysLate).toBe(11);
+  });
+
+  /**
+   * "Late" is grain-relative and the day count is not. On a monthly board an
+   * order promised on the 2nd is simply September — not overdue — while its
+   * date is five days gone, and the figure says so rather than rounding up
+   * to "due today".
+   */
+  it("goes negative where the grain says an order is not yet late", async () => {
+    findMany.mockResolvedValue([line({ deliveryDate: "2026-09-02" })]);
+    const board = await loadDemandBoard({ grain: "month", window: 6, now: NOW });
+    const [only] = board.rows[0].lines;
+    expect(only.daysLate).toBe(0);
+    expect(only.columnKey).toBe("2026-09-01");
+    expect(only.dueInDays).toBe(-5);
   });
 });

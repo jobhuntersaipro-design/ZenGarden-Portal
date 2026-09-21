@@ -1,4 +1,149 @@
-# Current Feature: What each demand figure is made of
+# Current Feature: Reading the demand board down to one order
+
+## Status
+
+**Built and driven in a browser on `claude/session-cloud-location-aszckl`**
+(2026-09-21). Asked for as five changes at once: "Show PO Date, Expected
+Delivery Date, Due in how many days"; "For window, open options for next
+unlimited day, let user pick. default next 30d, remove Next 7days"; "Rename on
+hand to stock count (carton)"; "Also add search bar to search anything"; "Add
+filter for family, product, overdue".
+
+**Three decisions were the user's**, asked before building and all three taken
+as recommended: the dates are labelled lines on the sub-row rather than three
+new columns; the window is presets plus a box you type any number into; and
+the search narrows the *lines*, so **every figure on the board follows it**.
+
+**Both dates are labelled, because two bare dates a line apart are
+indistinguishable.** A sub-row now reads `PO date 31 Aug 2026` over
+`Expected 12 Sep 2026 · 9 days late`. Three new columns was the alternative
+and was rejected for a reason worth keeping: a product row has many orders and
+so has no single PO date, so those columns would be blank on every row that is
+not a sub-row, while pushing thirty day columns further right.
+
+**How soon, in the same place as how late.** `due in 6 days`, `due today`, and
+— the case that needed deciding — `due 14 days ago`. Lateness on this board is
+measured *at the grain being read*, so a monthly board can carry an order
+whose date is a fortnight gone in September's column rather than in Overdue.
+`dueInDays` is real calendar days and is allowed to go negative rather than
+rounding up to "due today", which would be the board rounding in its own
+favour. The red `N days late` caption stays grain-relative, and the two never
+both show.
+
+**The window is no longer a menu of three.** `Next 7 days` is gone, daily
+opens at **30**, and a box beside the chips takes any number: 45, 90, 120. It
+is committed on Enter or on blur rather than per keystroke — typing 120 would
+otherwise redraw the board at 1, then 12 — and a number past the grain's
+ceiling is **refused rather than clamped**, because a silently corrected 900
+looks like the board answered the question that was asked.
+
+**The ceilings are 365 days, 260 weeks, 120 months**, and they are not
+opinions about how far ahead to plan — the old ones (a fortnight-ish per
+grain) were the thing being complained about. They are the point past which a
+URL is a typo rather than a question. Every one of them already draws more
+columns than a screen holds, and "All open" can draw more still.
+
+**Search narrows the lines, so the figures cannot lie.** Searching a buyer
+leaves their orders alone on the board and a row's cartons, Committed and
+Orders are that buyer's alone. The alternative — filter the breakdown, keep
+the totals whole — would put 550 committed above three sub-rows summing to 46,
+which is the exact failure the per-order grouping exists to prevent, arriving
+by another door. The summary line says which it is showing: "every figure
+below counts only what matches."
+
+**Totals are summed from the rows that survived**, rather than accumulated as
+the lines go past. That is what makes the previous paragraph true by
+construction instead of by discipline: the footer is the rows above it, and no
+filter can leave it counting a row it removed.
+
+**Overdue is the one filter that narrows rows, not lines.** A planner chasing
+a late order needs to see what else that product has coming — when it gets
+made, and what is queued behind it — not a board emptied of everything but the
+lateness.
+
+**The pickers read the whole board, never the filtered one.** Family and
+product options come from the unfiltered pass, so narrowing to one family
+never removes the other families from the control that would take you back.
+That cost nothing extra: the query already reads every open line and
+aggregates in memory, so the filters are applied in that same loop and the
+option lists fall out of it. Search does not push down to SQL, which is the
+same swap point the module already records — past a few thousand open lines
+this wants the filter in the `where`.
+
+**On hand is Stock count (carton)**, in the header and in the amber callout
+that explains why it is blank.
+
+## Verified, with the figures
+
+Development, port 3000, as the seeded super admin, board opening 21 Sep 2026.
+
+- **The sub-row reads as a record.** `Meridian Chemicals / PO number
+  PO-2026-0039 / PO date 31 Aug 2026 / Expected 12 Sep 2026 · 9 days late /
+  Delivering`, and below it `Tanjung Electrical / PO-2026-0027 / PO date
+  14 Sep 2026 / Expected 27 Sep 2026 · due in 6 days`, `Acme Industrial Sdn
+  Bhd / … · due in 2 days`, `Sunway Packaging / … · due in 7 days`.
+- **Daily opens at 30 and `Next 7 days` is gone.** The chips read
+  **Next 30 days · Next 60 · All open**, with Next 30 days selected and
+  **36 columns** drawn.
+- **Typed spans work and are refused, not clamped.** `45` gave **51 columns**
+  with no chip selected; `?by=day&window=400` — past the 365 ceiling — fell
+  back to **36 columns** with Next 30 days selected; typing `900` into the box
+  left the URL on `?window=90` and put the box back to 90.
+- **Search narrows every figure, and the breakdown still adds up.** Unfiltered:
+  **26 open orders · 2,669 cartons**. Searching `Meridian`: **2 open orders ·
+  157 cartons · "every figure below counts only what matches."** Expanding the
+  lead row, the parent reads `34 | — | 16 | — | — | 50 | 2` and its **two**
+  sub-rows sum to exactly `34 | — | 16 | — | — | 50`, both Meridian's.
+- **A search with no match says so** — "Nothing on the board matches that.
+  Clear the search or the filters to see every open order." — rather than
+  drawing an empty grid.
+- **Family and product filter, and the pickers stay whole.** With three
+  families put on the seeded catalogue, choosing one gave **4 rows · 985
+  cartons**, and the family select still offered **all 4 options** and the
+  product select all **13** — a filter you can undo from the control that set
+  it. The product filter narrowed to **1 row · 286 cartons**.
+- **Overdue only** gave **8 rows of 12**, every one of them carrying a figure
+  in the Overdue column rather than a dash, with their full breakdowns intact.
+- **Four counterfactuals watched failing.** Accumulating totals as the lines
+  go past rather than summing the survivors, so the footer outlives the filter
+  that removed its row; deriving the pickers from the filtered rows, so the
+  family list shrinks to the family already chosen; clamping `due N days ago`
+  to "due today"; and filtering the breakdown while leaving the totals whole —
+  which reported **42 where 30 was expected**, the figure-follows decision
+  made visible.
+- **Phone.** At 390 the toolbar stacks — grain, window, the span box, search,
+  the selects, the pill — with **no control under 44px** and no page overflow
+  (390/390); 1440/1440 on the desktop.
+- **The console is clean.** The only failed request is
+  `va.vercel-scripts.com/v1/speed-insights` — this container's blocked egress,
+  not the page.
+- **1345/1345 tests across 102 files** (15 new), `tsc`, lint (the same 2
+  pre-existing warnings) and `npm run build` clean. The 103rd file,
+  `catalog-import.test.ts`, fails to import in this container only — `xlsx`
+  installs from cdn.sheetjs.com, which the network policy answers 403 to.
+
+## Not verified
+
+- **Anything on production.** Not deployed, and no production row was read.
+- **The family filter on real data.** The seeded catalogue places no product
+  in a family, so three throwaway families were created for the drive and
+  removed by id afterwards (families **0**, products placed **0**, purchase
+  orders **421**, read back). On production every product has a family, so
+  that select will be long — it is a plain `<select>`, unsearchable, and how
+  it reads at 59 families was not seen.
+- **A span near the ceiling.** 45 and 90 were drawn; 365 days — 371 columns —
+  was not, and the board would be slow to lay out. The ceiling exists to stop
+  a typo, not because that span was measured.
+- **The search at volume.** It filters in memory over every open line, which
+  is right at 1,672 and untested at a hundred thousand.
+- **Keyboard and screen reader.** The span box commits on Enter, which was
+  driven; the selects and the pill were clicked, not tabbed to.
+- **A saved link carrying a filter**, opened cold. Every control writes to the
+  URL and the page reads it back, but only same-session navigation was driven.
+
+## Previous phase
+
+**What each demand figure is made of**
 
 ## Status
 

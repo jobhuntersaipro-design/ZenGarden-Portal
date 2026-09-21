@@ -36,7 +36,7 @@ function Cell({ value }: { value: number | undefined }) {
  * link do not fit in a numeric column, so they live in the product column,
  * which is the one with room.
  *
- * On hand and Short by render as dashes until a stock count exists. They are
+ * Stock count and Short by render as dashes until a count exists. They are
  * kept in the table rather than hidden so the shape of the answer is visible
  * before the data for it is: the point of the board is what runs out, and a
  * column quietly missing would not say that it is missing.
@@ -80,7 +80,7 @@ export function DemandTable({ board }: { board: DemandBoard }) {
               ))}
               <Th numeric>Committed</Th>
               <Th numeric>Orders</Th>
-              <Th numeric>On hand</Th>
+              <Th numeric>Stock count (carton)</Th>
               <Th numeric className="pr-lg">
                 Short by
               </Th>
@@ -226,6 +226,22 @@ function ProductRows({
 }
 
 /**
+ * How long until the expected date, in words.
+ *
+ * A negative figure is not a mistake and is not rounded away: "late" on this
+ * board is measured at the grain being read, so a monthly board can carry an
+ * order whose date is a fortnight gone in September's column rather than in
+ * Overdue. `2 days ago` is what that row honestly says; the red `N days late`
+ * caption above belongs to the orders the Overdue column actually counts.
+ */
+function dueIn(days: number | null): string {
+  if (days === null) return "";
+  if (days === 0) return "due today";
+  if (days < 0) return `due ${-days} day${days === -1 ? "" : "s"} ago`;
+  return `due in ${days} day${days === 1 ? "" : "s"}`;
+}
+
+/**
  * One open order's share, in the same columns as the total above it.
  *
  * **Both identifiers, one per line, and neither ever truncates.** The buyer's
@@ -275,17 +291,26 @@ export function OrderRow({ line, board }: { line: DemandLine; board: DemandBoard
               {line.orderIdLabel}
             </p>
           ) : null}
+          {/* The buyer's own date, and ours. Labelled, because two bare
+              dates a line apart are indistinguishable — and on separate
+              lines, because the pair is what the row is read for. */}
+          <p className="whitespace-nowrap text-[length:var(--text-caption)] text-ink-tertiary">
+            PO date {line.poDate}
+          </p>
           <p className="flex flex-wrap items-center gap-x-xxs text-[length:var(--text-caption)] text-ink-tertiary">
-            <span className="whitespace-nowrap">{line.deliveryDate}</span>
-            {/* How late, beside the date it is measured from rather than in
-                the Overdue column: a numeric column that also carries words
-                cannot be read across, copied, or totalled by eye. */}
+            <span className="whitespace-nowrap">Expected {line.deliveryDate}</span>
+            {/* How late or how soon, beside the date it is measured from
+                rather than in the Overdue column: a numeric column that also
+                carries words cannot be read across, copied, or totalled by
+                eye. */}
             {line.daysLate > 0 ? (
               <span className="whitespace-nowrap font-medium text-accent-red">
                 {" · "}
                 {line.daysLate} day{line.daysLate === 1 ? "" : "s"} late
               </span>
-            ) : null}
+            ) : (
+              <span className="whitespace-nowrap">{" · "}{dueIn(line.dueInDays)}</span>
+            )}
           </p>
           <p className="mt-xxs">
             <StageBadge stage={line.stage} state="done" compact />

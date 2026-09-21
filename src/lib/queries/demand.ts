@@ -6,9 +6,36 @@ import { formatDate } from "@/lib/dates";
 import { ORDER_IDENTITY_SELECT, orderIdentity, orderLabel } from "@/lib/order-identity";
 import { DEMAND_SPAN, type DemandGrain } from "@/lib/planning/grain";
 
-export { DEMAND_SPAN, type DemandGrain } from "@/lib/planning/grain";
+export {
+  DEMAND_CEILING,
+  DEMAND_SPAN,
+  DEMAND_UNIT,
+  type DemandGrain,
+} from "@/lib/planning/grain";
 
 export type DemandWindow = number | "all";
+
+/**
+ * What the planner has narrowed the board to.
+ *
+ * `q`, `family` and `productId` narrow the **lines**, so every figure on the
+ * board follows them: search a buyer and a row's cartons, Committed and
+ * Orders are that buyer's alone. A board that kept whole totals above a
+ * filtered breakdown would be showing a number it is not displaying.
+ *
+ * `overdueOnly` is the exception, and deliberately narrows **rows** instead:
+ * a planner chasing a late order needs to see what else that product has
+ * coming, not a board emptied of everything but the lateness.
+ */
+export type DemandFilters = {
+  q?: string;
+  family?: string;
+  productId?: string;
+  overdueOnly?: boolean;
+};
+
+/** A value the filter selects offer, and the count beside it. */
+export type DemandOption = { value: string; label: string };
 
 /** One step of the grain, for walking out the window's last period. */
 const STEP = { day: addDays, week: addWeeks, month: addMonths } as const;
@@ -44,13 +71,27 @@ export type DemandLine = {
   orderIdLabel: string | null;
   buyerName: string;
   stage: PoStage;
-  /** Formatted in Kuala Lumpur on the server, so the browser cannot drift it. */
+  /** The date on the buyer's own document. Formatted in Kuala Lumpur on the
+   *  server, as every date here is, so the browser cannot drift it. */
+  poDate: string;
+  /** What we committed to: the expected delivery date. */
   deliveryDate: string;
   cartons: number;
   /** The column these cartons sit in, or null when the order is overdue. */
   columnKey: string | null;
   /** Calendar days past the expected date; 0 unless overdue. */
   daysLate: number;
+  /**
+   * Calendar days until the expected date, and null on an order the board
+   * counts as overdue — that one reads its lateness instead.
+   *
+   * It can still be **negative**: "late" is measured at the grain being read,
+   * so on a monthly board an order promised on the 5th is simply September
+   * and not overdue, while its date is a fortnight gone. The figure says so
+   * rather than rounding up to "due today"; only the red Overdue column is
+   * grain-relative.
+   */
+  dueInDays: number | null;
 };
 
 export type DemandRow = {
@@ -89,6 +130,14 @@ export type DemandBoard = {
   /** Products on the board that carry a stock count. */
   counted: number;
   anyOverdue: boolean;
+  /**
+   * Every family and product with an open order, whatever the board is
+   * filtered to — derived from the unfiltered read, so narrowing to one
+   * family never removes the other families from the picker that would take
+   * you back.
+   */
+  families: DemandOption[];
+  products: DemandOption[];
 };
 
 /**
@@ -143,11 +192,41 @@ function labelFor(key: string, grain: DemandGrain): DemandColumn {
  * "unknown": it is an extraction that never matched the catalogue, and it
  * belongs in the review queue, not in a production plan.
  */
-export async function loadDemandBoard(
-  grain: DemandGrain = "week",
-  window: DemandWindow = DEMAND_SPAN[grain],
-  now: Date = new Date(),
-): Promise<DemandBoard> {
+/** Every field the search box looks in, lower-cased once per line. */
+function haystack(
+  product: { sku: string; name: string; variant: string | null; market: string | null },
+  family: { code: string; name: string } | null,
+  buyerName: string,
+  label: string,
+  orderIdLabel: string | null,
+): string {
+  return [
+    product.sku,
+    product.name,
+    product.variant,
+    product.market,
+    family?.code,
+    family?.name,
+    buyerName,
+    label,
+    orderIdLabel,
+  ]
+    .filter(Boolean)
+    .join(" ")
+    .toLowerCase();
+}
+
+export async function loadDemandBoard({
+  grain = "week",
+  window = DEMAND_SPAN[grain],
+  filters = {},
+  now = new Date(),
+}: {
+  grain?: DemandGrain;
+  window?: DemandWindow;
+  filters?: DemandFilters;
+  now?: Date;
+} = {}): Promise<DemandBoard> {
   const lines = await prisma.lineItem.findMany({
     where: {
       productId: { not: null },
@@ -162,6 +241,7 @@ export async function loadDemandBoard(
       purchaseOrderId: true,
       purchaseOrder: {
         select: {
+          poDate: true,
           deliveryDate: true,
           stage: true,
           // Narrow on purpose: the planning board needs the buyer's name and
@@ -179,6 +259,7 @@ export async function loadDemandBoard(
           variant: true,
           market: true,
           stockCartons: true,
+          family: { select: { id: true, code: true, name: true } },
         },
       },
     },
@@ -194,6 +275,7 @@ export async function loadDemandBoard(
           label,
         }));
   const shown = new Set(columns.map((c) => c.key));
+  const query = filters.q?.trim().toLowerCase() ?? "";
 
   const rows = new Map<string, DemandRow>();
   const seenOrders = new Map<string, Set<string>>();
@@ -201,12 +283,34 @@ export async function loadDemandBoard(
   // Keyed by order rather than by line, so a document printing the same
   // product twice is one entry carrying both line items' cartons.
   const byOrder = new Map<string, Map<string, DemandLine>>();
-  const totals: DemandBoard["totals"] = { byColumn: {}, overdue: 0, committed: 0 };
-  const allOrders = new Set<string>();
+  // Built from every open line, before any filter is applied — a picker that
+  // narrowed itself to what is already selected could not be undone.
+  const families = new Map<string, string>();
+  const products = new Map<string, string>();
 
   for (const line of lines) {
     // Narrowed by the `where` above; Prisma types both as nullable.
     if (!line.productId || !line.product || !line.purchaseOrder.deliveryDate) continue;
+
+    const family = line.product.family;
+    if (family) families.set(family.id, family.name);
+    products.set(line.productId, line.product.name);
+
+    const identity = identityOf(line.purchaseOrder);
+    if (filters.family && family?.id !== filters.family) continue;
+    if (filters.productId && line.productId !== filters.productId) continue;
+    if (
+      query &&
+      !haystack(
+        line.product,
+        family,
+        line.purchaseOrder.buyer.name,
+        identity.label,
+        identity.orderIdLabel,
+      ).includes(query)
+    ) {
+      continue;
+    }
 
     const key = bucketKey(line.purchaseOrder.deliveryDate, grain);
     const late = key < current;
@@ -233,20 +337,13 @@ export async function loadDemandBoard(
         lines: [],
       } satisfies DemandRow);
 
-    if (late) {
-      row.overdue += cartons;
-      totals.overdue += cartons;
-    } else {
-      row.byColumn[key] = (row.byColumn[key] ?? 0) + cartons;
-      totals.byColumn[key] = (totals.byColumn[key] ?? 0) + cartons;
-    }
+    if (late) row.overdue += cartons;
+    else row.byColumn[key] = (row.byColumn[key] ?? 0) + cartons;
     row.committed += cartons;
-    totals.committed += cartons;
 
     const orders = seenOrders.get(line.productId) ?? new Set<string>();
     orders.add(line.purchaseOrderId);
     seenOrders.set(line.productId, orders);
-    allOrders.add(line.purchaseOrderId);
 
     const breakdown = byOrder.get(line.productId) ?? new Map<string, DemandLine>();
     const already = breakdown.get(line.purchaseOrderId);
@@ -256,15 +353,17 @@ export async function loadDemandBoard(
       const due = line.purchaseOrder.deliveryDate;
       breakdown.set(line.purchaseOrderId, {
         purchaseOrderId: line.purchaseOrderId,
-        ...identityOf(line.purchaseOrder),
+        ...identity,
         buyerName: line.purchaseOrder.buyer.name,
         stage: line.purchaseOrder.stage,
+        poDate: formatDate(line.purchaseOrder.poDate),
         deliveryDate: formatDate(due),
         cartons,
         columnKey: late ? null : key,
         // Real calendar days, not periods: "eleven days late" is what a
         // planner acts on, and it reads the same whichever grain is open.
         daysLate: late ? Math.max(0, differenceInCalendarDays(now, due)) : 0,
+        dueInDays: late ? null : differenceInCalendarDays(due, now),
       });
     }
     byOrder.set(line.productId, breakdown);
@@ -272,26 +371,45 @@ export async function loadDemandBoard(
     rows.set(line.productId, row);
   }
 
-  const out = [...rows.values()].map((row) => ({
-    ...row,
-    orders: seenOrders.get(row.productId)?.size ?? 0,
-    shortBy:
-      row.stockCartons === null
-        ? null
-        : Math.max(0, row.committed - row.stockCartons),
-    // Worst lateness first — an order eleven days late is the one to ring
-    // about — then the soonest expected, which is the order they ship in.
-    lines: [...(byOrder.get(row.productId)?.values() ?? [])].sort(
-      (a, b) =>
-        b.daysLate - a.daysLate ||
-        (a.columnKey ?? "").localeCompare(b.columnKey ?? "") ||
-        b.cartons - a.cartons,
-    ),
-  }));
+  const out = [...rows.values()]
+    // Only products with something late. A row filter, not a line filter:
+    // the orders that are *not* late are the context for chasing the one
+    // that is — when it will be made, and what else is queued behind it.
+    .filter((row) => !filters.overdueOnly || row.overdue > 0)
+    .map((row) => ({
+      ...row,
+      orders: seenOrders.get(row.productId)?.size ?? 0,
+      shortBy:
+        row.stockCartons === null
+          ? null
+          : Math.max(0, row.committed - row.stockCartons),
+      // Worst lateness first — an order eleven days late is the one to ring
+      // about — then the soonest expected, which is the order they ship in.
+      lines: [...(byOrder.get(row.productId)?.values() ?? [])].sort(
+        (a, b) =>
+          b.daysLate - a.daysLate ||
+          (a.columnKey ?? "").localeCompare(b.columnKey ?? "") ||
+          b.cartons - a.cartons,
+      ),
+    }));
 
   // Most committed first: the board is read to decide what to make next, and
   // a shortfall sort is impossible until stock is counted.
   out.sort((a, b) => b.committed - a.committed || a.sku.localeCompare(b.sku));
+
+  // Summed from the rows that survived rather than accumulated as the lines
+  // went past, so the footer cannot outlive a filter that removed the row it
+  // was counting. The footer is the rows above it, by construction.
+  const totals: DemandBoard["totals"] = { byColumn: {}, overdue: 0, committed: 0 };
+  const openOrders = new Set<string>();
+  for (const row of out) {
+    totals.overdue += row.overdue;
+    totals.committed += row.committed;
+    for (const [key, value] of Object.entries(row.byColumn)) {
+      totals.byColumn[key] = (totals.byColumn[key] ?? 0) + value;
+    }
+    for (const line of row.lines) openOrders.add(line.purchaseOrderId);
+  }
 
   // "All open" has no fixed window, so its columns are whichever periods the
   // orders actually fall in — an empty one nobody promised anything in is not
@@ -304,13 +422,17 @@ export async function loadDemandBoard(
           .map((key) => labelFor(key, grain))
       : columns;
 
+  const byLabel = (a: DemandOption, b: DemandOption) => a.label.localeCompare(b.label);
+
   return {
     grain,
     columns: allColumns,
     rows: out,
     totals,
-    openOrders: allOrders.size,
+    openOrders: openOrders.size,
     counted: out.filter((r) => r.stockCartons !== null).length,
     anyOverdue: totals.overdue > 0,
+    families: [...families].map(([value, label]) => ({ value, label })).sort(byLabel),
+    products: [...products].map(([value, label]) => ({ value, label })).sort(byLabel),
   };
 }
