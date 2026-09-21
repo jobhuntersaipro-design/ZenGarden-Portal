@@ -1,8 +1,9 @@
 # Phase 52 — Photographs for the 2.1L blocks, and the deadlock behind them
 
-Version 1.0 — 2026-09-21. Audience: AI coders, and the person deciding scope.
-Read `docs/specs/00-master.md` first. Status: **spec only. Nothing run against
-any database.**
+Version 1.1 — 2026-09-21. Audience: AI coders, and the person deciding scope.
+Read `docs/specs/00-master.md` first. Status: **the pipeline is built and was
+run end to end against a throwaway local database (§12). Nothing has been run
+against production, and no photograph has been obtained.**
 
 ---
 
@@ -79,7 +80,8 @@ still be archived without a photograph. Only saving is blocked.
 Read from `scripts/import-catalog.ts` rather than assumed, because running it
 over twenty products that already exist is the proposed first step.
 
-**Safe:** on a SKU that already exists the importer calls `update` with
+**Safe, and now measured rather than argued — see §12.3.** On a SKU that
+already exists the importer calls `update` with
 `{name, brand, variant, packSize, cartonsPerPallet, market, category, unit}`
 only. `listPrice` and `needsReview` appear **only** in the `create` branch. A
 price somebody has already set, and a review flag somebody has already cleared,
@@ -168,12 +170,12 @@ Ordered so each step is checkable before the next one costs anything.
 
 | # | Step | Command | Checked by |
 |---|---|---|---|
-| 1 | Read the live catalogue | — | Confirm the twenty SKUs exist, and read their `listPrice`, `needsReview` and image count. This decides whether §3 holds on production. |
+| 1 | Read the live catalogue | `check-catalogue-block.ts docs/imports/zen-garden-2026-09-21-three-blocks.labels.json` | Confirm the twenty SKUs exist, and read their `listPrice`, `needsReview` and image count. This decides whether §3 holds on production. Read-only. |
 | 2 | *(optional, D1)* Refresh the rows | `import-catalog.ts --labels docs/imports/zen-garden-2026-09-21-three-blocks.labels.json --dry-run` first | `Created 0, updated 20` |
 | 3 | Gather 8 photographs (D2) | — | A person looks at each one: right flavour, right 2.1L bottle |
 | 4 | Fan out to SKU names | `fan-out-variant-images.ts <in> <out> --dry-run` first | 18 files, 6 flavours, Avocado and Oat Milk named as missing |
 | 5 | Load them | `import-product-images.ts <out> --dry-run` first | Every file matched; **zero unmatched** |
-| 6 | Read back | — | Each of the 18 has one image, a `thumbKey`, and both R2 objects resolve |
+| 6 | Read back | `check-catalogue-block.ts` again | Each of the 18 reads `images 1`; then the R2 objects, which the script does not reach |
 | 7 | Price them (D4) | edit drawer | The save is accepted — which is the proof §4's deadlock is broken |
 | 8 | Confirm in the shop | — | The 18 appear; the 2 without photographs do not |
 
@@ -196,10 +198,12 @@ Ordered so each step is checkable before the next one costs anything.
 
 Both limits were measured on 2026-09-21, not assumed.
 
-- **No database.** The Vercel CLI answers `loggedIn: false, login_required`,
-  and the Neon connector is not authorised for this session. So §3's claim was
-  checked against the committed 2026-09-15 snapshot, not against a live
-  catalogue, and nothing in §7 step 1 has been run.
+- **No database of yours.** The Vercel CLI answers
+  `loggedIn: false, login_required`, and the Neon connector is not authorised
+  for this session. So §3's claim was checked against the committed
+  2026-09-15 snapshot, not against your live catalogue. A **throwaway local
+  Postgres** stood in for §12's run and was deleted afterwards; it proves the
+  mechanism, not the state of your data.
 - **No egress.** The proxy allows the package registries and refuses
   everything else. `curl` and the fetch tool both returned `EGRESS_BLOCKED` on
   the customer's own site and on every retailer. **No product page was opened
@@ -234,3 +238,81 @@ handed over as files.
 | D2 | Whose photographs — the customer's own, a retailer's, or new ones? | A rights and brand decision. |
 | D3 | Avocado and Oat Milk: supply two photographs, or archive them? | Only the business knows whether those two are still sold. |
 | D4 | Who prices the eighteen, from what price list? | No price exists anywhere in the portal or the sheet. |
+
+
+## 12. What was run, with the figures
+
+A throwaway Postgres 16 took the 27 migrations, the pipeline ran against it,
+and it was deleted afterwards. The Neon serverless driver cannot speak to plain
+Postgres, so it was pointed at a local WebSocket-to-TCP proxy for the run and
+restored from its `.orig` copies afterwards (`grep -c 5433` on both driver
+files reads **0**).
+
+### 12.1 The read before anything — §7 step 1
+
+`check-catalogue-block.ts` on the empty database: **0 of 20 in the catalogue**,
+all twenty named as `MISSING`. That is the report a genuinely empty catalogue
+produces, which is what makes the same script's answer on production
+meaningful.
+
+### 12.2 The import — §7 step 2
+
+Dry run printed the twenty and wrote nothing. The real run: **`Created 20,
+updated 0, merged 0`**. The read-back then showed **20 of 20 in the catalogue,
+20 with no image, 20 at 0.00, 0 visible in the shop** — §4's deadlock, measured
+rather than reasoned about.
+
+### 12.3 The re-run, against a hand-edit — §5 and criterion 6
+
+`ZEN-SC-2100-GM` was given a list price of **42.50** and its review flag
+cleared; `ZEN-SC-2100-LV` was renamed by hand to
+`Zen Garden 2.1L Goat's Milk (renamed by hand)`. The importer was then re-run:
+**`Created 0, updated 20`**, product count still **20** — no duplicates.
+
+- `ZEN-SC-2100-GM` read back **42.50, reviewed** — the price and the flag
+  survived, exactly as §5 claims.
+- `ZEN-SC-2100-LV` read back **`ZEN 2.1L NORMAL/DIY — Lavender`** — the
+  hand-rename was gone, also as §5 claims.
+
+So D1's recommendation is now backed by a measurement: a re-run cannot help and
+does revert a name.
+
+### 12.4 The photographs' file names — criterion 3
+
+Six placeholder files, one per flavour, through `fan-out-variant-images.ts`:
+**18 files for 6 of 8 flavours**, with `avocado` and `oat-milk` named as having
+none. `import-product-images.ts --dry-run` against the twenty products then
+reported **18 matched, 0 unmatched**, every file landing on the product its
+flavour names — which is criterion 3's mechanism, and proof the twenty SKU
+names in the fan-out table carry no typo. The placeholders were grey
+rectangles, went nowhere near the database, and were deleted.
+
+### 12.5 The deadlock breaking — criterion 7, in part
+
+One `ProductImage` row was inserted against `ZEN-SC-2100-GM`, the product that
+already had a price and a cleared flag. The read-back moved that row from
+`hidden` to **`visible`**, with the other nineteen still hidden and the summary
+reading **"19 with no image — these cannot be saved from the edit drawer, so
+they cannot be priced"**. Image, then price, then shop: the chain in §4, end to
+end.
+
+The probe row was deleted; `ProductImage` count back to **0**.
+
+### 12.6 The suite
+
+**1314/1314 tests across 101 files**, `tsc --noEmit`, and lint with the same
+two pre-existing `username` warnings. The 102nd file,
+`catalog-import.test.ts`, fails to import because `xlsx` is not installed in
+this container and its CDN is blocked — confirmed on the unmodified tree, so
+it is the environment.
+
+### 12.7 What §12 does *not* show
+
+- **No photograph was uploaded.** `src/lib/r2.ts` builds its endpoint as
+  `https://${R2_ACCOUNT_ID}.r2.cloudflarestorage.com` with no override, so the
+  storage half cannot be pointed at a local stand-in without changing app
+  code — which is not this phase's to change. Criterion 2 is untested.
+- **No real photograph was seen**, so criterion 4 — the right bottle under the
+  right flavour — is untouched by any of this. It needs a person's eyes.
+- **Nothing about your catalogue.** Every figure above is from a database that
+  existed for twenty minutes.
