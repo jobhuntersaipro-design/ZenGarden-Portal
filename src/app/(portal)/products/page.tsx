@@ -68,6 +68,7 @@ export default async function ProductsPage({
   const q = firstParam(params, "q")?.trim() || undefined;
   const category = firstParam(params, "category") || undefined;
   const brand = firstParam(params, "brand") || undefined;
+  const market = firstParam(params, "market") || undefined;
   // Rows are products unless asked for families (Phase 36). A `family`
   // narrows the product view to one family's variants — the family row's
   // link — and only means something there.
@@ -94,6 +95,13 @@ export default async function ProductsPage({
     ...new Set(products.map((product) => product.category)),
   ].sort();
 
+  // Markets the same way. Nullable, so the empty ones drop out rather than
+  // becoming a blank option — a product with no market is not in a market
+  // called nothing, and "All markets" is already how you ask for all of them.
+  const markets = [
+    ...new Set(products.map((product) => product.market).filter(Boolean)),
+  ].sort() as string[];
+
   const viewParam = firstParam(params, "view");
   // URL first; the stored preference is applied client-side when absent.
   const view: ProductView = viewParam === "list" ? "list" : "grid";
@@ -102,6 +110,7 @@ export default async function ProductsPage({
     q,
     category,
     brand,
+    market,
     family,
     filter,
     sort: sort as { key: ProductSortKey; dir: "asc" | "desc" },
@@ -257,6 +266,7 @@ export default async function ProductsPage({
         }
         brands={brands}
         categories={categories}
+        markets={markets}
       />
 
       {by === "family" ? (

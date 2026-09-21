@@ -1,4 +1,143 @@
-# Current Feature: Reading the demand board down to one order
+# Current Feature: A name, a printed board, and a market filter
+
+## Status
+
+**Built and driven in a browser on `claude/session-cloud-location-aszckl`**
+(2026-09-21). Asked for as three things: "Rename the sidebar Demand board to
+Demand Board, make sure use this pattern accross the page, remember this
+naming convention"; "In side demand board, let user print the current page and
+download it as pdf"; "Also, in product page, add a filter by market".
+
+**A destination's name is Title Case, and that is now a written rule.** The
+sidebar read `Purchase Orders` beside `Demand board` — two labels of the same
+kind set two different ways. The convention is recorded in three places rather
+than fixed in one: `docs/specs/00-master.md` §4 (above the sentence-case rule
+it is the exception to), `context/design-system.md`'s overview, and
+`CLAUDE.md`. It covers the name **wherever it is used as a name** — the nav
+row, the page's own `<title>`, prose naming the destination — and deliberately
+not headings, captions, buttons or column headers, which stay sentence case.
+`nav.test.ts` pins it, because a later edit lower-cases a label back without
+meaning to. **Watched failing:** with the label put back to `Demand board`,
+two tests go red — `expected 'Demand board' to be 'Demand Board'`.
+
+**`short` is untouched.** The phone tab bar is five tabs at 78px and shows
+"Demand"; the rename is the full name, not the abbreviation.
+
+**One control prints and saves the PDF**, because they are the same act: every
+browser's print dialog offers "Save as PDF" as a destination, so a second
+route to a file would be a second renderer to keep in step with the screen.
+The button says so — **Print or save as PDF**.
+
+**The board is scaled to the page before it prints, and that is the whole
+mechanism.** Thirty day columns are ~2,376px and a landscape A4 page holds
+~1,032, so left alone the right-hand columns are simply cut off — the failure
+the on-screen scroller exists to prevent, arriving on paper. CSS cannot
+measure, so `PrintBoard` reads the board's real `scrollWidth` and sets `zoom`,
+the property the purchase-order sheet already prints through. **Measured, not
+argued:** the daily board rendered to a real A4 landscape PDF loses **Orders**
+and **Stock count (carton)** unscaled across 2 pages, and carries all six
+fixed columns on **1 page** scaled.
+
+**It only ever shrinks.** A four-column board prints at its own size rather
+than being blown up to fill the sheet, which would make it look like a
+different document from a twelve-column one. `printScale` returns `null`
+there so the caller clears the property instead of pinning it to 1, and
+refuses a width of zero rather than dividing by it — an element not laid out
+yet would otherwise blank the page. **Watched failing:** allowed to stretch, a
+600px board scales to 1.72 and that test goes red.
+
+**The zoom is put back by `afterprint`, not by the line after `print()`.**
+`window.print()` blocks in some browsers and returns immediately in others, so
+resetting inline would leave the paper scaled in one and the screen scaled in
+the other. `afterprint` fires on cancel too.
+
+**What prints and what does not.** The heading and the summary line stay — a
+board on paper with no window and no total is a grid of numbers nobody can
+place — and so does the amber callout that explains the blank stock columns.
+The toolbar and the button take themselves out through `data-print-hide`. In
+print the scroller unscrolls, the edge fades go (a gradient saying "more this
+way" is a lie once the whole board is on the page), and the pinned Product
+column goes `static`, since a column pinned against a scroller it no longer
+has would ride over the columns beside it.
+
+**Market filters products, and is not offered on family rows.** A family row
+spans its markets by construction and `FamilyRow.markets` is a *count* rather
+than a list, so there is nothing for the filter to match a family against —
+better absent than present and inert. It is dropped from the URL on the
+Products ↔ Families switch for the same reason `filter` already is: a filter
+the reader can neither see nor undo is worse than one that resets.
+
+**A product carrying no market matches no market.** It is not in a market
+called nothing, so the options list drops the empty ones rather than offering
+a blank, and "All markets" — which arrives as no filter at all — is how you
+ask for those products back.
+
+**The options come from the rows already fetched**, like brands and
+categories, so the filter can never offer a market that would match nothing.
+The three selects finally share one class constant instead of a third
+near-copy of it.
+
+## Verified, with the figures
+
+Development, port 3000, as the seeded super admin, with three markets put on
+the seeded catalogue for the drive.
+
+- **The name.** Sidebar reads `Dashboard · Purchase Orders · Demand Board ·
+  Buyers · Products`; the tab title is **"Demand Board · Zen Garden Portal"**;
+  `Demand board` appears **0 times** in the rendered page. The phone tab bar
+  is still five tabs at **78 × 56px** labelled **Demand**.
+- **Print, measured as real PDFs** rendered at A4 landscape with 12mm margins
+  — not print-media emulation, which does not resize the page:
+  - **daily unscaled: 2 pages, 4 of 6 fixed columns**, missing Orders and
+    Stock count (carton). **Daily scaled (0.434): 1 page, 6 of 6.**
+  - weekly and monthly fit either way and run to 2 pages on height, with the
+    header row repeated on page 2. Monthly's missing Overdue column is the
+    existing grain-relative rule, not the print.
+  - The weekly PDF carries **"What is committed"**, **"26 open orders"**,
+    **"2,669 cartons"**, **"Stock is not counted yet."** and the **"Total
+    cartons"** footer, and carries **none** of "All open", "Next 4 weeks" or
+    "Print or save as PDF".
+  - Under print media the toolbar computes `display: none`, the sidebar
+    `visibility: hidden`, the heading and table `visible`, the scroller
+    `overflow-x: visible`, the pinned column `position: static`, and **0**
+    edge fades remain.
+- **Market filter.** The select offers **All markets · Mydin · Super Indo ·
+  Vietnam**, read off the rendered page. `?market=Vietnam` took **12 products
+  → 3**; adding `&category=Shower cream & gel` took it to **1**. Choosing
+  Mydin from the select itself wrote `?view=list&market=Mydin`. On
+  `?by=family` the select is **absent**.
+- **Phone.** `/demand` and `/products` both **390/390** with **no control
+  under 44px**.
+- **The console is clean.** The only failed request is
+  `va.vercel-scripts.com/v1/speed-insights` — this container's blocked egress.
+- **1362/1362 tests across 105 files** (11 new), `tsc`, lint (the same 2
+  pre-existing warnings) and `npm run build` clean. The 106th file,
+  `catalog-import.test.ts`, fails to import in this container only — `xlsx`
+  installs from cdn.sheetjs.com, which the network policy answers 403 to.
+
+## Not verified
+
+- **Anything on production.** Not deployed, and no production row was read.
+- **A print from a real dialog, on paper or through a real Save as PDF.**
+  Every PDF above came from Chromium's own print pipeline at the right page
+  size, which is what the dialog drives — but no dialog was opened, and no
+  other browser was tried. Safari and Firefox honour `zoom` differently and
+  were not checked.
+- **The market filter on real data.** Development's catalogue carries no
+  market at all, so three were written onto the 12 seeded products for the
+  drive. Production's markets are the customer's own list and will be longer —
+  a plain `<select>`, unsearchable, and how it reads at nine was not seen.
+- **A board wide enough to need the ceiling.** 30 day columns were printed;
+  365 — the daily ceiling — would scale to about 0.05 and be unreadable. The
+  scale has no floor, and nothing warns that a board has been shrunk past
+  legibility.
+- **Whether a family-row market filter is wanted.** It is left out because
+  `FamilyRow` carries a count rather than a list; making it work is an
+  aggregation change, not a filter change.
+
+## Previous phase
+
+**Reading the demand board down to one order**
 
 ## Status
 

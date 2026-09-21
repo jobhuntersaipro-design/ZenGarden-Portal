@@ -10,14 +10,21 @@ import { CalendarClock, FileText, LayoutDashboard, Package, Users } from "lucide
 /** The destination whose nav entry carries the review queue's count. */
 export const REVIEW_QUEUE_HREF = "/purchase-orders";
 
+/**
+ * **A destination's name is Title Case.** Every other label in the portal is
+ * sentence case (00-master.md §4), and these are the exception: a nav row is
+ * a proper name for a place, not a sentence about one, and "Purchase Orders"
+ * beside "Demand board" read as two different kinds of thing. The rule covers
+ * the name wherever it appears — this list, the page's own `<title>`, and any
+ * prose that names the destination rather than describing it.
+ *
+ * `short` is what the 5-up phone tab bar shows, where a two-line label in a
+ * ~78px tab is a wall of text.
+ */
 export const NAV = [
   { href: "/", label: "Dashboard", short: "Dashboard", icon: LayoutDashboard },
-  // Title case at the user's request (2026-09-06) — the one label that is.
-  // `short` is what the 4-up tab bar shows: "Purchase Orders" over two lines
-  // in a ~90px tab is a wall of text where "Orders" reads at a glance.
   { href: "/purchase-orders", label: "Purchase Orders", short: "Orders", icon: FileText },
-  // `short` is "Demand": "Demand board" wraps to two lines in a ~90px tab.
-  { href: "/demand", label: "Demand board", short: "Demand", icon: CalendarClock },
+  { href: "/demand", label: "Demand Board", short: "Demand", icon: CalendarClock },
   { href: "/buyers", label: "Buyers", short: "Buyers", icon: Users },
   { href: "/products", label: "Products", short: "Products", icon: Package },
 ] as const;

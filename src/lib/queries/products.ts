@@ -262,6 +262,7 @@ export function selectProducts(
     q,
     category,
     brand,
+    market,
     family,
     filter,
     sort,
@@ -269,6 +270,12 @@ export function selectProducts(
     q?: string;
     category?: string;
     brand?: string;
+    /**
+     * A product's destination or its retail customer — never where it was
+     * made (`context/project-overview.md`). Nullable on the row, so a
+     * product carrying none matches no market rather than an "unset" one.
+     */
+    market?: string;
     /** A family id, or `NO_FAMILY` for the products placed in none. */
     family?: string;
     filter: ProductFilter;
@@ -281,6 +288,7 @@ export function selectProducts(
     if (family === NO_FAMILY && product.family !== null) return false;
     if (family && family !== NO_FAMILY && product.family?.id !== family) return false;
     if (brand && product.brand !== brand) return false;
+    if (market && product.market !== market) return false;
     // Brand, variant and market are searchable too: "lavender" or "vietnam"
     // is how the ops team refers to a product, not by its generated code.
     if (

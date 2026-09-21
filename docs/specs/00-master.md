@@ -185,6 +185,14 @@ canvas linked from `CLAUDE.md` is the picture of them.
   Manual — is a permanent fact, not a process, so its dot is neutral
   (`ink-secondary` for Shop, `ink-tertiary` for Manual) and never a status
   colour (Phase 41).
+- **A destination is Title Case; everything else is sentence case.** The
+  sidebar and phone tab bar name places — **Dashboard**, **Purchase Orders**,
+  **Demand Board**, **Buyers**, **Products** — and a place has a proper name
+  rather than a sentence about it. The rule follows the name wherever it is
+  used as a name: the nav row, the page's `<title>`, and prose that refers to
+  the destination. It does **not** reach headings, captions, buttons or
+  column headers, which stay sentence case under the rule below. One list
+  governs it, `src/components/portal/nav.ts`.
 - **Sentence case.** Eyebrows, field labels and table column headers keep
   Sometype Mono (`font-mono`, `text-eyebrow`, `text-ink-tertiary`) but are not
   uppercased. This is a deliberate departure from the ClickUp system's

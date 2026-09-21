@@ -762,6 +762,32 @@
     box-shadow: none !important;
   }
 
+  /* A control is not part of what is being printed. The toolbar that chose
+     the window, and the button that started the print, both go. */
+  [data-print-hide] {
+    display: none !important;
+  }
+
+  /* The demand board. On paper there is nowhere to scroll to, so a frame
+     that clips is a board with its right-hand columns missing — the exact
+     thing the on-screen scroller exists to prevent. `PrintBoard` has already
+     scaled it to the page by the time this applies. */
+  [data-board-print] {
+    overflow: visible !important;
+  }
+
+  /* A gradient that says "there is more this way" is a lie once the whole
+     board is on the page. */
+  [data-board-fade] {
+    display: none !important;
+  }
+
+  /* A column pinned against a scroller it no longer has would ride over the
+     columns beside it. */
+  [data-board-print] .sticky {
+    position: static !important;
+  }
+
   @page {
     size: A4 landscape;
     margin: 12mm;

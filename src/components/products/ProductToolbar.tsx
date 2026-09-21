@@ -44,6 +44,10 @@ const SORTS: { value: ProductSortKey; label: string }[] = [
 
 const SEARCH_DEBOUNCE_MS = 200;
 
+/** The filter selects' own styling, once rather than three near-copies. */
+const SELECT =
+  "h-control-md sm:h-control-sm rounded-sm border border-hairline-strong bg-transparent px-xs text-[length:var(--text-body-sm)] text-ink focus-visible:border-focus focus-visible:outline-2 focus-visible:outline-focus";
+
 export function ProductToolbar({
   view,
   by,
@@ -53,6 +57,7 @@ export function ProductToolbar({
   summary,
   brands,
   categories,
+  markets,
 }: {
   view: ProductView;
   by: ProductBy;
@@ -65,6 +70,8 @@ export function ProductToolbar({
   brands: string[];
   /** Every category in use, derived the same way — the list is no longer fixed. */
   categories: string[];
+  /** Every market a product is sold into; the ones carrying none drop out. */
+  markets: string[];
 }) {
   const { replace } = useUrlNavigation();
   // One transition per group, so a chip click never spins the sort strip.
@@ -142,7 +149,7 @@ export function ProductToolbar({
             aria-label="Brand"
             value={searchParams.get("brand") ?? ""}
             onChange={(event) => write({ brand: event.target.value })}
-            className="h-control-md sm:h-control-sm rounded-sm border border-hairline-strong bg-transparent px-xs text-[length:var(--text-body-sm)] text-ink focus-visible:border-focus focus-visible:outline-2 focus-visible:outline-focus"
+            className={SELECT}
           >
             <option value="">All brands</option>
             {brands.map((brand) => (
@@ -157,7 +164,7 @@ export function ProductToolbar({
           aria-label="Category"
           value={searchParams.get("category") ?? ""}
           onChange={(event) => write({ category: event.target.value })}
-          className="h-control-md sm:h-control-sm rounded-sm border border-hairline-strong bg-transparent px-xs text-[length:var(--text-body-sm)] text-ink focus-visible:border-focus focus-visible:outline-2 focus-visible:outline-focus"
+          className={SELECT}
         >
           <option value="">All categories</option>
           {categories.map((category) => (
@@ -166,6 +173,28 @@ export function ProductToolbar({
             </option>
           ))}
         </select>
+
+        {/* Where a product is sold — its destination or its retail customer,
+            never where it was made. Offered on product rows only: a family
+            row spans its markets by construction, and `FamilyRow.markets` is
+            a count rather than a list, so there is nothing for this to match
+            a family against. It is also left out below two markets, like the
+            brand select: a dropdown holding one option is a label. */}
+        {!byFamily && markets.length > 1 ? (
+          <select
+            aria-label="Market"
+            value={searchParams.get("market") ?? ""}
+            onChange={(event) => write({ market: event.target.value })}
+            className={SELECT}
+          >
+            <option value="">All markets</option>
+            {markets.map((market) => (
+              <option key={market} value={market}>
+                {market}
+              </option>
+            ))}
+          </select>
+        ) : null}
 
         {/* Products or families — the two things the catalog can be a list
             of. The sort is dropped on the way across, since the keys differ;
@@ -193,6 +222,11 @@ export function ProductToolbar({
                     dir: null,
                     family: null,
                     filter: null,
+                    // Product-row filters both: a family row carries neither
+                    // an attention flag nor a single market, so carrying
+                    // either across would strand a filter the reader can
+                    // neither see nor undo.
+                    market: null,
                   }),
                 )
               }

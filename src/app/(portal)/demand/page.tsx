@@ -3,6 +3,7 @@ import Link from "next/link";
 import { PageHeader } from "@/components/portal/PageHeader";
 import { DemandTable } from "@/components/demand/DemandTable";
 import { DemandToolbar } from "@/components/demand/DemandToolbar";
+import { PrintBoard } from "@/components/demand/PrintBoard";
 import {
   lastPickableDate,
   loadDemandBoard,
@@ -12,7 +13,7 @@ import {
 import { DEMAND_CEILING, DEMAND_SPAN, type DemandGrain } from "@/lib/planning/grain";
 import { firstParam, type SearchParams } from "@/lib/queries/pagination";
 
-export const metadata: Metadata = { title: "Demand board · Zen Garden Portal" };
+export const metadata: Metadata = { title: "Demand Board · Zen Garden Portal" };
 export const dynamic = "force-dynamic";
 
 /**
@@ -106,8 +107,15 @@ export default async function DemandPage({
   const narrowed = Boolean(filters.q || filters.family || filters.productId);
 
   return (
-    <div className="page-enter">
-      <PageHeader eyebrow="Planning" title="What is committed" />
+    /* Everything inside prints; the toolbar and the button take themselves
+       out. The heading and the summary line stay, because a board on paper
+       with no window and no total is a grid of numbers nobody can place. */
+    <div className="page-enter" data-print-region>
+      <PageHeader
+        eyebrow="Planning"
+        title="What is committed"
+        action={<PrintBoard />}
+      />
 
       <p className="-mt-sm mb-lg text-[length:var(--text-body-sm)] text-ink-secondary">
         {board.openOrders === 0
@@ -117,7 +125,7 @@ export default async function DemandPage({
           : `${board.openOrders} open order${board.openOrders === 1 ? "" : "s"} · ${board.totals.committed.toLocaleString("en-MY")} cartons · ${narrowed ? "every figure below counts only what matches." : "every figure comes from orders already in the portal."}`}
       </p>
 
-      <div className="mb-lg">
+      <div className="mb-lg" data-print-hide>
         <DemandToolbar
           grain={grain}
           window={selected}

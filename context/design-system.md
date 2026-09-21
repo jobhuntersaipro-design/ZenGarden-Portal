@@ -351,9 +351,11 @@ components:
 > captured. The Zen Garden Portal follows it with one deliberate exception —
 > eyebrows, field labels and table column headers are **sentence case**, not
 > uppercase — and adds product-level conventions of its own (the status colour
-> palette, truncation recovery, and the rule that a KPI never renders zero on
-> first paint). Both are in `docs/specs/00-master.md` §4 "Design conventions",
-> and the override is restated under Do's and Don'ts below.
+> palette, truncation recovery, the rule that a KPI never renders zero on
+> first paint, and **Title Case for a destination's name** — the sidebar and
+> phone tab bar only, because a place has a proper name rather than a
+> sentence about it). Both are in `docs/specs/00-master.md` §4 "Design
+> conventions", and the override is restated under Do's and Don'ts below.
 
 ClickUp's marketing system is a productivity SaaS that hides its purple voltage inside a gradient and leaves the rest of the page on graphite-and-white. The canvas is `{colors.canvas}` ("#ffffff"); the page-floor text is `{colors.ink}` ("#292d34"), a warm graphite that appears 3585 times across text and hairline borders. The single saturated chromatic signal is **neon purple** `{colors.primary}` ("#7612fa"), which lives almost entirely inside the primary CTA gradient `linear-gradient(263deg, #fa12e3 -35%, #7612fa 41%, #12d0fa 135%)`. A quieter lavender `{colors.brand-link}` ("#7b68ee") sits in the `--color-brand-clickup` variable and surfaces on inline links and footer chrome.
 

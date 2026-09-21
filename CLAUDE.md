@@ -31,8 +31,9 @@ the full spec: color roles, the two-family type ramp, the eight-tier radius
 scale, all 22 component definitions, and the Do's and Don'ts.
 
 Product-level conventions that override or extend it — the status colour
-palette, sentence-case labels, truncation recovery, and the rule that a KPI
-never renders zero on first paint — live in `docs/specs/00-master.md` §4
+palette, sentence-case labels (with **Title Case for a destination's name**,
+the sidebar and phone tab bar alone), truncation recovery, and the rule that a
+KPI never renders zero on first paint — live in `docs/specs/00-master.md` §4
 "Design conventions". Read those too before building UI.
 
 ## Commands
