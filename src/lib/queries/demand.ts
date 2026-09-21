@@ -1,4 +1,4 @@
-import { addDays, addWeeks } from "date-fns";
+import { addDays, addMonths, addWeeks } from "date-fns";
 import { PoStage } from "@/generated/prisma/enums";
 import { prisma } from "@/lib/prisma";
 import { bucketKey, makeBuckets } from "@/lib/analytics/buckets";
@@ -7,6 +7,9 @@ import { DEMAND_SPAN, type DemandGrain } from "@/lib/planning/grain";
 export { DEMAND_SPAN, type DemandGrain } from "@/lib/planning/grain";
 
 export type DemandWindow = number | "all";
+
+/** One step of the grain, for walking out the window's last period. */
+const STEP = { day: addDays, week: addWeeks, month: addMonths } as const;
 
 export type DemandColumn = { key: string; label: string };
 
@@ -20,7 +23,7 @@ export type DemandRow = {
   stockCartons: number | null;
   /** Cartons wanted, by column key. Absent keys are nothing, not zero. */
   byColumn: Record<string, number>;
-  /** Wanted before the current day or week — late, and not delivered. */
+  /** Wanted before the period the board opens on — late, and not delivered. */
   overdue: number;
   /** Cartons across every column shown, `overdue` included. */
   committed: number;
@@ -47,9 +50,9 @@ export type DemandBoard = {
 
 /**
  * A bucket key back to the label the charts already use — `6–12 Jul` for a
- * week, `9 Sep` for a day. Both come from `makeBuckets` rather than a second
- * formatter, so the board and every chart in the portal name a period the
- * same way.
+ * week, `9 Sep` for a day, `Sep 2026` for a month. Every one comes from
+ * `makeBuckets` rather than a second formatter, so the board and every chart
+ * in the portal name a period the same way.
  */
 function labelFor(key: string, grain: DemandGrain): DemandColumn {
   const start = new Date(`${key}T00:00:00+08:00`);
@@ -57,7 +60,7 @@ function labelFor(key: string, grain: DemandGrain): DemandColumn {
 }
 
 /**
- * What is committed, by product, by week.
+ * What is committed, by product, by day, week or month.
  *
  * Every figure here is derived from orders that already exist — no new table,
  * nothing retyped. An order counts while it is not `DELIVERED` and carries an
@@ -104,7 +107,7 @@ export async function loadDemandBoard(
   });
 
   const current = bucketKey(now, grain);
-  const step = grain === "day" ? addDays : addWeeks;
+  const step = STEP[grain];
   const columns =
     window === "all"
       ? []
@@ -178,7 +181,7 @@ export async function loadDemandBoard(
 
   // "All open" has no fixed window, so its columns are whichever periods the
   // orders actually fall in — an empty one nobody promised anything in is not
-  // worth a column here, unlike on a chart's axis. It matters more by day:
+  // worth a column here, unlike on a chart's axis. It matters most by day:
   // every open order spread over a year is 365 mostly empty columns.
   const allColumns =
     window === "all"

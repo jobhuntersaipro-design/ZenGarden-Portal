@@ -6,7 +6,7 @@
 (2026-09-21). Asked for as: "build option A, put it in a new side tab named
 Demand Board" — option A of three designs drawn for the planning team's own
 master list (`docs/specs/51-planning-board.md`) — then "make it daily view
-too".
+too", then "add monthly view too".
 
 **A fifth portal destination, `/demand`, and no new table.** Every figure is
 derived from orders already in the portal: a purchase order counts while its
@@ -14,21 +14,24 @@ stage is not `DELIVERED` and it carries an expected delivery date, its line
 items are in cartons and resolve to a product. One row per product, time
 across, most committed first.
 
-**Two grains, one query.** Weekly and Daily are the same board read at two
-resolutions — `loadDemandBoard(grain, window)` buckets through
+**Three grains, one query.** Daily, Weekly and Monthly are the same board
+read at three resolutions — `loadDemandBoard(grain, window)` buckets through
 `bucketKey(date, grain)`, the analytics module the four Recharts charts have
-used since Phase 06, so a day column and a week column cannot disagree about
-which bucket an order falls in. Weekly is the default because it is how the
-master list is laid out; daily is what a dispatch plan needs, and the planning
-team reads the spreadsheet for both.
+used since Phase 06, so a day column, a week column and a month column cannot
+disagree about which bucket an order falls in. Weekly is the default because
+it is how the master list is laid out; daily is what a dispatch plan needs and
+monthly is what a materials order needs, and the planning team reads the
+spreadsheet for all three.
 
-**The window follows the grain rather than being one list.** Four weeks and
-seven days are different questions, so the second chip strip changes with the
-first: weekly offers **Next 4 weeks · Next 12 · All open**, daily **Next 7
-days · Next 14 · All open**, and switching grain resets the window to that
-grain's default (`DEMAND_SPAN`: 4 weeks, 14 days) rather than carrying a
-14 across into weeks. A hand-typed `?window=` is clamped — 52 weeks, 92 days —
-because the column count is what the browser has to lay out.
+**The window follows the grain rather than being one list.** Four weeks, seven
+days and six months are different questions, so the second chip strip changes
+with the first: weekly offers **Next 4 weeks · Next 12 · All open**, daily
+**Next 7 days · Next 14 · All open**, monthly **Next 6 months · Next 12 · All
+open**, and switching grain resets the window to that grain's default
+(`DEMAND_SPAN`: 6 months, 4 weeks, 14 days) rather than carrying a 12 across
+from months into weeks, where it means a quarter rather than a year. A
+hand-typed `?window=` is clamped — 24 months, 52 weeks, 92 days — because the
+column count is what the browser has to lay out.
 
 **Why nothing new had to be stored**, measured before building: `LineItem.unit`
 reads **`carton` on all 1,672 seeded lines**, **100%** of lines resolve to a
@@ -45,14 +48,23 @@ board would rather be visibly incomplete than quietly wrong.
 date has passed and which nobody has delivered is the most urgent thing on the
 board. Folding it into the current bucket — the tempting simplification —
 hides exactly that, so late cartons sit in their own red column and are still
-counted in Committed. The column appears only when something is late, and it
-means the same thing at both grains: earlier than the bucket the board opens
-on, which at daily resolution is a sharper line than at weekly.
+counted in Committed. The column appears only when something is late.
+
+**Late is measured at the grain being read**, and that is a decision rather
+than a side effect. It means *earlier than the bucket the board opens on*, so
+a delivery promised on the 2nd is five days late on the daily board, late on
+the weekly one, and simply September on the monthly one — the month it was
+promised in has not run out. A monthly board that called it overdue would be
+reporting on a promise that is not yet broken. On the seeded data that shows
+plainly: the same 250 cartons are a red Overdue column by week and part of
+September's 1,856 by month, where the column does not appear at all.
 
 **A dash is nothing promised, not a zero**, throughout. The same null-vs-zero
 rule the stock count turns on. It carries most of the daily view: fourteen
 columns across eight products are mostly empty, and a grid of zeros would
 read as fourteen days of nothing ordered rather than a plan with gaps in it.
+It carries the far end of the monthly view too, where a twelve-month window
+runs out of orders long before it runs out of columns.
 
 **Not `DataTable`.** That component pages, sorts by URL and drops to card mode
 on a phone, all of which this board would fight: the columns are computed
@@ -86,6 +98,17 @@ catalogue, with the board opening on 21 Sep 2026.
   Committed · Orders · On hand · Short by`. MR.KING 1.5L — Lemon leads with
   **550 committed across 10 orders** — 46 overdue, then 36 / 371 / 97. Column
   totals **250 · 751 · 1,363 · 305**, committed **2,669**.
+- **Monthly is the same orders gathered up**, reached by clicking Monthly:
+  **6 columns, Sep 2026 to Feb 2027**, the lead row reading **282 / 268** and
+  the footer **1,856 · 813 = 2,669** — the same 2,669 cartons the weekly board
+  totals, redistributed. **No Overdue column at all**, because nothing on the
+  seeded data is dated before September, which is the grain-relative rule
+  above made visible.
+- **Next 12 months draws 12 columns**, Sep 2026 to Aug 2027, with the last ten
+  reading `—`; "All open" draws the two months that actually carry orders,
+  Sep and Oct.
+- **Switching grain resets the window**: Monthly at `window=12` then Daily
+  lands on `?by=day&window=14`, not on twelve days.
 - **Daily is the same orders spread out**, reached by clicking the chips
   (`?by=day&window=14`): **14 columns, 21 Sep to 4 Oct**, the same leading row
   reading 46 overdue then `— — 4 — — — 32 159 41 — — — 171 —` for **453 across
@@ -102,16 +125,25 @@ catalogue, with the board opening on 21 Sep 2026.
 - **The nav.** Sidebar reads Dashboard · Purchase Orders · **Demand board** ·
   Buyers · Products. On a phone the tab bar is **five tabs at 78 × 56px**,
   labelled Demand, still clear of the 44px floor.
-- **No overflow** at 1440 (1440/1440) on both grains and at 390 (390/390) on
-  daily, the widest the board gets; the table scrolls inside its own frame
-  with the product column pinned, and the console is clean.
-- **1310/1310 tests across 101 files** (11 on the board, 4 of them daily),
-  `tsc`, lint (the same 2 pre-existing warnings) and `npm run build` clean,
-  with `/demand` registered as a dynamic route.
-- **Three guards watched failing first.** Folding late demand into the current
+- **The caption names the grain it is showing** — "Cartons wanted, by the
+  day / week / month their order is expected" — read off all three pages.
+- **No overflow** at 1440 (1440/1440) on all three grains, including the
+  16-column twelve-month view, and at 390 (390/390) on monthly and daily; the
+  table scrolls inside its own frame with the product column pinned.
+- **The console is clean.** The one failed request is
+  `va.vercel-scripts.com/v1/speed-insights` — this container's blocked egress,
+  not the page.
+- **1314/1314 tests across 101 files** (15 on the board, 4 daily and 4
+  monthly), `tsc`, lint (the same 2 pre-existing warnings) and `npm run build`
+  clean, with `/demand` registered as a dynamic route.
+- **Five guards watched failing first.** Folding late demand into the current
   bucket (`const late = false`) failed two tests; bucketing daily through the
   week key put a Tuesday's cartons in Monday's column and failed the daily
-  ones; restoring each passed them.
+  ones. For monthly, stepping the window by weeks instead of months
+  (`STEP.month = addWeeks`) drew 2 columns where 6 were expected and lost the
+  December delivery, and bucketing a month's lines through the week key failed
+  three, including the one that says an earlier day of this month is not
+  late.
 
 ## Not verified
 
@@ -122,18 +154,25 @@ catalogue, with the board opening on 21 Sep 2026.
 - **A board with stock counted.** Every row on every screen read `—` for On
   hand, so the `shortBy` arithmetic is covered by its unit test alone and has
   never been seen on a page.
-- **"All open", clicked.** It is unit-tested at both grains through
-  `loadDemandBoard(grain, "all")`, and at daily it can produce a column per
-  day out to the last delivery date in the database — how wide that gets on
-  real data was not measured.
+- **"All open" on real data.** It was driven by month here (two columns) and
+  is unit-tested at every grain, but at daily it can produce a column per day
+  out to the last delivery date in the database — how wide that gets on
+  production was not measured.
+- **A monthly board with something genuinely overdue.** The seeded catalogue
+  holds nothing dated before this month, so the monthly Overdue column has
+  never been rendered; that it appears is argued from the same `anyOverdue`
+  flag the other two grains use, and from its unit test.
 - **The edge fades**, which appear on horizontal scroll and were not scrolled,
-  at either grain.
+  at any grain.
 - **A member's view.** Read as a super admin. The board has no permission
   check of its own — it is a portal page behind the same `requireUser()` shell
   as the rest, and every staff role sees it.
 - **Volume.** 8 products on 26 orders. The query reads every open line in one
   go and aggregates in memory, which is right at this size and untested at a
-  thousand — and the daily grain multiplies the cells, not the rows.
+  thousand — and the grain multiplies the cells, not the rows.
+- **Six months as the right default.** Nobody has said how far ahead this
+  business orders materials; it is a figure chosen to match the twelve-month
+  alternative's column count without filling the screen.
 
 ## Previous phase
 

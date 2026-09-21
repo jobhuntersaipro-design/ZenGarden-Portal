@@ -11,11 +11,17 @@ export const metadata: Metadata = { title: "Demand board · Zen Garden Portal" }
 export const dynamic = "force-dynamic";
 
 /**
- * The spans each grain offers. Days and weeks cannot share them: four weeks
- * of days is 28 columns, and fourteen weeks is half a year — each grain gets
- * the spans a person would actually ask it for.
+ * The spans each grain offers. The three cannot share one list: four weeks of
+ * days is 28 columns, fourteen weeks is half a year, and six days is not a
+ * question anybody asks a month view — each grain gets the spans a person
+ * would actually ask it for.
  */
 const SPANS: Record<DemandGrain, { value: string; label: string }[]> = {
+  month: [
+    { value: "6", label: "Next 6 months" },
+    { value: "12", label: "Next 12" },
+    { value: "all", label: "All open" },
+  ],
   week: [
     { value: "4", label: "Next 4 weeks" },
     { value: "12", label: "Next 12" },
@@ -29,15 +35,16 @@ const SPANS: Record<DemandGrain, { value: string; label: string }[]> = {
 };
 
 function parseGrain(raw: string | undefined): DemandGrain {
-  return raw === "day" ? "day" : "week";
+  return raw === "day" || raw === "month" ? raw : "week";
 }
 
 function parseWindow(raw: string | undefined, grain: DemandGrain): DemandWindow {
   if (raw === "all") return "all";
   const span = Number(raw);
-  // A day span may run to a quarter; a week span to a year. Both are bounded
-  // so a typed `?window=9999` cannot ask for ten thousand columns.
-  const ceiling = grain === "day" ? 92 : 52;
+  // A day span may run to a quarter, a week span to a year, a month span to
+  // two. All three are bounded so a typed `?window=9999` cannot ask for ten
+  // thousand columns.
+  const ceiling = { day: 92, week: 52, month: 24 }[grain];
   return Number.isInteger(span) && span > 0 && span <= ceiling
     ? span
     : DEMAND_SPAN[grain];

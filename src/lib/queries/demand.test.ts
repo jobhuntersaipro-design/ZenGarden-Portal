@@ -187,3 +187,63 @@ describe("loadDemandBoard, by day", () => {
     expect(weekly.totals.committed).toBe(6);
   });
 });
+
+describe("loadDemandBoard, by month", () => {
+  it("buckets by the month the order is expected, not the week", async () => {
+    findMany.mockResolvedValue([
+      line({ cartons: 12, deliveryDate: "2026-09-09", orderId: "a" }),
+      line({ cartons: 8, deliveryDate: "2026-09-28", orderId: "b" }),
+      line({ cartons: 5, deliveryDate: "2026-10-02", orderId: "c" }),
+    ]);
+    const board = await loadDemandBoard("month", DEMAND_SPAN.month, NOW);
+    expect(board.grain).toBe("month");
+    // Three separate weeks; two months.
+    expect(board.rows[0].byColumn["2026-09-01"]).toBe(20);
+    expect(board.rows[0].byColumn["2026-10-01"]).toBe(5);
+    expect(board.rows[0].committed).toBe(25);
+    expect(board.rows[0].orders).toBe(3);
+  });
+
+  it("names a month the way every chart in the portal does", async () => {
+    findMany.mockResolvedValue([line({ cartons: 4, deliveryDate: "2026-09-09" })]);
+    const board = await loadDemandBoard("month", DEMAND_SPAN.month, NOW);
+    expect(board.columns).toHaveLength(DEMAND_SPAN.month);
+    expect(board.columns[0]).toEqual({ key: "2026-09-01", label: "Sep 2026" });
+    // Six months from September reaches February, not March.
+    expect(board.columns.at(-1)).toEqual({ key: "2027-02-01", label: "Feb 2027" });
+  });
+
+  it("keeps a December delivery that the four-week window drops", async () => {
+    findMany.mockResolvedValue([line({ cartons: 7, deliveryDate: "2026-12-25" })]);
+    const monthly = await loadDemandBoard("month", DEMAND_SPAN.month, NOW);
+    expect(monthly.totals.byColumn["2026-12-01"]).toBe(7);
+
+    findMany.mockResolvedValue([line({ cartons: 7, deliveryDate: "2026-12-25" })]);
+    const weekly = await loadDemandBoard("week", DEMAND_SPAN.week, NOW);
+    expect(weekly.totals.committed).toBe(0);
+  });
+
+  /**
+   * Late is measured at the grain being read, and the month is where that
+   * bites hardest: a delivery expected on the 2nd is five days late today,
+   * but the month it was promised in has not run out, so a monthly board
+   * counts it in this month rather than calling it overdue.
+   */
+  it("counts an earlier day of this month as this month, not as late", async () => {
+    const earlier = { cartons: 9, deliveryDate: "2026-09-02" };
+    findMany.mockResolvedValue([line(earlier)]);
+    const monthly = await loadDemandBoard("month", DEMAND_SPAN.month, NOW);
+    expect(monthly.rows[0].overdue).toBe(0);
+    expect(monthly.rows[0].byColumn["2026-09-01"]).toBe(9);
+    expect(monthly.anyOverdue).toBe(false);
+
+    findMany.mockResolvedValue([line(earlier)]);
+    const daily = await loadDemandBoard("day", 14, NOW);
+    expect(daily.rows[0].overdue).toBe(9);
+
+    // Last month is late at every grain.
+    findMany.mockResolvedValue([line({ cartons: 30, deliveryDate: "2026-08-24" })]);
+    const august = await loadDemandBoard("month", DEMAND_SPAN.month, NOW);
+    expect(august.rows[0].overdue).toBe(30);
+  });
+});

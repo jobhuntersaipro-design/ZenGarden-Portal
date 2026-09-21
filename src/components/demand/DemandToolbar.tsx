@@ -7,17 +7,18 @@ import { usePendingChoice } from "@/hooks/usePendingChoice";
 import { DEMAND_SPAN, type DemandGrain } from "@/lib/planning/grain";
 
 const GRAINS: { value: DemandGrain; label: string }[] = [
-  { value: "week", label: "Weekly" },
   { value: "day", label: "Daily" },
+  { value: "week", label: "Weekly" },
+  { value: "month", label: "Monthly" },
 ];
 
 /**
  * Two strips: the grain, and how far ahead at that grain.
  *
- * Switching grain drops the span rather than carrying it over — "Next 12" as
- * weeks is a quarter and as days is a fortnight, and silently reinterpreting
- * the number would change the question without saying so. The new grain opens
- * at its own default.
+ * Switching grain drops the span rather than carrying it over — "Next 12" is
+ * a year by month, a quarter by week and a fortnight by day, and silently
+ * reinterpreting the number would change the question without saying so. The
+ * new grain opens at its own default.
  *
  * One `usePendingChoice` per strip, so a grain click never spins the span.
  */

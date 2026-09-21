@@ -14,12 +14,12 @@ function Cell({ value }: { value: number | undefined }) {
 }
 
 /**
- * The runway list: one row per product, days or weeks across, most committed
- * first.
+ * The runway list: one row per product, days, weeks or months across, most
+ * committed first.
  *
  * Deliberately not `DataTable`. That component pages, sorts by URL and drops
  * to card mode on a phone, all of which this board would have to fight: the
- * week columns are computed rather than declared, the row is only meaningful
+ * columns are computed rather than declared, the row is only meaningful
  * read across, and there is nothing here to page through — the window is the
  * paging.
  *
@@ -143,8 +143,8 @@ export function DemandTable({ board }: { board: DemandBoard }) {
         </table>
       </Scroller>
       <p className="border-t border-hairline px-lg py-sm text-[length:var(--text-caption)] text-ink-tertiary">
-        Cartons wanted, by the {board.grain === "day" ? "day" : "week"} their
-        order is expected. A dash is nothing promised, not a zero.
+        Cartons wanted, by the {board.grain} their order is expected. A dash
+        is nothing promised, not a zero.
       </p>
     </section>
   );
