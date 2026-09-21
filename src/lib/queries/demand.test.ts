@@ -3,7 +3,8 @@ import { describe, expect, it, vi } from "vitest";
 const findMany = vi.fn();
 vi.mock("@/lib/prisma", () => ({ prisma: { lineItem: { findMany } } }));
 
-const { loadDemandBoard, DEMAND_SPAN } = await import("@/lib/queries/demand");
+const { loadDemandBoard, DEMAND_SPAN, DEMAND_CEILING, windowUntil, lastPickableDate } =
+  await import("@/lib/queries/demand");
 
 /** Monday 7 Sep 2026, in KL. The board's "this week" throughout. */
 const NOW = new Date("2026-09-07T04:00:00Z");
@@ -549,5 +550,73 @@ describe("a sub-row's dates", () => {
     expect(only.daysLate).toBe(0);
     expect(only.columnKey).toBe("2026-09-01");
     expect(only.dueInDays).toBe(-5);
+  });
+});
+
+/**
+ * "Up to a date" is the window past 30 and 60 days. It is counted with the
+ * same `makeBuckets` the columns are drawn with, so the two cannot disagree
+ * about where the board stops.
+ */
+describe("a window picked as a date", () => {
+  it("reaches the bucket the date falls in, at every grain", () => {
+    // NOW is Monday 7 Sep 2026.
+    expect(windowUntil("2026-09-07", "day", NOW)).toBe(1);
+    expect(windowUntil("2026-09-16", "day", NOW)).toBe(10);
+    // The week of 12 Oct is the sixth from the week of 7 Sep…
+    expect(windowUntil("2026-10-12", "week", NOW)).toBe(6);
+    // …and a Sunday inside it reaches the same week, not one fewer.
+    expect(windowUntil("2026-10-18", "week", NOW)).toBe(6);
+    expect(windowUntil("2027-02-01", "month", NOW)).toBe(6);
+    expect(windowUntil("2027-02-28", "month", NOW)).toBe(6);
+  });
+
+  it("draws the columns its own span promised", async () => {
+    findMany.mockResolvedValue([line({})]);
+    const board = await loadDemandBoard({
+      grain: "day",
+      window: windowUntil("2026-09-16", "day", NOW)!,
+      now: NOW,
+    });
+    expect(board.columns).toHaveLength(10);
+    expect(board.columns.at(-1)!.key).toBe("2026-09-16");
+  });
+
+  it("refuses a date already behind the board, rather than showing one column", () => {
+    // `makeBuckets` returns one bucket for a backwards range, so a length
+    // check alone would read this as a valid one-column board.
+    expect(windowUntil("2026-09-06", "day", NOW)).toBeNull();
+    expect(windowUntil("2025-01-01", "month", NOW)).toBeNull();
+  });
+
+  it("allows an earlier day of the bucket the board opens on", () => {
+    // Monthly, the board opens on September; the 2nd is gone but its month
+    // is not, and that is the bucket being asked for.
+    expect(windowUntil("2026-09-02", "month", NOW)).toBe(1);
+  });
+
+  it("refuses a date past the grain's ceiling, and takes it at the ceiling", () => {
+    expect(windowUntil("2030-01-01", "day", NOW)).toBeNull();
+    expect(windowUntil(lastPickableDate("day", NOW), "day", NOW)).toBe(
+      DEMAND_CEILING.day,
+    );
+    expect(windowUntil(lastPickableDate("month", NOW), "month", NOW)).toBe(
+      DEMAND_CEILING.month,
+    );
+  });
+
+  it("refuses anything that is not a date", () => {
+    for (const raw of ["", "tomorrow", "2026-13-01", "26-09-16", "2026-09-16T00:00"]) {
+      expect(windowUntil(raw, "day", NOW), raw).toBeNull();
+    }
+  });
+
+  /**
+   * The picker's `max` and the board's refusal have to name the same day, or
+   * the calendar offers a date the board then declines.
+   */
+  it("offers exactly the last date it will draw", () => {
+    expect(lastPickableDate("day", NOW)).toBe("2027-09-06");
+    expect(windowUntil("2027-09-07", "day", NOW)).toBeNull();
   });
 });

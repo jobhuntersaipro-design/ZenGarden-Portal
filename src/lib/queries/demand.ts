@@ -4,11 +4,71 @@ import { prisma } from "@/lib/prisma";
 import { bucketKey, makeBuckets } from "@/lib/analytics/buckets";
 import { formatDate } from "@/lib/dates";
 import { ORDER_IDENTITY_SELECT, orderIdentity, orderLabel } from "@/lib/order-identity";
-import { DEMAND_SPAN, type DemandGrain } from "@/lib/planning/grain";
+import { DEMAND_CEILING, DEMAND_SPAN, type DemandGrain } from "@/lib/planning/grain";
 
 export { DEMAND_CEILING, DEMAND_SPAN, type DemandGrain } from "@/lib/planning/grain";
 
 export type DemandWindow = number | "all";
+
+/** One step of the grain, for walking out the window's last period. */
+const STEP = { day: addDays, week: addWeeks, month: addMonths } as const;
+
+/**
+ * `yyyy-MM-dd` at Kuala Lumpur, for a date the planner picked.
+ *
+ * Parsed as UTC midnight on purpose rather than through a timezone library:
+ * KL is +08:00 and keeps no daylight saving, so UTC midnight is 08:00 the
+ * same calendar day there, and `bucketKey` — which converts to KL itself —
+ * lands on the day that was typed. The reverse direction, a `@db.Date`
+ * column compared against a timestamp, is the trap `dateColumnRange` exists
+ * for; this one is not it.
+ */
+function parseUntil(until: string): Date | null {
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(until)) return null;
+  const date = new Date(`${until}T00:00:00Z`);
+  return Number.isNaN(date.getTime()) ? null : date;
+}
+
+/**
+ * The span that reaches a picked date, or null where the date cannot be
+ * shown.
+ *
+ * Counted with `makeBuckets` rather than by arithmetic on the grain, so the
+ * span and the columns it produces are the same walk — "up to 12 Mar" cannot
+ * draw a board that stops on the 11th.
+ *
+ * Two dates are refused rather than bent: one whose bucket is already behind
+ * the board (the board opens on today; "up to last Tuesday" has no answer),
+ * and one past the grain's ceiling. The picker's own `max` stops the second
+ * before it happens, so in practice that branch answers a hand-typed URL —
+ * the same rule `?window=400` already follows.
+ */
+export function windowUntil(
+  until: string,
+  grain: DemandGrain,
+  now: Date = new Date(),
+): DemandWindow | null {
+  const end = parseUntil(until);
+  if (!end) return null;
+  // `makeBuckets` returns one bucket for a backwards range rather than none,
+  // so the order is checked here rather than read off the length.
+  if (bucketKey(end, grain) < bucketKey(now, grain)) return null;
+  const span = makeBuckets(now, end, grain).length;
+  return span >= 1 && span <= DEMAND_CEILING[grain] ? span : null;
+}
+
+/**
+ * The last date this grain will show, for the picker's own `max`.
+ *
+ * A picker that offers a date the board then refuses is a worse control than
+ * one that greys it out, so the ceiling is expressed as a date here and as a
+ * refusal in `windowUntil` — the first for the calendar, the second for a URL
+ * somebody typed.
+ */
+export function lastPickableDate(grain: DemandGrain, now: Date = new Date()): string {
+  const last = STEP[grain](now, DEMAND_CEILING[grain] - 1);
+  return makeBuckets(last, last, grain)[0]?.key ?? bucketKey(now, grain);
+}
 
 /**
  * What the planner has narrowed the board to.
@@ -26,9 +86,6 @@ export type DemandFilters = {
 
 /** A value the filter selects offer, and the count beside it. */
 export type DemandOption = { value: string; label: string };
-
-/** One step of the grain, for walking out the window's last period. */
-const STEP = { day: addDays, week: addWeeks, month: addMonths } as const;
 
 export type DemandColumn = { key: string; label: string };
 

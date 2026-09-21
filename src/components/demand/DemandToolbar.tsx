@@ -31,18 +31,32 @@ const SELECT =
  * reinterpreting the number would change the question without saying so. The
  * new grain opens at its own default.
  *
+ * **A picked date survives that switch**, and that is the point of it being a
+ * date. "Up to 12 March" asks the same question of days, weeks and months;
+ * only the column count changes. The one date a grain change can lose is one
+ * past the new grain's ceiling — a year of days is the tightest of the three
+ * — and the page resolves that before it reaches here, so the field goes
+ * empty rather than holding a date the board is not drawing.
+ *
  * One `usePendingChoice` per strip, so a grain click never spins the span.
  */
 export function DemandToolbar({
   grain,
   window,
   spans,
+  until,
+  lastDate,
   families,
   products,
 }: {
   grain: DemandGrain;
+  /** The chip that is selected, or `""` while a date owns the strip. */
   window: string;
   spans: { value: string; label: string }[];
+  /** The picked date **as the board resolved it**, never as the URL sent it. */
+  until: string;
+  /** The furthest date this grain can draw, for the picker's own `max`. */
+  lastDate: string;
   families: DemandOption[];
   products: DemandOption[];
 }) {
@@ -71,12 +85,18 @@ export function DemandToolbar({
   };
   const write = (next: Record<string, string | null>) => replace(hrefFor(next));
 
+  // A chip and a date answer the same question, so writing either clears the
+  // other — the board can never be showing two windows at once.
   const href = (next: { by?: DemandGrain; window?: string }) =>
     hrefFor(
       next.by
-        ? { by: next.by, window: String(DEMAND_SPAN[next.by]) }
-        : { window: next.window ?? null },
+        ? until
+          ? { by: next.by }
+          : { by: next.by, window: String(DEMAND_SPAN[next.by]) }
+        : { window: next.window ?? null, until: null },
     );
+
+  const today = new Date().toLocaleDateString("en-CA");
 
   return (
     <div className="flex flex-col gap-sm">
@@ -110,6 +130,22 @@ export function DemandToolbar({
             </ChoiceButton>
           ))}
         </SegmentGroup>
+
+        {/* Not a fourth chip: the spans somebody asks for past 60 days are a
+            different question each time, and a date is the form the planner
+            already holds it in — "through the end of the quarter", not 187. */}
+        <label className="flex items-center gap-xs text-[length:var(--text-caption)] text-ink-tertiary">
+          <span>or up to</span>
+          <Input
+            type="date"
+            min={today}
+            max={lastDate}
+            aria-label={`Show every period up to a date, no later than ${lastDate}`}
+            value={until}
+            onChange={(event) => write({ until: event.target.value, window: null })}
+            className="h-control-md sm:h-control-sm w-40"
+          />
+        </label>
       </div>
 
       <div className="flex flex-wrap items-center gap-sm">

@@ -3,7 +3,12 @@ import Link from "next/link";
 import { PageHeader } from "@/components/portal/PageHeader";
 import { DemandTable } from "@/components/demand/DemandTable";
 import { DemandToolbar } from "@/components/demand/DemandToolbar";
-import { loadDemandBoard, type DemandWindow } from "@/lib/queries/demand";
+import {
+  lastPickableDate,
+  loadDemandBoard,
+  windowUntil,
+  type DemandWindow,
+} from "@/lib/queries/demand";
 import { DEMAND_CEILING, DEMAND_SPAN, type DemandGrain } from "@/lib/planning/grain";
 import { firstParam, type SearchParams } from "@/lib/queries/pagination";
 
@@ -11,11 +16,15 @@ export const metadata: Metadata = { title: "Demand board · Zen Garden Portal" }
 export const dynamic = "force-dynamic";
 
 /**
- * The spans each grain offers. The three cannot share one list: thirty weeks
- * of days is most of a year, and six days is not a question anybody asks a
- * month view, so each grain gets the two spans a person would actually ask
- * it for, plus every open order. A `?window=` outside them still works, up
- * to `DEMAND_CEILING` — the chips are the offer, not the limit.
+ * The spans each grain offers as a chip. The three cannot share one list:
+ * thirty weeks of days is most of a year, and six days is not a question
+ * anybody asks a month view, so each grain gets the two spans a person would
+ * actually ask it for, plus every open order.
+ *
+ * Anything else is a **date**, not a longer list of chips: a planner knows
+ * they need to see through the end of the quarter, and does not know that is
+ * 187 days. `?until=` carries it, and `?window=` still works for a link
+ * written before it.
  */
 const SPANS: Record<DemandGrain, { value: string; label: string }[]> = {
   month: [
@@ -39,15 +48,41 @@ function parseGrain(raw: string | undefined): DemandGrain {
   return raw === "day" || raw === "month" ? raw : "week";
 }
 
-function parseWindow(raw: string | undefined, grain: DemandGrain): DemandWindow {
-  if (raw === "all") return "all";
+/**
+ * What the board is showing, resolved once so the toolbar cannot disagree
+ * with it.
+ *
+ * The toolbar renders `until` from what came back here rather than from the
+ * URL, which is what keeps a refused date out of the picker: a board that
+ * fell back to Next 30 days shows an empty date field and the chip that is
+ * actually selected, instead of a date it is not drawing.
+ *
+ * `until` wins over `window` where a link carries both, because it is the
+ * one the planner chose most recently — every control that writes one clears
+ * the other.
+ */
+function resolveWindow(
+  params: SearchParams,
+  grain: DemandGrain,
+): { window: DemandWindow; until: string } {
+  const until = firstParam(params, "until") ?? "";
+  if (until) {
+    const span = windowUntil(until, grain);
+    if (span !== null) return { window: span, until };
+  }
+
+  const raw = firstParam(params, "window");
+  if (raw === "all") return { window: "all", until: "" };
   const span = Number(raw);
-  // Any span the planner asks for, up to the point where a URL is a typo
-  // rather than a question (`DEMAND_CEILING`). The old ceilings were a
-  // fortnight-ish per grain and were the thing being complained about.
-  return Number.isInteger(span) && span > 0 && span <= DEMAND_CEILING[grain]
-    ? span
-    : DEMAND_SPAN[grain];
+  // A span past the ceiling is refused rather than clamped: a silently
+  // corrected 900 would look like the board answered the question asked.
+  return {
+    window:
+      Number.isInteger(span) && span > 0 && span <= DEMAND_CEILING[grain]
+        ? span
+        : DEMAND_SPAN[grain],
+    until: "",
+  };
 }
 
 export default async function DemandPage({
@@ -57,7 +92,7 @@ export default async function DemandPage({
 }) {
   const params = await searchParams;
   const grain = parseGrain(firstParam(params, "by"));
-  const window = parseWindow(firstParam(params, "window"), grain);
+  const { window, until } = resolveWindow(params, grain);
   const filters = {
     q: firstParam(params, "q") ?? "",
     family: firstParam(params, "family") ?? "",
@@ -65,7 +100,9 @@ export default async function DemandPage({
   };
   const board = await loadDemandBoard({ grain, window, filters });
 
-  const selected = window === "all" ? "all" : String(window);
+  // A picked date owns the strip: no chip is selected beside it, the same as
+  // a hand-typed span outside the two the chips offer.
+  const selected = until ? "" : window === "all" ? "all" : String(window);
   const narrowed = Boolean(filters.q || filters.family || filters.productId);
 
   return (
@@ -85,6 +122,8 @@ export default async function DemandPage({
           grain={grain}
           window={selected}
           spans={SPANS[grain]}
+          until={until}
+          lastDate={lastPickableDate(grain)}
           families={board.families}
           products={board.products}
         />

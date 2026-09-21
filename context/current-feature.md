@@ -9,11 +9,15 @@ unlimited day, let user pick. default next 30d, remove Next 7days"; "Rename on
 hand to stock count (carton)"; "Also add search bar to search anything"; "Add
 filter for family, product, overdue".
 
-**Trimmed the same day**, after the user read it on screen: "make it next 30d
-or 60d" and "Remove overdue only". The window is three chips again — **Next 30
-days · Next 60 days · All open** — with the typed box gone, and the Overdue
-only filter is gone with it. Both paragraphs below are corrected rather than
-deleted, because the reasoning that produced them is what the trim reverses.
+**Trimmed, then given a date, the same day.** First "make it next 30d or 60d"
+and "Remove overdue only": the window went back to three chips — **Next 30
+days · Next 60 days · All open** — and the typed span box and the Overdue only
+filter both went. Then "What about letting user to pick the extended date? I
+will want that", which put the custom window back in a different form: a
+**date** beside the chips, not a number of days. Asked before building, with
+three shapes offered; the date was chosen. The paragraphs below are corrected
+rather than deleted, because the reasoning that produced them is what these
+changes reverse.
 
 **Three decisions were the user's**, asked before building and all three taken
 as recommended: the dates are labelled lines on the sub-row rather than three
@@ -36,21 +40,51 @@ rounding up to "due today", which would be the board rounding in its own
 favour. The red `N days late` caption stays grain-relative, and the two never
 both show.
 
-**The window is two spans and everything.** `Next 7 days` is gone and daily
-opens at **30**, beside **Next 60 days** and **All open**. The typed box that
-first replaced them lasted a few hours: it was built because the complaint was
-a menu boxed in at a fortnight, and once the chips read 30 and 60 the box was
-a third control for a question the two chips answer, carrying a defect of its
-own — it initialised once, so navigating to a chip left it reading a stale
-`14` beside "Next 30 days" selected, which is what the user was looking at
-when they asked for it to go.
+**The window is two spans, everything, or a date.** `Next 7 days` is gone and
+daily opens at **30**, beside **Next 60 days** and **All open**. The typed
+number box that first replaced the old menu lasted a few hours: it was built
+because the complaint was a window boxed in at a fortnight, and once the chips
+read 30 and 60 it was a third control for a question the two chips answer,
+carrying a defect of its own — it initialised once, so navigating to a chip
+left it reading a stale `14` beside "Next 30 days" selected, which is what the
+user was looking at when they asked for it to go. A chip and a date answer the
+same question, so writing either clears the other: the board can never be
+showing two windows at once.
 
-**A span outside the chips is still reachable, by URL.** `?window=45` draws 51
-columns with no chip selected, and a number past the grain's ceiling falls back
-to the grain's default rather than being clamped — a silently corrected 900
-would look like the board answered the question that was asked. The chips are
-the offer, not the limit; nothing in the toolbar advertises it, which is the
-honest cost of dropping the box.
+**Past 60 days, a planner picks a date.** `or up to [12 Mar 2027]`, beside the
+chips, writing `?until=`. A date rather than the number of days it works out
+to, because that is the form the question already has: somebody needs to see
+through the end of the quarter, and does not know that is 187 days. It also
+survives a grain change where a number cannot — "up to 12 March" asks the same
+thing of days, weeks and months, while "12" means a fortnight, a quarter and a
+year — so clicking Monthly keeps the date and only the column count moves.
+
+**The span is counted by walking the buckets, not by arithmetic on the grain.**
+`windowUntil` asks `makeBuckets` how many periods reach the date, the same walk
+that draws the columns, so "up to 12 Mar" cannot draw a board that stops on the
+11th. A Sunday inside a week reaches that week rather than one fewer, and at
+monthly grain an earlier day of the month the board opens on is one column, not
+a refusal. **Watched failing:** counting days arithmetically instead turns three
+tests red, including `expected 36 to be 6` where a weekly window is asked for.
+
+**The ceiling is a `max` on the picker and a refusal in the URL**, which is two
+behaviours for one rule on purpose: a calendar that offers a date the board
+then declines is a worse control than one that greys it out, while a
+hand-typed `?until=2030-01-01` at daily grain is a typo and falls back to the
+grain's default rather than being clamped. `lastPickableDate` and `windowUntil`
+are pinned to the same day by a test, so the two cannot drift apart.
+
+**A date already gone is refused rather than drawn**, and that needed saying in
+code: `makeBuckets` returns *one* bucket for a backwards range, so a length
+check alone reads "up to last Tuesday" as a valid one-column board. The order
+is compared on the bucket keys instead. **Watched failing:** with the check
+removed, that test goes red.
+
+**The page resolves the window once, and the toolbar renders what came back** —
+never the raw URL. That is what keeps a refused date out of the picker: a board
+that fell back to Next 30 days shows an empty field and the chip it is actually
+drawing. It is also the defect class that killed the typed box, fixed by
+construction rather than by care.
 
 **The ceilings are 365 days, 260 weeks, 120 months**, and they are not
 opinions about how far ahead to plan — the old ones (a fortnight-ish per
@@ -101,14 +135,26 @@ Development, port 3000, as the seeded super admin, board opening 21 Sep 2026.
   Delivering`, and below it `Tanjung Electrical / PO-2026-0027 / PO date
   14 Sep 2026 / Expected 27 Sep 2026 · due in 6 days`, `Acme Industrial Sdn
   Bhd / … · due in 2 days`, `Sunway Packaging / … · due in 7 days`.
-- **The window is three chips and no box.** Read off the rendered toolbar:
+- **The window is three chips and a date.** Read off the rendered toolbar:
   **Next 30 days · Next 60 days · All open**, Next 30 days selected,
-  **36 columns**, and `input[type=number]` counted **0** on the page. Clicking
-  Next 60 days gave `?by=day&window=60` and **66 columns** — the same six
-  non-day columns beside 30 and 60.
-- **A URL span still works, and is refused rather than clamped.** `?window=45`
-  gave **51 columns** with **no chip selected**; `?window=400` — past the 365
-  ceiling — fell back to **36 columns** with Next 30 days selected.
+  **36 columns**, and the date field empty with `min 2026-09-21` /
+  `max 2027-09-20` — today and the 365-day ceiling. Clicking Next 60 days gave
+  `?by=day&window=60` and **66 columns**.
+- **Typing a date into the picker drives the board.** `2026-11-15` gave
+  `?by=day&until=2026-11-15`, **62 columns** ending **15 Nov**, and **no chip
+  selected**. `?until=2026-12-31` gave **108 columns** ending **31 Dec**.
+- **A grain change keeps the date; a chip clears it.** With the date set,
+  clicking Monthly gave `?by=month&until=2026-11-15` — the field still reading
+  2026-11-15, **8 columns** ending **Nov 2026**. Then clicking Next 6 months
+  gave `?by=month&window=6` with the field **empty** and the chip selected.
+- **Three bad dates all fall back rather than drawing something wrong.**
+  `?until=2026-01-01` (already gone), `?until=2030-01-01` at daily grain (past
+  the 365 ceiling) and `?until=not-a-date` each read **36 columns, Next 30 days
+  selected, and an empty date field** — the picker never showing a date the
+  board is not drawing. The **same** `2030-01-01` at monthly grain, where it is
+  inside the 120-month ceiling, drew **46 columns** ending **Jan 2030**.
+- **A date composes with the filters.** `?until=2026-10-01&q=Meridian` drew
+  **17 columns** ending **1 Oct** with the search still applied.
 - **No Overdue only control, and a stale link carrying it is ignored.** Buttons
   matching `/overdue/i` counted **0**. `?by=day&overdue=1` read
   **26 open orders · 2,669 cartons · 12 rows** — character for character the
@@ -135,14 +181,14 @@ Development, port 3000, as the seeded super admin, board opening 21 Sep 2026.
   to "due today"; and filtering the breakdown while leaving the totals whole —
   which reported **42 where 30 was expected**, the figure-follows decision
   made visible.
-- **Phone.** At 390 the toolbar stacks — grain, window, the span box, search,
-  the selects, the pill — with **no control under 44px** and no page overflow
-  (390/390); 1440/1440 on the desktop.
+- **Phone.** At 390 the toolbar stacks — grain, window, the date, search, the
+  selects — with **no control under 44px** and no page overflow (390/390);
+  1440/1440 on the desktop.
 - **The console is clean.** The only failed request is
   `va.vercel-scripts.com/v1/speed-insights` — this container's blocked egress,
   not the page.
-- **1345/1345 tests across 102 files** (15 new), `tsc`, lint (the same 2
-  pre-existing warnings) and `npm run build` clean. The 103rd file,
+- **1351/1351 tests across 102 files**, `tsc`, lint (the same 2 pre-existing
+  warnings) and `npm run build` clean. The 103rd file,
   `catalog-import.test.ts`, fails to import in this container only — `xlsx`
   installs from cdn.sheetjs.com, which the network policy answers 403 to.
 
@@ -155,16 +201,22 @@ Development, port 3000, as the seeded super admin, board opening 21 Sep 2026.
   orders **421**, read back). On production every product has a family, so
   that select will be long — it is a plain `<select>`, unsearchable, and how
   it reads at 59 families was not seen.
-- **A span near the ceiling.** 45, 60 and 90 were drawn; 365 days — 371
-  columns — was not, and the board would be slow to lay out. The ceiling
-  exists to stop a typo, not because that span was measured.
-- **Whether anybody wants a span the chips do not offer.** The box was removed
-  before it was used in anger; if 90 days turns out to be a real question, it
-  is a fourth chip, not the box back.
+- **A span near the ceiling.** 108 columns were drawn; 365 days — 371 columns
+  — was not, and the board would be slow to lay out. The ceiling exists to
+  stop a typo, not because that span was measured.
+- **The date picker as a calendar.** Every date above was typed or carried in
+  a URL. The `min`/`max` attributes were read off the element, but the browser
+  popup was not opened, so whether it greys out the days past the ceiling the
+  way the attribute asks was not seen.
+- **A date picked on one grain and read on another in anger.** The switch was
+  driven Daily → Monthly; the case where a valid daily date is *lost* by
+  switching — it cannot be, since the daily ceiling is the tightest — is
+  argued rather than driven, and the reverse (Monthly → Daily past 365 days)
+  falls back, which was driven only by URL.
 - **The search at volume.** It filters in memory over every open line, which
   is right at 1,672 and untested at a hundred thousand.
 - **Keyboard and screen reader.** The chips and the selects were clicked, not
-  tabbed to.
+  tabbed to; the date field was filled programmatically, not tabbed into.
 - **A saved link carrying a filter**, opened cold. Every control writes to the
   URL and the page reads it back, but only same-session navigation was driven.
 
