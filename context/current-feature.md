@@ -13,6 +13,24 @@ to the product. Each sub-row reads the buyer, the order's own identifier, its
 expected date, how late it is if it is late, and its stage — then puts its
 cartons in the period column the parent counted them in.
 
+**Both identifiers, one line each, the buyer's first** (2026-09-21, asked for
+as "show orderID too, underneath PO number"). The row leads with the buyer's
+`PO number …`, which is the link, and puts our `Order ID W-…` underneath —
+the reverse of `orderLabel`'s own preference, which serves surfaces with room
+for exactly one, and right here because a planner chasing an order quotes the
+number the buyer filed it under. **On separate lines, not joined by a `·`:**
+the pair is the thing this row is read for, and a reader copying
+`PO number ACME-PO-771 · Order ID W-2609-00014` has to cut it in half before
+either half is usable.
+
+**The Order ID line is absent, not dashed, where the order has none.** A
+scanned purchase order was never given one — it is not a figure yet to come,
+the way an uncounted stock level is — so a dash would be a fact about nothing
+repeated down every sub-row of a board whose open orders are all scans, which
+is what development holds. The same argument the market makes one paragraph
+below. A shop order carrying no PO number leads with its Order ID and does not
+then print it twice.
+
 **The order's identifier is the link, and it never truncates** — fixed on
 2026-09-21 after the user read it cut to `PO number PO-2...` on screen. Two
 faults in one line: the caption was a `flex` row with `truncate`, and only the
@@ -109,6 +127,19 @@ Development, port 3000, as the seeded super admin, board opening 21 Sep 2026.
   (155–156px), `white-space: nowrap`, `text-overflow: clip` — and the same
   **156/156** at 390, where the date and the lateness wrap to a second line
   instead.
+- **Both identifiers on one sub-row, read off the screen.** With one open
+  order made shop-sourced (a `WebOrder` fixture, `W-2609-00014` /
+  `ACME-PO-771`, on the worst-overdue row), its cell reads
+  `Meridian Chemicals` / `PO number ACME-PO-771` / `Order ID W-2609-00014` /
+  `12 Sep 2026 · 9 days late` / `Delivering` — five lines, the Order ID
+  **17px below** the PO number, `white-space: nowrap`. The other **nine**
+  sub-rows are scans and print **no Order ID line at all**, which is the
+  absence case on the same screen rather than in a test.
+- **Neither identifier is cut, measured as text against its line box.** An
+  inline `<a>` reports `scrollWidth` 0, so the line box is what answers it: at
+  1440 the PO number needs **150px of 262px** and the Order ID **138px of
+  262px**, `text-overflow: clip` on both, in a 338px cell. At 390 every line
+  in the cell reads **212/212** — nothing clipped, and the pair still stacked.
 - **The link is on the identifier, and it goes where it says.** One `<a>` per
   sub-row (counted), `href="/purchase-orders/po_u3q5jfok39ed69ytblfq"` on the
   text `PO number PO-2026-0039`. Clicked, it landed on `/purchase-orders/
@@ -121,11 +152,18 @@ Development, port 3000, as the seeded super admin, board opening 21 Sep 2026.
   late`, `Pacific Timber ⟶ PO number PO-2026-0025 · 16 Sep 2026 · 5 days
   late`, `Tanjung Electrical ⟶ PO number PO-2026-0027 · 27 Sep 2026`. Before
   the space was added to each separator they read `PO-2026-0039· 12 Sep 2026`.
-- **Four of the six new guards were watched failing** against the old markup:
-  the link is on the identifier, the identifier is never shortened, the
-  buyer's full name is in `title`, and the separator carries its space. The
-  two that passed either way are the ones asserting *absence* — exactly one
-  link, and no lateness on an order that is not late.
+- **Four of the six identifier guards were watched failing** against the old
+  markup: the link is on the identifier, the identifier is never shortened,
+  the buyer's full name is in `title`, and the separator carries its space.
+  The two that passed either way are the ones asserting *absence* — exactly
+  one link, and no lateness on an order that is not late.
+- **Two more counterfactuals for the second identifier.** Leaving
+  `orderLabel`'s preference in place (our Order ID leading, nothing beneath)
+  turned the shop-order test red — `expected 'Order ID W-2609-00014' to be
+  'PO number ACME-PO-771'`. Joining the two with a `·` on one line turned two
+  component tests red: the one that requires a line break between them, and
+  the one that requires the Order ID to be `whitespace-nowrap` in its own
+  right.
 - **The reconciliation still holds after the change** — re-measured, not
   assumed: parent **46 · 36 · 371 · 97**, committed **550**, orders **10**;
   sub-row sums **46 · 36 · 371 · 97**, committed **550**, **10** sub-rows.
@@ -139,8 +177,8 @@ Development, port 3000, as the seeded super admin, board opening 21 Sep 2026.
   whose fixture carries a doubled order for exactly that reason. The first
   version of that fixture did not discriminate — four distinct orders sum the
   same either way — so it was strengthened until it did.
-- **1325/1325 tests across 102 files** (4 on the breakdown, 7 on the sub-row's
-  identifier), `tsc`, lint (the same 2 pre-existing warnings) and
+- **1330/1330 tests across 102 files** (4 on the breakdown, 10 on the
+  sub-row's identifiers, 2 on the query's composition rule), `tsc`, lint (the same 2 pre-existing warnings) and
   `npm run build` clean. The 103rd file, `catalog-import.test.ts`, fails to
   import in this container only — `xlsx` installs from cdn.sheetjs.com, which
   the network policy answers 403 to, and the local stand-in throws by design.
@@ -154,10 +192,13 @@ Development, port 3000, as the seeded super admin, board opening 21 Sep 2026.
 - **The breakdown at daily and monthly grain.** The sub-row puts its cartons in
   whichever column the parent counted them in, and the tests cover the
   bucketing, but only the weekly board was expanded in a browser.
-- **A shop order's sub-row on screen.** `Order ID W-…` is covered by a unit
-  test; every seeded open order in development is a scan, so the live rows all
-  read `PO number …` — 155–156px, and the longest identifier measured. A
-  `W-` reference is shorter, so nothing here widens it.
+- **A real shop order's sub-row.** The one driven above was a `WebOrder`
+  inserted straight into the database against an existing scanned order, not
+  one placed through the cart; every seeded open order in development is a
+  scan. Deleted by id afterwards, `poNumber` restored to `PO-2026-0039` and
+  read back, web orders **0** and purchase orders **421**.
+- **A shop order with no PO number, on screen.** It leads with its Order ID
+  and prints no second line; covered by two unit tests and never rendered.
 - **An identifier long enough to need the second line to itself.** The caption
   wraps, proven at 390 where the date drops below it, but no label was long
   enough to wrap on its own.

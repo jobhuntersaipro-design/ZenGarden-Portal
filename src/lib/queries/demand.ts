@@ -27,8 +27,21 @@ export type DemandColumn = { key: string; label: string };
  */
 export type DemandLine = {
   purchaseOrderId: string;
-  /** `Order ID W-…` or `PO number …` — one identifier, named, never both. */
+  /**
+   * The identifier this row leads with, named: the buyer's own
+   * `PO number …`, or `Order ID W-…` on a shop order that carries no PO
+   * number. This is what the planner searches and quotes, which is why it is
+   * the buyer's number rather than ours wherever there is one — the reverse
+   * of `orderLabel`'s own preference, which serves surfaces that have room
+   * for exactly one.
+   */
   label: string;
+  /**
+   * `Order ID W-…`, shown under the label, and null where there is nothing to
+   * add: a scanned purchase order has no Order ID at all, and a shop order
+   * with no PO number already leads with it.
+   */
+  orderIdLabel: string | null;
   buyerName: string;
   stage: PoStage;
   /** Formatted in Kuala Lumpur on the server, so the browser cannot drift it. */
@@ -77,6 +90,30 @@ export type DemandBoard = {
   counted: number;
   anyOverdue: boolean;
 };
+
+/**
+ * Both of an order's identifiers, for a row with two lines to spend on them.
+ *
+ * The buyer's own number leads, because a planner chasing an order quotes the
+ * number the buyer filed it under. Ours goes underneath, where there is one
+ * and where it is not already the line above — a scan has no Order ID, and a
+ * shop order with no PO number leads with its Order ID rather than printing
+ * it twice.
+ */
+function identityOf(
+  po: Parameters<typeof orderIdentity>[0],
+): Pick<DemandLine, "label" | "orderIdLabel"> {
+  const identity = orderIdentity(po);
+  return {
+    label: identity.poNumber
+      ? `PO number ${identity.poNumber}`
+      : orderLabel(identity),
+    orderIdLabel:
+      identity.orderId && identity.poNumber
+        ? `Order ID ${identity.orderId}`
+        : null,
+  };
+}
 
 /**
  * A bucket key back to the label the charts already use — `6–12 Jul` for a
@@ -219,7 +256,7 @@ export async function loadDemandBoard(
       const due = line.purchaseOrder.deliveryDate;
       breakdown.set(line.purchaseOrderId, {
         purchaseOrderId: line.purchaseOrderId,
-        label: orderLabel(orderIdentity(line.purchaseOrder)),
+        ...identityOf(line.purchaseOrder),
         buyerName: line.purchaseOrder.buyer.name,
         stage: line.purchaseOrder.stage,
         deliveryDate: formatDate(due),

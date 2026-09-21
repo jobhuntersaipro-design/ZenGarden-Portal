@@ -17,6 +17,7 @@ const line = (over: {
   stockCartons?: number | null;
   buyer?: string;
   poNumber?: string | null;
+  buyerReference?: string | null;
   webOrder?: string | null;
 }) => ({
   quantity: over.cartons ?? 10,
@@ -27,7 +28,7 @@ const line = (over: {
     stage: "ORDER_PLACED",
     buyer: { name: over.buyer ?? "Acme Industrial Sdn Bhd" },
     poNumber: "poNumber" in over ? over.poNumber : "PO-2026-0001",
-    buyerReference: null,
+    buyerReference: over.buyerReference ?? null,
     webOrder: over.webOrder ? { reference: over.webOrder } : null,
   },
   product: {
@@ -334,11 +335,52 @@ describe("the breakdown behind each figure", () => {
     expect(worst.columnKey).toBeNull();
     expect(worst.label).toBe("PO number PO-2026-0001");
     expect(worst.deliveryDate).toBe("27 Aug 2026");
+    // A scan has no Order ID at all, so there is no second line to print.
+    expect(worst.orderIdLabel).toBeNull();
 
-    // A shop order is named by its Order ID, never by the other column.
+    // A shop order with no PO number is named by its Order ID, never by the
+    // other column — and does not then repeat it underneath.
     expect(next.buyerName).toBe("Northwind Traders");
     expect(next.daysLate).toBe(0);
     expect(next.label).toBe("Order ID W-2609-00014");
+    expect(next.orderIdLabel).toBeNull();
+  });
+
+  /**
+   * A shop order carries both numbers, and the row has a line for each. The
+   * buyer's own leads, because that is what a planner quotes when they chase
+   * the order — which is the reverse of `orderLabel`'s preference, and so is
+   * worth pinning rather than leaving to a shared helper to decide.
+   */
+  it("leads a shop order with the buyer's PO number and puts ours beneath", async () => {
+    findMany.mockResolvedValue([
+      line({
+        poNumber: null,
+        buyerReference: "ACME-PO-771",
+        webOrder: "W-2609-00014",
+      }),
+    ]);
+    const board = await loadDemandBoard("week", DEMAND_SPAN.week, NOW);
+    const [only] = board.rows[0].lines;
+
+    expect(only.label).toBe("PO number ACME-PO-771");
+    expect(only.orderIdLabel).toBe("Order ID W-2609-00014");
+  });
+
+  /**
+   * On a scan, `buyerReference` is the retired Phase 11 extraction field
+   * rather than a PO number, and there is no Order ID either — so neither
+   * column may become a line on the row.
+   */
+  it("ignores a scan's buyer reference and gives it no Order ID", async () => {
+    findMany.mockResolvedValue([
+      line({ poNumber: null, buyerReference: "not-a-po-number" }),
+    ]);
+    const board = await loadDemandBoard("week", DEMAND_SPAN.week, NOW);
+    const [only] = board.rows[0].lines;
+
+    expect(only.label).toBe("Purchase order");
+    expect(only.orderIdLabel).toBeNull();
   });
 
   /**

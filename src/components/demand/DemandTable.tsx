@@ -228,14 +228,17 @@ function ProductRows({
 /**
  * One open order's share, in the same columns as the total above it.
  *
- * **The identifier is the link, and it never truncates.** It is the thing a
- * planner carries out of this row — into a search, a phone call, the order's
- * own page — so a squeezed `Order ID W-2609-0…` is the one abbreviation this
- * row cannot afford. It is `whitespace-nowrap`, and the caption wraps onto a
- * second line rather than shortening it; the buyer's name above it truncates
- * instead, with the full value in `title`, which is 00-master §4's
- * truncation-recovery rule. The buyer is no longer a link of its own: two
- * links a line apart pointing at the same purchase order read as two
+ * **Both identifiers, one per line, and neither ever truncates.** The buyer's
+ * `PO number …` leads and is the link, because that is what a planner quotes
+ * when they chase the order; our `Order ID W-…` sits under it, where the
+ * order has one. They are on separate lines rather than one, because a reader
+ * copying `PO number ACME-PO-771 · Order ID W-2609-00014` out of a row has to
+ * cut it in half before either half is usable, and because the pair is what
+ * this row is read for — a squeezed `Order ID W-2609-0…` is the one
+ * abbreviation it cannot afford. Both are `whitespace-nowrap`; the buyer's
+ * name above them truncates instead, with the full value in `title`, which is
+ * 00-master §4's truncation-recovery rule. The buyer is not a link of its
+ * own: two links a line apart pointing at the same purchase order read as two
  * destinations to anything that lists them.
  *
  * On hand and Short by stay empty rather than reading `—`: stock is held per
@@ -253,21 +256,27 @@ export function OrderRow({ line, board }: { line: DemandLine; board: DemandBoard
           >
             {line.buyerName}
           </p>
-          {/* Wraps rather than squeezes. Every part carries its own leading
-              separator — spaces included, since a flex item's text is
-              concatenated with its neighbour's when the line is read out or
-              copied, and `PO-2026-0039· 12 Sep` is two facts glued into one.
-              A leading space is dropped at the start of a line box, so the
-              gap on screen is the `gap-x-xxs` either way, and a part that
-              drops to the next line does not strand a `·` above it. */}
-          <p className="flex flex-wrap items-center gap-x-xxs text-[length:var(--text-caption)] text-ink-tertiary">
+          <p className="text-[length:var(--text-caption)] text-ink-tertiary">
             <Link
               href={`/purchase-orders/${line.purchaseOrderId}`}
               className="whitespace-nowrap font-medium text-ink-secondary hover:text-brand-link focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-focus"
             >
               {line.label}
             </Link>
-            <span className="whitespace-nowrap">{" · "}{line.deliveryDate}</span>
+          </p>
+          {/* Our own Order ID under the buyer's number, on its own line
+              because the two are quoted separately and must never be read as
+              one. Absent rather than dashed where the order has none: a
+              scanned purchase order was never given an Order ID, so a dash on
+              every sub-row of a scan-only board would be ten repetitions of a
+              fact about nothing. */}
+          {line.orderIdLabel ? (
+            <p className="whitespace-nowrap text-[length:var(--text-caption)] text-ink-tertiary">
+              {line.orderIdLabel}
+            </p>
+          ) : null}
+          <p className="flex flex-wrap items-center gap-x-xxs text-[length:var(--text-caption)] text-ink-tertiary">
+            <span className="whitespace-nowrap">{line.deliveryDate}</span>
             {/* How late, beside the date it is measured from rather than in
                 the Overdue column: a numeric column that also carries words
                 cannot be read across, copied, or totalled by eye. */}

@@ -19,6 +19,7 @@ const board: DemandBoard = {
 const line = (over: Partial<DemandLine> = {}): DemandLine => ({
   purchaseOrderId: "po_1",
   label: "PO number PO-2026-0039",
+  orderIdLabel: null,
   buyerName: "Meridian Chemicals",
   stage: "DELIVERING",
   deliveryDate: "12 Sep 2026",
@@ -80,8 +81,32 @@ describe("a demand sub-row's order identifier", () => {
   it("separates the facts in the text, not only with a gap", () => {
     // Flex items concatenate when the line is read out or copied, and the
     // first build of this row glued them: `PO-2026-0039· 12 Sep 2026`.
-    const text = row().replace(/<[^>]+>/g, "");
-    expect(text).toContain("PO number PO-2026-0039 · 12 Sep 2026 · 9 days late");
+    const text = row().replace(/<[^>]+>/g, "").replace(/\s+/g, " ");
+    expect(text).toContain("12 Sep 2026 · 9 days late");
+  });
+
+  it("prints our Order ID under the buyer's PO number", () => {
+    const text = row({ orderIdLabel: "Order ID W-2609-00014" })
+      .replace(/<\/p>/g, "\n")
+      .replace(/<[^>]+>/g, "");
+    // Separate lines, because the two are quoted separately — never
+    // `PO number … · Order ID …`, which has to be cut in half to be used.
+    expect(text).toMatch(/PO number PO-2026-0039\s*\n\s*Order ID W-2609-00014/);
+  });
+
+  it("keeps the Order ID whole, however long the row's other lines are", () => {
+    const markup = row({
+      orderIdLabel: "Order ID W-2609-00014",
+      buyerName: "A Very Long Buyer Name Indeed Sdn Bhd",
+    });
+    const at = markup.indexOf("Order ID W-2609-00014");
+    expect(markup.slice(at - 200, at)).toContain("whitespace-nowrap");
+  });
+
+  it("prints no Order ID line where the order has none", () => {
+    // A scanned purchase order was never given one. A dash here would be a
+    // fact about nothing, repeated on every sub-row of a scan-only board.
+    expect(row({ orderIdLabel: null })).not.toContain("Order ID");
   });
 
   it("says nothing about lateness on an order that is not late", () => {
