@@ -1,6 +1,11 @@
+"use client";
+
+import { ChevronRight } from "lucide-react";
 import Link from "next/link";
+import { useState } from "react";
 import { Scroller } from "@/components/demand/Scroller";
-import type { DemandBoard } from "@/lib/queries/demand";
+import { StageBadge } from "@/components/portal/StatusBadge";
+import type { DemandBoard, DemandLine, DemandRow } from "@/lib/queries/demand";
 
 const num = (value: number) => value.toLocaleString("en-MY");
 
@@ -15,7 +20,7 @@ function Cell({ value }: { value: number | undefined }) {
 
 /**
  * The runway list: one row per product, days, weeks or months across, most
- * committed first.
+ * committed first — and, on a click, what each of its figures is made of.
  *
  * Deliberately not `DataTable`. That component pages, sorts by URL and drops
  * to card mode on a phone, all of which this board would have to fight: the
@@ -23,12 +28,29 @@ function Cell({ value }: { value: number | undefined }) {
  * read across, and there is nothing here to page through — the window is the
  * paging.
  *
+ * **Why the breakdown expands in place rather than opening a panel.** A
+ * planner reading `371` is asking two things at once — who wants it, and does
+ * that add up — and only sub-rows in the same grid answer the second. The
+ * numbers land in the same columns as the total above them, so the addition
+ * is visible rather than promised. The cost is width: a stage, a date and a
+ * link do not fit in a numeric column, so they live in the product column,
+ * which is the one with room.
+ *
  * On hand and Short by render as dashes until a stock count exists. They are
  * kept in the table rather than hidden so the shape of the answer is visible
  * before the data for it is: the point of the board is what runs out, and a
  * column quietly missing would not say that it is missing.
  */
 export function DemandTable({ board }: { board: DemandBoard }) {
+  const [open, setOpen] = useState<ReadonlySet<string>>(new Set());
+
+  const toggle = (productId: string) =>
+    setOpen((current) => {
+      const next = new Set(current);
+      if (!next.delete(productId)) next.add(productId);
+      return next;
+    });
+
   if (board.rows.length === 0) {
     return (
       <div className="rounded-lg border border-hairline bg-canvas p-xl text-center">
@@ -65,57 +87,18 @@ export function DemandTable({ board }: { board: DemandBoard }) {
             </tr>
           </thead>
           <tbody>
-            {board.rows.map((row) => (
-              <tr key={row.productId} className="border-b border-hairline last:border-0">
-                <td className="sticky left-0 z-10 max-w-64 bg-canvas py-sm pl-lg pr-md">
-                  <Link
-                    href={`/products/${row.productId}`}
-                    className="block truncate text-[length:var(--text-body-sm)] font-semibold text-ink hover:text-brand-link focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-focus"
-                    title={row.name}
-                  >
-                    {row.name}
-                  </Link>
-                  <p className="truncate font-mono text-[length:var(--text-caption)] text-ink-tertiary">
-                    {row.sku}
-                    {row.market ? ` · ${row.market}` : ""}
-                  </p>
-                </td>
-                {board.anyOverdue ? (
-                  <Td numeric>
-                    {row.overdue > 0 ? (
-                      <span className="font-semibold text-accent-red">{num(row.overdue)}</span>
-                    ) : (
-                      <span className="text-ink-disabled">—</span>
-                    )}
-                  </Td>
-                ) : null}
-                {board.columns.map((column) => (
-                  <Td key={column.key} numeric>
-                    <Cell value={row.byColumn[column.key]} />
-                  </Td>
-                ))}
-                <Td numeric>
-                  <span className="font-semibold text-ink">{num(row.committed)}</span>
-                </Td>
-                <Td numeric>{row.orders}</Td>
-                <Td numeric>
-                  {row.stockCartons === null ? (
-                    <span className="text-ink-disabled">—</span>
-                  ) : (
-                    num(row.stockCartons)
-                  )}
-                </Td>
-                <Td numeric className="pr-lg">
-                  {row.shortBy === null ? (
-                    <span className="text-ink-disabled">—</span>
-                  ) : row.shortBy > 0 ? (
-                    <span className="font-semibold text-accent-red">{num(row.shortBy)}</span>
-                  ) : (
-                    <span className="text-ink-disabled">—</span>
-                  )}
-                </Td>
-              </tr>
-            ))}
+            {board.rows.map((row) => {
+              const expanded = open.has(row.productId);
+              return (
+                <ProductRows
+                  key={row.productId}
+                  row={row}
+                  board={board}
+                  expanded={expanded}
+                  onToggle={() => toggle(row.productId)}
+                />
+              );
+            })}
           </tbody>
           <tfoot>
             <tr className="border-t-2 border-ink">
@@ -144,9 +127,164 @@ export function DemandTable({ board }: { board: DemandBoard }) {
       </Scroller>
       <p className="border-t border-hairline px-lg py-sm text-[length:var(--text-caption)] text-ink-tertiary">
         Cartons wanted, by the {board.grain} their order is expected. A dash
-        is nothing promised, not a zero.
+        is nothing promised, not a zero. Open a product to see which orders
+        its figures come from.
       </p>
     </section>
+  );
+}
+
+/** A product's own row, and — when it is open — the orders behind it. */
+function ProductRows({
+  row,
+  board,
+  expanded,
+  onToggle,
+}: {
+  row: DemandRow;
+  board: DemandBoard;
+  expanded: boolean;
+  onToggle: () => void;
+}) {
+  return (
+    <>
+      <tr className="border-b border-hairline last:border-0">
+        <td className="sticky left-0 z-10 max-w-72 bg-canvas py-sm pl-lg pr-md">
+          <div className="flex items-start gap-xs">
+            <button
+              type="button"
+              onClick={onToggle}
+              aria-expanded={expanded}
+              // The count is in the name because the caret alone does not say
+              // how much is behind it, and a screen reader gets no column.
+              aria-label={`${expanded ? "Hide" : "Show"} the ${row.orders} order${row.orders === 1 ? "" : "s"} behind ${row.name}`}
+              className="flex size-11 shrink-0 items-center justify-center rounded-sm text-ink-tertiary transition-colors hover:bg-surface hover:text-ink focus-visible:outline-2 focus-visible:outline-focus sm:size-6"
+            >
+              <ChevronRight
+                className={`size-4 transition-transform ${expanded ? "rotate-90" : ""}`}
+                strokeWidth={2}
+                aria-hidden
+              />
+            </button>
+            <div className="min-w-0">
+              <Link
+                href={`/products/${row.productId}`}
+                className="block truncate text-[length:var(--text-body-sm)] font-semibold text-ink hover:text-brand-link focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-focus"
+                title={row.name}
+              >
+                {row.name}
+              </Link>
+              <p className="truncate font-mono text-[length:var(--text-caption)] text-ink-tertiary">
+                {row.sku}
+                {row.market ? ` · ${row.market}` : ""}
+              </p>
+            </div>
+          </div>
+        </td>
+        {board.anyOverdue ? (
+          <Td numeric>
+            {row.overdue > 0 ? (
+              <span className="font-semibold text-accent-red">{num(row.overdue)}</span>
+            ) : (
+              <span className="text-ink-disabled">—</span>
+            )}
+          </Td>
+        ) : null}
+        {board.columns.map((column) => (
+          <Td key={column.key} numeric>
+            <Cell value={row.byColumn[column.key]} />
+          </Td>
+        ))}
+        <Td numeric>
+          <span className="font-semibold text-ink">{num(row.committed)}</span>
+        </Td>
+        <Td numeric>{row.orders}</Td>
+        <Td numeric>
+          {row.stockCartons === null ? (
+            <span className="text-ink-disabled">—</span>
+          ) : (
+            num(row.stockCartons)
+          )}
+        </Td>
+        <Td numeric className="pr-lg">
+          {row.shortBy === null ? (
+            <span className="text-ink-disabled">—</span>
+          ) : row.shortBy > 0 ? (
+            <span className="font-semibold text-accent-red">{num(row.shortBy)}</span>
+          ) : (
+            <span className="text-ink-disabled">—</span>
+          )}
+        </Td>
+      </tr>
+      {expanded
+        ? row.lines.map((line) => (
+            <OrderRow key={line.purchaseOrderId} line={line} board={board} />
+          ))
+        : null}
+    </>
+  );
+}
+
+/**
+ * One open order's share, in the same columns as the total above it.
+ *
+ * On hand and Short by stay empty rather than reading `—`: stock is held per
+ * product, not per order, so a dash here would be answering a question that
+ * was never asked of this row.
+ */
+function OrderRow({ line, board }: { line: DemandLine; board: DemandBoard }) {
+  return (
+    <tr className="border-b border-hairline bg-surface-soft/40 last:border-0">
+      <td className="sticky left-0 z-10 max-w-72 bg-canvas py-sm pl-lg pr-md">
+        <div className="pl-[calc(var(--spacing-xs)+1.5rem)]">
+          <Link
+            href={`/purchase-orders/${line.purchaseOrderId}`}
+            className="block truncate text-[length:var(--text-body-sm)] text-ink hover:text-brand-link focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-focus"
+            title={`${line.buyerName} · ${line.label}`}
+          >
+            {line.buyerName}
+          </Link>
+          <p className="flex items-center gap-xxs truncate text-[length:var(--text-caption)] text-ink-tertiary">
+            <span className="truncate">{line.label}</span>
+            <span aria-hidden>·</span>
+            <span className="shrink-0">{line.deliveryDate}</span>
+            {/* How late, beside the date it is measured from rather than in
+                the Overdue column: a numeric column that also carries words
+                cannot be read across, copied, or totalled by eye. */}
+            {line.daysLate > 0 ? (
+              <span className="shrink-0 font-medium text-accent-red">
+                · {line.daysLate} day{line.daysLate === 1 ? "" : "s"} late
+              </span>
+            ) : null}
+          </p>
+          <p className="mt-xxs">
+            <StageBadge stage={line.stage} state="done" compact />
+          </p>
+        </div>
+      </td>
+      {board.anyOverdue ? (
+        <Td numeric>
+          {line.columnKey === null ? (
+            <span className="font-semibold text-accent-red">{num(line.cartons)}</span>
+          ) : (
+            <span className="text-ink-disabled">—</span>
+          )}
+        </Td>
+      ) : null}
+      {board.columns.map((column) => (
+        <Td key={column.key} numeric>
+          {line.columnKey === column.key ? (
+            num(line.cartons)
+          ) : (
+            <span className="text-ink-disabled">—</span>
+          )}
+        </Td>
+      ))}
+      <Td numeric>{num(line.cartons)}</Td>
+      <Td numeric />
+      <Td numeric />
+      <Td numeric className="pr-lg" />
+    </tr>
   );
 }
 

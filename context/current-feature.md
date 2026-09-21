@@ -1,4 +1,114 @@
-# Current Feature: The demand board
+# Current Feature: What each demand figure is made of
+
+## Status
+
+**Built and driven in a browser on `claude/session-cloud-location-aszckl`**
+(2026-09-21). Asked for as: "For the demand board, how can we let the planning
+team know the breakdown of each demand? lets say the total demand for a product
+is 100, what's the breakdown? which PO is it from? which buyer? which market?"
+
+**A product row opens in place, one sub-row per open order**, in the same
+columns as the total above it. The caret expands; the product name still links
+to the product. Each sub-row reads the buyer, the order's own identifier, its
+expected date, how late it is if it is late, and its stage — then puts its
+cartons in the period column the parent counted them in.
+
+**Expanded in place rather than in a panel, and that is the whole point.** A
+planner reading `371` asks two things at once — who wants it, and does that add
+up — and only sub-rows in the same grid answer the second. The breakdown lands
+under the figure it explains, so the addition is visible rather than promised.
+The cost is width: a stage, a date and a link do not fit in a numeric column,
+so they live in the product column, the one with room.
+
+**One entry per purchase order, never per line item.** A document that prints
+the same product twice is still one promise, to one buyer, on one date, so the
+two line items collapse into one sub-row. That is also what keeps the breakdown
+honest against the row it sits under: the number of sub-rows equals the row's
+existing **Orders** figure, and their cartons sum to its columns. Grouping by
+line would have made a row read "10 orders" above eleven sub-rows.
+
+**Market is on the product, not on the order.** The question asked for market
+too — but a row *is* one product, so its market (Super Indo, Lotus) is constant
+down the whole breakdown and already sits under the SKU. Repeating it on every
+sub-row would be ten copies of one fact. What varies per order is the buyer,
+and that leads each sub-row.
+
+**In the same payload, not a second fetch.** `loadDemandBoard` already reads
+every open line and aggregates in memory; it now keeps what it was discarding.
+A per-cell server action would add a spinner and a round trip for data already
+in hand. The swap point is recorded rather than pre-built: past a few thousand
+open lines, this wants `loadDemandCell(productId, bucketKey, grain)` on expand.
+
+**The select stays narrow deliberately.** `Buyer.name` and nothing else —
+`Buyer.remark` is an internal note about the customer, and a select that
+reaches that row once tends to keep reaching it. Pinned by equality in a test,
+the same guard `shop-viewer.test.ts` uses.
+
+**How late, next to the date it is measured from** — `12 Sep 2026 · 9 days
+late` — rather than inside the Overdue column. A numeric column carrying words
+cannot be read across, copied or totalled by eye; the browser drive caught that
+directly (see below). Days are real calendar days, so the figure reads the same
+whichever grain is open, and the worst offender sorts first.
+
+**The dash rule carries down**: a sub-row's empty period is `—`, not `0`. On
+hand and Short by are left **blank** on a sub-row rather than dashed — stock is
+held per product, not per order, so a dash there would answer a question nobody
+asked of that row.
+
+## Verified, with the figures
+
+Development, port 3000, as the seeded super admin, board opening 21 Sep 2026.
+
+- **The breakdown reconciles, measured rather than eyeballed.** MR.KING 1.5L —
+  Lemon, expanded: parent columns **46 · 36 · 371 · 97**, committed **550**,
+  orders **10**. Summing the ten sub-rows' own cells: **46 · 36 · 371 · 97**,
+  committed **550**, **10** sub-rows. Columns agree, committed agrees, and the
+  sub-row count equals the Orders figure.
+- **The rows read as records.** `Meridian Chemicals · PO number PO-2026-0039 ·
+  12 Sep 2026 · 9 days late · Delivering — 27 cartons`, and
+  `Pacific Timber · PO-2026-0025 · 16 Sep 2026 · 5 days late · In warehouse —
+  19`. 27 + 19 = the parent's 46 overdue.
+- **A defect the browser found that the tests could not.** With the lateness
+  inside the Overdue column, the cell's text was `27` and `9d late` with
+  nothing between them, so reading the column gave **474** where the parent
+  said **46** — two figures glued into one. Visually it was two lines; to
+  anything reading the text it was nonsense. Moving the caption beside the date
+  fixed it, re-measured at **46**.
+- **Expanding and collapsing:** 12 tbody rows → **22** with one product open →
+  **12** again. `aria-expanded` moves `false` → `true`; the toggle is named
+  "Show the 10 orders behind MR.KING 1.5L — Lemon".
+- **Phone.** The toggle measures **44×44** at 390, and the page does not
+  overflow expanded — **390/390**, and 1440/1440 on the desktop.
+- **The grouping guard was watched failing.** Keyed per line item instead of
+  per purchase order, **two** tests go red: the entry count (3 line items
+  reading as 3 entries where 2 orders exist) and the sums-to-parent check,
+  whose fixture carries a doubled order for exactly that reason. The first
+  version of that fixture did not discriminate — four distinct orders sum the
+  same either way — so it was strengthened until it did.
+- **1318/1318 tests across 101 files** (4 new), `tsc`, lint (the same 2
+  pre-existing warnings) and `npm run build` clean.
+
+## Not verified
+
+- **Anything on production.** Not deployed, and no production row was read.
+  Every figure above is seeded data.
+- **A product with one order**, and a product whose breakdown is long enough to
+  scroll. The widest tried was ten sub-rows.
+- **The breakdown at daily and monthly grain.** The sub-row puts its cartons in
+  whichever column the parent counted them in, and the tests cover the
+  bucketing, but only the weekly board was expanded in a browser.
+- **A shop order's sub-row on screen.** `Order ID W-…` is covered by a unit
+  test; every seeded open order in development is a scan, so the live rows all
+  read `PO number …`.
+- **Keyboard and screen reader.** The toggle carries `aria-expanded` and a
+  named label, unexercised by anything but a click.
+- **Expansion across a grain change.** Changing grain navigates, so the open
+  set resets — correct, since the columns change, but not driven.
+
+## Previous phase
+
+**The demand board**
+
 
 ## Status
 

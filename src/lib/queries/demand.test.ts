@@ -15,11 +15,21 @@ const line = (over: {
   deliveryDate?: string;
   orderId?: string;
   stockCartons?: number | null;
+  buyer?: string;
+  poNumber?: string | null;
+  webOrder?: string | null;
 }) => ({
   quantity: over.cartons ?? 10,
   productId: "productId" in over ? over.productId : "p1",
   purchaseOrderId: over.orderId ?? "po1",
-  purchaseOrder: { deliveryDate: new Date(`${over.deliveryDate ?? "2026-09-09"}T00:00:00Z`) },
+  purchaseOrder: {
+    deliveryDate: new Date(`${over.deliveryDate ?? "2026-09-09"}T00:00:00Z`),
+    stage: "ORDER_PLACED",
+    buyer: { name: over.buyer ?? "Acme Industrial Sdn Bhd" },
+    poNumber: "poNumber" in over ? over.poNumber : "PO-2026-0001",
+    buyerReference: null,
+    webOrder: over.webOrder ? { reference: over.webOrder } : null,
+  },
   product: {
     sku: over.sku ?? "SKU-1",
     name: "ZEN 2.1L",
@@ -245,5 +255,101 @@ describe("loadDemandBoard, by month", () => {
     findMany.mockResolvedValue([line({ cartons: 30, deliveryDate: "2026-08-24" })]);
     const august = await loadDemandBoard("month", DEMAND_SPAN.month, NOW);
     expect(august.rows[0].overdue).toBe(30);
+  });
+});
+
+describe("the breakdown behind each figure", () => {
+  it("is one entry per order, not per line item", async () => {
+    // One document printing the same product twice, and a second order.
+    findMany.mockResolvedValue([
+      line({ cartons: 12, orderId: "a", deliveryDate: "2026-09-09" }),
+      line({ cartons: 8, orderId: "a", deliveryDate: "2026-09-09" }),
+      line({ cartons: 5, orderId: "b", deliveryDate: "2026-09-09" }),
+    ]);
+    const board = await loadDemandBoard("week", DEMAND_SPAN.week, NOW);
+    const [row] = board.rows;
+    // Three line items, two promises.
+    expect(row.lines).toHaveLength(2);
+    expect(row.lines.map((l) => l.purchaseOrderId).sort()).toEqual(["a", "b"]);
+    expect(row.lines.find((l) => l.purchaseOrderId === "a")!.cartons).toBe(20);
+  });
+
+  /**
+   * The guard that makes the breakdown trustworthy: it has to agree with the
+   * row it sits under, or the reader is being shown two different answers to
+   * the same question in one grid.
+   */
+  it("sums to the row it sits under, per column and in total", async () => {
+    findMany.mockResolvedValue([
+      line({ cartons: 12, orderId: "a", deliveryDate: "2026-09-09" }),
+      // Order `a` again, so `lines.length === orders` discriminates here too:
+      // per-line grouping would make it five entries against four orders.
+      line({ cartons: 3, orderId: "a", deliveryDate: "2026-09-09" }),
+      line({ cartons: 8, orderId: "b", deliveryDate: "2026-09-16" }),
+      line({ cartons: 5, orderId: "c", deliveryDate: "2026-09-16" }),
+      line({ cartons: 30, orderId: "d", deliveryDate: "2026-08-24" }),
+    ]);
+    const board = await loadDemandBoard("week", DEMAND_SPAN.week, NOW);
+    const [row] = board.rows;
+
+    // One entry per order, and that count is the figure the Orders column shows.
+    expect(row.lines).toHaveLength(row.orders);
+
+    for (const column of board.columns) {
+      const fromLines = row.lines
+        .filter((l) => l.columnKey === column.key)
+        .reduce((sum, l) => sum + l.cartons, 0);
+      expect(fromLines).toBe(row.byColumn[column.key] ?? 0);
+    }
+    const late = row.lines
+      .filter((l) => l.columnKey === null)
+      .reduce((sum, l) => sum + l.cartons, 0);
+    expect(late).toBe(row.overdue);
+    expect(row.lines.reduce((sum, l) => sum + l.cartons, 0)).toBe(row.committed);
+  });
+
+  it("names the buyer and the order, and says how late a late one is", async () => {
+    findMany.mockResolvedValue([
+      line({
+        cartons: 30,
+        orderId: "late",
+        deliveryDate: "2026-08-27",
+        buyer: "Kelana Steel",
+      }),
+      line({
+        cartons: 4,
+        orderId: "soon",
+        deliveryDate: "2026-09-09",
+        buyer: "Northwind Traders",
+        poNumber: null,
+        webOrder: "W-2609-00014",
+      }),
+    ]);
+    const board = await loadDemandBoard("week", DEMAND_SPAN.week, NOW);
+    const [worst, next] = board.rows[0].lines;
+
+    // Worst lateness first: 7 Sep less 27 Aug is eleven days.
+    expect(worst.buyerName).toBe("Kelana Steel");
+    expect(worst.daysLate).toBe(11);
+    expect(worst.columnKey).toBeNull();
+    expect(worst.label).toBe("PO number PO-2026-0001");
+    expect(worst.deliveryDate).toBe("27 Aug 2026");
+
+    // A shop order is named by its Order ID, never by the other column.
+    expect(next.buyerName).toBe("Northwind Traders");
+    expect(next.daysLate).toBe(0);
+    expect(next.label).toBe("Order ID W-2609-00014");
+  });
+
+  /**
+   * `Buyer.remark` is an internal note about the customer. This board has no
+   * business reading it, and a select that reaches a Buyer row once tends to
+   * keep reaching it — so the shape is pinned rather than described.
+   */
+  it("reads the buyer's name and nothing else off that row", async () => {
+    findMany.mockResolvedValue([]);
+    await loadDemandBoard("week", DEMAND_SPAN.week, NOW);
+    const select = findMany.mock.calls.at(-1)![0].select;
+    expect(select.purchaseOrder.select.buyer).toEqual({ select: { name: true } });
   });
 });

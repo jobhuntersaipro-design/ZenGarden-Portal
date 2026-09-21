@@ -1,7 +1,9 @@
-import { addDays, addMonths, addWeeks } from "date-fns";
+import { addDays, addMonths, addWeeks, differenceInCalendarDays } from "date-fns";
 import { PoStage } from "@/generated/prisma/enums";
 import { prisma } from "@/lib/prisma";
 import { bucketKey, makeBuckets } from "@/lib/analytics/buckets";
+import { formatDate } from "@/lib/dates";
+import { ORDER_IDENTITY_SELECT, orderIdentity, orderLabel } from "@/lib/order-identity";
 import { DEMAND_SPAN, type DemandGrain } from "@/lib/planning/grain";
 
 export { DEMAND_SPAN, type DemandGrain } from "@/lib/planning/grain";
@@ -12,6 +14,31 @@ export type DemandWindow = number | "all";
 const STEP = { day: addDays, week: addWeeks, month: addMonths } as const;
 
 export type DemandColumn = { key: string; label: string };
+
+/**
+ * One open purchase order's share of a product's demand — the answer to
+ * "the 371 is made of what?".
+ *
+ * **One per purchase order, not per line item.** A document that prints the
+ * same product twice is still one promise to one buyer on one date, so the two
+ * line items collapse here. That is also what keeps the breakdown honest
+ * against the row it sits under: the number of these equals the row's `orders`
+ * figure, and their cartons sum to its columns.
+ */
+export type DemandLine = {
+  purchaseOrderId: string;
+  /** `Order ID W-…` or `PO number …` — one identifier, named, never both. */
+  label: string;
+  buyerName: string;
+  stage: PoStage;
+  /** Formatted in Kuala Lumpur on the server, so the browser cannot drift it. */
+  deliveryDate: string;
+  cartons: number;
+  /** The column these cartons sit in, or null when the order is overdue. */
+  columnKey: string | null;
+  /** Calendar days past the expected date; 0 unless overdue. */
+  daysLate: number;
+};
 
 export type DemandRow = {
   productId: string;
@@ -34,6 +61,9 @@ export type DemandRow = {
    * counted. Never negative: a surplus is not a shortfall.
    */
   shortBy: number | null;
+  /** What the row's figures are made of: one entry per open order, worst
+   * lateness first, then soonest expected. */
+  lines: DemandLine[];
 };
 
 export type DemandBoard = {
@@ -93,7 +123,18 @@ export async function loadDemandBoard(
       quantity: true,
       productId: true,
       purchaseOrderId: true,
-      purchaseOrder: { select: { deliveryDate: true } },
+      purchaseOrder: {
+        select: {
+          deliveryDate: true,
+          stage: true,
+          // Narrow on purpose: the planning board needs the buyer's name and
+          // nothing else off that row. `Buyer.remark` is an internal note
+          // about the customer, and a select that reaches it once tends to
+          // keep reaching it. Pinned by equality in the tests.
+          buyer: { select: { name: true } },
+          ...ORDER_IDENTITY_SELECT,
+        },
+      },
       product: {
         select: {
           sku: true,
@@ -119,6 +160,10 @@ export async function loadDemandBoard(
 
   const rows = new Map<string, DemandRow>();
   const seenOrders = new Map<string, Set<string>>();
+  // product id → purchase order id → that order's share of this product.
+  // Keyed by order rather than by line, so a document printing the same
+  // product twice is one entry carrying both line items' cartons.
+  const byOrder = new Map<string, Map<string, DemandLine>>();
   const totals: DemandBoard["totals"] = { byColumn: {}, overdue: 0, committed: 0 };
   const allOrders = new Set<string>();
 
@@ -146,6 +191,9 @@ export async function loadDemandBoard(
         committed: 0,
         orders: 0,
         shortBy: null,
+        // Both filled once every line has been seen: `orders` from the
+        // distinct order ids, `lines` from the per-order breakdown.
+        lines: [],
       } satisfies DemandRow);
 
     if (late) {
@@ -163,6 +211,27 @@ export async function loadDemandBoard(
     seenOrders.set(line.productId, orders);
     allOrders.add(line.purchaseOrderId);
 
+    const breakdown = byOrder.get(line.productId) ?? new Map<string, DemandLine>();
+    const already = breakdown.get(line.purchaseOrderId);
+    if (already) {
+      already.cartons += cartons;
+    } else {
+      const due = line.purchaseOrder.deliveryDate;
+      breakdown.set(line.purchaseOrderId, {
+        purchaseOrderId: line.purchaseOrderId,
+        label: orderLabel(orderIdentity(line.purchaseOrder)),
+        buyerName: line.purchaseOrder.buyer.name,
+        stage: line.purchaseOrder.stage,
+        deliveryDate: formatDate(due),
+        cartons,
+        columnKey: late ? null : key,
+        // Real calendar days, not periods: "eleven days late" is what a
+        // planner acts on, and it reads the same whichever grain is open.
+        daysLate: late ? Math.max(0, differenceInCalendarDays(now, due)) : 0,
+      });
+    }
+    byOrder.set(line.productId, breakdown);
+
     rows.set(line.productId, row);
   }
 
@@ -173,6 +242,14 @@ export async function loadDemandBoard(
       row.stockCartons === null
         ? null
         : Math.max(0, row.committed - row.stockCartons),
+    // Worst lateness first — an order eleven days late is the one to ring
+    // about — then the soonest expected, which is the order they ship in.
+    lines: [...(byOrder.get(row.productId)?.values() ?? [])].sort(
+      (a, b) =>
+        b.daysLate - a.daysLate ||
+        (a.columnKey ?? "").localeCompare(b.columnKey ?? "") ||
+        b.cartons - a.cartons,
+    ),
   }));
 
   // Most committed first: the board is read to decide what to make next, and
