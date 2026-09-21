@@ -228,32 +228,53 @@ function ProductRows({
 /**
  * One open order's share, in the same columns as the total above it.
  *
+ * **The identifier is the link, and it never truncates.** It is the thing a
+ * planner carries out of this row — into a search, a phone call, the order's
+ * own page — so a squeezed `Order ID W-2609-0…` is the one abbreviation this
+ * row cannot afford. It is `whitespace-nowrap`, and the caption wraps onto a
+ * second line rather than shortening it; the buyer's name above it truncates
+ * instead, with the full value in `title`, which is 00-master §4's
+ * truncation-recovery rule. The buyer is no longer a link of its own: two
+ * links a line apart pointing at the same purchase order read as two
+ * destinations to anything that lists them.
+ *
  * On hand and Short by stay empty rather than reading `—`: stock is held per
  * product, not per order, so a dash here would be answering a question that
  * was never asked of this row.
  */
-function OrderRow({ line, board }: { line: DemandLine; board: DemandBoard }) {
+export function OrderRow({ line, board }: { line: DemandLine; board: DemandBoard }) {
   return (
     <tr className="border-b border-hairline bg-surface-soft/40 last:border-0">
       <td className="sticky left-0 z-10 max-w-72 bg-canvas py-sm pl-lg pr-md">
         <div className="pl-[calc(var(--spacing-xs)+1.5rem)]">
-          <Link
-            href={`/purchase-orders/${line.purchaseOrderId}`}
-            className="block truncate text-[length:var(--text-body-sm)] text-ink hover:text-brand-link focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-focus"
-            title={`${line.buyerName} · ${line.label}`}
+          <p
+            className="truncate text-[length:var(--text-body-sm)] text-ink"
+            title={line.buyerName}
           >
             {line.buyerName}
-          </Link>
-          <p className="flex items-center gap-xxs truncate text-[length:var(--text-caption)] text-ink-tertiary">
-            <span className="truncate">{line.label}</span>
-            <span aria-hidden>·</span>
-            <span className="shrink-0">{line.deliveryDate}</span>
+          </p>
+          {/* Wraps rather than squeezes. Every part carries its own leading
+              separator — spaces included, since a flex item's text is
+              concatenated with its neighbour's when the line is read out or
+              copied, and `PO-2026-0039· 12 Sep` is two facts glued into one.
+              A leading space is dropped at the start of a line box, so the
+              gap on screen is the `gap-x-xxs` either way, and a part that
+              drops to the next line does not strand a `·` above it. */}
+          <p className="flex flex-wrap items-center gap-x-xxs text-[length:var(--text-caption)] text-ink-tertiary">
+            <Link
+              href={`/purchase-orders/${line.purchaseOrderId}`}
+              className="whitespace-nowrap font-medium text-ink-secondary hover:text-brand-link focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-focus"
+            >
+              {line.label}
+            </Link>
+            <span className="whitespace-nowrap">{" · "}{line.deliveryDate}</span>
             {/* How late, beside the date it is measured from rather than in
                 the Overdue column: a numeric column that also carries words
                 cannot be read across, copied, or totalled by eye. */}
             {line.daysLate > 0 ? (
-              <span className="shrink-0 font-medium text-accent-red">
-                · {line.daysLate} day{line.daysLate === 1 ? "" : "s"} late
+              <span className="whitespace-nowrap font-medium text-accent-red">
+                {" · "}
+                {line.daysLate} day{line.daysLate === 1 ? "" : "s"} late
               </span>
             ) : null}
           </p>

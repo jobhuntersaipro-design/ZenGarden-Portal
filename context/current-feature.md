@@ -13,6 +13,27 @@ to the product. Each sub-row reads the buyer, the order's own identifier, its
 expected date, how late it is if it is late, and its stage — then puts its
 cartons in the period column the parent counted them in.
 
+**The order's identifier is the link, and it never truncates** — fixed on
+2026-09-21 after the user read it cut to `PO number PO-2...` on screen. Two
+faults in one line: the caption was a `flex` row with `truncate`, and only the
+identifier could give way (the date and the lateness beside it were
+`shrink-0`), so on a late row it was squeezed to **107px of the 154px it
+needs**; and the link was on the *buyer's name*, not on the thing a planner
+carries out of the row. The caption now **wraps** rather than squeezes, the
+identifier is `whitespace-nowrap`, and it is itself the link to
+`/purchase-orders/{id}`. The buyer's name is what gives way instead, with the
+full value in `title` — 00-master §4's truncation-recovery rule — and it is no
+longer a link of its own: two links a line apart pointing at the same purchase
+order read as two destinations to anything that lists them.
+
+**Each part of the caption carries its own leading separator, spaces
+included.** Flex items concatenate when a line is read out or copied, so
+`PO-2026-0039· 12 Sep 2026` was two facts glued into one — the same defect
+class as the `279d late` below, caught the same way. A leading space is
+dropped at the start of a line box, so the gap on screen is still the
+`gap-x-xxs`; and a part that drops to the next line does not strand a `·`
+above it.
+
 **Expanded in place rather than in a panel, and that is the whole point.** A
 planner reading `371` asks two things at once — who wants it, and does that add
 up — and only sub-rows in the same grid answer the second. The breakdown lands
@@ -44,8 +65,8 @@ open lines, this wants `loadDemandCell(productId, bucketKey, grain)` on expand.
 reaches that row once tends to keep reaching it. Pinned by equality in a test,
 the same guard `shop-viewer.test.ts` uses.
 
-**How late, next to the date it is measured from** — `12 Sep 2026 · 9 days
-late` — rather than inside the Overdue column. A numeric column carrying words
+**How late, next to the date it is measured from** — `PO number PO-2026-0039 ·
+12 Sep 2026 · 9 days late` — rather than inside the Overdue column. A numeric column carrying words
 cannot be read across, copied or totalled by eye; the browser drive caught that
 directly (see below). Days are real calendar days, so the figure reads the same
 whichever grain is open, and the worst offender sorts first.
@@ -79,14 +100,50 @@ Development, port 3000, as the seeded super admin, board opening 21 Sep 2026.
   "Show the 10 orders behind MR.KING 1.5L — Lemon".
 - **Phone.** The toggle measures **44×44** at 390, and the page does not
   overflow expanded — **390/390**, and 1440/1440 on the desktop.
+- **The cut-off identifier, measured both ways.** With the old markup put back
+  and driven again, the two late rows read the identifier at **107px of the
+  154px it needs**, `clipped = true`, `text-overflow: ellipsis` — on screen
+  `PO number PO-2...`, which is what was reported. The unlate row below them
+  was **154/154** and not clipped, which is why only some rows showed it. With
+  the fix, **all ten** sub-rows read `scrollWidth === clientWidth`
+  (155–156px), `white-space: nowrap`, `text-overflow: clip` — and the same
+  **156/156** at 390, where the date and the lateness wrap to a second line
+  instead.
+- **The link is on the identifier, and it goes where it says.** One `<a>` per
+  sub-row (counted), `href="/purchase-orders/po_u3q5jfok39ed69ytblfq"` on the
+  text `PO number PO-2026-0039`. Clicked, it landed on `/purchase-orders/
+  po_u3q5jfok39ed69ytblfq` titled **"PO number PO-2026-0039 · Zen Garden
+  Portal"** under the heading **Meridian Chemicals** — the same buyer and the
+  same number the sub-row named. Under the old markup that same click was on
+  the buyer's name.
+- **The captions read as sentences, not as glue.** All ten, off the rendered
+  text: `Meridian Chemicals ⟶ PO number PO-2026-0039 · 12 Sep 2026 · 9 days
+  late`, `Pacific Timber ⟶ PO number PO-2026-0025 · 16 Sep 2026 · 5 days
+  late`, `Tanjung Electrical ⟶ PO number PO-2026-0027 · 27 Sep 2026`. Before
+  the space was added to each separator they read `PO-2026-0039· 12 Sep 2026`.
+- **Four of the six new guards were watched failing** against the old markup:
+  the link is on the identifier, the identifier is never shortened, the
+  buyer's full name is in `title`, and the separator carries its space. The
+  two that passed either way are the ones asserting *absence* — exactly one
+  link, and no lateness on an order that is not late.
+- **The reconciliation still holds after the change** — re-measured, not
+  assumed: parent **46 · 36 · 371 · 97**, committed **550**, orders **10**;
+  sub-row sums **46 · 36 · 371 · 97**, committed **550**, **10** sub-rows.
+- **The console is clean.** The only failed request is
+  `va.vercel-scripts.com/v1/speed-insights/script.debug.js` —
+  `ERR_TUNNEL_CONNECTION_FAILED`, this container's blocked egress, not the
+  page.
 - **The grouping guard was watched failing.** Keyed per line item instead of
   per purchase order, **two** tests go red: the entry count (3 line items
   reading as 3 entries where 2 orders exist) and the sums-to-parent check,
   whose fixture carries a doubled order for exactly that reason. The first
   version of that fixture did not discriminate — four distinct orders sum the
   same either way — so it was strengthened until it did.
-- **1318/1318 tests across 101 files** (4 new), `tsc`, lint (the same 2
-  pre-existing warnings) and `npm run build` clean.
+- **1325/1325 tests across 102 files** (4 on the breakdown, 7 on the sub-row's
+  identifier), `tsc`, lint (the same 2 pre-existing warnings) and
+  `npm run build` clean. The 103rd file, `catalog-import.test.ts`, fails to
+  import in this container only — `xlsx` installs from cdn.sheetjs.com, which
+  the network policy answers 403 to, and the local stand-in throws by design.
 
 ## Not verified
 
@@ -99,7 +156,11 @@ Development, port 3000, as the seeded super admin, board opening 21 Sep 2026.
   bucketing, but only the weekly board was expanded in a browser.
 - **A shop order's sub-row on screen.** `Order ID W-…` is covered by a unit
   test; every seeded open order in development is a scan, so the live rows all
-  read `PO number …`.
+  read `PO number …` — 155–156px, and the longest identifier measured. A
+  `W-` reference is shorter, so nothing here widens it.
+- **An identifier long enough to need the second line to itself.** The caption
+  wraps, proven at 390 where the date drops below it, but no label was long
+  enough to wrap on its own.
 - **Keyboard and screen reader.** The toggle carries `aria-expanded` and a
   named label, unexercised by anything but a click.
 - **Expansion across a grain change.** Changing grain navigates, so the open
