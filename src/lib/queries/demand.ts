@@ -6,12 +6,7 @@ import { formatDate } from "@/lib/dates";
 import { ORDER_IDENTITY_SELECT, orderIdentity, orderLabel } from "@/lib/order-identity";
 import { DEMAND_SPAN, type DemandGrain } from "@/lib/planning/grain";
 
-export {
-  DEMAND_CEILING,
-  DEMAND_SPAN,
-  DEMAND_UNIT,
-  type DemandGrain,
-} from "@/lib/planning/grain";
+export { DEMAND_CEILING, DEMAND_SPAN, type DemandGrain } from "@/lib/planning/grain";
 
 export type DemandWindow = number | "all";
 
@@ -22,16 +17,11 @@ export type DemandWindow = number | "all";
  * board follows them: search a buyer and a row's cartons, Committed and
  * Orders are that buyer's alone. A board that kept whole totals above a
  * filtered breakdown would be showing a number it is not displaying.
- *
- * `overdueOnly` is the exception, and deliberately narrows **rows** instead:
- * a planner chasing a late order needs to see what else that product has
- * coming, not a board emptied of everything but the lateness.
  */
 export type DemandFilters = {
   q?: string;
   family?: string;
   productId?: string;
-  overdueOnly?: boolean;
 };
 
 /** A value the filter selects offer, and the count beside it. */
@@ -372,10 +362,6 @@ export async function loadDemandBoard({
   }
 
   const out = [...rows.values()]
-    // Only products with something late. A row filter, not a line filter:
-    // the orders that are *not* late are the context for chasing the one
-    // that is — when it will be made, and what else is queued behind it.
-    .filter((row) => !filters.overdueOnly || row.overdue > 0)
     .map((row) => ({
       ...row,
       orders: seenOrders.get(row.productId)?.size ?? 0,

@@ -8,12 +8,7 @@ import { ChoiceButton } from "@/components/portal/ChoiceButton";
 import { SegmentGroup } from "@/components/portal/SegmentGroup";
 import { usePendingChoice } from "@/hooks/usePendingChoice";
 import { useUrlNavigation } from "@/hooks/useUrlNavigation";
-import {
-  DEMAND_CEILING,
-  DEMAND_SPAN,
-  DEMAND_UNIT,
-  type DemandGrain,
-} from "@/lib/planning/grain";
+import { DEMAND_SPAN, type DemandGrain } from "@/lib/planning/grain";
 import type { DemandOption } from "@/lib/queries/demand";
 
 const GRAINS: { value: DemandGrain; label: string }[] = [
@@ -36,11 +31,6 @@ const SELECT =
  * reinterpreting the number would change the question without saying so. The
  * new grain opens at its own default.
  *
- * **The span is not a fixed menu.** The chips are the spans people ask for
- * most; the box beside them takes any number up to `DEMAND_CEILING`, so a
- * planner who wants the next 90 days types 90 rather than jumping to "All
- * open" and reading a year of columns.
- *
  * One `usePendingChoice` per strip, so a grain click never spins the span.
  */
 export function DemandToolbar({
@@ -62,10 +52,6 @@ export function DemandToolbar({
   const grains = usePendingChoice<DemandGrain>(grain);
   const windows = usePendingChoice<string>(window);
   const [query, setQuery] = useState(searchParams.get("q") ?? "");
-  // Held locally while it is being typed: a span is committed on Enter or on
-  // blur, never per keystroke, or "120" would redraw the board at 1, then 12.
-  const onAChip = spans.some((s) => s.value === window);
-  const [span, setSpan] = useState(onAChip ? "" : window);
   const timer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   useEffect(
@@ -91,19 +77,6 @@ export function DemandToolbar({
         ? { by: next.by, window: String(DEMAND_SPAN[next.by]) }
         : { window: next.window ?? null },
     );
-
-  const commitSpan = () => {
-    const value = Number(span);
-    if (!Number.isInteger(value) || value < 1 || value > DEMAND_CEILING[grain]) {
-      // Refused rather than clamped: a silently corrected 900 would look
-      // like the board answered the question that was asked.
-      setSpan(onAChip ? "" : window);
-      return;
-    }
-    windows.choose(String(value), href({ window: String(value) }));
-  };
-
-  const overdueOnly = searchParams.get("overdue") === "1";
 
   return (
     <div className="flex flex-col gap-sm">
@@ -137,29 +110,6 @@ export function DemandToolbar({
             </ChoiceButton>
           ))}
         </SegmentGroup>
-
-        <label className="flex items-center gap-xs text-[length:var(--text-caption)] text-ink-tertiary">
-          <span>or next</span>
-          <Input
-            type="number"
-            min={1}
-            max={DEMAND_CEILING[grain]}
-            inputMode="numeric"
-            aria-label={`Show the next N ${DEMAND_UNIT[grain]}, up to ${DEMAND_CEILING[grain]}`}
-            placeholder="90"
-            value={span}
-            onChange={(event) => setSpan(event.target.value)}
-            onBlur={commitSpan}
-            onKeyDown={(event) => {
-              if (event.key === "Enter") {
-                event.preventDefault();
-                commitSpan();
-              }
-            }}
-            className="h-control-md sm:h-control-sm w-20 text-center"
-          />
-          <span>{DEMAND_UNIT[grain]}</span>
-        </label>
       </div>
 
       <div className="flex flex-wrap items-center gap-sm">
@@ -219,16 +169,6 @@ export function DemandToolbar({
             ))}
           </select>
         ) : null}
-
-        {/* A toggle rather than a chip strip: there is one thing to say here,
-            and "All" beside "Overdue" would imply a third state. */}
-        <ChoiceButton
-          look="pill"
-          selected={overdueOnly}
-          onClick={() => write({ overdue: overdueOnly ? null : "1" })}
-        >
-          Overdue only
-        </ChoiceButton>
       </div>
     </div>
   );

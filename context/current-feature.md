@@ -9,6 +9,12 @@ unlimited day, let user pick. default next 30d, remove Next 7days"; "Rename on
 hand to stock count (carton)"; "Also add search bar to search anything"; "Add
 filter for family, product, overdue".
 
+**Trimmed the same day**, after the user read it on screen: "make it next 30d
+or 60d" and "Remove overdue only". The window is three chips again — **Next 30
+days · Next 60 days · All open** — with the typed box gone, and the Overdue
+only filter is gone with it. Both paragraphs below are corrected rather than
+deleted, because the reasoning that produced them is what the trim reverses.
+
 **Three decisions were the user's**, asked before building and all three taken
 as recommended: the dates are labelled lines on the sub-row rather than three
 new columns; the window is presets plus a box you type any number into; and
@@ -30,12 +36,21 @@ rounding up to "due today", which would be the board rounding in its own
 favour. The red `N days late` caption stays grain-relative, and the two never
 both show.
 
-**The window is no longer a menu of three.** `Next 7 days` is gone, daily
-opens at **30**, and a box beside the chips takes any number: 45, 90, 120. It
-is committed on Enter or on blur rather than per keystroke — typing 120 would
-otherwise redraw the board at 1, then 12 — and a number past the grain's
-ceiling is **refused rather than clamped**, because a silently corrected 900
-looks like the board answered the question that was asked.
+**The window is two spans and everything.** `Next 7 days` is gone and daily
+opens at **30**, beside **Next 60 days** and **All open**. The typed box that
+first replaced them lasted a few hours: it was built because the complaint was
+a menu boxed in at a fortnight, and once the chips read 30 and 60 the box was
+a third control for a question the two chips answer, carrying a defect of its
+own — it initialised once, so navigating to a chip left it reading a stale
+`14` beside "Next 30 days" selected, which is what the user was looking at
+when they asked for it to go.
+
+**A span outside the chips is still reachable, by URL.** `?window=45` draws 51
+columns with no chip selected, and a number past the grain's ceiling falls back
+to the grain's default rather than being clamped — a silently corrected 900
+would look like the board answered the question that was asked. The chips are
+the offer, not the limit; nothing in the toolbar advertises it, which is the
+honest cost of dropping the box.
 
 **The ceilings are 365 days, 260 weeks, 120 months**, and they are not
 opinions about how far ahead to plan — the old ones (a fortnight-ish per
@@ -56,10 +71,14 @@ the lines go past. That is what makes the previous paragraph true by
 construction instead of by discipline: the footer is the rows above it, and no
 filter can leave it counting a row it removed.
 
-**Overdue is the one filter that narrows rows, not lines.** A planner chasing
-a late order needs to see what else that product has coming — when it gets
-made, and what is queued behind it — not a board emptied of everything but the
-lateness.
+**Overdue only is gone**, at the user's request, and with it the one filter
+that narrowed rows rather than lines. It was built on the argument that a
+planner chasing a late order needs to see what else that product has coming —
+which is exactly why it earns its removal rather than a rewrite: the Overdue
+column is already the first column on the board, red, and sorts itself to the
+eye without emptying anything. A saved link still carrying `?overdue=1` is
+**ignored**, not half-applied: the board reads the same 26 orders and 12 rows
+as a plain one.
 
 **The pickers read the whole board, never the filtered one.** Family and
 product options come from the unfiltered pass, so narrowing to one family
@@ -82,13 +101,20 @@ Development, port 3000, as the seeded super admin, board opening 21 Sep 2026.
   Delivering`, and below it `Tanjung Electrical / PO-2026-0027 / PO date
   14 Sep 2026 / Expected 27 Sep 2026 · due in 6 days`, `Acme Industrial Sdn
   Bhd / … · due in 2 days`, `Sunway Packaging / … · due in 7 days`.
-- **Daily opens at 30 and `Next 7 days` is gone.** The chips read
-  **Next 30 days · Next 60 · All open**, with Next 30 days selected and
-  **36 columns** drawn.
-- **Typed spans work and are refused, not clamped.** `45` gave **51 columns**
-  with no chip selected; `?by=day&window=400` — past the 365 ceiling — fell
-  back to **36 columns** with Next 30 days selected; typing `900` into the box
-  left the URL on `?window=90` and put the box back to 90.
+- **The window is three chips and no box.** Read off the rendered toolbar:
+  **Next 30 days · Next 60 days · All open**, Next 30 days selected,
+  **36 columns**, and `input[type=number]` counted **0** on the page. Clicking
+  Next 60 days gave `?by=day&window=60` and **66 columns** — the same six
+  non-day columns beside 30 and 60.
+- **A URL span still works, and is refused rather than clamped.** `?window=45`
+  gave **51 columns** with **no chip selected**; `?window=400` — past the 365
+  ceiling — fell back to **36 columns** with Next 30 days selected.
+- **No Overdue only control, and a stale link carrying it is ignored.** Buttons
+  matching `/overdue/i` counted **0**. `?by=day&overdue=1` read
+  **26 open orders · 2,669 cartons · 12 rows** — character for character the
+  plain board — while `?q=Meridian` on the same pass still narrowed to
+  **2 open orders · 157 cartons · 6 rows** and said "every figure below counts
+  only what matches."
 - **Search narrows every figure, and the breakdown still adds up.** Unfiltered:
   **26 open orders · 2,669 cartons**. Searching `Meridian`: **2 open orders ·
   157 cartons · "every figure below counts only what matches."** Expanding the
@@ -102,8 +128,6 @@ Development, port 3000, as the seeded super admin, board opening 21 Sep 2026.
   cartons**, and the family select still offered **all 4 options** and the
   product select all **13** — a filter you can undo from the control that set
   it. The product filter narrowed to **1 row · 286 cartons**.
-- **Overdue only** gave **8 rows of 12**, every one of them carrying a figure
-  in the Overdue column rather than a dash, with their full breakdowns intact.
 - **Four counterfactuals watched failing.** Accumulating totals as the lines
   go past rather than summing the survivors, so the footer outlives the filter
   that removed its row; deriving the pickers from the filtered rows, so the
@@ -131,13 +155,16 @@ Development, port 3000, as the seeded super admin, board opening 21 Sep 2026.
   orders **421**, read back). On production every product has a family, so
   that select will be long — it is a plain `<select>`, unsearchable, and how
   it reads at 59 families was not seen.
-- **A span near the ceiling.** 45 and 90 were drawn; 365 days — 371 columns —
-  was not, and the board would be slow to lay out. The ceiling exists to stop
-  a typo, not because that span was measured.
+- **A span near the ceiling.** 45, 60 and 90 were drawn; 365 days — 371
+  columns — was not, and the board would be slow to lay out. The ceiling
+  exists to stop a typo, not because that span was measured.
+- **Whether anybody wants a span the chips do not offer.** The box was removed
+  before it was used in anger; if 90 days turns out to be a real question, it
+  is a fourth chip, not the box back.
 - **The search at volume.** It filters in memory over every open line, which
   is right at 1,672 and untested at a hundred thousand.
-- **Keyboard and screen reader.** The span box commits on Enter, which was
-  driven; the selects and the pill were clicked, not tabbed to.
+- **Keyboard and screen reader.** The chips and the selects were clicked, not
+  tabbed to.
 - **A saved link carrying a filter**, opened cold. Every control writes to the
   URL and the page reads it back, but only same-session navigation was driven.
 

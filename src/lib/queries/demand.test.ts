@@ -508,31 +508,6 @@ describe("narrowing the board", () => {
     expect(board.products.map((p) => p.label)).toEqual(["MR.KING", "ZEN 2.1L"]);
   });
 
-  /**
-   * Overdue narrows rows, not lines — on purpose. The orders that are *not*
-   * late are the context for chasing the one that is: when it gets made, and
-   * what is queued behind it.
-   */
-  it("keeps a late product's whole breakdown, and drops the products with none", async () => {
-    findMany.mockResolvedValue([
-      line({ productId: "p1", orderId: "late", deliveryDate: "2026-08-27", cartons: 30 }),
-      line({ productId: "p1", orderId: "soon", deliveryDate: "2026-09-09", cartons: 4 }),
-      line({ productId: "p2", orderId: "ontime", deliveryDate: "2026-09-10", cartons: 99, name: "MR.KING" }),
-    ]);
-    const board = await loadDemandBoard({
-      grain: "week",
-      window: 4,
-      filters: { overdueOnly: true },
-      now: NOW,
-    });
-    expect(board.rows.map((r) => r.productId)).toEqual(["p1"]);
-    expect(board.rows[0].lines).toHaveLength(2);
-    expect(board.rows[0].committed).toBe(34);
-    // The footer is the rows above it, not what the lines added up to before
-    // the filter ran.
-    expect(board.totals.committed).toBe(34);
-    expect(board.openOrders).toBe(2);
-  });
 });
 
 describe("a sub-row's dates", () => {

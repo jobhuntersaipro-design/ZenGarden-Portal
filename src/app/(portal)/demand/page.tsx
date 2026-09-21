@@ -11,10 +11,11 @@ export const metadata: Metadata = { title: "Demand board · Zen Garden Portal" }
 export const dynamic = "force-dynamic";
 
 /**
- * The spans each grain offers as a chip. The three cannot share one list:
- * thirty weeks of days is most of a year, and six days is not a question
- * anybody asks a month view — each grain gets the spans a person would
- * actually ask it for, and anything else is typed into the box beside them.
+ * The spans each grain offers. The three cannot share one list: thirty weeks
+ * of days is most of a year, and six days is not a question anybody asks a
+ * month view, so each grain gets the two spans a person would actually ask
+ * it for, plus every open order. A `?window=` outside them still works, up
+ * to `DEMAND_CEILING` — the chips are the offer, not the limit.
  */
 const SPANS: Record<DemandGrain, { value: string; label: string }[]> = {
   month: [
@@ -29,7 +30,7 @@ const SPANS: Record<DemandGrain, { value: string; label: string }[]> = {
   ],
   day: [
     { value: "30", label: "Next 30 days" },
-    { value: "60", label: "Next 60" },
+    { value: "60", label: "Next 60 days" },
     { value: "all", label: "All open" },
   ],
 };
@@ -61,13 +62,11 @@ export default async function DemandPage({
     q: firstParam(params, "q") ?? "",
     family: firstParam(params, "family") ?? "",
     productId: firstParam(params, "product") ?? "",
-    overdueOnly: firstParam(params, "overdue") === "1",
   };
   const board = await loadDemandBoard({ grain, window, filters });
 
   const selected = window === "all" ? "all" : String(window);
-  const narrowed =
-    Boolean(filters.q || filters.family || filters.productId) || filters.overdueOnly;
+  const narrowed = Boolean(filters.q || filters.family || filters.productId);
 
   return (
     <div className="page-enter">

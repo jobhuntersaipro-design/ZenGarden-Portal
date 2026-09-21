@@ -17,21 +17,15 @@ export const DEMAND_SPAN: Record<DemandGrain, number> = { month: 6, week: 4, day
 /**
  * The most a hand-typed `?window=` may ask for, per grain.
  *
- * The span itself is the planner's to choose — they asked for it not to be
- * boxed in at a fortnight — so these are not opinions about how far ahead to
- * plan; they are the point past which a URL is a typo rather than a question.
- * Ten years of months, five of weeks, one of days: every one of them already
- * draws more columns than a screen holds, and "All open" can draw more still.
+ * The chips are what the board offers; a span outside them is reachable only
+ * by editing the URL, and these are where that stops being a question. Not
+ * opinions about how far ahead to plan: ten years of months, five of weeks,
+ * one of days already draw more columns than a screen holds, and "All open"
+ * can draw more still. Past them a `?window=` is a typo, and the board falls
+ * back to the grain's own default rather than answering it.
  */
 export const DEMAND_CEILING: Record<DemandGrain, number> = {
   month: 120,
   week: 260,
   day: 365,
-};
-
-/** The unit each grain counts its window in, for a label or an input's suffix. */
-export const DEMAND_UNIT: Record<DemandGrain, string> = {
-  month: "months",
-  week: "weeks",
-  day: "days",
 };
