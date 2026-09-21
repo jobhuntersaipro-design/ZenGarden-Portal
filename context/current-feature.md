@@ -1,4 +1,97 @@
-# Current Feature: Stock is counted in cartons
+# Current Feature: The demand board
+
+## Status
+
+**Built and driven in a browser on `claude/session-cloud-location-aszckl`**
+(2026-09-21). Asked for as: "build option A, put it in a new side tab named
+Demand Board" — option A of three designs drawn for the planning team's own
+master list (`docs/specs/51-planning-board.md`).
+
+**A fifth portal destination, `/demand`, and no new table.** Every figure is
+derived from orders already in the portal: a purchase order counts while its
+stage is not `DELIVERED` and it carries an expected delivery date, its line
+items are in cartons and resolve to a product. One row per product, weeks
+across, most committed first.
+
+**Why nothing new had to be stored**, measured before building: `LineItem.unit`
+reads **`carton` on all 1,672 seeded lines**, **100%** of lines resolve to a
+product, and **all 421** purchase orders carry a delivery date. The demand half
+of that spreadsheet was already in the database; only nobody had asked it.
+
+**What the board refuses to do.** On hand and Short by render as `—` until
+`Product.stockCartons` holds a figure, and an amber line above the table says
+so in words rather than leaving a reader to infer it from a column of dashes.
+A plausible-looking cover figure is the spreadsheet's own failure mode; the
+board would rather be visibly incomplete than quietly wrong.
+
+**Overdue is its own column, decided without asking.** An order whose expected
+date has passed and which nobody has delivered is the most urgent thing on the
+board. Folding it into the current week — the tempting simplification — hides
+exactly that, so late cartons sit in their own red column and are still counted
+in Committed. The column appears only when something is late.
+
+**A dash is nothing promised, not a zero**, throughout. The same null-vs-zero
+rule the stock count turns on.
+
+**Not `DataTable`.** That component pages, sorts by URL and drops to card mode
+on a phone, all of which this board would fight: the week columns are computed
+rather than declared, a row is only meaningful read across, and there is
+nothing to page — the window *is* the paging. It scrolls sideways inside its
+own frame with the same `useEdgeFades` treatment Phase 11 gave the line-items
+table, and the product column is sticky.
+
+**The phone tab bar went from four tabs to five.** `grid-cols-4` was hardcoded
+and a fifth destination would have wrapped the bar onto two rows. It is
+`grid-cols-5` now, with a comment tying the number to `NAV`'s length, because
+a Tailwind class built at runtime is not compiled.
+
+## Verified, with the figures
+
+Development, port 3000, as the seeded super admin, against the seeded
+catalogue.
+
+- **The board reads true.** 26 open orders · 2,669 cartons. MR.KING 1.5L —
+  Lemon leads with **550 committed across 10 orders** — 46 overdue, then 36 /
+  371 / 97 across the four weeks. Column totals **250 · 751 · 1,363 · 305**,
+  committed **2,669**.
+- **Overdue renders red and separately**, on 6 of the 8 visible rows; two rows
+  with nothing late read `—`.
+- **On hand and Short by are `—` on every row**, and the amber callout reads
+  "Stock is not counted yet." with a link to enter counts — the true state of
+  a catalogue where `stockCartons` is null everywhere.
+- **The nav.** Sidebar reads Dashboard · Purchase Orders · **Demand board** ·
+  Buyers · Products. On a phone the tab bar is **five tabs at 78 × 56px**,
+  labelled Demand, still clear of the 44px floor.
+- **No overflow** at 1440 (1440/1440) and 390 (390/390); the table scrolls
+  inside its own frame with the product column pinned.
+- **1306/1306 tests across 101 files** (7 new), `tsc`, lint (the same 2
+  pre-existing warnings) and `npm run build` clean, with `/demand` registered
+  as a dynamic route.
+- **Two guards watched failing first.** Folding late demand into the current
+  week (`const late = false`) failed two tests; restoring it passed them.
+
+## Not verified
+
+- **Anything on production.** Not deployed. Production's open-order count and
+  how many of its orders carry a delivery date were never read — every figure
+  above is seeded data, and a production board could be much fuller or nearly
+  empty.
+- **A board with stock counted.** Every row on every screen read `—` for On
+  hand, so the `shortBy` arithmetic is covered by its unit test alone and has
+  never been seen on a page.
+- **The window chips, clicked.** "Next 12" and "All open" are unit-tested
+  through `loadDemandBoard("all")`; only the default view was driven.
+- **The edge fades**, which appear on horizontal scroll and were not scrolled.
+- **A member's view.** Read as a super admin. The board has no permission
+  check of its own — it is a portal page behind the same `requireUser()` shell
+  as the rest, and every staff role sees it.
+- **Volume.** 8 products on 26 orders. The query reads every open line in one
+  go and aggregates in memory, which is right at this size and untested at a
+  thousand.
+
+## Previous phase
+
+**Stock is counted in cartons**
 
 ## Status
 

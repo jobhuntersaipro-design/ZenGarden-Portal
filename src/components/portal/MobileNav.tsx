@@ -74,7 +74,12 @@ export function MobileTabBar() {
   return (
     <nav
       aria-label="Main"
-      className="fixed inset-x-0 bottom-0 z-30 grid grid-cols-4 border-t border-hairline bg-surface lg:hidden"
+      // grid-cols-5 tracks NAV's length (2026-09-21, when the demand board
+      // made it five). It is not derived because a Tailwind class built at
+      // runtime is not compiled — if a sixth destination is ever added, this
+      // number moves with it or the bar wraps onto two rows. Five tabs is
+      // 78px each at 390, still well clear of the 44px floor.
+      className="fixed inset-x-0 bottom-0 z-30 grid grid-cols-5 border-t border-hairline bg-surface lg:hidden"
       style={{ paddingBottom: "env(safe-area-inset-bottom)" }}
     >
       {NAV.map(({ href, short, label, icon: Icon }) => {

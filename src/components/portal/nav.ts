@@ -1,4 +1,4 @@
-import { FileText, LayoutDashboard, Package, Users } from "lucide-react";
+import { CalendarClock, FileText, LayoutDashboard, Package, Users } from "lucide-react";
 
 /**
  * The portal's destinations, shared by the desktop `Sidebar` and the mobile
@@ -16,6 +16,8 @@ export const NAV = [
   // `short` is what the 4-up tab bar shows: "Purchase Orders" over two lines
   // in a ~90px tab is a wall of text where "Orders" reads at a glance.
   { href: "/purchase-orders", label: "Purchase Orders", short: "Orders", icon: FileText },
+  // `short` is "Demand": "Demand board" wraps to two lines in a ~90px tab.
+  { href: "/demand", label: "Demand board", short: "Demand", icon: CalendarClock },
   { href: "/buyers", label: "Buyers", short: "Buyers", icon: Users },
   { href: "/products", label: "Products", short: "Products", icon: Package },
 ] as const;
