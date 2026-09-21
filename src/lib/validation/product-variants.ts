@@ -5,7 +5,7 @@ import {
   growingLabel,
   productObject,
   skuSchema,
-  stockPiecesSchema,
+  stockCartonsSchema,
 } from "@/lib/validation/products";
 
 /**
@@ -14,7 +14,7 @@ import {
  * A variant is a `Product` row of its own, as it has been since Phase 31, so
  * this schema is `productSchema`'s shared half plus a row per variant carrying
  * the four things that genuinely differ: the flavour, its code, its price and
- * the pieces of it on hand.
+ * the cartons of it on hand.
  * Everything else — brand, category, pack size, cartons per pallet, unit,
  * market, description, family, active — is entered once and applied to every
  * row, which is also what keeps them in one group: `groupKey` keys on the
@@ -49,14 +49,14 @@ export const variantRowSchema = z.object({
   /**
    * Stock is per row, not shared (2026-09-20). A shared figure would write
    * the same count onto every flavour in the batch, which is a number nobody
-   * counted — six products claiming the same 240 pieces. Blank is the normal
+   * counted — six products claiming the same 240 cartons. Blank is the normal
    * answer at creation and stays null: not counted yet.
    */
-  stockPieces: stockPiecesSchema,
+  stockCartons: stockCartonsSchema,
 });
 
 export const productVariantsSchema = productObject
-  .omit({ sku: true, listPrice: true, variant: true, stockPieces: true })
+  .omit({ sku: true, listPrice: true, variant: true, stockCartons: true })
   .extend({
     variants: z
       .array(variantRowSchema)

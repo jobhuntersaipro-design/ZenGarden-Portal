@@ -58,7 +58,7 @@ const blankRow = (listPrice = ""): VariantRowState => ({
   listPrice,
   // Not inherited from the row above, unlike the price: a count is a fact
   // about one shelf, and copying it down would invent five more.
-  stockPieces: "",
+  stockCartons: "",
   staged: [],
 });
 
@@ -428,7 +428,7 @@ export function ProductForm({
         variant: row.variant,
         sku: skuOf(row),
         listPrice: row.listPrice,
-        stockPieces: row.stockPieces,
+        stockCartons: row.stockCartons,
       })),
     });
     if (!result.success) {
@@ -661,15 +661,15 @@ export function ProductForm({
               <Input
                 id="product-stock"
                 inputMode="numeric"
-                placeholder="Pieces"
-                value={first.stockPieces}
+                placeholder="Cartons"
+                value={first.stockCartons}
                 onChange={(event) =>
-                  patchRow(first.key, { stockPieces: event.target.value })
+                  patchRow(first.key, { stockCartons: event.target.value })
                 }
                 className="tabular-nums"
               />
               <p className="text-[length:var(--text-caption)] text-ink-tertiary">
-                Pieces on hand · never shown on the shop. Leave it blank if
+                Cartons on hand · never shown on the shop. Leave it blank if
                 nobody has counted yet.
               </p>
             </div>

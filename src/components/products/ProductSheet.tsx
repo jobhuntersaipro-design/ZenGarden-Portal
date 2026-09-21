@@ -381,12 +381,12 @@ export function ProductSheet({
               <Input
                 id="product-stock"
                 inputMode="numeric"
-                value={form.stockPieces === null ? "" : String(form.stockPieces)}
-                onChange={(event) => set("stockPieces", event.target.value)}
+                value={form.stockCartons === null ? "" : String(form.stockCartons)}
+                onChange={(event) => set("stockCartons", event.target.value)}
                 className="tabular-nums"
               />
               <p className="text-[length:var(--text-caption)] text-ink-tertiary">
-                Pieces on hand · never shown on the shop
+                Cartons on hand · never shown on the shop
               </p>
             </div>
           </div>

@@ -133,7 +133,7 @@ const input = {
   variant: "Goat's Milk",
   packSize: 6,
   cartonsPerPallet: 60,
-  stockPieces: null,
+  stockCartons: null,
   market: "Malaysia",
   description: null,
   active: true,
@@ -667,9 +667,9 @@ describe("createProductVariants", () => {
   };
 
   const threeRows = [
-    { variant: "Goat's Milk", sku: "ZEN-SC-2100-GM-VN", listPrice: "189.00", stockPieces: 240 },
-    { variant: "Papaya", sku: "ZEN-SC-2100-PP-VN", listPrice: "189.00", stockPieces: null },
-    { variant: "Lavender", sku: "ZEN-SC-2100-LV-VN", listPrice: "195.50", stockPieces: 0 },
+    { variant: "Goat's Milk", sku: "ZEN-SC-2100-GM-VN", listPrice: "189.00", stockCartons: 240 },
+    { variant: "Papaya", sku: "ZEN-SC-2100-PP-VN", listPrice: "189.00", stockCartons: null },
+    { variant: "Lavender", sku: "ZEN-SC-2100-LV-VN", listPrice: "195.50", stockCartons: 0 },
   ];
 
   beforeEach(() => {
@@ -733,7 +733,7 @@ describe("createProductVariants", () => {
      * same 240 pieces — and the difference between a counted zero and a null
      * has to survive the write, because the low-stock flag reads it.
      */
-    expect(rows.map((row) => row.stockPieces)).toEqual([240, null, 0]);
+    expect(rows.map((row) => row.stockCartons)).toEqual([240, null, 0]);
   });
 
   it("creates a described family once and points every variant at it", async () => {
@@ -904,7 +904,7 @@ describe("createProductVariants joining a listing", () => {
     newFamily: null,
   };
   const oneRow = [
-    { variant: "Carrot", sku: "ZS-SC-2100-CR-ID", listPrice: "10.00", stockPieces: null },
+    { variant: "Carrot", sku: "ZS-SC-2100-CR-ID", listPrice: "10.00", stockCartons: null },
   ];
 
   beforeEach(() => {

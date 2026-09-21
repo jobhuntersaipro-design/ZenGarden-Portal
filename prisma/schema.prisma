@@ -327,7 +327,7 @@ model Product {
    * nobody has counted this product yet, which is not the same as zero: zero
    * is a count, and the low-stock flag reads it as one.
    */
-  stockPieces      Int?
+  stockCartons      Int?
   description      String?
   active           Boolean        @default(true)
   needsReview      Boolean        @default(false) // created from a PO; details not filled in yet

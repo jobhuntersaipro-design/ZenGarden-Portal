@@ -1,4 +1,82 @@
-# Current Feature: Stock count, in the portal only
+# Current Feature: Stock is counted in cartons
+
+## Status
+
+**Built on `claude/session-cloud-location-aszckl`** (2026-09-21). Asked for as:
+"change current stock count piece to carton".
+
+`Product.stockPieces` became `Product.stockCartons` in one renaming migration,
+`20260924090000_product_stock_in_cartons`. The column shipped as pieces on
+2026-09-20 and was wrong by the next morning.
+
+**The order data is what settles it.** Measured on the seeded database before
+changing anything: `LineItem.unit` reads **`carton` on all 1,672 lines**, and
+every price, every document quantity and every shop line is per carton. The
+planning team's own master list counts cartons too — its totals row is
+literally `TOTAL CARTONS`. A piece count was the one figure in the portal
+measured in a unit nobody trades in.
+
+**The conversion is deleted, not renamed.** `lowStockBelow(packSize)` is gone.
+The low-stock rule was `stock < packSize × LOW_STOCK_CARTONS`, because a
+ten-carton threshold cannot be compared against a piece count without knowing
+the pack — and for a product carrying no pack size that multiplication
+silently became `× 1`, flagging at ten pieces where ten cartons was meant.
+Now the comparison is `stockCartons < LOW_STOCK_CARTONS`, and `packSize` is
+not read at all. **Watched failing:** with the old conversion put back, a
+healthy 10-carton product flags as low (10 < 6 × 10) and that test fails.
+
+**RENAME, not drop-and-add.** Nothing has been counted — production holds zero
+non-null values — but a rename cannot lose a figure somebody enters between
+this being written and being deployed, and a drop can. Recorded in the
+migration: any value that does appear first would be wrong under the new
+meaning and needs dividing by its pack size by hand.
+
+**`packSize` keeps its own labels.** "Pieces per carton" on both forms is the
+pack, not the stock, and is untouched. The labels that moved are the stock
+ones: "Pieces on hand" → "Cartons on hand", the two `placeholder="Pieces"`
+inputs, the detail page's `0 pieces` → `0 cartons`, and the card's footer
+clause.
+
+## Verified, with the figures
+
+**No browser drive**, for the reason carried since 2026-09-20: `src/lib/prisma.ts`
+connects through `PrismaNeon`, the Neon serverless WebSocket driver, and this
+container has no Neon endpoint. What was measured instead:
+
+- **The order data the decision rests on**, read from a seeded local Postgres:
+  1,672 line items, **100% resolved to a product**, **one distinct unit** and
+  that unit is `carton`. 421 purchase orders, 27 of them open, all 421
+  carrying a delivery date.
+- **1299/1299 tests across 100 files**, `tsc --noEmit`, lint (the same 2
+  pre-existing `username` warnings — a third, `LOW_STOCK_CARTONS` unused, was
+  introduced by this change and fixed rather than accepted: the tests now
+  derive their figures from the constant instead of hard-coding 9 and 10) and
+  `npm run build` clean.
+- **The 101st file, `catalog-import.test.ts`, fails in this container only.**
+  `xlsx` installs from cdn.sheetjs.com, which the network policy answers 403
+  to; the local stand-in throws by design rather than returning wrong
+  spreadsheet data. Nothing to do with this change — the file does not read
+  stock.
+- **137 references** were renamed across 19 source files; the four in
+  `src/generated/prisma` came back from `prisma generate`.
+
+## Not verified
+
+- **Anything on production**, and the migration has not run there. It renames
+  a column that holds no values, so it cannot fail on existing rows.
+- **A figure typed into either form, in a browser.** The edit drawer, the
+  create form's per-variant column and the single-variant field were not
+  driven; the write paths rest on the actions' own tests.
+- **The detail page's Stock row and the card's footer**, laid out. Text only,
+  in cells that already existed.
+- **Ten cartons as the right threshold.** Still nobody's stated figure.
+- **Whether production holds a stock value already.** Read as zero on
+  2026-09-20; not re-read today. If one exists before this deploys it is a
+  piece count wearing a carton label.
+
+## Previous phase
+
+**Stock count, in the portal only**
 
 ## Status
 

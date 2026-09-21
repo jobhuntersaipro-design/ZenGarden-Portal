@@ -1,0 +1,24 @@
+-- Stock is counted in cartons, not pieces (2026-09-21).
+--
+-- The column shipped as "stockPieces" on 2026-09-20. It was wrong by the next
+-- morning, and the evidence is in the order data: `LineItem.unit` reads
+-- "carton" on all 1,672 seeded lines, every price is per carton, and every
+-- quantity on the purchase-order document is cartons. The planning team's own
+-- master list counts cartons too — its totals row is literally "TOTAL
+-- CARTONS". A piece count was the one figure in the portal measured in
+-- something nobody trades in.
+--
+-- It also cost an arithmetic step nothing else needed: the low-stock flag had
+-- to multiply its ten-carton threshold by `packSize` to compare against a
+-- piece count, which silently did nothing useful for the products that carry
+-- no pack size. That conversion is deleted with this rename.
+--
+-- RENAME, not drop-and-add: renaming keeps whatever has been counted. Nothing
+-- has — production has zero non-null values today — but a rename cannot lose
+-- a figure somebody enters between this being written and being deployed,
+-- and a drop can.
+--
+-- The values that do exist would be wrong under the new meaning, so if any
+-- appear before this deploys they must be divided by their pack size by hand.
+-- Checked at the time of writing: 0 rows to convert.
+ALTER TABLE "Product" RENAME COLUMN "stockPieces" TO "stockCartons";

@@ -25,7 +25,7 @@ const stats: ProductRow["stats"] = {
 
 const product = (
   id: string,
-  stockPieces: number | null,
+  stockCartons: number | null,
   flags: ProductRow["flags"] = [],
 ): ProductRow => ({
   id,
@@ -39,7 +39,7 @@ const product = (
   packSize: 6,
   market: null,
   listPrice: 10,
-  stockPieces,
+  stockCartons,
   active: true,
   imageCount: 1,
   thumbKey: null,

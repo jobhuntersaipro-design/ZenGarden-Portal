@@ -149,7 +149,7 @@ async function joinListing(
 /** The fields a `Product.create` shares whether it is one row or a batch of them. */
 type ProductRowShared = Omit<
   ProductParsed,
-  "sku" | "listPrice" | "variant" | "stockPieces" | "familyId" | "newFamily"
+  "sku" | "listPrice" | "variant" | "stockCartons" | "familyId" | "newFamily"
 >;
 
 /**
@@ -161,7 +161,7 @@ type ProductRowVariant = {
   sku: string;
   variant: string | null;
   listPrice: string;
-  stockPieces: number | null;
+  stockCartons: number | null;
 };
 
 /**
@@ -187,7 +187,7 @@ function productRowData(
     cartonsPerPallet: shared.cartonsPerPallet,
     market: shared.market,
     listPrice: new Prisma.Decimal(row.listPrice),
-    stockPieces: row.stockPieces,
+    stockCartons: row.stockCartons,
     description: shared.description,
     active: shared.active,
   };
@@ -672,7 +672,7 @@ export async function updateProduct(
           cartonsPerPallet: data.cartonsPerPallet,
           market: data.market,
           listPrice: nextPrice,
-          stockPieces: data.stockPieces,
+          stockCartons: data.stockCartons,
           description: data.description,
           active: data.active,
           // Saving is the review. A product created from a purchase order

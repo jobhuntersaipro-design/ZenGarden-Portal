@@ -97,7 +97,7 @@ const wholeCount = (noun: string, { zero = false }: { zero?: boolean } = {}) => 
  * because the batch-create form carries it per variant row rather than once
  * for the batch, and both must refuse the same values.
  */
-export const stockPiecesSchema = wholeCount("Stock", { zero: true });
+export const stockCartonsSchema = wholeCount("Stock", { zero: true });
 
 export const productObject = z.object({
   name: z.string().min(1, "A name is required").max(120),
@@ -121,7 +121,7 @@ export const productObject = z.object({
   packSize: wholeCount("Pack size"),
   /** "60CTNS/PALLET", as the customer's own labels and sheet print it. */
   cartonsPerPallet: wholeCount("Cartons per pallet"),
-  stockPieces: stockPiecesSchema,
+  stockCartons: stockCartonsSchema,
   /**
    * The market a formulation is made for — a country (Vietnam, India) or a
    * customer (Mydin, Hero Market), which is how the ops team's own sheet

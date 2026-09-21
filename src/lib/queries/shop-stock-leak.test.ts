@@ -4,7 +4,7 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
  * Stock is the ops team's own figure and no buyer may see it (2026-09-20).
  *
  * Every shop read selects its columns explicitly, so the way it would leak is
- * somebody adding `stockPieces` to one of those selects while wiring up
+ * somebody adding `stockCartons` to one of those selects while wiring up
  * something else — no type error, no failing test, and a number on a
  * storefront. This reads the selects the shop actually sends to Prisma and
  * refuses the column anywhere inside them, however deeply nested.
@@ -83,7 +83,7 @@ describe("no shop read asks for stock", () => {
 
     expect(productFindMany.mock.calls.length).toBeGreaterThan(0);
     for (const select of selectsSent()) {
-      expect(keysOf(select)).not.toContain("stockPieces");
+      expect(keysOf(select)).not.toContain("stockCartons");
     }
   });
 
@@ -92,7 +92,7 @@ describe("no shop read asks for stock", () => {
 
     expect(productFindMany.mock.calls.length).toBeGreaterThan(0);
     for (const select of selectsSent()) {
-      expect(keysOf(select)).not.toContain("stockPieces");
+      expect(keysOf(select)).not.toContain("stockCartons");
     }
   });
 
@@ -102,7 +102,7 @@ describe("no shop read asks for stock", () => {
    * checkout and on their order pages.
    */
   it("leaves it out of the cart's priced product selects", () => {
-    expect(keysOf(PRICED_PRODUCT_SELECT)).not.toContain("stockPieces");
-    expect(keysOf(PRICED_PRODUCT_SELECT_NO_IMAGES)).not.toContain("stockPieces");
+    expect(keysOf(PRICED_PRODUCT_SELECT)).not.toContain("stockCartons");
+    expect(keysOf(PRICED_PRODUCT_SELECT_NO_IMAGES)).not.toContain("stockCartons");
   });
 });

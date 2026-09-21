@@ -33,7 +33,7 @@ export type ProductRow = {
   market: string | null;
   listPrice: number;
   /** Pieces on hand (2026-09-20), null where nobody has counted. Ops-only. */
-  stockPieces: number | null;
+  stockCartons: number | null;
   active: boolean;
   imageCount: number;
   thumbKey: string | null;
@@ -98,7 +98,7 @@ export async function listProducts(
         packSize: true,
         market: true,
         listPrice: true,
-        stockPieces: true,
+        stockCartons: true,
         active: true,
         needsReview: true,
         images: {
@@ -173,7 +173,7 @@ export async function listProducts(
         active: product.active,
         imageCount: product.images.length,
         needsReview: product.needsReview,
-        stockPieces: product.stockPieces,
+        stockCartons: product.stockCartons,
         packSize: product.packSize,
       })),
       new Map(
@@ -198,7 +198,7 @@ export async function listProducts(
     packSize: product.packSize,
     market: product.market,
     listPrice: product.listPrice.toNumber(),
-    stockPieces: product.stockPieces,
+    stockCartons: product.stockCartons,
     active: product.active,
     imageCount: product.images.length,
     thumbKey: product.images[0]?.thumbKey ?? product.images[0]?.r2Key ?? null,
@@ -323,7 +323,7 @@ export function selectProducts(
          * largest possible count under ascending, below zero under
          * descending.
          */
-        return product.stockPieces ?? (sort.dir === "asc" ? Number.MAX_SAFE_INTEGER : -1);
+        return product.stockCartons ?? (sort.dir === "asc" ? Number.MAX_SAFE_INTEGER : -1);
       case "drift":
         return product.stats.driftPercent ?? 0;
       case "units":

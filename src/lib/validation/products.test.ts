@@ -11,7 +11,7 @@ const valid = {
   variant: "Goat's Milk",
   packSize: 6,
   cartonsPerPallet: 60,
-  stockPieces: null,
+  stockCartons: null,
   market: "Malaysia",
   description: "Flamed finish.",
   active: true,
@@ -86,21 +86,21 @@ describe("productSchema", () => {
    * nobody has looked, which is why it stays null rather than becoming 0.
    */
   it("takes a stock count of zero, and blank stays null", () => {
-    const counted = productSchema.parse({ ...valid, stockPieces: "0" });
-    expect(counted.stockPieces).toBe(0);
+    const counted = productSchema.parse({ ...valid, stockCartons: "0" });
+    expect(counted.stockCartons).toBe(0);
 
     for (const blank of ["", null]) {
-      expect(productSchema.parse({ ...valid, stockPieces: blank }).stockPieces).toBeNull();
+      expect(productSchema.parse({ ...valid, stockCartons: blank }).stockCartons).toBeNull();
     }
 
     // As typed, from a text field, and as a number from anything else.
-    expect(productSchema.parse({ ...valid, stockPieces: " 240 " }).stockPieces).toBe(240);
-    expect(productSchema.parse({ ...valid, stockPieces: 240 }).stockPieces).toBe(240);
+    expect(productSchema.parse({ ...valid, stockCartons: " 240 " }).stockCartons).toBe(240);
+    expect(productSchema.parse({ ...valid, stockCartons: 240 }).stockCartons).toBe(240);
   });
 
   it("refuses a negative or fractional stock count", () => {
     for (const bad of ["-1", "12.5", "lots"]) {
-      const parsed = productSchema.safeParse({ ...valid, stockPieces: bad });
+      const parsed = productSchema.safeParse({ ...valid, stockCartons: bad });
       expect(parsed.success).toBe(false);
     }
   });

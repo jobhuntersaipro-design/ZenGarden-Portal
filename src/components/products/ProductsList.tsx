@@ -58,7 +58,7 @@ export function ProductsList({
     },
     {
       /**
-       * Pieces on hand, counted by the team. A dash is "not counted yet"; a
+       * Cartons on hand, counted by the team. A dash is "not counted yet"; a
        * zero is a count, so it prints as 0 and reads amber like any other
        * figure under the low-stock line.
        */
@@ -67,7 +67,7 @@ export function ProductsList({
       align: "right",
       defaultDir: "asc",
       cell: (row) =>
-        row.stockPieces === null ? (
+        row.stockCartons === null ? (
           <span className="text-ink-tertiary" title="Not counted yet">
             —
           </span>
@@ -77,7 +77,7 @@ export function ProductsList({
               row.flags.includes("low-stock") ? "text-brand-amber" : "text-ink"
             }`}
           >
-            {row.stockPieces.toLocaleString("en-MY")}
+            {row.stockCartons.toLocaleString("en-MY")}
           </span>
         ),
     },

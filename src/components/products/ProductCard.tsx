@@ -99,9 +99,9 @@ export function ProductCard({
             where nobody has counted, rather than printed as a dash: the three
             figures beside it are a twelve-month record and this one is today,
             and an empty clause is not worth the confusion. */}
-        {product.stockPieces === null
+        {product.stockCartons === null
           ? null
-          : ` · stock ${product.stockPieces.toLocaleString("en-MY")}`}
+          : ` · stock ${product.stockCartons.toLocaleString("en-MY")}`}
       </p>
     </Link>
   );

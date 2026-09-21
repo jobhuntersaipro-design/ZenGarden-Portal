@@ -8,7 +8,7 @@ import { Input } from "@/components/ui/input";
 /** One row of the create form's Variants section. Local state only: `key` is
  *  a React key and the handle staged images are filed under, and never leaves
  *  the browser — the submit maps a row to
- *  `{ variant, sku, listPrice, stockPieces }`. */
+ *  `{ variant, sku, listPrice, stockCartons }`. */
 export type VariantRowState = {
   key: string;
   variant: string | null;
@@ -17,9 +17,9 @@ export type VariantRowState = {
    *  following the proposal from then on, and only this row. */
   skuTouched: boolean;
   listPrice: string;
-  /** Pieces on hand, per row: a count belongs to a SKU on a shelf, and one
+  /** Cartons on hand, per row: a count belongs to a SKU on a shelf, and one
    *  figure applied to six flavours is a number nobody counted. */
-  stockPieces: string;
+  stockCartons: string;
   staged: (StagedImage & { file: File })[];
 };
 
@@ -152,10 +152,10 @@ export function VariantRows({
                 <Input
                   id={`variant-stock-${row.key}`}
                   inputMode="numeric"
-                  placeholder="Pieces"
-                  value={row.stockPieces}
+                  placeholder="Cartons"
+                  value={row.stockCartons}
                   onChange={(event) =>
-                    onPatch(row.key, { stockPieces: event.target.value })
+                    onPatch(row.key, { stockCartons: event.target.value })
                   }
                   className="tabular-nums"
                 />

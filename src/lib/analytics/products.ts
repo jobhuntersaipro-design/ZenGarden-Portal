@@ -219,20 +219,19 @@ const NOT_SOLD_DAYS = 60;
 const PRICE_MOVED_PERCENT = 3;
 
 /**
- * Stock is counted in pieces, but ordered in cartons — every price, every
- * order line and every document quantity on this portal is per carton — so
- * "running low" is measured in cartons and converted. A flat piece threshold
- * would flag a 6-per-carton product at sixteen cartons and a 72-per-carton
- * one at barely one, which is the wrong way round: the big pack runs out of
- * sellable cartons first.
+ * Stock is counted in cartons, which is also how the portal sells: every
+ * price, every order line and every document quantity is per carton
+ * (`LineItem.unit` reads "carton" on all 1,672 seeded lines). So "running
+ * low" is a plain comparison and needs no pack size.
+ *
+ * It was pieces until 2026-09-21, and the threshold had to be multiplied by
+ * `packSize` to mean anything — a flat piece figure flagged a 6-per-carton
+ * product at sixteen cartons and a 72-per-carton one at barely one. Counting
+ * in cartons removes the conversion and the product it depended on.
  *
  * Ten is a starting figure, not a finding. It is one number in one place.
  */
 export const LOW_STOCK_CARTONS = 10;
-
-/** The piece count below which a product counts as running low. */
-export const lowStockBelow = (packSize: number | null): number =>
-  (packSize && packSize > 0 ? packSize : 1) * LOW_STOCK_CARTONS;
 
 /** The maintenance to-do list behind the quick-filter chips. */
 export function needsAttention(
@@ -242,7 +241,7 @@ export function needsAttention(
     imageCount: number;
     needsReview: boolean;
     /** Pieces on hand, null where nobody has counted (2026-09-20). */
-    stockPieces: number | null;
+    stockCartons: number | null;
     /** Pieces per carton, which is what the piece count is measured against. */
     packSize: number | null;
   }[],
@@ -264,8 +263,8 @@ export function needsAttention(
      * nothing about any of them; zero *is* a count, and a real one to act on.
      */
     if (
-      product.stockPieces !== null &&
-      product.stockPieces < lowStockBelow(product.packSize)
+      product.stockCartons !== null &&
+      product.stockCartons < LOW_STOCK_CARTONS
     ) {
       flags.push("low-stock");
     }
