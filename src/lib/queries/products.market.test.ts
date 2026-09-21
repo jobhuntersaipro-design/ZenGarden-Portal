@@ -5,6 +5,7 @@ import { describe, expect, it, vi } from "vitest";
 vi.mock("@/lib/prisma", () => ({ prisma: {} }));
 
 const { selectProducts } = await import("@/lib/queries/products");
+const { NO_MARKET } = await import("@/lib/product-markets");
 type ProductRow = import("@/lib/queries/products").ProductRow;
 
 const stats: ProductRow["stats"] = {
@@ -89,6 +90,49 @@ describe("filtering products by market", () => {
     ];
     const rows = selectProducts(mixed, {
       market: "Vietnam",
+      category: "Hand wash & soap",
+      filter: null,
+      sort,
+    });
+    expect(ids(rows)).toEqual(["keep"]);
+  });
+});
+
+/**
+ * The market view's remainder row links here, and it is the one way to ask
+ * for the products the filter above can never reach.
+ */
+describe("asking for the products carrying no market", () => {
+  it("returns exactly those, and no product that has one", () => {
+    const rows = selectProducts(catalogue, {
+      market: NO_MARKET,
+      filter: null,
+      sort,
+    });
+    expect(ids(rows)).toEqual(["unplaced"]);
+  });
+
+  it("is a sentinel no market label could be, unlike a plain \"none\"", () => {
+    // A market is free text typed into a growing list, so `none` is a
+    // plausible thing to write and would then be unreachable behind its own
+    // sentinel. `*none` is not.
+    const named = [product("really-none", "none"), product("unplaced", null)];
+    expect(ids(selectProducts(named, { market: "none", filter: null, sort }))).toEqual([
+      "really-none",
+    ]);
+    expect(ids(selectProducts(named, { market: NO_MARKET, filter: null, sort }))).toEqual(
+      ["unplaced"],
+    );
+  });
+
+  it("narrows alongside the other filters, like any other market", () => {
+    const mixed = [
+      { ...product("keep", null), category: "Hand wash & soap" },
+      { ...product("wrong-category", null), category: "Shower cream & gel" },
+      { ...product("has-a-market", "Vietnam"), category: "Hand wash & soap" },
+    ];
+    const rows = selectProducts(mixed, {
+      market: NO_MARKET,
       category: "Hand wash & soap",
       filter: null,
       sort,

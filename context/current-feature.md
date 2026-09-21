@@ -1,4 +1,148 @@
-# Current Feature: A name, a printed board, and a market filter
+# Current Feature: The catalog by market
+
+## Status
+
+**Built on `claude/focused-davinci-u1052a`** (2026-09-21). Asked for as: "In
+product catalog, split the Product by Market, so its easier to maintain and
+monitor".
+
+**A third thing a row can be**, beside Products and Families: `?by=market`,
+one row per market with its products, active, brands, units, revenue, buyers
+and how many of its products need fixing. **The shape was the user's**, chosen
+from three offered before building — a Markets view, market sections inside
+the product list, or both.
+
+**Markets were already a filter; this makes them a set of rows**, and that is
+the whole difference. The filter answers "show me Vietnam"; it cannot answer
+"how is Vietnam doing against Mydin, and where is the work" without choosing
+each market in turn and remembering what the last one said. Monitoring is
+reading down a column. Maintaining is clicking the row.
+
+**The mirror of `groupFamilies`, deliberately.** A family is one product
+across its markets; a market is many products in one place. Both sum from the
+same sale rows the product rows use, in the same twelve-month window, from the
+same single `listProducts` call — so a market's revenue is exactly its
+products' revenue added up and no two figures on the page can disagree.
+
+**Distinct orders and buyers, counted across the market rather than summed per
+product.** Two of a market's products on one purchase order is one order and
+one buyer. **Watched failing:** accumulating them per product instead reports
+`expected 2 to be 1` — a market read as busy as its products are bought
+together.
+
+**The products carrying no market are a row, not an omission.** It is the
+maintenance case the view exists for: a product with no market is invisible to
+every market question asked of the catalogue until somebody gives it one, and
+counting it nowhere is how it stays invisible. It is pinned last whatever the
+sort, like the family view's unplaced row. **Watched failing:** let it sort
+with the rest and it leads the ascending board, `expected 'Vietnam' to be
+'*none'`.
+
+**Unlike the family view's unplaced row, it prints its real "N to fix"** where
+that one prints "Unplaced". A product with no market is not by itself broken,
+so the label would replace the only figure that says whether the row needs
+opening.
+
+**The sentinel is `*none`, not `none`.** `NO_FAMILY` keys on ids, which are
+cuids nobody types; a market is free text entered into a growing list, where
+`none` is a plausible thing to write and would then be unreachable behind its
+own sentinel. **Watched failing:** with the plain `none`, a market actually
+called "none" returns the unplaced products instead of its own.
+
+**The market select gained a "No market" option**, because the remainder row
+now links to exactly those products and a filter you cannot see or clear is
+the defect this project keeps fixing. It is not the blank option yesterday's
+rule refused — that rule drops the *empty* values, and this is a named one,
+offered only while some product carries none.
+
+**Brand and category are absent on market rows, and that is the same call the
+market select already makes on family rows.** A market spans both by
+construction, so those selects could only mean "count just this brand's
+products inside each market" — narrowing what a row *counts* where on the
+family view the identical control narrows which *rows show*. One control with
+two meanings is worse than one that is absent. They are dropped from the URL
+on the way in for the same reason.
+
+**Brands is the reciprocal of the family view's Markets column** — unsortable
+there, unsortable here. A product carrying no brand adds none, unlike a
+family's market count, which counts a null because the shop draws a "No
+market" section the column has to agree with.
+
+The sorts narrow to the three a market row can answer — Revenue, Units, Name —
+the same way the family view drops list price and drift. The attention chips
+and the grid/list switch go with them: an aggregate row carries no flag and is
+not a card.
+
+## Verified, with the figures
+
+**No browser drive.** This container has no `.env.local` and no Neon endpoint,
+so no screen could be signed into. What was measured instead, on the **real
+components rendered through `renderToStaticMarkup` and laid out in headless
+Chromium against the production stylesheet** from `npm run build` — the same
+markup and CSS the app serves, and the method the 2026-09-20 entry used for
+the same reason.
+
+- **The rows read as a board**, off the rendered page:
+  `Mydin | 41 | 40 | 3 | 13,120 | RM 278,169.42 | 7 | 2 to fix`,
+  `Super Indo | 28 | 28 | 2 | 8,120 | RM 171,900.12 | 7 | OK`,
+  `Vietnam | 17 | 13 | 2 | 3,740 | RM 83,399.96 | 7 | 4 to fix`, and
+  **`No market | 12 | 12 | 2 | 480 | RM 10,100.04 | 7 | 9 to fix` last**.
+  Headers `Market · Products · Active · Brands · Units · 12m ·
+  Revenue · 12m↓ · Buyers · Status`.
+- **Every row opens its own products**, read off the `href`s:
+  `/products?market=Mydin`, `/products?market=Super%20Indo`,
+  `/products?market=Vietnam` and **`/products?market=*none`**.
+- **The toolbar drops what a market row cannot answer.** On `?by=market` the
+  brand, category and market selects are **absent** (3 → 0), the attention
+  chips **0 of 7**, the grid/list switch **absent**, and the sorts read
+  **Revenue · Units · Name** against the product view's six. The By strip
+  reads **Products · Families · Markets** on both.
+- **The market select offers the way back**, read off the product view's own
+  options: **All markets · Mydin · Super Indo · Vietnam · No market**.
+- **Phone.** At 358 — the content width a 390 viewport leaves — the page does
+  not overflow (**358/358**), `DataTable` drops to card mode (the table
+  measures **0px**), and **every control is 44px**: the search, the three By
+  segments, the three sorts, the card-mode Sort select and its direction
+  button. The only four elements under 44px are the card-mode title links at
+  **284×24**, the class accepted since 2026-09-11. Desktop **1136/1136**.
+- **Three guards watched failing** against the plausible wrong
+  implementation, not against nothing: orders and buyers summed per product
+  rather than counted distinct; the remainder row left to sort with the rest;
+  and the sentinel written as a plain `none`. Each was restored and re-run.
+- **1375/1375 tests across 106 files** (13 new — 10 on the grouping and the
+  ordering, 3 on asking for the products carrying no market), `tsc` and lint
+  (the same 2 pre-existing `username` warnings) clean, and `npm run build`
+  clean with `/products` still a dynamic route.
+
+## Not verified
+
+- **Anything on production**, and no production or development database was
+  read or written. Every figure above is a fixture shaped like the real
+  catalogue, not a row.
+- **The view in a running app.** No page was opened, nothing was clicked, and
+  no URL was driven: the components were rendered and measured, the page that
+  composes them was not. In particular the `by` switch's **dropping of brand
+  and category** is argued from the code and its shape, not watched in a
+  browser, and so is the fallback when `?by=market` arrives with a
+  product-only `?sort=`.
+- **Web fonts.** The measurement page loads the production CSS from `file://`,
+  so Plus Jakarta Sans and Inter fell back to the system serif — the widths
+  above are indicative of wrapping, not exact to the deployed typeface.
+- **A long market name.** The Market cell truncates at `max-w-72` with the
+  full value in `title`, unexercised: the longest tried was "Super Indo".
+- **Many markets.** Four rows were drawn. Production's market list is the
+  customer's own and will be longer; the view pages at the table's default
+  size, and how it reads at nine or nineteen was not seen.
+- **`npm run build` and `tsc` without a stand-in for `xlsx`.** That package
+  installs from cdn.sheetjs.com, which this container's network policy answers
+  403 to, and nothing here can run while it is missing — so a local
+  stand-in was written into `node_modules` for those two commands and
+  **deleted afterwards**. Nothing in the repository depends on it, and it is
+  why the 107th test file still fails here, as it has since 2026-09-20.
+
+## Previous phase
+
+**A name, a printed board, and a market filter**
 
 ## Status
 

@@ -5,6 +5,7 @@ import { usePathname, useSearchParams } from "next/navigation";
 import { LayoutGrid, List, Search, X } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { FAMILY_SORT_KEYS, type FamilySortKey } from "@/lib/product-families";
+import { MARKET_SORT_KEYS, NO_MARKET, type MarketSortKey } from "@/lib/product-markets";
 import type { ProductFilter, ProductSortKey } from "@/lib/queries/products";
 import { ChoiceButton } from "@/components/portal/ChoiceButton";
 import { SegmentGroup } from "@/components/portal/SegmentGroup";
@@ -14,8 +15,12 @@ import { useUrlNavigation } from "@/hooks/useUrlNavigation";
 
 export type ProductView = "grid" | "list";
 
-/** Rows are products, or rows are families (Phase 36). */
-export type ProductBy = "product" | "family";
+/**
+ * What a row is: one product, one family across its markets, or one market
+ * across its products. The last two are the same catalogue read from either
+ * end — a family asks "where does this go", a market asks "what goes here".
+ */
+export type ProductBy = "product" | "family" | "market";
 
 const VIEW_STORAGE_KEY = "products.view";
 
@@ -58,13 +63,14 @@ export function ProductToolbar({
   brands,
   categories,
   markets,
+  hasNoMarket,
 }: {
   view: ProductView;
   by: ProductBy;
   /** Set while the product view is filtered to one family: what it says. */
   familyChip: string | null;
   filter: ProductFilter;
-  sortKey: ProductSortKey | FamilySortKey;
+  sortKey: ProductSortKey | FamilySortKey | MarketSortKey;
   summary: string;
   /** Every brand on a product, for the filter; the page derives it from the rows. */
   brands: string[];
@@ -72,17 +78,31 @@ export function ProductToolbar({
   categories: string[];
   /** Every market a product is sold into; the ones carrying none drop out. */
   markets: string[];
+  /**
+   * Whether any product carries no market at all. Yesterday's rule stands —
+   * the options list drops the empty values rather than offering a blank —
+   * but the market view's remainder row now links to exactly those products,
+   * so the select has to be able to show and clear that state. A named
+   * "No market" option is not the blank one that rule refused.
+   */
+  hasNoMarket: boolean;
 }) {
   const { replace } = useUrlNavigation();
   // One transition per group, so a chip click never spins the sort strip.
   const filters = usePendingChoice<ProductFilter>(filter);
-  const sorts = usePendingChoice<ProductSortKey | FamilySortKey>(sortKey);
+  const sorts = usePendingChoice<ProductSortKey | FamilySortKey | MarketSortKey>(sortKey);
   const views = usePendingChoice<ProductView>(view);
   const bys = usePendingChoice<ProductBy>(by);
   const byFamily = by === "family";
-  // The family rows sort on fewer things: no list price, no drift.
-  const sortOptions = byFamily
-    ? SORTS.filter((option) => (FAMILY_SORT_KEYS as readonly string[]).includes(option.value))
+  const byMarket = by === "market";
+  // An aggregate row is not a product: no attention flag, no single price,
+  // no stock of its own. Both of them hide the chips, the view switch and
+  // the sorts that only a product row can answer.
+  const byProduct = by === "product";
+  // Each aggregate sorts on fewer things: no list price, no drift, no stock.
+  const sortKeysFor = byFamily ? FAMILY_SORT_KEYS : byMarket ? MARKET_SORT_KEYS : null;
+  const sortOptions = sortKeysFor
+    ? SORTS.filter((option) => (sortKeysFor as readonly string[]).includes(option.value))
     : SORTS;
   const pathname = usePathname();
   const searchParams = useSearchParams();
@@ -143,8 +163,11 @@ export function ProductToolbar({
         </div>
 
         {/* Only offered once there is more than one brand to choose between;
-            a dropdown with a single option is a label, not a filter. */}
-        {brands.length > 1 ? (
+            a dropdown with a single option is a label, not a filter. Absent
+            on market rows: a market spans its brands, so this could only
+            narrow what each row counts, where on family rows it narrows
+            which rows show — see `selectMarkets`. */}
+        {!byMarket && brands.length > 1 ? (
           <select
             aria-label="Brand"
             value={searchParams.get("brand") ?? ""}
@@ -160,27 +183,33 @@ export function ProductToolbar({
           </select>
         ) : null}
 
-        <select
-          aria-label="Category"
-          value={searchParams.get("category") ?? ""}
-          onChange={(event) => write({ category: event.target.value })}
-          className={SELECT}
-        >
-          <option value="">All categories</option>
-          {categories.map((category) => (
-            <option key={category} value={category}>
-              {category}
-            </option>
-          ))}
-        </select>
+        {/* Absent on market rows for the same reason as the brand select. */}
+        {!byMarket ? (
+          <select
+            aria-label="Category"
+            value={searchParams.get("category") ?? ""}
+            onChange={(event) => write({ category: event.target.value })}
+            className={SELECT}
+          >
+            <option value="">All categories</option>
+            {categories.map((category) => (
+              <option key={category} value={category}>
+                {category}
+              </option>
+            ))}
+          </select>
+        ) : null}
 
         {/* Where a product is sold — its destination or its retail customer,
             never where it was made. Offered on product rows only: a family
             row spans its markets by construction, and `FamilyRow.markets` is
             a count rather than a list, so there is nothing for this to match
-            a family against. It is also left out below two markets, like the
-            brand select: a dropdown holding one option is a label. */}
-        {!byFamily && markets.length > 1 ? (
+            a family against, while a market row *is* the thing this would
+            select. It is also left out where it would hold one option, like
+            the brand select — a dropdown holding one is a label — which
+            here means fewer than two real markets and no unmarketed product
+            to offer either. */}
+        {byProduct && (markets.length > 1 || hasNoMarket) ? (
           <select
             aria-label="Market"
             value={searchParams.get("market") ?? ""}
@@ -193,18 +222,23 @@ export function ProductToolbar({
                 {market}
               </option>
             ))}
+            {hasNoMarket ? <option value={NO_MARKET}>No market</option> : null}
           </select>
         ) : null}
 
-        {/* Products or families — the two things the catalog can be a list
-            of. The sort is dropped on the way across, since the keys differ;
-            the family filter too, because it only means something to rows
-            that are products. */}
+        {/* The three things the catalog can be a list of. Every switch
+            drops the sort, since the keys differ, and drops each filter the
+            destination cannot show: a filter the reader can neither see nor
+            undo is worse than one that resets. Family and the attention
+            chips are product-row filters everywhere; brand and category
+            survive into the family view, which has both columns, and not
+            into the market view, which has neither. */}
         <SegmentGroup label="By" busy={bys.pending}>
           {(
             [
               ["product", "Products"],
               ["family", "Families"],
+              ["market", "Markets"],
             ] as const
           ).map(([value, text]) => (
             <ChoiceButton
@@ -217,16 +251,14 @@ export function ProductToolbar({
                 bys.choose(
                   value,
                   hrefFor({
-                    by: value === "family" ? "family" : null,
+                    by: value === "product" ? null : value,
                     sort: null,
                     dir: null,
                     family: null,
                     filter: null,
-                    // Product-row filters both: a family row carries neither
-                    // an attention flag nor a single market, so carrying
-                    // either across would strand a filter the reader can
-                    // neither see nor undo.
                     market: null,
+                    brand: value === "market" ? null : searchParams.get("brand"),
+                    category: value === "market" ? null : searchParams.get("category"),
                   }),
                 )
               }
@@ -261,7 +293,7 @@ export function ProductToolbar({
           ))}
         </SegmentGroup>
 
-        {byFamily ? null : (
+        {byProduct ? (
         <SegmentGroup
           label="View"
           hideLabel
@@ -287,7 +319,7 @@ export function ProductToolbar({
             </ChoiceButton>
           ))}
         </SegmentGroup>
-        )}
+        ) : null}
       </div>
 
       <div className="flex flex-wrap items-center justify-between gap-sm">
@@ -309,7 +341,7 @@ export function ProductToolbar({
               <span className="sr-only">Clear the family filter</span>
             </button>
           ) : null}
-          {byFamily ? null : CHIPS.map((chip) => (
+          {byProduct ? CHIPS.map((chip) => (
             <ChoiceButton
               key={chip.label}
               look="pill"
@@ -323,7 +355,7 @@ export function ProductToolbar({
             >
               {chip.label}
             </ChoiceButton>
-          ))}
+          )) : null}
         </div>
         {/* Says which set it describes, because the KPI row above describes
             a different one whenever a filter is on. */}

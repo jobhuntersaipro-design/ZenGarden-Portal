@@ -11,6 +11,7 @@ import {
   type ProductStats,
 } from "@/lib/analytics/products";
 import { NO_FAMILY, groupFamilies, type FamilyRow } from "@/lib/product-families";
+import { NO_MARKET, groupMarkets, type MarketRow } from "@/lib/product-markets";
 
 export type ProductRow = {
   id: string;
@@ -77,6 +78,8 @@ export async function listProducts(
   products: ProductRow[];
   /** The same products, one row per family, from the same rows and window. */
   families: FamilyRow[];
+  /** And one row per market, from those same rows and that same window. */
+  markets: MarketRow[];
   window: { from: Date; to: Date };
   totalOrders: number;
 }> {
@@ -211,6 +214,7 @@ export async function listProducts(
     totalOrders,
     products: rows,
     families: groupFamilies(rows, rowsByProduct),
+    markets: groupMarkets(rows, rowsByProduct),
   };
 }
 
@@ -273,7 +277,9 @@ export function selectProducts(
     /**
      * A product's destination or its retail customer — never where it was
      * made (`context/project-overview.md`). Nullable on the row, so a
-     * product carrying none matches no market rather than an "unset" one.
+     * product carrying none matches no market rather than an "unset" one —
+     * or `NO_MARKET`, which asks for exactly those products, the way the
+     * market view's remainder row links to them.
      */
     market?: string;
     /** A family id, or `NO_FAMILY` for the products placed in none. */
@@ -288,7 +294,8 @@ export function selectProducts(
     if (family === NO_FAMILY && product.family !== null) return false;
     if (family && family !== NO_FAMILY && product.family?.id !== family) return false;
     if (brand && product.brand !== brand) return false;
-    if (market && product.market !== market) return false;
+    if (market === NO_MARKET && product.market !== null) return false;
+    if (market && market !== NO_MARKET && product.market !== market) return false;
     // Brand, variant and market are searchable too: "lavender" or "vietnam"
     // is how the ops team refers to a product, not by its generated code.
     if (

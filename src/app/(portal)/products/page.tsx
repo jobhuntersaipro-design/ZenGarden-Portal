@@ -7,6 +7,7 @@ import { KpiMoney, KpiNumber, KpiTile } from "@/components/dashboard/KpiTile";
 import { AttentionTile } from "@/components/products/AttentionTile";
 import { Button } from "@/components/ui/button";
 import { FamiliesList } from "@/components/products/FamiliesList";
+import { MarketsList } from "@/components/products/MarketsList";
 import { ProductCard } from "@/components/products/ProductCard";
 import { ProductsList } from "@/components/products/ProductsList";
 import {
@@ -21,6 +22,11 @@ import {
   selectFamilies,
   type FamilySortKey,
 } from "@/lib/product-families";
+import {
+  MARKET_SORT_KEYS,
+  selectMarkets,
+  type MarketSortKey,
+} from "@/lib/product-markets";
 import { presignGet } from "@/lib/r2";
 import {
   PRODUCT_SORT_KEYS,
@@ -60,7 +66,7 @@ export default async function ProductsPage({
   searchParams: Promise<SearchParams>;
 }) {
   const params = await searchParams;
-  const { products, families } = await listProducts();
+  const { products, families, markets: marketRows } = await listProducts();
   const canManageProducts = await can("product.manage");
 
   const filterParam = firstParam(params, "filter") as ProductFilter;
@@ -69,17 +75,21 @@ export default async function ProductsPage({
   const category = firstParam(params, "category") || undefined;
   const brand = firstParam(params, "brand") || undefined;
   const market = firstParam(params, "market") || undefined;
-  // Rows are products unless asked for families (Phase 36). A `family`
-  // narrows the product view to one family's variants — the family row's
-  // link — and only means something there.
-  const by: ProductBy = firstParam(params, "by") === "family" ? "family" : "product";
+  // Rows are products unless asked for families (Phase 36) or markets. A
+  // `family` narrows the product view to one family's variants — the family
+  // row's link — and only means something there.
+  const byParam = firstParam(params, "by");
+  const by: ProductBy =
+    byParam === "family" ? "family" : byParam === "market" ? "market" : "product";
   const familyParam = firstParam(params, "family") || undefined;
   const family = by === "product" ? familyParam : undefined;
   const familyRow = family ? families.find((row) => row.id === family) : undefined;
   const sort =
     by === "family"
       ? parseSort(params, FAMILY_SORT_KEYS, { key: "revenue", dir: "desc" })
-      : parseSort(params, PRODUCT_SORT_KEYS, { key: "revenue", dir: "desc" });
+      : by === "market"
+        ? parseSort(params, MARKET_SORT_KEYS, { key: "revenue", dir: "desc" })
+        : parseSort(params, PRODUCT_SORT_KEYS, { key: "revenue", dir: "desc" });
 
   // From the rows already fetched, so the filter can never offer a brand that
   // would match nothing.
@@ -102,6 +112,10 @@ export default async function ProductsPage({
     ...new Set(products.map((product) => product.market).filter(Boolean)),
   ].sort() as string[];
 
+  // Whether the select should offer "No market" at all — it is the one way
+  // back out of the market view's remainder row, and pointless without it.
+  const hasNoMarket = products.some((product) => product.market === null);
+
   const viewParam = firstParam(params, "view");
   // URL first; the stored preference is applied client-side when absent.
   const view: ProductView = viewParam === "list" ? "list" : "grid";
@@ -121,6 +135,10 @@ export default async function ProductsPage({
     category,
     sort: sort as { key: FamilySortKey; dir: "asc" | "desc" },
   });
+  const selectedMarkets = selectMarkets(marketRows, {
+    q,
+    sort: sort as { key: MarketSortKey; dir: "asc" | "desc" },
+  });
 
   // The KPI row describes every product; the footer describes the filter. With
   // nothing applied the two read from the same list and must be identical.
@@ -131,6 +149,11 @@ export default async function ProductsPage({
     revenue:
       Math.round(selectedFamilies.reduce((sum, row) => sum + row.revenue, 0) * 100) / 100,
   };
+  const shownMarkets = {
+    count: selectedMarkets.length,
+    revenue:
+      Math.round(selectedMarkets.reduce((sum, row) => sum + row.revenue, 0) * 100) / 100,
+  };
 
   // One set of sizes per view, and the footer is told which, so it can never
   // offer "10 per page" beside twelve cards.
@@ -138,7 +161,13 @@ export default async function ProductsPage({
   const { page, size, skip, take } = parsePagination(params, sizes);
   const paged = selected.slice(skip, skip + take);
   const pagedFamilies = selectedFamilies.slice(skip, skip + take);
-  const total = by === "family" ? selectedFamilies.length : selected.length;
+  const pagedMarkets = selectedMarkets.slice(skip, skip + take);
+  const total =
+    by === "family"
+      ? selectedFamilies.length
+      : by === "market"
+        ? selectedMarkets.length
+        : selected.length;
 
   const familyChip = family
     ? `${shown.count} ${shown.count === 1 ? "variant" : "variants"} of ${
@@ -262,11 +291,14 @@ export default async function ProductsPage({
         summary={
           by === "family"
             ? `${shownFamilies.count} ${shownFamilies.count === 1 ? "family" : "families"} · ${formatMYR(shownFamilies.revenue.toFixed(2))} in 12 months`
-            : `${shown.count} ${shown.count === 1 ? "product" : "products"} · ${formatMYR(shown.revenue.toFixed(2))} in 12 months`
+            : by === "market"
+              ? `${shownMarkets.count} ${shownMarkets.count === 1 ? "market" : "markets"} · ${formatMYR(shownMarkets.revenue.toFixed(2))} in 12 months`
+              : `${shown.count} ${shown.count === 1 ? "product" : "products"} · ${formatMYR(shown.revenue.toFixed(2))} in 12 months`
         }
         brands={brands}
         categories={categories}
         markets={markets}
+        hasNoMarket={hasNoMarket}
       />
 
       {by === "family" ? (
@@ -275,6 +307,8 @@ export default async function ProductsPage({
           sort={sort}
           canManage={canManageProducts}
         />
+      ) : by === "market" ? (
+        <MarketsList rows={pagedMarkets} sort={sort} />
       ) : view === "grid" ? (
         paged.length === 0 ? (
           <p className="rounded-lg border border-hairline bg-canvas p-xl text-center text-[length:var(--text-body-sm)] text-ink-secondary">
