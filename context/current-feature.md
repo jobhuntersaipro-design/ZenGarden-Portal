@@ -5,13 +5,30 @@
 **Built and driven in a browser on `claude/session-cloud-location-aszckl`**
 (2026-09-21). Asked for as: "build option A, put it in a new side tab named
 Demand Board" — option A of three designs drawn for the planning team's own
-master list (`docs/specs/51-planning-board.md`).
+master list (`docs/specs/51-planning-board.md`) — then "make it daily view
+too".
 
 **A fifth portal destination, `/demand`, and no new table.** Every figure is
 derived from orders already in the portal: a purchase order counts while its
 stage is not `DELIVERED` and it carries an expected delivery date, its line
-items are in cartons and resolve to a product. One row per product, weeks
+items are in cartons and resolve to a product. One row per product, time
 across, most committed first.
+
+**Two grains, one query.** Weekly and Daily are the same board read at two
+resolutions — `loadDemandBoard(grain, window)` buckets through
+`bucketKey(date, grain)`, the analytics module the four Recharts charts have
+used since Phase 06, so a day column and a week column cannot disagree about
+which bucket an order falls in. Weekly is the default because it is how the
+master list is laid out; daily is what a dispatch plan needs, and the planning
+team reads the spreadsheet for both.
+
+**The window follows the grain rather than being one list.** Four weeks and
+seven days are different questions, so the second chip strip changes with the
+first: weekly offers **Next 4 weeks · Next 12 · All open**, daily **Next 7
+days · Next 14 · All open**, and switching grain resets the window to that
+grain's default (`DEMAND_SPAN`: 4 weeks, 14 days) rather than carrying a
+14 across into weeks. A hand-typed `?window=` is clamped — 52 weeks, 92 days —
+because the column count is what the browser has to lay out.
 
 **Why nothing new had to be stored**, measured before building: `LineItem.unit`
 reads **`carton` on all 1,672 seeded lines**, **100%** of lines resolve to a
@@ -26,49 +43,75 @@ board would rather be visibly incomplete than quietly wrong.
 
 **Overdue is its own column, decided without asking.** An order whose expected
 date has passed and which nobody has delivered is the most urgent thing on the
-board. Folding it into the current week — the tempting simplification — hides
-exactly that, so late cartons sit in their own red column and are still counted
-in Committed. The column appears only when something is late.
+board. Folding it into the current bucket — the tempting simplification —
+hides exactly that, so late cartons sit in their own red column and are still
+counted in Committed. The column appears only when something is late, and it
+means the same thing at both grains: earlier than the bucket the board opens
+on, which at daily resolution is a sharper line than at weekly.
 
 **A dash is nothing promised, not a zero**, throughout. The same null-vs-zero
-rule the stock count turns on.
+rule the stock count turns on. It carries most of the daily view: fourteen
+columns across eight products are mostly empty, and a grid of zeros would
+read as fourteen days of nothing ordered rather than a plan with gaps in it.
 
 **Not `DataTable`.** That component pages, sorts by URL and drops to card mode
-on a phone, all of which this board would fight: the week columns are computed
+on a phone, all of which this board would fight: the columns are computed
 rather than declared, a row is only meaningful read across, and there is
 nothing to page — the window *is* the paging. It scrolls sideways inside its
 own frame with the same `useEdgeFades` treatment Phase 11 gave the line-items
-table, and the product column is sticky.
+table, and the product column is sticky, which is what makes fourteen day
+columns readable at all.
 
 **The phone tab bar went from four tabs to five.** `grid-cols-4` was hardcoded
 and a fifth destination would have wrapped the bar onto two rows. It is
 `grid-cols-5` now, with a comment tying the number to `NAV`'s length, because
 a Tailwind class built at runtime is not compiled.
 
+**A break only the Next compiler found.** `DemandToolbar` is a client
+component and it needed `DEMAND_SPAN` to reset the window on a grain change;
+importing it from `@/lib/queries/demand` pulled that module's `prisma` import
+into the browser bundle and the build failed. `tsc` and the whole suite were
+clean at the time — the boundary is Turbopack's to enforce, not the type
+system's. `DemandGrain` and `DEMAND_SPAN` live in `src/lib/planning/grain.ts`
+now, which imports nothing but the analytics `Aggregation` type, and the query
+module re-exports them so a server caller still has one import.
+
 ## Verified, with the figures
 
 Development, port 3000, as the seeded super admin, against the seeded
-catalogue.
+catalogue, with the board opening on 21 Sep 2026.
 
-- **The board reads true.** 26 open orders · 2,669 cartons. MR.KING 1.5L —
-  Lemon leads with **550 committed across 10 orders** — 46 overdue, then 36 /
-  371 / 97 across the four weeks. Column totals **250 · 751 · 1,363 · 305**,
-  committed **2,669**.
+- **Weekly reads true.** 26 open orders · 2,669 cartons. Headers
+  `Product · Overdue · 21–27 Sep · 28 Sep–4 Oct · 5–11 Oct · 12–18 Oct ·
+  Committed · Orders · On hand · Short by`. MR.KING 1.5L — Lemon leads with
+  **550 committed across 10 orders** — 46 overdue, then 36 / 371 / 97. Column
+  totals **250 · 751 · 1,363 · 305**, committed **2,669**.
+- **Daily is the same orders spread out**, reached by clicking the chips
+  (`?by=day&window=14`): **14 columns, 21 Sep to 4 Oct**, the same leading row
+  reading 46 overdue then `— — 4 — — — 32 159 41 — — — 171 —` for **453 across
+  9 orders**, under the caption "Cartons wanted, by the day their order is
+  expected."
+- **Next 7 days narrows to seven columns** with the footer **250 · — · — · 180
+  · 240 · 267 · — · 64 · 1,001** — a week's demand landing on three days, which
+  is the thing the weekly column's single 751 cannot show.
 - **Overdue renders red and separately**, on 6 of the 8 visible rows; two rows
-  with nothing late read `—`.
+  with nothing late read `—`. It carries the same 250 at both grains.
 - **On hand and Short by are `—` on every row**, and the amber callout reads
   "Stock is not counted yet." with a link to enter counts — the true state of
   a catalogue where `stockCartons` is null everywhere.
 - **The nav.** Sidebar reads Dashboard · Purchase Orders · **Demand board** ·
   Buyers · Products. On a phone the tab bar is **five tabs at 78 × 56px**,
   labelled Demand, still clear of the 44px floor.
-- **No overflow** at 1440 (1440/1440) and 390 (390/390); the table scrolls
-  inside its own frame with the product column pinned.
-- **1306/1306 tests across 101 files** (7 new), `tsc`, lint (the same 2
-  pre-existing warnings) and `npm run build` clean, with `/demand` registered
-  as a dynamic route.
-- **Two guards watched failing first.** Folding late demand into the current
-  week (`const late = false`) failed two tests; restoring it passed them.
+- **No overflow** at 1440 (1440/1440) on both grains and at 390 (390/390) on
+  daily, the widest the board gets; the table scrolls inside its own frame
+  with the product column pinned, and the console is clean.
+- **1310/1310 tests across 101 files** (11 on the board, 4 of them daily),
+  `tsc`, lint (the same 2 pre-existing warnings) and `npm run build` clean,
+  with `/demand` registered as a dynamic route.
+- **Three guards watched failing first.** Folding late demand into the current
+  bucket (`const late = false`) failed two tests; bucketing daily through the
+  week key put a Tuesday's cartons in Monday's column and failed the daily
+  ones; restoring each passed them.
 
 ## Not verified
 
@@ -79,15 +122,18 @@ catalogue.
 - **A board with stock counted.** Every row on every screen read `—` for On
   hand, so the `shortBy` arithmetic is covered by its unit test alone and has
   never been seen on a page.
-- **The window chips, clicked.** "Next 12" and "All open" are unit-tested
-  through `loadDemandBoard("all")`; only the default view was driven.
-- **The edge fades**, which appear on horizontal scroll and were not scrolled.
+- **"All open", clicked.** It is unit-tested at both grains through
+  `loadDemandBoard(grain, "all")`, and at daily it can produce a column per
+  day out to the last delivery date in the database — how wide that gets on
+  real data was not measured.
+- **The edge fades**, which appear on horizontal scroll and were not scrolled,
+  at either grain.
 - **A member's view.** Read as a super admin. The board has no permission
   check of its own — it is a portal page behind the same `requireUser()` shell
   as the rest, and every staff role sees it.
 - **Volume.** 8 products on 26 orders. The query reads every open line in one
   go and aggregates in memory, which is right at this size and untested at a
-  thousand.
+  thousand — and the daily grain multiplies the cells, not the rows.
 
 ## Previous phase
 

@@ -3,26 +3,44 @@ import Link from "next/link";
 import { PageHeader } from "@/components/portal/PageHeader";
 import { DemandTable } from "@/components/demand/DemandTable";
 import { DemandToolbar } from "@/components/demand/DemandToolbar";
-import {
-  DEMAND_WEEKS,
-  loadDemandBoard,
-  type DemandWindow,
-} from "@/lib/queries/demand";
+import { loadDemandBoard, type DemandWindow } from "@/lib/queries/demand";
+import { DEMAND_SPAN, type DemandGrain } from "@/lib/planning/grain";
 import { firstParam, type SearchParams } from "@/lib/queries/pagination";
 
 export const metadata: Metadata = { title: "Demand board · Zen Garden Portal" };
 export const dynamic = "force-dynamic";
 
-const WINDOWS = [
-  { value: String(DEMAND_WEEKS), label: `Next ${DEMAND_WEEKS} weeks` },
-  { value: "12", label: "Next 12" },
-  { value: "all", label: "All open" },
-] as const;
+/**
+ * The spans each grain offers. Days and weeks cannot share them: four weeks
+ * of days is 28 columns, and fourteen weeks is half a year — each grain gets
+ * the spans a person would actually ask it for.
+ */
+const SPANS: Record<DemandGrain, { value: string; label: string }[]> = {
+  week: [
+    { value: "4", label: "Next 4 weeks" },
+    { value: "12", label: "Next 12" },
+    { value: "all", label: "All open" },
+  ],
+  day: [
+    { value: "7", label: "Next 7 days" },
+    { value: "14", label: "Next 14" },
+    { value: "all", label: "All open" },
+  ],
+};
 
-function parseWindow(raw: string | undefined): DemandWindow {
+function parseGrain(raw: string | undefined): DemandGrain {
+  return raw === "day" ? "day" : "week";
+}
+
+function parseWindow(raw: string | undefined, grain: DemandGrain): DemandWindow {
   if (raw === "all") return "all";
-  const weeks = Number(raw);
-  return Number.isInteger(weeks) && weeks > 0 && weeks <= 52 ? weeks : DEMAND_WEEKS;
+  const span = Number(raw);
+  // A day span may run to a quarter; a week span to a year. Both are bounded
+  // so a typed `?window=9999` cannot ask for ten thousand columns.
+  const ceiling = grain === "day" ? 92 : 52;
+  return Number.isInteger(span) && span > 0 && span <= ceiling
+    ? span
+    : DEMAND_SPAN[grain];
 }
 
 export default async function DemandPage({
@@ -31,9 +49,9 @@ export default async function DemandPage({
   searchParams: Promise<SearchParams>;
 }) {
   const params = await searchParams;
-  const raw = firstParam(params, "window");
-  const window = parseWindow(raw);
-  const board = await loadDemandBoard(window);
+  const grain = parseGrain(firstParam(params, "by"));
+  const window = parseWindow(firstParam(params, "window"), grain);
+  const board = await loadDemandBoard(grain, window);
 
   const selected = window === "all" ? "all" : String(window);
 
@@ -48,10 +66,7 @@ export default async function DemandPage({
       </p>
 
       <div className="mb-lg">
-        <DemandToolbar
-          value={selected}
-          options={WINDOWS.map((w) => ({ value: w.value, label: w.label }))}
-        />
+        <DemandToolbar grain={grain} window={selected} spans={SPANS[grain]} />
       </div>
 
       {/* The board's own missing half, said once and plainly rather than

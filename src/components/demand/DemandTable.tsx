@@ -14,7 +14,8 @@ function Cell({ value }: { value: number | undefined }) {
 }
 
 /**
- * The runway list: one row per product, weeks across, most committed first.
+ * The runway list: one row per product, days or weeks across, most committed
+ * first.
  *
  * Deliberately not `DataTable`. That component pages, sorts by URL and drops
  * to card mode on a phone, all of which this board would have to fight: the
@@ -50,9 +51,9 @@ export function DemandTable({ board }: { board: DemandBoard }) {
             <tr className="border-b border-hairline">
               <Th className="sticky left-0 z-10 bg-canvas pl-lg">Product</Th>
               {board.anyOverdue ? <Th numeric>Overdue</Th> : null}
-              {board.weeks.map((week) => (
-                <Th key={week.key} numeric>
-                  {week.label}
+              {board.columns.map((column) => (
+                <Th key={column.key} numeric>
+                  {column.label}
                 </Th>
               ))}
               <Th numeric>Committed</Th>
@@ -88,9 +89,9 @@ export function DemandTable({ board }: { board: DemandBoard }) {
                     )}
                   </Td>
                 ) : null}
-                {board.weeks.map((week) => (
-                  <Td key={week.key} numeric>
-                    <Cell value={row.byWeek[week.key]} />
+                {board.columns.map((column) => (
+                  <Td key={column.key} numeric>
+                    <Cell value={row.byColumn[column.key]} />
                   </Td>
                 ))}
                 <Td numeric>
@@ -124,10 +125,10 @@ export function DemandTable({ board }: { board: DemandBoard }) {
                   <span className="font-semibold text-ink">{num(board.totals.overdue)}</span>
                 </Td>
               ) : null}
-              {board.weeks.map((week) => (
-                <Td key={week.key} numeric>
+              {board.columns.map((column) => (
+                <Td key={column.key} numeric>
                   <span className="font-semibold text-ink">
-                    <Cell value={board.totals.byWeek[week.key]} />
+                    <Cell value={board.totals.byColumn[column.key]} />
                   </span>
                 </Td>
               ))}
@@ -142,8 +143,8 @@ export function DemandTable({ board }: { board: DemandBoard }) {
         </table>
       </Scroller>
       <p className="border-t border-hairline px-lg py-sm text-[length:var(--text-caption)] text-ink-tertiary">
-        Cartons wanted, by the week their order is expected. A dash is nothing
-        promised, not a zero.
+        Cartons wanted, by the {board.grain === "day" ? "day" : "week"} their
+        order is expected. A dash is nothing promised, not a zero.
       </p>
     </section>
   );

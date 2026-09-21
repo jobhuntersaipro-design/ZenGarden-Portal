@@ -1,14 +1,14 @@
-import { addWeeks } from "date-fns";
+import { addDays, addWeeks } from "date-fns";
 import { PoStage } from "@/generated/prisma/enums";
 import { prisma } from "@/lib/prisma";
 import { bucketKey, makeBuckets } from "@/lib/analytics/buckets";
+import { DEMAND_SPAN, type DemandGrain } from "@/lib/planning/grain";
 
-/** How many weeks the board shows before "All open" is asked for. */
-export const DEMAND_WEEKS = 4;
+export { DEMAND_SPAN, type DemandGrain } from "@/lib/planning/grain";
 
 export type DemandWindow = number | "all";
 
-export type DemandWeek = { key: string; label: string };
+export type DemandColumn = { key: string; label: string };
 
 export type DemandRow = {
   productId: string;
@@ -18,11 +18,11 @@ export type DemandRow = {
   market: string | null;
   /** Cartons on hand, null where nobody has counted (2026-09-21). */
   stockCartons: number | null;
-  /** Cartons wanted, by week key. Absent keys are nothing, not zero. */
-  byWeek: Record<string, number>;
-  /** Wanted before this week — late, and still not delivered. */
+  /** Cartons wanted, by column key. Absent keys are nothing, not zero. */
+  byColumn: Record<string, number>;
+  /** Wanted before the current day or week — late, and not delivered. */
   overdue: number;
-  /** Cartons across every week shown, `overdue` included. */
+  /** Cartons across every column shown, `overdue` included. */
   committed: number;
   /** How many open orders those cartons come from. */
   orders: number;
@@ -34,20 +34,26 @@ export type DemandRow = {
 };
 
 export type DemandBoard = {
-  weeks: DemandWeek[];
+  grain: DemandGrain;
+  columns: DemandColumn[];
   rows: DemandRow[];
-  /** Column totals, by week key, plus the same two summary figures. */
-  totals: { byWeek: Record<string, number>; overdue: number; committed: number };
+  /** Column totals, by column key, plus the same two summary figures. */
+  totals: { byColumn: Record<string, number>; overdue: number; committed: number };
   openOrders: number;
   /** Products on the board that carry a stock count. */
   counted: number;
   anyOverdue: boolean;
 };
 
-/** A week key back to the label the charts already use — `6–12 Jul`. */
-function labelFor(key: string): DemandWeek {
+/**
+ * A bucket key back to the label the charts already use — `6–12 Jul` for a
+ * week, `9 Sep` for a day. Both come from `makeBuckets` rather than a second
+ * formatter, so the board and every chart in the portal name a period the
+ * same way.
+ */
+function labelFor(key: string, grain: DemandGrain): DemandColumn {
   const start = new Date(`${key}T00:00:00+08:00`);
-  return { key, label: makeBuckets(start, start, "week")[0]?.label ?? key };
+  return { key, label: makeBuckets(start, start, grain)[0]?.label ?? key };
 }
 
 /**
@@ -68,7 +74,8 @@ function labelFor(key: string): DemandWeek {
  * belongs in the review queue, not in a production plan.
  */
 export async function loadDemandBoard(
-  window: DemandWindow = DEMAND_WEEKS,
+  grain: DemandGrain = "week",
+  window: DemandWindow = DEMAND_SPAN[grain],
   now: Date = new Date(),
 ): Promise<DemandBoard> {
   const lines = await prisma.lineItem.findMany({
@@ -96,27 +103,29 @@ export async function loadDemandBoard(
     },
   });
 
-  const thisWeek = bucketKey(now, "week");
-  const weeks =
+  const current = bucketKey(now, grain);
+  const step = grain === "day" ? addDays : addWeeks;
+  const columns =
     window === "all"
       ? []
-      : makeBuckets(now, addWeeks(now, window - 1), "week").map(
-          ({ key, label }) => ({ key, label }),
-        );
-  const shown = new Set(weeks.map((w) => w.key));
+      : makeBuckets(now, step(now, window - 1), grain).map(({ key, label }) => ({
+          key,
+          label,
+        }));
+  const shown = new Set(columns.map((c) => c.key));
 
   const rows = new Map<string, DemandRow>();
   const seenOrders = new Map<string, Set<string>>();
-  const totals: DemandBoard["totals"] = { byWeek: {}, overdue: 0, committed: 0 };
+  const totals: DemandBoard["totals"] = { byColumn: {}, overdue: 0, committed: 0 };
   const allOrders = new Set<string>();
 
   for (const line of lines) {
     // Narrowed by the `where` above; Prisma types both as nullable.
     if (!line.productId || !line.product || !line.purchaseOrder.deliveryDate) continue;
 
-    const key = bucketKey(line.purchaseOrder.deliveryDate, "week");
-    const late = key < thisWeek;
-    // Outside the window and not late: a later week the board is not showing.
+    const key = bucketKey(line.purchaseOrder.deliveryDate, grain);
+    const late = key < current;
+    // Outside the window and not late: a later period the board is not showing.
     if (!late && window !== "all" && !shown.has(key)) continue;
 
     const cartons = Number(line.quantity);
@@ -129,7 +138,7 @@ export async function loadDemandBoard(
         variant: line.product.variant,
         market: line.product.market,
         stockCartons: line.product.stockCartons,
-        byWeek: {},
+        byColumn: {},
         overdue: 0,
         committed: 0,
         orders: 0,
@@ -140,8 +149,8 @@ export async function loadDemandBoard(
       row.overdue += cartons;
       totals.overdue += cartons;
     } else {
-      row.byWeek[key] = (row.byWeek[key] ?? 0) + cartons;
-      totals.byWeek[key] = (totals.byWeek[key] ?? 0) + cartons;
+      row.byColumn[key] = (row.byColumn[key] ?? 0) + cartons;
+      totals.byColumn[key] = (totals.byColumn[key] ?? 0) + cartons;
     }
     row.committed += cartons;
     totals.committed += cartons;
@@ -167,16 +176,20 @@ export async function loadDemandBoard(
   // a shortfall sort is impossible until stock is counted.
   out.sort((a, b) => b.committed - a.committed || a.sku.localeCompare(b.sku));
 
-  // "All open" has no fixed window, so its columns are whichever weeks the
-  // orders actually fall in — an empty week nobody promised anything in is
-  // not worth a column here, unlike on a chart's axis.
-  const allWeeks =
+  // "All open" has no fixed window, so its columns are whichever periods the
+  // orders actually fall in — an empty one nobody promised anything in is not
+  // worth a column here, unlike on a chart's axis. It matters more by day:
+  // every open order spread over a year is 365 mostly empty columns.
+  const allColumns =
     window === "all"
-      ? [...new Set(Object.keys(totals.byWeek))].sort().map(labelFor)
-      : weeks;
+      ? [...new Set(Object.keys(totals.byColumn))]
+          .sort()
+          .map((key) => labelFor(key, grain))
+      : columns;
 
   return {
-    weeks: allWeeks,
+    grain,
+    columns: allColumns,
     rows: out,
     totals,
     openOrders: allOrders.size,
