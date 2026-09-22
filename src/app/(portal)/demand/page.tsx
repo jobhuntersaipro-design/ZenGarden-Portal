@@ -190,8 +190,6 @@ export default async function DemandPage({
           byBucket={stages.byBucket}
           orderCount={stages.orderCount}
           window={stageWindow}
-          from={stageFrom.toLocaleDateString("en-CA")}
-          to={stageTo.toLocaleDateString("en-CA")}
         />
       </div>
     </div>

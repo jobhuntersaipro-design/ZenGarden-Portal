@@ -11,6 +11,7 @@ import { useEdgeFades } from "@/hooks/useEdgeFades";
 import { PoStage } from "@/generated/prisma/enums";
 import { PO_STAGES, stageLabel } from "@/lib/po-stages";
 import { STAGE_VARS, cssVar } from "@/lib/analytics/palette";
+import { pointBreakdown } from "@/lib/analytics/stage-history";
 import {
   NO_PRODUCT,
   type StageProductRow,
@@ -62,8 +63,6 @@ export function StageBoard({
   byBucket,
   orderCount,
   window,
-  from,
-  to,
 }: {
   points: StagePoint[];
   breakdown: StageBreakdown;
@@ -71,8 +70,6 @@ export function StageBoard({
   byBucket: Record<string, StageProductRow[]>;
   orderCount: number;
   window: StageWindow;
-  from: string;
-  to: string;
 }) {
   const pathname = usePathname();
   const searchParams = useSearchParams();
@@ -96,6 +93,20 @@ export function StageBoard({
   const rows = useMemo(
     () => (active ? (byBucket[active] ?? []) : all),
     [active, byBucket, all],
+  );
+
+  // **The legend counts the bar being read, not today.** A reader who pins
+  // 20 Sep and finds six counts from this morning underneath it has been
+  // shown the wrong figures under the right heading — the exact defect the
+  // board was rebuilt to remove, arriving one component lower. Each
+  // `StagePoint` already carries a count per stage, so following the bar
+  // costs no second pass over the data and no round trip.
+  const legend = useMemo<StageBreakdown>(
+    () =>
+      point
+        ? pointBreakdown(point)
+        : breakdown.filter((entry) => entry.stage !== PoStage.DELIVERED),
+    [point, breakdown],
   );
 
   // Tapping the bar already shown releases it, so a phone can get back to
@@ -153,32 +164,46 @@ export function StageBoard({
         />
       </div>
 
-      {/* The legend, and the way into the rows each count is over. */}
+      {/* It links only at rest, and that is a limit of the list rather than
+          a choice. "Every order at QC passed now" is a page the purchase-order
+          list can draw; "every order at QC passed on 20 Sep" is not — that
+          list filters the `stage` column, which holds today's stage and no
+          history — so a pinned day prints plain text rather than a link that
+          quietly answers a different question. */}
       <ul className="mt-md flex flex-wrap gap-x-md gap-y-xs">
-        {breakdown
-          .filter((entry) => entry.stage !== PoStage.DELIVERED)
-          .map((entry) => (
+        {legend.map((entry) => {
+          const body = (
+            <>
+              <span
+                aria-hidden
+                className="size-2 shrink-0 rounded-full"
+                style={{
+                  background: cssVar(
+                    STAGE_VARS[PO_STAGES.indexOf(entry.stage)],
+                  ),
+                }}
+              />
+              {stageLabel(entry.stage)}{" "}
+              <span className="tabular-nums text-ink">{num(entry.count)}</span>
+            </>
+          );
+          const shape =
+            "flex items-center gap-xxs text-[length:var(--text-caption)] text-ink-secondary";
+          return (
             <li key={entry.stage}>
-              <Link
-                href={`/purchase-orders?status=confirmed&stage=${entry.stage}&from=${from}&to=${to}`}
-                className="flex items-center gap-xxs text-[length:var(--text-caption)] text-ink-secondary hover:text-ink"
-              >
-                <span
-                  aria-hidden
-                  className="size-2 shrink-0 rounded-full"
-                  style={{
-                    background: cssVar(
-                      STAGE_VARS[PO_STAGES.indexOf(entry.stage)],
-                    ),
-                  }}
-                />
-                {stageLabel(entry.stage)}{" "}
-                <span className="tabular-nums text-ink">
-                  {num(entry.count)}
-                </span>
-              </Link>
+              {point ? (
+                <span className={shape}>{body}</span>
+              ) : (
+                <Link
+                  href={`/purchase-orders?status=confirmed&stage=${entry.stage}`}
+                  className={`${shape} hover:text-ink`}
+                >
+                  {body}
+                </Link>
+              )}
             </li>
-          ))}
+          );
+        })}
       </ul>
 
       <div className="mt-lg border-t border-hairline pt-lg">

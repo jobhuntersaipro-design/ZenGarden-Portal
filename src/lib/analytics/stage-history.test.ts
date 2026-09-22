@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import { PoStage } from "@/generated/prisma/enums";
 import {
   openAt,
+  pointBreakdown,
   stageAt,
   stageSnapshotBreakdown,
   stageSnapshotSeries,
@@ -212,5 +213,82 @@ describe("events sharing a timestamp", () => {
       [PoStage.DELIVERED, "2026-09-12"],
     ]);
     expect(stageAt(o.stageEvents, at("2026-09-13"))).toBeNull();
+  });
+});
+
+describe("pointBreakdown", () => {
+  const days = ["2026-09-10", "2026-09-11", "2026-09-12", "2026-09-13"];
+  const snapshots = days.map((key, i) => ({
+    key,
+    label: key,
+    end: at(["2026-09-11", "2026-09-12", "2026-09-13", "2026-09-14"][i]),
+  }));
+
+  // Deliberately a pipeline that *moves*: the first day and the last read
+  // different stages, so a legend computed from "now" cannot pass by
+  // accident. That is the whole defect this guards against — the legend
+  // under the chart showing today's figures beneath a bar from last week.
+  const orders = [
+    order([placed("2026-09-10"), [PoStage.IN_PRODUCTION, "2026-09-12"]]),
+    order([
+      placed("2026-09-10"),
+      [PoStage.IN_PRODUCTION, "2026-09-11"],
+      [PoStage.QC_PASSED, "2026-09-13"],
+    ]),
+    order([placed("2026-09-12")]),
+  ];
+
+  it("is the bar's own counts, not the board's", () => {
+    const points = stageSnapshotSeries(orders, snapshots);
+    const legend = (key: string) =>
+      pointBreakdown(points.find((p) => p.key === key)!).map((e) => [
+        e.stage,
+        e.count,
+      ]);
+
+    expect(legend("2026-09-10")).toEqual([
+      [PoStage.ORDER_PLACED, 2],
+      [PoStage.IN_PRODUCTION, 0],
+      [PoStage.QC_PASSED, 0],
+      [PoStage.IN_WAREHOUSE, 0],
+      [PoStage.DELIVERING, 0],
+    ]);
+    expect(legend("2026-09-13")).toEqual([
+      [PoStage.ORDER_PLACED, 1],
+      [PoStage.IN_PRODUCTION, 1],
+      [PoStage.QC_PASSED, 1],
+      [PoStage.IN_WAREHOUSE, 0],
+      [PoStage.DELIVERING, 0],
+    ]);
+  });
+
+  it("agrees with the breakdown at that same instant, on every bar", () => {
+    const points = stageSnapshotSeries(orders, snapshots);
+    for (const [i, point] of points.entries()) {
+      expect(pointBreakdown(point)).toEqual(
+        stageSnapshotBreakdown(orders, snapshots[i].end).filter(
+          (entry) => entry.stage !== PoStage.DELIVERED,
+        ),
+      );
+    }
+  });
+
+  it("sums to the bar's total, so the legend and the bar cannot disagree", () => {
+    for (const point of stageSnapshotSeries(orders, snapshots)) {
+      const total = pointBreakdown(point).reduce((sum, e) => sum + e.count, 0);
+      expect(total).toBe(point.total);
+    }
+  });
+
+  it("leaves Delivered out", () => {
+    const points = stageSnapshotSeries(
+      [order([placed("2026-09-10"), [PoStage.DELIVERED, "2026-09-12"]])],
+      snapshots,
+    );
+    for (const point of points) {
+      expect(pointBreakdown(point).map((e) => e.stage)).not.toContain(
+        PoStage.DELIVERED,
+      );
+    }
   });
 });

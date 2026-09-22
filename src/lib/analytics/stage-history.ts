@@ -139,3 +139,17 @@ export function stageSnapshotBreakdown(
   }
   return PO_STAGES.map((stage) => ({ stage, count: counts.get(stage) ?? 0 }));
 }
+
+/**
+ * A bar's own legend: the counts the chart has just drawn for that bucket.
+ *
+ * It exists so the legend under the chart and the bar above it cannot come
+ * from two different reads. Delivered is left out, as it is everywhere on
+ * this board — an order leaves the day it is delivered, so its segment, its
+ * legend row and its column would all be pinned at zero.
+ */
+export function pointBreakdown(point: StagePoint): StageBreakdown {
+  return PO_STAGES.filter((stage) => stage !== PoStage.DELIVERED).map(
+    (stage) => ({ stage, count: point[stage] }),
+  );
+}

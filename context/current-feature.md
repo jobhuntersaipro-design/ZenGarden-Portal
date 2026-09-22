@@ -66,6 +66,31 @@ product's orders counted into the stage each one stood at *then*. Moving off
 puts today back. The tooltip is **off** on this chart for the same reason: two
 explanations of one bar, one of them following the pointer, is noise.
 
+**The legend under the chart counts the bar being read, not today** —
+fixed on 2026-09-22 after the user pinned a bar reading 24 and found five
+legend rows summing to 26 beneath it. Every other part of the board already
+followed the pointer; the legend alone read a figure the query computes once,
+at `now`, so it showed this morning's pipeline under a past day's heading.
+That is the same defect the whole board was rebuilt to remove, arriving one
+component lower. Each `StagePoint` already carries a count per stage, so the
+legend is `pointBreakdown(point)` — the bar's own numbers, no second pass and
+no round trip.
+
+**It links only at rest, and that is a limit of the list rather than a
+choice.** "Every order at QC passed now" is a page `/purchase-orders` can
+draw; "every order at QC passed on 17 Sep" is not, because that list filters
+the `stage` column, which holds today's stage and no history. A pinned day
+prints plain text rather than a link that quietly answers a different
+question, and releasing the bar puts the five links back.
+
+**The link also stopped carrying the window's dates**, which was a second
+defect the rewrite introduced and nobody had yet read. The board's population
+is every order open *during* the window whatever its `poDate`, so a `from`/`to`
+on the href excluded exactly the orders that have been open longest.
+**Measured:** with one open QC-passed order dated 10 Jun, the legend still
+reads **8** and the old date-ranged link returns **7**; without the range it
+returns **8**.
+
 **The order count moved into the table's own heading** — `15 Sep · 24
 orders` — after the user read a bar showing one order at QC passed above a QC
 column adding to 6 and asked which was correct. Both were: one order carrying
@@ -126,6 +151,20 @@ drive and **restored afterwards**; the cluster was stopped and deleted, and
   delivered. That is the strongest check available: the app maintains `stage`
   alongside the events, so a replay that lands on it has reconstructed all 423
   orders' histories correctly.
+- **The legend follows the bar, reconciled against SQL rather than against
+  the chart.** Pinned to 17 Sep it reads **Order placed 11 · In production 6 ·
+  QC passed 2 · In warehouse 2 · Delivering 3 = 24**, against SQL's own
+  `11 · 6 · 2 · 2 · 3` for the same instant — and no order has two events tied
+  at that moment, so the SQL is unambiguous. At rest it reads
+  **5 · 4 · 8 · 4 · 5 = 26**, the `stage` column's own `GROUP BY`. The heading
+  beside it says *17 Sep · 24 orders* and the bar prints **24**. The same
+  figures at 390, where the board does not overflow (390/390; 1440/1440).
+- **The defect was reproduced before it was fixed**, on the same data: with
+  the old component put back, the pinned 17 Sep bar reads 24 under a legend
+  summing **26**, at 390 and at 1440 alike.
+- **The counterfactual was watched failing.** Expressed at the pure level —
+  every bar's legend read from the last snapshot rather than its own — the new
+  reconciliation test goes red (`1 failed | 16 passed`); restored, 17 pass.
 - **A past day reconciles too.** Hovering 15 Sep read **24 orders**, against
   SQL's 10 + 5 + 1 + 2 + 6 = 24 open at the end of that day, and its table drew
   **12 product rows over 85 order-product pairs** — exactly the `count(distinct
