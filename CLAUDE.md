@@ -9,11 +9,17 @@ Read the following to get the full context of the project:
 - @context/coding-standard.md
 - @context/ai-interaction.md
 - @context/current-feature.md
+- @context/lessons.md
 
 `context/current-feature.md` is long and is the project's own history: the phase
 being built now, then every phase before it with **what was verified, with the
 figures** and **what was not**. Read the top before starting work; search it
 before re-deriving anything, because most gotchas are already recorded there.
+
+`context/lessons.md` is short and is the opposite kind of file: the rules
+earned by defects the **user** found, written as rules rather than history.
+Read it before building or changing a screen, and add to it when a shipped
+defect turns out to be an instance of something general.
 
 ## Commands
 - `npm run dev` — dev server (port 3000; the storefront needs a second hostname, below)
