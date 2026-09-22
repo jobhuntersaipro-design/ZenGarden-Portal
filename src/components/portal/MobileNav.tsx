@@ -62,7 +62,7 @@ export function MobileTopBar({
 }
 
 /**
- * Four destinations across the bottom. Each tab is a 56px row plus the home
+ * Six destinations across the bottom. Each tab is a 56px row plus the home
  * indicator inset, comfortably past the 44px touch minimum the review found 55
  * violations of.
  */
@@ -74,12 +74,12 @@ export function MobileTabBar() {
   return (
     <nav
       aria-label="Main"
-      // grid-cols-5 tracks NAV's length (2026-09-21, when the demand board
-      // made it five). It is not derived because a Tailwind class built at
+      // grid-cols-6 tracks NAV's length (2026-09-22, when stock counts made
+      // it six). It is not derived because a Tailwind class built at
       // runtime is not compiled — if a sixth destination is ever added, this
-      // number moves with it or the bar wraps onto two rows. Five tabs is
-      // 78px each at 390, still well clear of the 44px floor.
-      className="fixed inset-x-0 bottom-0 z-30 grid grid-cols-5 border-t border-hairline bg-surface lg:hidden"
+      // number moves with it or the bar wraps onto two rows. Six tabs is
+      // 65px each at 390, still clear of the 44px floor.
+      className="fixed inset-x-0 bottom-0 z-30 grid grid-cols-6 border-t border-hairline bg-surface lg:hidden"
       style={{ paddingBottom: "env(safe-area-inset-bottom)" }}
     >
       {NAV.map(({ href, short, label, icon: Icon }) => {

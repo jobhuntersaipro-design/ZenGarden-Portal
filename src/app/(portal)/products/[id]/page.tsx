@@ -9,6 +9,8 @@ import { CountUp } from "@/components/portal/CountUp";
 import { FamilyCard } from "@/components/products/FamilyCard";
 import { OpenShopOrders } from "@/components/products/OpenShopOrders";
 import { OrderHistoryTable } from "@/components/products/OrderHistoryTable";
+import { ProductStockCard } from "@/components/stock/ProductStockCard";
+import { loadProductStock } from "@/lib/queries/stock";
 import {
   PriceTrendChart,
   type TrendMode,
@@ -72,11 +74,12 @@ export default async function ProductPage({
   const { id } = await params;
   const query = await searchParams;
 
-  const [data, user, labels, families] = await Promise.all([
+  const [data, user, labels, families, stock] = await Promise.all([
     loadProduct(id, presignGet),
     getSessionUser(),
     listAllLabels(),
     listFamilies(),
+    loadProductStock(id),
   ]);
   if (!data) notFound();
 
@@ -371,6 +374,10 @@ export default async function ProductPage({
             caption={tile.caption}
           />
         ))}
+      </div>
+
+      <div className="mt-lg">
+        <ProductStockCard productId={data.product.id} rows={stock} />
       </div>
 
       <div className="mt-lg">

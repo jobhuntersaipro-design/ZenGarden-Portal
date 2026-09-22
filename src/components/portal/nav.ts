@@ -1,4 +1,4 @@
-import { CalendarClock, FileText, LayoutDashboard, Package, Users } from "lucide-react";
+import { Boxes, CalendarClock, FileText, LayoutDashboard, Package, Users } from "lucide-react";
 
 /**
  * The portal's destinations, shared by the desktop `Sidebar` and the mobile
@@ -27,6 +27,7 @@ export const NAV = [
   { href: "/demand", label: "Demand Board", short: "Demand", icon: CalendarClock },
   { href: "/buyers", label: "Buyers", short: "Buyers", icon: Users },
   { href: "/products", label: "Products", short: "Products", icon: Package },
+  { href: "/stock", label: "Stock", short: "Stock", icon: Boxes },
 ] as const;
 
 /** /upload and /review/[id] belong to the Purchase orders section. */

@@ -145,21 +145,6 @@ export function VariantRows({
                 />
               </div>
 
-              <div className="flex flex-col gap-xxs">
-                <label htmlFor={`variant-stock-${row.key}`} className={label}>
-                  Stock
-                </label>
-                <Input
-                  id={`variant-stock-${row.key}`}
-                  inputMode="numeric"
-                  placeholder="Cartons"
-                  value={row.stockCartons}
-                  onChange={(event) =>
-                    onPatch(row.key, { stockCartons: event.target.value })
-                  }
-                  className="tabular-nums"
-                />
-              </div>
             </div>
 
             <details className="mt-sm">

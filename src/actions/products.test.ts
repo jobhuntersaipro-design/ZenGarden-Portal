@@ -728,12 +728,13 @@ describe("createProductVariants", () => {
       "195.5",
     ]);
     /**
-     * Stock is per row, not shared (2026-09-20). One figure spread across a
-     * batch would be a count nobody took — three flavours all claiming the
-     * same 240 pieces — and the difference between a counted zero and a null
-     * has to survive the write, because the low-stock flag reads it.
+     * A product arrives uncounted (Phase 55). Stock was per row here until
+     * counting moved to its own ledger, where a figure carries whoever took
+     * it, the day it counts and a note; a count typed into the create form
+     * would have none of those. Nothing but `saveStockCounts` writes the
+     * column now, so every new row is null whatever the form sent.
      */
-    expect(rows.map((row) => row.stockCartons)).toEqual([240, null, 0]);
+    expect(rows.map((row) => row.stockCartons)).toEqual([null, null, null]);
   });
 
   it("creates a described family once and points every variant at it", async () => {

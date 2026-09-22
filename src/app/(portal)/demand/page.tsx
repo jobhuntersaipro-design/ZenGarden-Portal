@@ -148,7 +148,7 @@ export default async function DemandPage({
             Short by stay blank until somebody enters a count.
           </p>
           <Link
-            href="/products?filter=low-stock"
+            href="/stock"
             className="mt-xs inline-block text-[length:var(--text-body-sm)] font-medium text-brand-link hover:underline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-focus"
           >
             Enter stock counts →

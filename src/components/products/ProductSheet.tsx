@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
 import { updateProduct } from "@/actions/products";
@@ -372,22 +373,23 @@ export function ProductSheet({
               </p>
             </div>
 
-            {/* Ops-only, and nothing derives it: it is what the team counted.
-                Blank is "not counted yet", which is not the same as 0. */}
+            {/* Stock is not a property of a product (Phase 55). It is a
+                stocktake somebody took on a day, with their name and a note on
+                it, so it is counted at /stock and never edited here — a figure
+                changed in a drawer leaves no record of who or when. */}
             <div className="flex flex-col gap-xxs">
-              <label htmlFor="product-stock" className={label}>
-                Stock
-              </label>
-              <Input
-                id="product-stock"
-                inputMode="numeric"
-                value={form.stockCartons === null ? "" : String(form.stockCartons)}
-                onChange={(event) => set("stockCartons", event.target.value)}
-                className="tabular-nums"
-              />
-              <p className="text-[length:var(--text-caption)] text-ink-tertiary">
-                Cartons on hand · never shown on the shop
+              <p className={label}>Stock</p>
+              <p className="text-[length:var(--text-body-sm)] text-ink-secondary">
+                {form.stockCartons === null
+                  ? "Not counted yet"
+                  : `${form.stockCartons.toLocaleString("en-MY")} cartons`}
               </p>
+              <Link
+                href={`/stock?product=${product.id}`}
+                className="text-[length:var(--text-caption)] font-medium text-brand-link hover:underline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-focus"
+              >
+                Count stock →
+              </Link>
             </div>
           </div>
 

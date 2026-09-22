@@ -105,4 +105,20 @@ describe("no shop read asks for stock", () => {
     expect(keysOf(PRICED_PRODUCT_SELECT)).not.toContain("stockCartons");
     expect(keysOf(PRICED_PRODUCT_SELECT_NO_IMAGES)).not.toContain("stockCartons");
   });
+
+  /**
+   * Phase 55 gave stock a second home. The ledger carries every figure the
+   * column ever held, plus who counted it and what they said, so a shop read
+   * that pulled the relation would leak more than the column ever could.
+   */
+  it("leaves the count ledger out of every shop read", async () => {
+    await listShopProducts(parseShopQuery({}));
+    await loadShopHome();
+
+    for (const select of selectsSent()) {
+      expect(keysOf(select)).not.toContain("stockCounts");
+    }
+    expect(keysOf(PRICED_PRODUCT_SELECT)).not.toContain("stockCounts");
+    expect(keysOf(PRICED_PRODUCT_SELECT_NO_IMAGES)).not.toContain("stockCounts");
+  });
 });

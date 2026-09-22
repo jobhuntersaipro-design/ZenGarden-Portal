@@ -650,30 +650,9 @@ export function ProductForm({
             </div>
           )}
 
-          {/* Stock is per variant for the same reason the price is, so it
-              follows the price between here and the Variants table rather
-              than sitting in the shared grid above. */}
-          {many ? null : (
-            <div className="mt-md flex flex-col gap-xxs">
-              <label htmlFor="product-stock" className={label}>
-                Stock
-              </label>
-              <Input
-                id="product-stock"
-                inputMode="numeric"
-                placeholder="Cartons"
-                value={first.stockCartons}
-                onChange={(event) =>
-                  patchRow(first.key, { stockCartons: event.target.value })
-                }
-                className="tabular-nums"
-              />
-              <p className="text-[length:var(--text-caption)] text-ink-tertiary">
-                Cartons on hand · never shown on the shop. Leave it blank if
-                nobody has counted yet.
-              </p>
-            </div>
-          )}
+          {/* No stock field (Phase 55). A product arrives uncounted; the
+              first count is taken at /stock, where it gets whoever counted it,
+              the day it counts and a note. */}
 
           <div className="mt-md flex flex-col gap-xxs">
             <label htmlFor="product-description" className={label}>

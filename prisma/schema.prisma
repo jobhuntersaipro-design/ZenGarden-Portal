@@ -48,6 +48,7 @@ model User {
   stageEvents        PoStageEvent[]
   passwordResets     PasswordResetToken[]
   productPrices      ProductPrice[]
+  stockCounts        StockCount[]
   webOrdersPlaced    WebOrder[]           @relation("webOrdersPlaced")
   webOrdersReviewed  WebOrder[]           @relation("webOrdersReviewed")
   webOrdersReceived  WebOrder[]           @relation("webOrdersReceived")
@@ -335,6 +336,7 @@ model Product {
   prices           ProductPrice[]
   lineItems        LineItem[]
   webOrderLines    WebOrderLine[]
+  stockCounts      StockCount[]
   createdAt        DateTime       @default(now())
   updatedAt        DateTime       @updatedAt
 
@@ -557,4 +559,33 @@ model PermissionGrant {
   updatedBy   User?    @relation("permissionEdits", fields: [updatedById], references: [id], onDelete: SetNull)
 
   @@id([role, action])
+}
+
+/// A stocktake figure somebody typed, for the day it is a count *of* — not the
+/// day it was entered. Append-only (Phase 55): a count for a date that already
+/// has one writes a new row pointing at the one it supersedes, so the ledger
+/// is its own log and nothing a person entered is ever destroyed.
+///
+/// `Product.stockCartons` caches the current count with the greatest
+/// `countedOn`. This table is the truth; nothing else may write that column.
+model StockCount {
+  id           String      @id @default(cuid())
+  productId    String
+  product      Product     @relation(fields: [productId], references: [id], onDelete: Cascade)
+  /// The day counted, in Kuala Lumpur, stored as a calendar date.
+  countedOn    DateTime    @db.Date
+  /// Cartons on hand. Zero is a count; below zero is not a quantity.
+  cartons      Int
+  note         String?
+  /// Null means the seed or an import, never a person.
+  countedById  String?
+  countedBy    User?       @relation(fields: [countedById], references: [id], onDelete: SetNull)
+  /// The row this one corrects. A row nothing supersedes is the current one.
+  supersedesId String?     @unique
+  supersedes   StockCount? @relation("corrections", fields: [supersedesId], references: [id], onDelete: SetNull)
+  supersededBy StockCount? @relation("corrections")
+  createdAt    DateTime    @default(now())
+
+  @@index([productId, countedOn])
+  @@index([countedOn])
 }

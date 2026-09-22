@@ -31,11 +31,12 @@ describe("the portal's destinations", () => {
       "Demand Board",
       "Buyers",
       "Products",
+      "Stock",
     ]);
   });
 
   /**
-   * The phone tab bar is five tabs at ~78px. A two-word label wraps to two
+   * The phone tab bar is six tabs at ~65px. A two-word label wraps to two
    * lines there, which is why `short` exists — and why it has to stay one
    * word for the two labels that are not.
    */

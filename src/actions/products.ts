@@ -187,7 +187,11 @@ function productRowData(
     cartonsPerPallet: shared.cartonsPerPallet,
     market: shared.market,
     listPrice: new Prisma.Decimal(row.listPrice),
-    stockCartons: row.stockCartons,
+    // Never a count at creation (Phase 55). A product arrives uncounted and is
+    // counted at /stock, where the figure gets an author, a day and a note.
+    // `row.stockCartons` is kept on the type because the edit drawer still
+    // *reads* it; nothing writes it but `saveStockCounts`.
+    stockCartons: null,
     description: shared.description,
     active: shared.active,
   };
@@ -672,7 +676,12 @@ export async function updateProduct(
           cartonsPerPallet: data.cartonsPerPallet,
           market: data.market,
           listPrice: nextPrice,
-          stockCartons: data.stockCartons,
+          // Stock is deliberately absent (Phase 55). It is a stocktake with an
+          // author, a day and a note, kept in `StockCount` and written only by
+          // `saveStockCounts`; a figure changed here would leave no record of
+          // who counted it or when. A payload carrying one is ignored rather
+          // than refused, so an old client cannot fail on a field it should
+          // not have sent.
           description: data.description,
           active: data.active,
           // Saving is the review. A product created from a purchase order
