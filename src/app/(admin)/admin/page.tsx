@@ -1,10 +1,8 @@
 import type { Metadata } from "next";
 import { PendingRequests } from "@/components/admin/PendingRequests";
 import { PermissionGrid } from "@/components/admin/PermissionGrid";
-import { TestDataCard } from "@/components/admin/TestDataCard";
 import { UsersTable } from "@/components/admin/UsersTable";
 import { loadPermissionMatrix } from "@/lib/queries/permissions";
-import { blockedReason, countTestData } from "@/lib/test-data";
 import {
   USER_SORT_KEYS,
   listPendingRequests,
@@ -29,11 +27,10 @@ export default async function AdminPage({
   searchParams: Promise<SearchParams>;
 }) {
   const params = await searchParams;
-  const [users, requests, matrix, testData] = await Promise.all([
+  const [users, requests, matrix] = await Promise.all([
     listUsers(),
     listPendingRequests(),
     loadPermissionMatrix(),
-    countTestData(),
   ]);
 
   const statusParam = firstParam(params, "status") as UserStatusFilter;
@@ -63,8 +60,6 @@ export default async function AdminPage({
       />
 
       <PermissionGrid matrix={matrix} />
-
-      <TestDataCard counts={testData} blocked={blockedReason()} />
     </>
   );
 }

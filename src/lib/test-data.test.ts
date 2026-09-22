@@ -2,9 +2,8 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 
 vi.mock("@/lib/prisma", () => ({ prisma: {} }));
 
-const { TEST_ID_PREFIX, isTestId, blockedReason, stageForAge } = await import(
-  "@/lib/test-data"
-);
+const { TEST_ID_PREFIX, isTestId, confirmationMatches, isProduction, stageForAge } =
+  await import("@/lib/test-data");
 
 describe("the test-data tag", () => {
   /**
@@ -28,23 +27,33 @@ describe("the test-data tag", () => {
   });
 });
 
-describe("blockedReason", () => {
+describe("the production gate", () => {
   const original = process.env.VERCEL_ENV;
   afterEach(() => {
     if (original === undefined) delete process.env.VERCEL_ENV;
     else process.env.VERCEL_ENV = original;
   });
 
-  it("refuses production", () => {
+  it("knows production from preview and local", () => {
     process.env.VERCEL_ENV = "production";
-    expect(blockedReason()).toMatch(/cannot be generated on production/);
+    expect(isProduction()).toBe(true);
+    process.env.VERCEL_ENV = "preview";
+    expect(isProduction()).toBe(false);
+    delete process.env.VERCEL_ENV;
+    expect(isProduction()).toBe(false);
   });
 
-  it("allows preview and local", () => {
-    process.env.VERCEL_ENV = "preview";
-    expect(blockedReason()).toBeNull();
-    delete process.env.VERCEL_ENV;
-    expect(blockedReason()).toBeNull();
+  /**
+   * Forgiving about case and stray spaces, because the point is one
+   * deliberate act rather than a typing test — but it must not accept an
+   * empty string, which is what a caller that never asked would send.
+   */
+  it("accepts the word typed, and nothing else", () => {
+    expect(confirmationMatches("production")).toBe(true);
+    expect(confirmationMatches("  Production ")).toBe(true);
+    for (const wrong of ["", "   ", "prod", "productions", "yes"]) {
+      expect(confirmationMatches(wrong)).toBe(false);
+    }
   });
 });
 

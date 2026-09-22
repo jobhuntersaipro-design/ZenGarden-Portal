@@ -8,10 +8,11 @@ const TABS = [
   { href: "/admin", label: "User management" },
   { href: "/admin/buyers", label: "Buyer management" },
   { href: "/admin/catalogue", label: "Catalogue" },
+  { href: "/admin/test-data", label: "Test data" },
 ] as const;
 
 /**
- * Three rooms in the admin shell. `/admin` matches exactly — a prefix match
+ * Four rooms in the admin shell. `/admin` matches exactly — a prefix match
  * would light it on every buyers and catalogue page.
  *
  * The underline is a pseudo-element that scales from its centre rather than

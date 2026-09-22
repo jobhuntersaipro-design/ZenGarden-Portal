@@ -5,11 +5,12 @@ import { z } from "zod";
 import { UnauthorizedError, requireSuperAdmin } from "@/lib/auth-guards";
 import {
   MAX_ORDERS,
-  blockedReason,
+  confirmationMatches,
   deleteTestData,
   generateTestData,
-  type TestDataCounts,
+  isProduction,
 } from "@/lib/test-data";
+import type { TestDataCounts } from "@/lib/test-data-shape";
 
 export type ActionResult<T = undefined> =
   | { success: true; data: T }
@@ -41,15 +42,20 @@ const ordersSchema = z
 
 export async function generateTestDataAction(
   orders: number,
+  confirmation = "",
 ): Promise<ActionResult<TestDataCounts>> {
   const { user, error } = await guard();
   if (!user) return { success: false, error: error! };
 
-  // Generating is refused on production; deleting deliberately is not — it is
-  // the safe direction, and a tagged row that reached production some other
-  // way (a restored dump) must still have a way out.
-  const blocked = blockedReason();
-  if (blocked) return { success: false, error: blocked };
+  // Writing hundreds of rows into the live database is worth one deliberate
+  // act. Deleting is not gated the same way: it is the safe direction, and a
+  // tagged row that reached production some other way must have a way out.
+  if (isProduction() && !confirmationMatches(confirmation)) {
+    return {
+      success: false,
+      error: 'Type "production" to confirm before generating on production.',
+    };
+  }
 
   const parsed = ordersSchema.safeParse(orders);
   if (!parsed.success) {

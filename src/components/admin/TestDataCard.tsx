@@ -28,28 +28,33 @@ const caption = "text-[length:var(--text-caption)] text-ink-tertiary";
  */
 export function TestDataCard({
   counts,
-  blocked,
+  production,
 }: {
   counts: TestDataCounts;
-  blocked: string | null;
+  production: boolean;
 }) {
   const refresh = useAwaitableRefresh();
   const [orders, setOrders] = useState("25");
+  const [confirmation, setConfirmation] = useState("");
   const [busy, setBusy] = useState<"generate" | "delete" | null>(null);
 
   const total =
     counts.purchaseOrders + counts.products + counts.buyers + counts.shopOrders;
   const parsed = Number(orders);
-  const valid = Number.isInteger(parsed) && parsed >= 1 && parsed <= MAX_ORDERS;
+  const confirmed =
+    !production || confirmation.trim().toLowerCase() === "production";
+  const valid =
+    Number.isInteger(parsed) && parsed >= 1 && parsed <= MAX_ORDERS && confirmed;
 
   const generate = async () => {
     if (!valid) return;
     setBusy("generate");
     try {
-      const result = await generateTestDataAction(parsed);
+      const result = await generateTestDataAction(parsed, confirmation);
       if (!result.success) toast.error(result.error);
       else {
         toast.success(`${parsed} test purchase orders generated`);
+        setConfirmation("");
         await refresh();
       }
     } catch {
@@ -77,10 +82,6 @@ export function TestDataCard({
 
   return (
     <section className="mt-xl rounded-lg border border-hairline bg-canvas p-lg">
-      <p className={label}>Testing</p>
-      <h2 className="mb-xs font-display text-[length:var(--text-heading-md)] font-[650] text-ink">
-        Test data
-      </h2>
       <p className={caption}>
         Buyers, products across several markets, purchase orders spread over the
         six stages, a review queue and two shop orders. Every row is tagged, and
@@ -88,57 +89,64 @@ export function TestDataCard({
         it.
       </p>
 
-      {blocked ? (
-        <div className="mt-md flex flex-wrap items-center gap-md">
-          <p className="text-[length:var(--text-caption)] text-accent-red">
-            {blocked}
-          </p>
-          {/* Delete stays, because taking test data away is always safe. */}
-          {total > 0 ? (
-            <Button
-              variant="secondary"
-              onClick={remove}
-              disabled={busy !== null}
-              pending={busy === "delete"}
-            >
-              Delete all test data
-            </Button>
-          ) : null}
+      <div className="mt-lg flex flex-wrap items-end gap-md">
+        <div className="flex flex-col gap-xxs">
+          <label htmlFor="test-orders" className={label}>
+            Purchase orders
+          </label>
+          <Input
+            id="test-orders"
+            type="number"
+            min={1}
+            max={MAX_ORDERS}
+            value={orders}
+            onChange={(event) => setOrders(event.target.value)}
+            className="w-32"
+            disabled={busy !== null}
+          />
         </div>
-      ) : (
-        <div className="mt-lg flex flex-wrap items-end gap-md">
+
+        {/* On production the count alone is not enough: this writes rows into
+            the live database, so it asks for one deliberate act first. */}
+        {production ? (
           <div className="flex flex-col gap-xxs">
-            <label htmlFor="test-orders" className={label}>
-              Purchase orders
+            <label htmlFor="test-confirm" className={label}>
+              Type &ldquo;production&rdquo; to confirm
             </label>
             <Input
-              id="test-orders"
-              type="number"
-              min={1}
-              max={MAX_ORDERS}
-              value={orders}
-              onChange={(event) => setOrders(event.target.value)}
-              className="w-32"
+              id="test-confirm"
+              value={confirmation}
+              onChange={(event) => setConfirmation(event.target.value)}
+              className="w-48"
+              autoComplete="off"
               disabled={busy !== null}
             />
           </div>
-          <Button
-            onClick={generate}
-            disabled={!valid || busy !== null}
-            pending={busy === "generate"}
-          >
-            Generate
-          </Button>
-          <Button
-            variant="secondary"
-            onClick={remove}
-            disabled={total === 0 || busy !== null}
-            pending={busy === "delete"}
-          >
-            Delete all test data
-          </Button>
-        </div>
-      )}
+        ) : null}
+
+        <Button
+          onClick={generate}
+          disabled={!valid || busy !== null}
+          pending={busy === "generate"}
+        >
+          Generate
+        </Button>
+        <Button
+          variant="secondary"
+          onClick={remove}
+          disabled={total === 0 || busy !== null}
+          pending={busy === "delete"}
+        >
+          Delete all test data
+        </Button>
+      </div>
+
+      {production ? (
+        <p className="mt-md text-[length:var(--text-caption)] text-brand-amber">
+          This is production. Anything generated here is written to the live
+          database, and shows on the shop until it is deleted.
+        </p>
+      ) : null}
 
       <p className={`mt-md ${caption}`}>
         {total === 0

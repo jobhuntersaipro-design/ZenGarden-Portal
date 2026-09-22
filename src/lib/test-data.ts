@@ -39,17 +39,22 @@ const testId = () =>
   Date.now().toString(36).slice(-11).padStart(11, "0");
 
 /**
- * Production is refused in the action as well as in the UI. Returns the reason
- * to show, or null when generating is allowed.
+ * On production, generating asks the caller to type a word back first — the
+ * friction every destructive control in this app already uses, and the only
+ * thing standing between a mis-click and hundreds of rows in the live
+ * database. Checked in the action, not only in the card: a typed word that
+ * the server never verifies is decoration.
  *
- * `VERCEL_ENV` is Vercel's own, and is unset locally — which is why the check
- * is for the production value rather than for the absence of the others.
+ * `VERCEL_ENV` is Vercel's own and is unset locally, which is why the test is
+ * for the production value rather than for the absence of the others.
  */
-export function blockedReason(): string | null {
-  return process.env.VERCEL_ENV === "production"
-    ? "Test data cannot be generated on production."
-    : null;
-}
+export const isProduction = () => process.env.VERCEL_ENV === "production";
+
+/** What the caller types to confirm. Lower-cased and trimmed before comparing. */
+export const PRODUCTION_CONFIRM = "production";
+
+export const confirmationMatches = (typed: string) =>
+  typed.trim().toLowerCase() === PRODUCTION_CONFIRM;
 
 const rand = (min: number, max: number) =>
   min + Math.floor(Math.random() * (max - min + 1));
