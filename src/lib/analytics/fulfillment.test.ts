@@ -17,6 +17,7 @@ const order = (
   buyerId: "b1",
   buyerName: "Acme",
   poDate: new Date(`${poDate}T04:00:00Z`),
+  deliveryDate: null,
   total,
   stage,
   lineItems: [],

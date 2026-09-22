@@ -3,7 +3,7 @@ import { dateColumnRange, type Aggregation } from "@/lib/dates";
 import { prisma } from "@/lib/prisma";
 import { buyerStatus } from "@/lib/analytics/buyer-status";
 import { productMix, type MixMeasure } from "@/lib/analytics/product-mix";
-import { unitsPerBucket } from "@/lib/analytics/product-trend";
+import { seriesPerBucket, subjectKey } from "@/lib/analytics/trend";
 import { reorderSignals, type ReorderSignals } from "@/lib/analytics/reorder";
 import { salesSeries, type SalesSeries } from "@/lib/analytics/sales";
 import type { ShareSlice } from "@/lib/analytics/share";
@@ -39,7 +39,7 @@ export type BuyerDetail = {
   sales: SalesSeries;
   mix: ShareSlice[];
   productsInRange: { id: string; name: string; spend: number }[];
-  trend: ReturnType<typeof unitsPerBucket>;
+  trend: ReturnType<typeof seriesPerBucket>;
   reorder: ReorderSignals;
   intake: IntakeCounts;
 };
@@ -125,11 +125,18 @@ export async function loadBuyer(
     buyerId: row.buyerId,
     buyerName: buyer.name,
     poDate: row.poDate,
+    // Read by nothing on this page — the dashboard's delivery card is the
+    // only caller that wants it, and it has its own fetch.
+    deliveryDate: null,
     total: row.total.toNumber(),
     stage: row.stage,
     lineItems: row.lineItems.map((line) => ({
       productId: line.productId,
       productName: line.product?.name ?? null,
+      // Nothing on this page filters or trends by them.
+      market: null,
+      brand: null,
+      category: null,
       quantity: line.quantity.toNumber(),
       amount: line.amount.toNumber(),
     })),
@@ -204,7 +211,15 @@ export async function loadBuyer(
     sales: salesSeries(current, range.from, range.to, agg),
     mix: productMix(current, measure),
     productsInRange,
-    trend: unitsPerBucket(current, selected, range.from, range.to, agg),
+    trend: seriesPerBucket(
+      current,
+      selected,
+      subjectKey("product"),
+      (line) => line.quantity,
+      range.from,
+      range.to,
+      agg,
+    ),
     // Full history on purpose: this predicts a rhythm, and the card says so.
     reorder: reorderSignals(orders, now),
     intake: {

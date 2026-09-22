@@ -66,11 +66,17 @@ const toAnalytics = (row: OrderRow, buyerName: string): AnalyticsOrder => ({
   buyerId: row.buyerId,
   buyerName,
   poDate: row.poDate,
+  deliveryDate: null,
   total: row.total.toNumber(),
   stage: row.stage,
   lineItems: row.lineItems.map((line) => ({
     productId: line.productId,
     productName: null,
+    // The roster reads product *ids* and nothing else off a line — see the
+    // comment above, and the 2026-09-06 measurement that made it so.
+    market: null,
+    brand: null,
+    category: null,
     quantity: 0,
     amount: 0,
   })),

@@ -26,7 +26,7 @@ function DivergingBar({ percent }: { percent: number }) {
 
 export function PriceDriftList({ drift }: { drift: PriceDrift }) {
   return (
-    <section className="rounded-lg border border-hairline bg-canvas p-lg">
+    <section className="min-w-0 rounded-lg border border-hairline bg-canvas p-lg">
       <p className="font-mono text-[length:var(--text-eyebrow)] text-ink-tertiary">
         Product price drift
       </p>

@@ -15,6 +15,7 @@ const order = (poDate: string): AnalyticsOrder => ({
   buyerId: "b1",
   buyerName: "Acme",
   poDate: new Date(`${poDate}T04:00:00Z`),
+  deliveryDate: null,
   total: 100,
   stage: "ORDER_PLACED",
   lineItems: [],

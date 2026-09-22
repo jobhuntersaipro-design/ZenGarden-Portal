@@ -11,11 +11,19 @@ const colorFor = (index: number, isOther: boolean) =>
   cssVar(isOther ? OTHER_VAR : SHARE_VARS[index % SHARE_VARS.length]);
 
 /**
- * The route an entity in this donut belongs to — `/buyers` or `/products`.
- * A string rather than a function because the dashboard renders this from a
- * server component, and a formatter cannot cross that boundary.
+ * The route an entity in this donut belongs to. A string rather than a
+ * function because the dashboard renders this from a server component, and a
+ * formatter cannot cross that boundary.
+ *
+ * A base ending in `=` takes its id as a query value rather than a path
+ * segment: a market is not a row with an id of its own, it is a filter over
+ * the products that carry it.
  */
-export type EntityBase = "/buyers" | "/products";
+export type EntityBase = "/buyers" | "/products" | "/products?market=";
+
+/** Path segment or query value, decided by the base's own last character. */
+const hrefFor = (base: EntityBase, id: string) =>
+  base.endsWith("=") ? `${base}${encodeURIComponent(id)}` : `${base}/${id}`;
 
 const linkClass =
   "min-w-0 flex-1 truncate text-[length:var(--text-body-sm)] text-ink underline-offset-2 hover:text-brand-link hover:underline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-focus rounded-xxs";
@@ -51,7 +59,7 @@ export function DonutShare({
 
   if (slices.length === 0) {
     return (
-      <section className="rounded-lg border border-hairline bg-canvas p-lg">
+      <section className="min-w-0 rounded-lg border border-hairline bg-canvas p-lg">
         <p className="font-mono text-[length:var(--text-eyebrow)] text-ink-tertiary">
           {eyebrow}
         </p>
@@ -94,7 +102,7 @@ export function DonutShare({
   if (bare) return ring;
 
   return (
-    <section className="rounded-lg border border-hairline bg-canvas p-lg">
+    <section className="min-w-0 rounded-lg border border-hairline bg-canvas p-lg">
       <p className="mb-md font-mono text-[length:var(--text-eyebrow)] text-ink-tertiary">
         {eyebrow}
       </p>
@@ -103,7 +111,7 @@ export function DonutShare({
 
         {/* Every slice is directly labelled, which is what discharges the
             contrast warning on the orange (00-master.md §4). */}
-        <ul className="flex min-w-0 flex-1 flex-col gap-xs">
+        <ul className="flex min-w-0 basis-full flex-col gap-xs sm:flex-1 sm:basis-0">
           {slices.map((slice, index) => {
             const swatch = (
               <span
@@ -157,7 +165,7 @@ export function DonutShare({
                         >
                           {hrefBase ? (
                             <Link
-                              href={`${hrefBase}/${member.id}`}
+                              href={hrefFor(hrefBase, member.id)}
                               title={member.label}
                               className={linkClass}
                             >
@@ -190,7 +198,7 @@ export function DonutShare({
                 {swatch}
                 {hrefBase ? (
                   <Link
-                    href={`${hrefBase}/${slice.id}`}
+                    href={hrefFor(hrefBase, slice.id)}
                     title={slice.label}
                     className={linkClass}
                   >

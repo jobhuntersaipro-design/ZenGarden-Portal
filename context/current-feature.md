@@ -1,4 +1,191 @@
-# Current Feature: The catalog by market
+# Current Feature: The dashboard reads by market
+
+## Status
+
+**Built and driven in a browser on `claude/focused-davinci-u1052a`**
+(2026-09-22). Spec written first at the user's request —
+`docs/specs/53-dashboard-analytics-and-market.md`, whose §8 is now what was
+measured and §9 the four decisions as they were taken.
+
+**A purchase order is not in a market, and everything here follows from
+that.** A market is a column on `Product`; one document can carry a Vietnam
+line and a Mydin line. So sales by market are summed from **line amounts**,
+never order totals, and `Σ(markets) ≤ Σ(lines)` always — the gap being lines
+that matched no product and products carrying no market. The market mix card
+prints that gap in words rather than leaving the reader to take the market
+columns for the whole business.
+
+**The filter narrows the lines**, chosen by the user from three readings
+offered before building. With `?market=Mydin` every figure counts only
+Mydin's lines. **The cost is stated rather than hidden:** Total sales
+relabels itself *Sales in this selection*, the average says *"per order, of
+these lines"*, and the purchase-order table — whose rows are whole orders and
+cannot narrow — carries a caption saying it lists the orders that *touch* the
+selection at their full value, so its totals being larger is a fact rather
+than a contradiction. The alternative, keeping matching orders whole, was
+**watched failing**: one order spanning two markets counted fully in both and
+the markets summed to 200 where the lines were 100.
+
+**Brand and category filter the same way**, at the user's request against the
+recommendation of market alone. All three are columns on the same product, so
+they compose by intersection and the summary line names each part.
+
+**One trend card, three subjects.** `?trend=market|buyer|product`, up to six
+series, over the page's own buckets — the user's choice over three separate
+cards. It is the buyer page's own multi-series chart generalised rather than
+a second one written: `unitsPerBucket` became `seriesPerBucket(orders, ids,
+keyFn, valueFn, …)` in `trend.ts`, and `ProductTrend` became a thin adapter
+over a shared `SeriesTrend`, holding the buyer page's own vocabulary so
+"products" never leaks into a component the dashboard also draws.
+
+**The measure is not the trend card's own.** It reads the `?measure=` the
+sales card above it writes, so the page can never draw money in one chart and
+cartons in the other without saying which.
+
+**The market picker reads the unfiltered pass; buyer and product read the
+filtered one.** Narrowing to Vietnam must never remove Mydin from the control
+that would take you back; offering a buyer the chart would draw as flat zero
+is the worse failure the other way.
+
+**On-time delivery is the one figure that does not narrow to lines**, and
+saying so is its design. On time is a property of the order, so an order
+spanning two markets counts in both — it let both down. That would inflate a
+*sum*, which is why money is never treated this way; it does not inflate a
+*rate*, and the caption says whose orders each row is over so nobody adds the
+column up. It refuses three things outright: an order with no expected date
+(counted separately, never as on time), an order not yet delivered however
+late it looks (that is the demand board's Overdue column, and two screens
+disagreeing about "late" is worse than one not saying), and a market with
+nothing delivered, which prints `—` rather than 0%.
+
+**A filter naming something nothing in range carries is dropped, not
+honoured.** Writing the acceptance criterion is what caught that it had not
+been built: the page passed `?market=` straight through, so a stale value
+would have drawn an empty board with the select still showing it.
+`resolveFilter` drops it, the query echoes the *resolved* filter back, and
+the selects and the table read that rather than the URL.
+
+**Also added, all from the payload already fetched:** a Sales-by-market
+donut, a Market-mix card comparing each market's share against the period
+before (a market arriving from nothing prints "New", not "+15pp" against a
+base that never existed), and three in-range tiles — Markets sold into,
+Repeat buyers, and cartons per order folded into Items per PO. Margin and
+stock turn stay out: the portal holds no cost, and `stockCartons` is null on
+every product.
+
+## Verified, with the figures
+
+**Driven in a real browser against a real database** — the first time in
+several phases. This container has no Neon endpoint, so a local Postgres 16
+was stood up, the project's own seed run against it (423 purchase orders,
+1,683 line items, 12 products), three markets written onto the catalogue and
+two products deliberately left with none. `src/lib/prisma.ts` and
+`prisma/seed.ts` were pointed at a local adapter for the drive and
+**restored afterwards**; the cluster was stopped and deleted, and
+`package.json` and `package-lock.json` are untouched.
+
+- **The market figures reconcile to the cent, against SQL rather than against
+  themselves.** Over 24 Aug – 22 Sep: Mydin **284,164.69**, Super Indo
+  **127,676.43**, Vietnam **298,116.24** — summing to **709,957.36**, the
+  exact figure the market mix card prints as attributed — plus No market
+  **194,973.49** = **904,930.85**, the database's own total line value. Every
+  one of those five figures matches its SQL equivalent exactly.
+- **The filter narrows everything.** `?market=Mydin` read **RM 284,164.69
+  across 30 purchase orders** against **RM 904,930.85 / 42** unfiltered; the
+  KPI relabelled **"Sales in this selection"**, its caption **"RM 9,472.16
+  average per order, of these lines"**, and the summary **"24 Aug 2026 –
+  22 Sep 2026 · 30 purchase orders · Mydin only — every figure below counts
+  only these lines."** The market donut and the market mix card were
+  **absent** (one slice is not a chart), and the table carried its
+  full-value caption.
+- **`?market=*none` read RM 194,973.49** — exactly the lines on products
+  carrying no market.
+- **All three trend subjects draw:** *3 of 3 markets* (Vietnam, Mydin, Super
+  Indo), *6 of 11 buyers*, *6 of 12 products*.
+- **The measure is shared:** `measure=sales` → sales card *"RM 904,930.85
+  across 30 days"*, trend *"Sales per period"*; `measure=units` → trend
+  *"Cartons per period"*.
+- **On-time delivery** read Super Indo **5/10 · 50%**, Vietnam **6/10 · 60%**,
+  Mydin **6/10 · 60%**, worst first, over 16 delivered orders.
+- **Phone.** **390/390 with the disclosure closed *and* open**; 1440/1440 on
+  the desktop, filtered and unfiltered. All three new selects measure
+  **44px**. The only sub-44px controls are the donuts' two "Other (n)" unfold
+  buttons at 21px, the pre-existing class.
+- **Four counterfactuals watched failing**, then restored: keeping matching
+  orders whole (`expected 200 to be 100` — the inflation the design rejects);
+  dropping unattributed lines from the denominator (`expected 150 to be
+  200`); comparing delivery dates in UTC rather than Kuala Lumpur (`expected
+  100 to be +0`); and honouring a market nothing in range carries
+  (`expected { market: 'Atlantis' } to deeply equal {}`).
+- **1411/1411 tests across 110 files** (49 new), `tsc`, lint (the same 2
+  pre-existing `username` warnings) and `npm run build` clean — the build run
+  before the local stand-ins were removed.
+- **The type system found every call site.** Adding three columns to
+  `AnalyticsLineItem` and a date to `AnalyticsOrder` turned nine files red —
+  seven fixtures and two real queries — which is the evidence that no caller
+  was left guessing a market.
+
+### Three defects the drive found that the build could not
+
+Two were **pre-existing**, in cards the *More analytics* disclosure hides —
+which is why the 2026-09-06 mobile sweep never saw them: it measured the
+dashboard with the disclosure closed.
+
+- **The page overflowed at 390 with the disclosure open, 563 against 390.**
+  Churn, price drift and every donut sat **543px wide in a 350px grid
+  track** — a grid item's default `min-width: auto` refusing to shrink, the
+  same defect Phase 25 fixed on `/admin/customers`. `min-w-0` on each card.
+- **Then 411 against 390**, from the donut legend: at 390 the 168px ring left
+  it **108px**, and each row's `shrink-0` money figure is **90px**, so the
+  figure spilled past the card. The legend takes `basis-full` below `sm` now
+  and goes back beside the ring above it.
+- **The third was this phase's own, and only the screenshot showed it.** With
+  three series over thirty daily buckets the point labels **collided across
+  series** — `RM 5,206` printed over `RM 5,183`. `useLabelStep` spaces labels
+  along one series and cannot see the others, so the trend card prints them
+  only when a single series is drawn and leaves the tooltip to answer the
+  rest.
+
+**A measurement trap worth not re-deriving:** the KPI tiles count up over
+~2s, so a script sampling at 700ms reads a mid-animation figure. A first
+reconciliation pass did exactly that and reported the markets summing
+28,792.15 short — a defect that was not there. Sample after 3s.
+
+## Not verified
+
+- **Anything on production**, and no production or development database was
+  read or written. Every figure above is the project's own seed with markets
+  written onto it by hand; production's market list is the customer's own and
+  will be longer.
+- **A line that matched no product.** All 1,683 seeded lines resolve to one,
+  so the `noProduct` half of the unattributed figure was only ever read as
+  **RM 0.00**. The split is covered by unit tests and has never been seen
+  carrying a value.
+- **The buyer page's own trend, on screen.** All 1,375 pre-existing tests
+  pass unchanged after the refactor, but the page was not reopened — the
+  claim that it renders identically rests on the adapter passing the same
+  strings and formatters, not on a before-and-after.
+- **The stale-filter fallback in a browser.** `resolveFilter` is covered by
+  four tests and one counterfactual; the local database was already torn down
+  when it was written, so no URL was driven.
+- **The query count.** No counter was attached. That the page is still one
+  fetch is structural — three columns on two existing selects, no new
+  `prisma` call — rather than measured.
+- **The colour-slot behaviour on the new card.** Deselecting the first of
+  three and watching the other two keep their hues is the buyer page's
+  mechanism carried over unchanged; it was not re-driven here.
+- **Two products with the same name.** The product trend's legend showed
+  *"ZEN 2.1L — Goat's Milk"* twice — two real products differing only by
+  market. Legible enough to notice, ambiguous enough to record: the fix is in
+  how the catalogue names variants, not in the chart.
+- **`npm run build` without a stand-in for `xlsx`.** That package installs
+  from cdn.sheetjs.com, which this container's network policy answers 403 to.
+  A local stand-in was written into `node_modules` for the build and
+  **deleted afterwards**, which is why the 111th test file still fails here.
+
+## Previous phase
+
+**The catalog by market**
 
 ## Status
 

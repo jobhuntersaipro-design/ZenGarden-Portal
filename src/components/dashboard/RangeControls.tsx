@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, type ReactNode } from "react";
 import { usePathname, useSearchParams } from "next/navigation";
 import {
   AGGREGATIONS,
@@ -26,12 +26,22 @@ export function RangeControls({
   to,
   agg,
   summary,
+  filterCaption,
+  children,
 }: {
   preset: RangePreset | null;
   from: string;
   to: string;
   agg: Aggregation;
   summary: string;
+  /**
+   * What the page's product filters are narrowing to, or null. It sits with
+   * the summary rather than beside the selects because it is a statement
+   * about every figure below, not a label on a control (Phase 53 §2.1).
+   */
+  filterCaption?: string | null;
+  /** The market, brand and category selects. */
+  children?: ReactNode;
 }) {
   const { replace } = useUrlNavigation();
   // Two groups, two transitions: a preset click must not spin the aggregate.
@@ -125,11 +135,19 @@ export function RangeControls({
             />
           </div>
         ) : null}
+
+        {/* The product filters, on the same row as the dates they compose
+            with. Each one changes every figure on the page, so neither is
+            hidden behind the More analytics disclosure. */}
+        {children}
       </div>
 
       <div className="flex flex-wrap items-center justify-between gap-sm">
         <p className="text-[length:var(--text-body-sm)] text-ink-secondary">
           {summary}
+          {filterCaption ? (
+            <span className="text-ink">{` · ${filterCaption}`}</span>
+          ) : null}
           {/* The summary claims a count and a total. While the server is
               recomputing them that claim is stale, so it says so here rather
               than letting the figures move under the reader (brief G1). */}

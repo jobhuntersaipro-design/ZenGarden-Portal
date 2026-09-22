@@ -5,9 +5,15 @@ import { formatMYR } from "@/lib/money";
 import { CountUp } from "@/components/portal/CountUp";
 import { orderLabel } from "@/lib/order-identity";
 
-/** Six small tiles. Concentration flips its tone above 60% (design ref §3.2). */
+/**
+ * Nine small tiles. Concentration flips its tone above 60% (design ref §3.2).
+ *
+ * Every figure here follows the page's filter, so under `?market=Mydin` they
+ * are Mydin's lines and nothing else — Phase 53 §2.1.
+ */
 export function InRangeGrid({ data }: { data: DashboardData }) {
   const { inRange, pipeline } = data;
+  const top = data.marketShare.find((slice) => !slice.isOther) ?? null;
   const concentrated = inRange.topThreeShare > 60;
 
   // `value` is a node, not a string, so the numeric ones can count up while
@@ -59,7 +65,24 @@ export function InRangeGrid({ data }: { data: DashboardData }) {
     {
       label: "Items per PO",
       value: <CountUp value={inRange.itemsPerOrder} decimals={1} />,
-      caption: `${inRange.totalUnits.toLocaleString("en-MY")} units in total`,
+      caption: `${inRange.totalUnits.toLocaleString("en-MY")} units in total · ${inRange.unitsPerOrder.toFixed(0)} per order`,
+    },
+    {
+      label: "Markets sold into",
+      value: <CountUp value={inRange.marketCount} />,
+      // A caption about markets, not a figure that happens to fit: the top
+      // market and its share of what could be attributed.
+      caption:
+        inRange.marketCount === 0
+          ? "No line here carries a market"
+          : top
+            ? `${top.label} leads at ${top.share.toFixed(0)}%`
+            : "—",
+    },
+    {
+      label: "Repeat buyers",
+      value: <CountUp value={inRange.repeatRate} format="percent" />,
+      caption: `${inRange.repeatBuyers} bought more than once`,
     },
     {
       label: "Extraction failures",

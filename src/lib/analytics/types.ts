@@ -9,6 +9,20 @@ import type { PoStage } from "@/generated/prisma/enums";
 export type AnalyticsLineItem = {
   productId: string | null;
   productName: string | null;
+  /**
+   * The product's own market, brand and category — the three things the
+   * dashboard filters by (Phase 53 §2.2). They live on the line rather than
+   * on the order because a purchase order can span all three: one document
+   * can carry a Vietnam line and a Mydin line, and attributing its total to
+   * either would be a lie about the other.
+   *
+   * All three are null where the line matched no product at all. `market` and
+   * `brand` are nullable on `Product` besides; `category` is not, so a null
+   * category means only "no product".
+   */
+  market: string | null;
+  brand: string | null;
+  category: string | null;
   quantity: number;
   amount: number;
 };
@@ -23,6 +37,8 @@ export type AnalyticsOrder = {
   buyerId: string;
   buyerName: string;
   poDate: Date;
+  /** What the team committed to, null until somebody confirmed one. */
+  deliveryDate: Date | null;
   total: number;
   stage: PoStage;
   lineItems: AnalyticsLineItem[];

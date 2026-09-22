@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { productMix } from "@/lib/analytics/product-mix";
-import { unitsPerBucket } from "@/lib/analytics/product-trend";
+import { seriesPerBucket, subjectKey } from "@/lib/analytics/trend";
 import { monthlyTotals } from "@/lib/analytics/sparkline";
 import type { AnalyticsOrder } from "@/lib/analytics/types";
 
@@ -12,11 +12,15 @@ const order = (
   buyerId: "b1",
   buyerName: "Acme",
   poDate: new Date(`${poDate}T04:00:00Z`),
+  deliveryDate: null,
   total: lines.reduce((sum, line) => sum + line.amount, 0),
   stage: "ORDER_PLACED",
   lineItems: lines.map((line) => ({
     productId: line.id,
     productName: line.id ? line.id.toUpperCase() : null,
+    market: null,
+    brand: null,
+    category: null,
     quantity: line.qty,
     amount: line.amount,
   })),
@@ -59,18 +63,20 @@ describe("productMix", () => {
   });
 });
 
-describe("unitsPerBucket", () => {
+describe("seriesPerBucket, drawing units per product", () => {
   const FROM = new Date("2026-09-01T00:00:00Z");
   const TO = new Date("2026-09-03T15:00:00Z");
 
   it("counts units per product per bucket", () => {
-    const points = unitsPerBucket(
+    const points = seriesPerBucket(
       [
         order("2026-09-01", [{ id: "p1", qty: 3, amount: 30 }]),
         order("2026-09-01", [{ id: "p1", qty: 2, amount: 20 }]),
         order("2026-09-03", [{ id: "p2", qty: 7, amount: 70 }]),
       ],
       ["p1", "p2"],
+      subjectKey("product"),
+      (line) => line.quantity,
       FROM,
       TO,
       "day",
@@ -80,9 +86,11 @@ describe("unitsPerBucket", () => {
   });
 
   it("keeps an empty bucket at zero for every selected product", () => {
-    const points = unitsPerBucket(
+    const points = seriesPerBucket(
       [order("2026-09-01", [{ id: "p1", qty: 3, amount: 30 }])],
       ["p1", "p2"],
+      subjectKey("product"),
+      (line) => line.quantity,
       FROM,
       TO,
       "day",
@@ -92,9 +100,11 @@ describe("unitsPerBucket", () => {
   });
 
   it("ignores products that were not selected", () => {
-    const points = unitsPerBucket(
+    const points = seriesPerBucket(
       [order("2026-09-01", [{ id: "other", qty: 9, amount: 90 }])],
       ["p1"],
+      subjectKey("product"),
+      (line) => line.quantity,
       FROM,
       TO,
       "day",

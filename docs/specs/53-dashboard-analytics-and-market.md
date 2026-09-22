@@ -3,8 +3,9 @@
 Asked for as: *"let's add more analytics in the dashboard page. and also add
 market trend, by buyer etc. Also, make it filterable by market too."*
 
-Status: **spec only, nothing built.** §2 and §9 carry the decisions that need
-answering before anyone writes code.
+Status: **built and driven in a browser** (2026-09-22). §9 records the four
+decisions as the user took them; §8 is now what was measured rather than what
+was intended.
 
 ---
 
@@ -93,12 +94,31 @@ totals are inflated and — worse — *the markets sum to more than the business
 
 **(c) Two figures everywhere.** Doubles every tile. Rejected on sight.
 
-**Recommendation: (a).** It is the same call the demand board already made for
-its search, for the same reason, and it is the only one of the three whose
-numbers add up. §9 asks the user to confirm it, because (b) is defensible if
-the team's real question is "which orders involve Vietnam".
+**Decided: (a), narrow the lines.** It is the same call the demand board
+already made for its search, for the same reason, and it is the only one of
+the three whose numbers add up. (b) would have been defensible if the team's
+real question were "which orders involve Vietnam", and it is not.
 
-### 2.2 The market filter is not a stage filter
+### 2.2 Brand and category filter the same way
+
+The user asked for brand and category beside market. All three are columns on
+`Product`, so all three narrow the lines by exactly the rule above and
+everything §2 says about market holds for them word for word — including that
+a line with no matched product falls outside all three at once.
+
+Two differences worth stating rather than discovering:
+
+- **Category is non-nullable**, so it has no "No category" remainder of its
+  own. Its only unattributed case is a line with no product.
+- **They compose.** `?market=Mydin&brand=Zen+Garden` counts the lines that are
+  both, and the summary line names both. Every figure still sums against the
+  same denominator, because narrowing lines is closed under intersection.
+
+The cost, accepted rather than hidden: **three filters is eight states each
+figure must be right in**, against two for one filter. §8's criteria are
+therefore written against the composition, not against market alone.
+
+### 2.3 The market filter is not a stage filter
 
 `?market=` on the dashboard reuses the catalog's vocabulary exactly:
 `src/lib/product-markets.ts` already exports `NO_MARKET` (`"*none"`) and
@@ -188,7 +208,35 @@ having if the page stays one fetch.
 | Margin, cost, profit by market | The portal stores no cost. Nothing to compute from. |
 | Forecast / projection | Needs a model nobody has agreed, and a wrong forecast on a dashboard is worse than none. |
 | Stock turn by market | `Product.stockCartons` is null on every product; the demand board already refuses to draw a figure it does not have, and so should this. |
-| Delivery performance by market (promised vs. actual) | Reachable — `PoStageEvent` carries the moves — but it is an order-level fact being asked at a line-level grain, which is §2's whole problem again. Worth its own phase. |
+| ~~Delivery performance by market~~ | **Pulled into this phase at the user's request — see §4.4.** |
+
+### 4.4 Delivery performance by market
+
+Asked for despite §4.3's warning, and the warning is answerable rather than
+fatal — but only by changing what is counted.
+
+**On time is a property of the order, not of a line.** So this one figure does
+*not* narrow to lines, and saying so is the whole design: for each market,
+take the orders carrying at least one line in it, and report what share of the
+**delivered** ones reached `DELIVERED` on or before their expected delivery
+date.
+
+**An order spanning two markets counts in both, and that is correct here.**
+The order was late for Vietnam and late for Mydin; both markets were let down
+by it. Counting it twice would inflate a *sum* — which is exactly what §2.1
+rejects for money — but this is a **rate**, and a rate has no total to inflate.
+The tile says "of orders touching this market" so the reader is never invited
+to add the columns up.
+
+**What it refuses to report:**
+
+- An order with no expected delivery date has nothing to be late against, and
+  is excluded from both the numerator and the denominator rather than counted
+  as on time. The tile names how many were excluded.
+- An order not yet delivered is not yet late *in this figure*, even if its date
+  has passed — that is the demand board's Overdue column's job, and two screens
+  disagreeing about what "late" means is worse than one screen not saying.
+- A market whose delivered orders in range number zero prints `—`, not 0%.
 
 ---
 
@@ -257,59 +305,141 @@ disclosure, which is what it is for.
 
 ---
 
-## 8. Acceptance criteria
+## 8. Acceptance criteria — as measured
+
+Driven against a **local Postgres 16** seeded with the project's own seed (423
+purchase orders, 1,683 line items, 12 products), with three markets written
+onto the catalogue and two products deliberately left with none. This
+container has no Neon endpoint, so `src/lib/prisma.ts` and `prisma/seed.ts`
+were pointed at a local adapter for the drive and **restored afterwards**; the
+cluster was stopped and deleted.
 
 Each is a measurement, not an opinion.
 
-1. **Sales by market sums correctly.** For a range, the market donut's slice
-   values plus the unattributed figure equal the sum of all line amounts in the
-   range, to the cent. Read both off the rendered page, not off a test.
-2. **Unattributed is visible when it exists.** With at least one line carrying
-   no product and one product carrying no market, the tile renders and names
-   both figures; with neither, it is absent rather than showing zero.
-3. **The market filter narrows every figure on the page.** With `?market=X`:
-   the KPI total equals that market's slice from criterion 1; the summary line
-   says it is filtered; the trend card, both other donuts and the in-range
-   tiles all move. Screenshot before and after, cropped.
-4. **The filter is undoable from the control that set it.** With a market
-   chosen, the select still offers every other market and All markets.
-5. **`?market=*none`** shows exactly the sales of products carrying no market,
-   and the select reads "No market" rather than falling back to All.
-6. **A market that does not exist falls back to All**, with the select showing
-   All markets — the picker never shows a filter the page is not applying.
-7. **The trend card draws all three subjects**, six series each, with colour
-   pinned per series: deselect the first of three and the other two do not
-   change colour. (The existing slot behaviour, re-measured here.)
-8. **The buyer page's product trend is unchanged by the refactor.** Same
-   series, same colours, same labels, same picker, before and after — read off
-   the rendered page, not argued from the diff.
-9. **Measure is shared, and says so.** Switching Sales → Quantity moves the
-   sales card and the trend card together.
-10. **One fetch.** The dashboard's query count does not rise with the number of
-    markets, subjects or series. Counted, not assumed.
-11. **Phone.** No page overflow at 390; every new control clears 44px; the
-    trend card scrolls inside `ChartScroller` like every other chart.
-12. **Counterfactuals watched failing**, at minimum: attributing an order's
-    whole total to the market of its first line (criterion 1 goes red);
-    dropping unattributed lines silently instead of reporting them (criterion 2
-    goes red); deriving the market picker from the filtered rows (criterion 4
-    goes red).
+1. **PASS — sales by market sums correctly, to the cent, against the
+   database.** Over 24 Aug – 22 Sep, read off the rendered page and checked
+   against SQL rather than against itself:
+
+   | | page | database |
+   |---|---|---|
+   | Mydin | 284,164.69 | 284,164.69 |
+   | Super Indo | 127,676.43 | 127,676.43 |
+   | Vietnam | 298,116.24 | 298,116.24 |
+   | **markets** | **709,957.36** | 709,957.36 |
+   | + No market | 194,973.49 | 194,973.49 |
+   | **total** | **904,930.85** | 904,930.85 |
+
+   **A measurement trap worth not re-deriving:** the KPI tiles count up over
+   ~2s, so a script that samples at 700ms reads a mid-animation figure. A
+   first pass did exactly that and reported the markets summing 28,792.15
+   short — a defect that was not there. Sample after 3s.
+2. **PASS in part — unattributed is visible, and names both figures.** The
+   market mix footer reads *"Shares are of RM 709,957.36 in line value that
+   carries a market. A further RM 194,973.49 is in no market — RM 194,973.49
+   on products carrying none, RM 0.00 on lines that matched no product."* The
+   **no-product half was not exercised**: every one of the 1,683 seeded lines
+   resolves to a product, so that figure was only ever read as zero.
+3. **PASS — the filter narrows every figure.** `?market=Mydin` read
+   **RM 284,164.69 across 30 purchase orders** (against RM 904,930.85 / 42
+   unfiltered), the KPI relabelled **"Sales in this selection"**, its caption
+   **"RM 9,472.16 average per order, of these lines"**, and the summary line
+   **"24 Aug 2026 – 22 Sep 2026 · 30 purchase orders · Mydin only — every
+   figure below counts only these lines."** The market donut and the market
+   mix card were **absent**, and the table carried its full-value caption.
+4. **PASS.** With Mydin chosen the select still offers **All markets · Mydin ·
+   Super Indo · Vietnam · No market**.
+5. **PASS.** `?market=*none` read **RM 194,973.49**, exactly the database's
+   figure for lines on products carrying no market.
+6. **PASS by unit test, not driven.** Writing the criterion is what caught
+   that it was not built: the page passed `?market=` straight through, so a
+   value nothing carried would have drawn an empty board with the select
+   still showing it. `resolveFilter` now drops any market, brand or category
+   the range does not hold, the query echoes the *resolved* filter back, and
+   the selects and the purchase-order table both read that rather than the
+   URL. Four tests cover it, one counterfactual watched failing
+   (`expected { market: 'Atlantis' } to deeply equal {}`). **No browser
+   drove it** — the local database was already torn down.
+7. **PASS in part — all three subjects draw.** `trend=market` → *3 of 3
+   markets* (Vietnam, Mydin, Super Indo); `trend=buyer` → *6 of 11 buyers*;
+   `trend=product` → *6 of 12 products*. **The deselect-keeps-colour
+   behaviour was not re-driven here** — it is the buyer page's own mechanism,
+   carried over unchanged, and criterion 8 covers that the move did not alter
+   it.
+8. **PASS on the data, NOT VERIFIED on the screen.** All 1,375 pre-existing
+   tests pass unchanged after the refactor, including the three that pin
+   `seriesPerBucket`'s bucketing. The buyer page itself was **not reopened**,
+   so the claim that its trend renders identically rests on the adapter
+   passing the same strings and formatters, not on a before-and-after.
+9. **PASS.** `?measure=sales` → sales card *"RM 904,930.85 across 30 days"*,
+   trend *"Sales per period · pick up to 6 markets"*; `?measure=units` → trend
+   *"Cartons per period · pick up to 6 markets"*.
+10. **NOT VERIFIED by counting.** No query counter was attached. The code
+    adds three columns to two existing selects and no new `prisma` call, which
+    is structural rather than measured.
+11. **PASS, after fixing two defects the drive found (§8.1).** 390/390 with
+    the disclosure closed *and* open; 1440/1440 on the desktop, filtered and
+    not. All three new selects measure **44px**. The only controls under 44px
+    are the donuts' two "Other (n)" unfold buttons at 21px — the pre-existing
+    class.
+12. **Three counterfactuals watched failing**, then restored:
+    - keeping matching orders whole instead of narrowing to lines — two tests
+      red, including `expected 200 to be 100`, which is precisely the
+      inflation §2.1 rejects: one order spanning two markets counted fully in
+      both;
+    - dropping unattributed lines from the denominator — `expected 150 to be
+      200`;
+    - comparing delivery dates in UTC rather than Kuala Lumpur — `expected
+      100 to be +0`, a delivery at 17:00Z on the due date reading as on time
+      when it is already the next day in KL.
+
+    A fourth, added with `resolveFilter`: honouring a market nothing in
+    range carries — `expected { market: 'Atlantis' } to deeply equal {}`.
+
+    The one named in the original criterion that was **not** run is deriving
+    the market picker from the filtered rows: it lives in the query layer
+    rather than a pure module, and no harness reaches it.
+
+### 8.1 Two defects the browser found that the build could not
+
+Both pre-existing, both in cards the **More analytics** disclosure hides —
+which is why the 2026-09-06 mobile sweep never saw them: it measured the
+dashboard with the disclosure closed.
+
+- **The page overflowed at 390 with the disclosure open, 563 against 390.**
+  Churn, price drift and every donut sat 543px wide in a 350px grid track —
+  a grid item's default `min-width: auto` refusing to shrink, the same defect
+  Phase 25 fixed on `/admin/customers`. `min-w-0` on each card.
+- **Then 411 against 390**, from the donut legend: at 390 the 168px ring left
+  it ~108px, and each row's `shrink-0` money figure is ~90px, so the figure
+  spilled past the card. The legend now takes `basis-full` below `sm` and
+  goes back beside the ring above it.
+
+A third defect was this phase's own, and only the screenshot showed it: with
+three series over thirty daily buckets the **point labels collided across
+series** (`RM 5,206` printed over `RM 5,183`). `useLabelStep` spaces labels
+along one series and cannot see the others, so the trend card prints them
+only when a single series is drawn and leaves the tooltip to answer the rest.
 
 ---
 
-## 9. Decisions I need from you before building
+## 9. The decisions, as taken (2026-09-22)
 
-1. **§2.1 — what the market filter narrows.** Recommend (a), narrow the lines.
-   (b) keeps every tile's meaning but lets the markets sum to more than the
-   business.
-2. **One trend card with a subject switch, or three separate cards?**
-   Recommend one.
-3. **Is "market" the right axis to filter the whole dashboard by**, or would
-   you also want brand and category there? Recommend market alone for now —
-   each extra filter multiplies the states every figure has to be correct in,
-   and market is the one that was asked for.
-4. **Anything in §4.3 you actually want**, knowing the cost. Delivery
-   performance by market is the one I would build next.
+All four were put to the user with the recommendation first, before any code
+was written.
+
+1. **The filter narrows the lines** (§2.1 option a), as recommended. Every
+   figure counts only the matching lines; Average order and Largest PO are
+   relabelled under a filter; the PO table keeps whole orders and says so.
+2. **One trend card with a subject switch**, as recommended, rather than three
+   cards down the page.
+3. **All three filters — market, brand and category.** The recommendation was
+   market alone; the user asked for all three, so §2.2 sets out how brand and
+   category inherit the same rule and what the extra states cost.
+4. **§4.1 and §4.2, plus delivery performance by market.** The recommendation
+   was to leave delivery performance out; it is in, designed in §4.4 as a rate
+   rather than a sum, which is what makes it answerable at all. Margin and
+   stock turn stay out — the portal holds no cost, and `stockCartons` is null
+   on every product.
 
 ## 10. Known, and out of scope
 

@@ -5,7 +5,7 @@ import { formatMYR } from "@/lib/money";
 
 export function ChurnList({ churn }: { churn: BuyerChurn }) {
   return (
-    <section className="rounded-lg border border-hairline bg-canvas p-lg">
+    <section className="min-w-0 rounded-lg border border-hairline bg-canvas p-lg">
       <div className="flex flex-wrap items-start justify-between gap-md">
         <div>
           <p className="font-mono text-[length:var(--text-eyebrow)] text-ink-tertiary">

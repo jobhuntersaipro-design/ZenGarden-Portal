@@ -13,6 +13,7 @@ const order = (
   buyerId,
   buyerName: buyerId.toUpperCase(),
   poDate: new Date(`${poDate}T04:00:00Z`),
+  deliveryDate: null,
   total,
   stage: "ORDER_PLACED",
   lineItems: [],

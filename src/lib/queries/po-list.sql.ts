@@ -1,4 +1,5 @@
 import { dateColumnRange } from "@/lib/dates";
+import { NO_MARKET } from "@/lib/product-markets";
 import { Prisma } from "@/generated/prisma/client";
 
 /**
@@ -101,7 +102,50 @@ export type PoListFilters = {
   stage?: string;
   from?: Date;
   to?: Date;
+  /**
+   * The dashboard's line-level filters (Phase 53). A purchase order matches
+   * when it carries at least one line whose product does — the table lists
+   * whole orders, at their full value, and says so in its own caption. The
+   * figures above it narrow to the lines; these rows cannot, because a row
+   * is an order.
+   *
+   * `market` may be `NO_MARKET`, which means a product carrying none — never
+   * a line carrying no product.
+   */
+  market?: string;
+  brand?: string;
+  category?: string;
 };
+
+/**
+ * An order matches when one of its lines' products does.
+ *
+ * The three column fragments are written out rather than interpolated: a
+ * column name is not a parameter, so building it with `Prisma.raw` would put
+ * a string into the SQL text, and the only safe version of that is one where
+ * no string can reach it.
+ */
+function lineProductCondition(
+  column: "market" | "brand" | "category",
+  value: string,
+): Prisma.Sql {
+  let test: Prisma.Sql;
+  if (column === "market") {
+    test =
+      value === NO_MARKET
+        ? Prisma.sql`prod."market" IS NULL`
+        : Prisma.sql`prod."market" = ${value}`;
+  } else if (column === "brand") {
+    test = Prisma.sql`prod."brand" = ${value}`;
+  } else {
+    test = Prisma.sql`prod."category" = ${value}`;
+  }
+  return Prisma.sql`EXISTS (
+    SELECT 1 FROM "LineItem" li
+    JOIN "Product" prod ON prod."id" = li."productId"
+    WHERE li."purchaseOrderId" = po."id" AND ${test}
+  )`;
+}
 
 /**
  * One list, two tables. Confirmed purchase orders and the extractions still in
@@ -260,6 +304,11 @@ function orderRows(filters: PoListFilters): Prisma.Sql {
   ];
 
   if (filters.buyerId) conditions.push(Prisma.sql`po."buyerId" = ${filters.buyerId}`);
+  if (filters.market)
+    conditions.push(lineProductCondition("market", filters.market));
+  if (filters.brand) conditions.push(lineProductCondition("brand", filters.brand));
+  if (filters.category)
+    conditions.push(lineProductCondition("category", filters.category));
   if (filters.uploadedById) {
     conditions.push(Prisma.sql`doc."uploadedById" = ${filters.uploadedById}`);
   }
@@ -381,6 +430,10 @@ function draftRows(filters: PoListFilters, part: "review" | "table"): Prisma.Sql
   if (filters.buyerId) conditions.push(Prisma.sql`FALSE`);
   if (filters.from || filters.to) conditions.push(Prisma.sql`FALSE`);
   if (filters.stage) conditions.push(Prisma.sql`FALSE`);
+  // A draft has no line items and no matched product, so nothing a product
+  // filter asks for can be true of one.
+  if (filters.market || filters.brand || filters.category)
+    conditions.push(Prisma.sql`FALSE`);
   if (filters.q) {
     const like = `%${filters.q}%`;
     conditions.push(

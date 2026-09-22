@@ -3,6 +3,10 @@ import Link from "next/link";
 import { PageHeader } from "@/components/portal/PageHeader";
 import { UploadPoButton } from "@/components/portal/UploadPoButton";
 import { ChurnList } from "@/components/dashboard/ChurnList";
+import { DashboardFilters } from "@/components/dashboard/DashboardFilters";
+import { DeliveryByMarket } from "@/components/dashboard/DeliveryByMarket";
+import { MarketMixCard } from "@/components/dashboard/MarketMixCard";
+import { TrendCard } from "@/components/dashboard/TrendCard";
 import { DonutShare } from "@/components/dashboard/DonutShare";
 import { InRangeGrid } from "@/components/dashboard/InRangeGrid";
 import { KpiMoney, KpiNumber, KpiTile } from "@/components/dashboard/KpiTile";
@@ -21,6 +25,7 @@ import { STAGE_VARS, cssVar } from "@/lib/analytics/palette";
 import { formatDate } from "@/lib/dates";
 import { formatMYR } from "@/lib/money";
 import { PO_STAGES, stageLabel } from "@/lib/po-stages";
+import { TREND_SUBJECTS, type TrendSubject } from "@/lib/analytics/trend";
 import { loadDashboard } from "@/lib/queries/dashboard";
 import {
   firstParam,
@@ -45,7 +50,32 @@ export default async function DashboardPage({
     firstParam(params, "measure") === "units" ? "units" : "sales";
   const moreOpen = firstParam(params, "more") === "1";
 
-  const data = await loadDashboard(range, range.agg);
+  // The three product columns the page can narrow by, and the trend's own
+  // subject and series. Read here and handed to the query, which echoes back
+  // what it resolved — the toolbar renders that rather than the raw URL, so a
+  // value the page fell back on can never sit in a control.
+  const filter = {
+    market: firstParam(params, "market") || undefined,
+    brand: firstParam(params, "brand") || undefined,
+    category: firstParam(params, "category") || undefined,
+  };
+  const trendParam = firstParam(params, "trend");
+  const trend: TrendSubject = (TREND_SUBJECTS as readonly string[]).includes(
+    trendParam ?? "",
+  )
+    ? (trendParam as TrendSubject)
+    : "market";
+  // Split preserves the interior blanks, and that is the point: a freed
+  // colour slot is an assignment, not a gap.
+  const seriesParam = firstParam(params, "series");
+  const series = seriesParam ? seriesParam.split(",").map((id) => id.trim()) : [];
+
+  const data = await loadDashboard(range, range.agg, {
+    filter,
+    trend,
+    measure,
+    series,
+  });
 
   if (!data.hasAnyOrders) {
     return (
@@ -87,7 +117,17 @@ export default async function DashboardPage({
   });
   const { page, size, skip, take } = parsePagination(params);
   const list = await listPurchaseOrders(
-    { status: "confirmed", from: range.from, to: range.to },
+    {
+      status: "confirmed",
+      from: range.from,
+      to: range.to,
+      // A row is a whole order, so it cannot narrow to lines the way the
+      // figures above it do: it lists the orders that *touch* the filter, at
+      // their full value, and the caption below says so. The *resolved*
+      // filter, so the rows and the figures can never disagree about what is
+      // being asked.
+      ...data.query.filter,
+    },
     sort,
     take,
     skip,
@@ -118,14 +158,23 @@ export default async function DashboardPage({
         to={to}
         agg={range.agg}
         summary={`${formatDate(range.from)} – ${formatDate(range.to)} · ${data.kpis.orderCount} purchase orders`}
-      />
+        filterCaption={data.filterCaption}
+      >
+        <DashboardFilters
+          markets={data.options.markets}
+          brands={data.options.brands}
+          categories={data.options.categories}
+          hasNoMarket={data.attribution.noMarket > 0}
+          selected={data.query.filter}
+        />
+      </RangeControls>
 
       {/* 1. Three tiles. No "Awaiting review" here — the status bar below is
           the one place the dashboard reports the backlog. */}
       <div className="grid grid-cols-2 gap-md sm:grid-cols-4">
         <KpiTile
           wide
-          label="Total sales"
+          label={data.filtered ? "Sales in this selection" : "Total sales"}
           value={<KpiMoney value={data.kpis.totalSales} />}
           caption={
             data.kpis.deltaPercent === null ? (
@@ -149,7 +198,13 @@ export default async function DashboardPage({
         <KpiTile
           label="Purchase orders"
           value={<KpiNumber value={data.kpis.orderCount} />}
-          caption={`${formatMYR(data.kpis.averageOrder.toFixed(2))} average`}
+          caption={
+            // Under a filter this is the average of each order's *matching
+            // lines*, not of the order — the §2.1 cost, said rather than hidden.
+            data.filtered
+              ? `${formatMYR(data.kpis.averageOrder.toFixed(2))} average per order, of these lines`
+              : `${formatMYR(data.kpis.averageOrder.toFixed(2))} average`
+          }
         />
         <KpiTile
           label="Top buyer"
@@ -187,6 +242,13 @@ export default async function DashboardPage({
           agg={range.agg}
           aggLabel={`${aggLabel}s`}
         />
+        <TrendCard
+          subject={data.trend.subject}
+          measure={measure}
+          points={data.trend.points}
+          options={data.trend.options}
+          slots={data.trend.slots}
+        />
         <StageCard points={data.stages} openCount={data.pipeline.openCount}>
           <StatusBar
             segments={data.stageBreakdown.map((entry) => ({
@@ -205,20 +267,35 @@ export default async function DashboardPage({
       {/* 3. Everything a person goes looking for, behind one control. */}
       <MoreAnalytics open={moreOpen}>
         <div className="grid gap-lg lg:grid-cols-2">
+          {/* Absent once a market is chosen: one slice is not a chart. */}
+          {data.query.filter.market ? null : (
+            <DonutShare
+              eyebrow="Sales by market"
+              slices={data.marketShare}
+              centreLabel="top market"
+              hrefBase="/products?market="
+            />
+          )}
           <DonutShare
-            eyebrow="Market share by buyer"
+            eyebrow="Share by buyer"
             slices={data.buyerShare}
             centreLabel="top buyer"
             hrefBase="/buyers"
           />
           <DonutShare
-            eyebrow="Market share by product"
+            eyebrow="Share by product"
             slices={data.productShare}
             centreLabel="top product"
             hrefBase="/products"
           />
         </div>
         <InRangeGrid data={data} />
+        {data.query.filter.market ? null : (
+          <div className="grid gap-lg lg:grid-cols-2">
+            <MarketMixCard mix={data.marketMix} attribution={data.attribution} />
+            <DeliveryByMarket delivery={data.delivery} />
+          </div>
+        )}
         <div className="grid gap-lg lg:grid-cols-2">
           <ChurnList churn={data.churn} />
           <PriceDriftList drift={data.drift} />
@@ -238,6 +315,16 @@ export default async function DashboardPage({
             View all →
           </Link>
         </div>
+        {/* The one place on the page that cannot narrow to lines: a row is a
+            whole order. Saying so is what keeps it from contradicting the
+            figures above, whose total is smaller by design. */}
+        {data.filtered ? (
+          <p className="mb-sm text-[length:var(--text-body-sm)] text-ink-secondary">
+            The orders that touch this selection, at their full value — so
+            these totals are larger than the figures above, which count only
+            the matching lines.
+          </p>
+        ) : null}
         <PoTable
           rows={rows}
           sort={sort}

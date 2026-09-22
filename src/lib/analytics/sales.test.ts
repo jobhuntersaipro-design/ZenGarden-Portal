@@ -13,6 +13,7 @@ const order = (
   buyerName,
   // Noon KL, so the date is unambiguous.
   poDate: new Date(`${poDate}T04:00:00Z`),
+  deliveryDate: null,
   total,
   stage: "ORDER_PLACED",
   lineItems: [],
@@ -24,6 +25,9 @@ const withUnits = (base: AnalyticsOrder, quantities: number[]): AnalyticsOrder =
   lineItems: quantities.map((quantity, index) => ({
     productId: `p${index}`,
     productName: `Product ${index}`,
+    market: null,
+    brand: null,
+    category: null,
     quantity,
     amount: quantity * 10,
   })),

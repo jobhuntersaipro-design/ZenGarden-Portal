@@ -4,6 +4,25 @@ import { openWebOrderCount } from "@/lib/queries/web-orders";
 import { ORDER_IDENTITY_SELECT, orderIdentity, type OrderIdentity } from "@/lib/order-identity";
 import { prisma } from "@/lib/prisma";
 import { buyerChurn, type BuyerChurn } from "@/lib/analytics/churn";
+import { deliveryByMarket, type DeliveryPerformance } from "@/lib/analytics/delivery";
+import {
+  attribution,
+  filterCaption,
+  filterOrders,
+  isFiltered,
+  resolveFilter,
+  type Attribution,
+  type LineFilter,
+} from "@/lib/analytics/line-filter";
+import { marketMix, type MarketMix } from "@/lib/analytics/market-mix";
+import {
+  seriesOptions,
+  seriesPerBucket,
+  subjectKey,
+  type SeriesOption,
+  type TrendPoint,
+  type TrendSubject,
+} from "@/lib/analytics/trend";
 import {
   openPipeline,
   stageBreakdown,
@@ -18,6 +37,7 @@ import {
   kpis,
   salesSeries,
   type Kpis,
+  type SalesMeasure,
   type SalesSeries,
 } from "@/lib/analytics/sales";
 import { shareBy, type ShareSlice } from "@/lib/analytics/share";
@@ -30,15 +50,33 @@ const ORDER_SELECT = {
   id: true,
   buyerId: true,
   poDate: true,
+  deliveryDate: true,
   total: true,
   stage: true,
   buyer: { select: { name: true } },
+} as const;
+
+/**
+ * A line, with the three columns the dashboard filters and trends by. They
+ * come off the *product*, because that is where a market lives — see
+ * `docs/specs/53-dashboard-analytics-and-market.md` §2.
+ */
+const LINE_SELECT = {
+  select: {
+    productId: true,
+    quantity: true,
+    amount: true,
+    product: {
+      select: { name: true, market: true, brand: true, category: true },
+    },
+  },
 } as const;
 
 type Row = {
   id: string;
   buyerId: string;
   poDate: Date;
+  deliveryDate: Date | null;
   total: { toNumber(): number };
   stage: AnalyticsOrder["stage"];
   buyer: { name: string };
@@ -46,7 +84,12 @@ type Row = {
     productId: string | null;
     quantity: { toNumber(): number };
     amount: { toNumber(): number };
-    product: { name: string } | null;
+    product: {
+      name: string;
+      market: string | null;
+      brand: string | null;
+      category: string;
+    } | null;
   }[];
   stageEvents?: { toStage: AnalyticsOrder["stage"]; changedAt: Date }[];
 };
@@ -61,11 +104,18 @@ const toAnalytics = (row: Row): AnalyticsOrder => ({
   buyerId: row.buyerId,
   buyerName: row.buyer.name,
   poDate: row.poDate,
+  deliveryDate: row.deliveryDate,
   total: row.total.toNumber(),
   stage: row.stage,
   lineItems: (row.lineItems ?? []).map((line) => ({
     productId: line.productId,
     productName: line.product?.name ?? null,
+    // Null on all three where the line matched no product at all — which is
+    // not the same as a product carrying no market, and `line-filter.ts`
+    // keeps the two apart.
+    market: line.product?.market ?? null,
+    brand: line.product?.brand ?? null,
+    category: line.product?.category ?? null,
     quantity: line.quantity.toNumber(),
     amount: line.amount.toNumber(),
   })),
@@ -86,7 +136,35 @@ export type IntakeCounts = {
   webOrders: number;
 };
 
+/** What the page asked for beyond the dates. */
+export type DashboardQuery = {
+  filter: LineFilter;
+  trend: TrendSubject;
+  measure: SalesMeasure;
+  /** Chosen series, blanks preserved as freed colour slots; [] means default. */
+  series: string[];
+};
+
+export type DashboardTrend = {
+  subject: TrendSubject;
+  points: TrendPoint[];
+  options: SeriesOption[];
+  /** The colour assignment the chart draws, holes and all. */
+  slots: string[];
+};
+
 export type DashboardData = {
+  /** Echoed back so the toolbar renders what the page resolved, never the raw URL. */
+  query: DashboardQuery;
+  filtered: boolean;
+  filterCaption: string | null;
+  /** Every market, brand and category with sales in range — the filter's own options. */
+  options: { markets: string[]; brands: string[]; categories: string[] };
+  attribution: Attribution;
+  marketShare: ShareSlice[];
+  marketMix: MarketMix;
+  delivery: DeliveryPerformance;
+  trend: DashboardTrend;
   kpis: Kpis;
   sales: SalesSeries;
   stages: StagePoint[];
@@ -113,13 +191,28 @@ export type DashboardData = {
     failureRate: number;
     uploadCount: number;
     failedCount: number;
+    /** Distinct markets with sales among the lines being counted. */
+    marketCount: number;
+    unitsPerOrder: number;
+    /** Buyers in range with more than one order, as a percent of buyers. */
+    repeatRate: number;
+    repeatBuyers: number;
   };
   hasAnyOrders: boolean;
 };
 
+/** Six is the palette's limit, not a judgement — `SHARE_VARS` holds six. */
+const MAX_SERIES = 6;
+
 export async function loadDashboard(
   range: Range,
   agg: Aggregation,
+  query: DashboardQuery = {
+    filter: {},
+    trend: "market",
+    measure: "sales",
+    series: [],
+  },
 ): Promise<DashboardData> {
   const previous = previousPeriod(range);
 
@@ -131,14 +224,7 @@ export async function loadDashboard(
           ...ORDER_SELECT,
           // Only this range's orders: the "Largest PO" card names one of them.
           ...ORDER_IDENTITY_SELECT,
-          lineItems: {
-            select: {
-              productId: true,
-              quantity: true,
-              amount: true,
-              product: { select: { name: true } },
-            },
-          },
+          lineItems: LINE_SELECT,
           stageEvents: { select: { toStage: true, changedAt: true } },
         },
       }),
@@ -146,14 +232,10 @@ export async function loadDashboard(
         where: { ...LATEST_ONLY, poDate: dateColumnRange(previous) },
         select: {
           ...ORDER_SELECT,
-          lineItems: {
-            select: {
-              productId: true,
-              quantity: true,
-              amount: true,
-              product: { select: { name: true } },
-            },
-          },
+          // The prior period carries lines too now: the market mix compares
+          // this period's shares against last period's, and that needs the
+          // same attribution on both sides.
+          lineItems: LINE_SELECT,
         },
       }),
       // Churn needs every order a buyer has ever placed to know their cadence,
@@ -172,8 +254,38 @@ export async function loadDashboard(
       openWebOrderCount(),
     ]);
 
-  const orders = current.map((row) => toAnalytics(row as Row));
-  const priorOrders = prior.map((row) => toAnalytics(row as Row));
+  // Everything in the range, before anything is narrowed. Two figures read
+  // this rather than the filtered set on purpose: `attribution`, which is a
+  // statement about how complete the catalogue is and would say nothing once
+  // narrowed to one market, and the market trend's own picker, so choosing
+  // Vietnam never removes Mydin from the control that would take you back.
+  const allOrders = current.map((row) => toAnalytics(row as Row));
+  const allPriorOrders = prior.map((row) => toAnalytics(row as Row));
+
+  const allLines = allOrders.flatMap((order) => order.lineItems);
+  const distinct = <T,>(values: (T | null)[]) =>
+    [...new Set(values.filter((v): v is T => Boolean(v)))].sort();
+  const options = {
+    markets: distinct(allLines.map((line) => line.market)),
+    brands: distinct(allLines.map((line) => line.brand)),
+    categories: distinct(allLines.map((line) => line.category)),
+  };
+
+  // A filter naming something nothing in range carries is dropped, not
+  // honoured — see `resolveFilter`. From here down `filter` is what the page
+  // is really applying, and it is what the toolbar renders.
+  const filter = resolveFilter(query.filter, {
+    ...options,
+    hasNoMarket: allLines.some(
+      (line) => line.productId !== null && line.market === null,
+    ),
+  });
+
+  // From here down, "orders" means the lines that match the filter — the
+  // §2.1 rule. With no filter these are the same arrays, untouched, so the
+  // unfiltered dashboard still reports order totals exactly as it always has.
+  const orders = filterOrders(allOrders, filter);
+  const priorOrders = filterOrders(allPriorOrders, filter);
   const historyOrders = history.map((row) => toAnalytics(row as Row));
 
   const countFor = (status: ExtractionStatus) =>
@@ -184,7 +296,7 @@ export async function loadDashboard(
   // not become orders — a different date field, necessarily, because a draft
   // has no PO date yet.
   const intake: IntakeCounts = {
-    confirmed: orders.length,
+    confirmed: allOrders.length,
     needsReview: countFor(ExtractionStatus.SUCCEEDED),
     extracting:
       countFor(ExtractionStatus.RUNNING) + countFor(ExtractionStatus.PENDING),
@@ -244,7 +356,73 @@ export async function loadDashboard(
 
   const uploadCount = intakeRows.reduce((sum, row) => sum + row._count, 0);
 
+  const ordersPerBuyer = new Map<string, number>();
+  for (const order of orders) {
+    ordersPerBuyer.set(order.buyerId, (ordersPerBuyer.get(order.buyerId) ?? 0) + 1);
+  }
+  const repeatBuyers = [...ordersPerBuyer.values()].filter((n) => n > 1).length;
+
+  const marketShare = shareBy(
+    orders.flatMap((order) => order.lineItems),
+    (line) => (line.market ? { id: line.market, label: line.market } : null),
+    (line) => line.amount,
+  );
+
+  /* ---- The trend card ------------------------------------------------- */
+
+  // Money or cartons, the same switch the sales card above it reads, so the
+  // page never draws two measures at once without saying which.
+  const trendValue =
+    query.measure === "sales"
+      ? (line: { amount: number }) => line.amount
+      : (line: { quantity: number }) => line.quantity;
+
+  // Markets rank off the unfiltered pass; buyers and products off the
+  // filtered one, where offering a series the chart would draw flat is the
+  // worse failure.
+  const trendOptions = seriesOptions(
+    query.trend === "market" ? allOrders : orders,
+    query.trend,
+    trendValue,
+  );
+
+  // The URL wins where it names series that still exist; otherwise the top
+  // six. A stale id is dropped rather than drawn as an empty line, and its
+  // slot is left blank so the survivors keep their colours.
+  const known = new Set(trendOptions.map((option) => option.id));
+  const asked = query.series.map((id) => (known.has(id) ? id : ""));
+  const slots = asked.some(Boolean)
+    ? asked.slice(0, MAX_SERIES)
+    : trendOptions.slice(0, MAX_SERIES).map((option) => option.id);
+  const selected = slots.filter(Boolean);
+
   return {
+    query: { ...query, filter },
+    filtered: isFiltered(filter),
+    filterCaption: filterCaption(filter),
+    options,
+    // Unfiltered on purpose — see the comment where `allOrders` is built.
+    attribution: attribution(allOrders),
+    marketShare,
+    marketMix: marketMix(orders, priorOrders),
+    // The one figure that does not narrow to lines: on time is a property of
+    // the order, and §4.4 explains why counting one order in two markets is
+    // right for a rate and wrong for a sum.
+    delivery: deliveryByMarket(orders),
+    trend: {
+      subject: query.trend,
+      points: seriesPerBucket(
+        orders,
+        selected,
+        subjectKey(query.trend),
+        trendValue,
+        range.from,
+        range.to,
+        agg,
+      ),
+      options: trendOptions,
+      slots,
+    },
     kpis: kpis(orders, priorOrders),
     sales: salesSeries(orders, range.from, range.to, agg),
     stages: stageSeries(orders, range.from, range.to, agg),
@@ -272,6 +450,16 @@ export async function loadDashboard(
       failureRate: uploadCount > 0 ? (intake.failed / uploadCount) * 100 : 0,
       uploadCount,
       failedCount: intake.failed,
+      marketCount: new Set(
+        orders
+          .flatMap((order) => order.lineItems)
+          .map((line) => line.market)
+          .filter(Boolean),
+      ).size,
+      unitsPerOrder: orders.length > 0 ? totalUnits / orders.length : 0,
+      repeatRate:
+        buyersInRange.size > 0 ? (repeatBuyers / buyersInRange.size) * 100 : 0,
+      repeatBuyers,
     },
     hasAnyOrders: anyOrder !== null,
   };
