@@ -1,4 +1,4 @@
-# Current Feature: Order stage on the Demand Board, reading by product
+# Current Feature: Order stage — a daily snapshot on the Demand Board
 
 ## Status
 
@@ -36,14 +36,42 @@ what somebody carries into a planning meeting. **Measured under print media:**
 the stage board's wrapper computes `display: none` while the demand table
 computes `table` and the heading stays `visible`.
 
+**Each bar is a snapshot of that day, not a count of orders dated that day**
+— rebuilt after the user asked "if previous day orders are in production, they
+will accumulate to later day". They do now. An order confirmed on the 12th and
+still in production on the 15th is counted on the 12th, 13th, 14th and 15th
+alike, and leaves In production the day it passes QC.
+
+**What it did before was an artefact of time passing.** The board bucketed
+orders by `poDate` and coloured them by their stage *today*, so old bars
+trended Delivered and recent ones Order placed by construction — the shape
+came from the calendar, not from anything that happened. `stageAt` replays
+each order's own `PoStageEvent` history instead, so the `stage` column is
+never read.
+
+**An order joins on the day it was confirmed and leaves the day it is
+delivered**, both the user's choice from the options offered. Joining on its
+`ORDER_PLACED` event rather than `poDate` is the difference between "our work"
+and "a date printed on the buyer's document", which can be weeks earlier;
+dropping it at Delivered makes each bar *work in hand* rather than a running
+total of everything ever ordered. Delivered is therefore never drawn — not as
+a segment, not in the legend, not as a table column.
+
 **The table is the bar's own breakdown, and that is the whole design.** The
 chart answers how many orders and at which stage; a reader looking at a tall
 bar immediately asks what is in it, and a tooltip cannot answer that — it
 holds six numbers about stages and nothing about products. Hovering a bar puts
-that day's orders in the table below, one row per product with that product's
-orders counted into the stage each one stands at. Moving off puts the whole
-window back. The tooltip is **off** on this chart for the same reason: two
+that day's open orders in the table below, one row per product with that
+product's orders counted into the stage each one stood at *then*. Moving off
+puts today back. The tooltip is **off** on this chart for the same reason: two
 explanations of one bar, one of them following the pointer, is noise.
+
+**The order count moved into the table's own heading** — `15 Sep · 24
+orders` — after the user read a bar showing one order at QC passed above a QC
+column adding to 6 and asked which was correct. Both were: one order carrying
+six products. The caption had said so for a while and was not landing, because
+nobody reads a caption before reading figures. The two numbers now sit a line
+apart instead of a paragraph apart.
 
 **An order counts once per product it carries, never once per line.** A
 document printing the same product twice is still one order at one stage.
@@ -64,6 +92,19 @@ narrowing it by the search or a status chip would leave the chart and the
 table disagreeing about which orders they count. A window the URL does not
 name falls back to 30 rather than drawing nothing.
 
+**The query is no longer a date range**, and could not be: an order sits on
+every bar between its confirm and its delivery, so the rows needed are the
+ones open *during* the window rather than dated inside it — everything still
+open whenever it was confirmed, plus everything delivered since the window
+opened. Only an order delivered before that is excluded, and it could never
+have appeared on any bar.
+
+**The board has its own order shape, `StageOrder`**, rather than borrowing
+`AnalyticsOrder`. It reads no money, no buyer and no PO date, and it needs
+`fromStage`, which that shared type does not carry; padding the unused halves
+with zeroes to borrow it would make the query look like it held figures it
+never reads.
+
 **The unmatched remainder is a row, pinned last.** Lines that matched no
 product gather into one `*none` row, after the products whatever its count —
 the catalogue's own "No market" rule. It is not a product, and leading the
@@ -78,44 +119,60 @@ against it (423 purchase orders, 1,683 line items, 12 products), and
 drive and **restored afterwards**; the cluster was stopped and deleted, and
 `package.json` and `package-lock.json` are untouched.
 
-- **The stage counts reconcile to SQL, not to themselves.** Over the last 30
-  days the legend read **Order placed 5 · In production 4 · QC passed 8 · In
-  warehouse 4 · Delivering 5 · Delivered 16**, summing to the heading's **42
-  orders** — every one of those six figures matching its SQL equivalent
-  exactly.
-- **The windows too:** 60 days read **77 orders**, 90 days **106**, against
-  SQL's 77 and 106.
-- **A hovered bar's breakdown reconciles.** 24 Aug drew **10 rows**, every
-  figure in the Delivered column: `HAND SANITIZER 60ML — Fresh 3`, three
-  products at 2 and six at 1. SQL grouped by product id returns exactly those
-  ten rows; grouped by *name* it returns nine, because **two real products
-  share the name `ZEN 2.1L — Goat's Milk`** — the catalogue duplicate already
-  recorded on 2026-09-22. The board is right and the name-grouped query is
-  the one that lies.
-- **The whole-window table matches the same query:** ZEN D'LUX **19**,
-  H/WASH Strawberry **16**, ZEN 1L Royal Jelly **16**, and the two Goat's Milk
-  ids at **15** and **14** — SQL's 15 and 14, where by name they read 24.
-- **Hover, leave, pin, release** all driven: hover → *24 Aug*, 10 rows; leave
-  → *The last 30 days*, 12 rows; click then move the pointer away → still
-  *24 Aug* with the release button present; release → back to the window.
-- **A stale window is dropped, not honoured.** `?stage_window=9999` drew the
-  30-day board with the **30 days** chip selected.
-- **Neither the dashboard nor the purchase-order page carries it:** "Order
-  stage" appears **0 times** on each, against 1 on the dashboard before. The
-  purchase-order page's review queue and its 13 table rows are untouched.
-- **Phone.** 390/390 with a bucket pinned and without, on `/demand` as it was
-  on `/purchase-orders`. The table scrolls inside its own frame (**789px in a
-  302px frame**) and the chart likewise (816 in 302), so neither pushes the
-  page. **No control under 44px.** 1440/1440 on the desktop, and the stage
-  board sits at y=1336 against the demand table's 395 — below it, measured.
-- **Two counterfactuals watched failing**, then restored: counting per line
-  rather than per distinct product (`expected 2 to be 1` — one order read as
-  two); and letting the unmatched remainder sort with the rest
-  (`expected [ '*none', 'p1' ] to deeply equal [ 'p1', '*none' ]`).
-- **1448/1448 tests across 115 files** (9 new), `tsc`, lint (the same 2
-  pre-existing `username` warnings) and `npm run build` clean.
+- **The replay reproduces every order's current stage, exactly.** Replayed to
+  now, the board reads **Order placed 5 · In production 4 · QC passed 8 · In
+  warehouse 4 · Delivering 5 = 26 orders in hand** — character for character
+  the `stage` column's own `GROUP BY` over the latest revisions that are not
+  delivered. That is the strongest check available: the app maintains `stage`
+  alongside the events, so a replay that lands on it has reconstructed all 423
+  orders' histories correctly.
+- **A past day reconciles too.** Hovering 15 Sep read **24 orders**, against
+  SQL's 10 + 5 + 1 + 2 + 6 = 24 open at the end of that day, and its table drew
+  **12 product rows over 85 order-product pairs** — exactly the `count(distinct
+  productId)` and `count(*)` of the distinct (order, product) pairs SQL returns
+  for the same instant.
+- **The accumulation is visible.** Bar totals across the 30 days read
+  `3 6 6 8 11 11 11 13 13 15 17 19 19 19 22 23 24 25 26 24 22 24 24 25 24 26
+  26 26 28 26` — a pipeline filling up and then holding, where the old board
+  drew a flat scatter of order dates.
+- **The 1-against-6 case the user asked about, on the same screen.** 15 Sep's
+  QC passed segment is one order; the table's QC passed column sums to **6**,
+  because that order carries six products. The heading beside it now reads
+  *15 Sep · 24 orders*.
+- **Five counterfactuals watched failing**, then restored: reading the `stage`
+  column instead of replaying (**13 tests red**, `expected 'DELIVERED' to be
+  'ORDER_PLACED'`); keeping delivered orders on the board (6 red, `expected
+  [ 1, 1, 1, 1 ] to deeply equal [ 1, 1, +0, +0 ]`); including an event at the
+  instant itself, the midnight off-by-one (4 red); taking the first of a tie
+  (2 red); and breaking a tie by list order rather than by the chain
+  (`expected 'IN_WAREHOUSE' to be 'DELIVERING'`).
+- **1464/1464 tests across 117 files** (25 new across two files), `tsc`, lint
+  (the same 2 pre-existing `username` warnings) and `npm run build` clean.
 
-### Three defects the drive found that the build could not
+### A defect only the SQL reconciliation could find
+
+**Two events can share a timestamp, and then their order in the list decides
+nothing.** Prisma's `orderBy: { changedAt: "asc" }` leaves ties in an
+arbitrary order and the seed's event ids are random rather than time-sorted,
+so neither the array nor the id can say which move came last. The first
+version took the earliest of a tie and put two orders in In production that
+had already passed QC; the second took the last of the list and put one order
+in In warehouse that had already gone out for delivery. **Neither showed up in
+the unit tests** — the fixtures built their histories in chain order, so the
+list order happened to be right — and neither showed up in the totals, which
+were 26 either way. Only the per-stage split against SQL exposed them.
+
+The rule is now the chain: the last move of a tie is the one whose destination
+nobody else left from, read off `fromStage`. The test that catches it lists
+the later move **first**, which is the shape the database actually produced;
+the test written before it passed under both implementations and was useless.
+
+Ties are a seed artefact — it clamps a lead time that runs past today, which
+collapses several stages onto one instant — and are close to impossible in
+production, where one person advances one order at a time. The board is built
+on this replay, though, so a silent wrong stage was not worth leaving.
+
+### Three defects the earlier drive found that the build could not
 
 - **A value exported from a `"use client"` module is not that value on the
   server.** `STAGE_WINDOWS` lived in the board component, and the page's
@@ -286,7 +343,30 @@ two products deliberately left with none. `src/lib/prisma.ts` and
   seven fixtures and two real queries — which is the evidence that no caller
   was left guessing a market.
 
-### Three defects the drive found that the build could not
+### A defect only the SQL reconciliation could find
+
+**Two events can share a timestamp, and then their order in the list decides
+nothing.** Prisma's `orderBy: { changedAt: "asc" }` leaves ties in an
+arbitrary order and the seed's event ids are random rather than time-sorted,
+so neither the array nor the id can say which move came last. The first
+version took the earliest of a tie and put two orders in In production that
+had already passed QC; the second took the last of the list and put one order
+in In warehouse that had already gone out for delivery. **Neither showed up in
+the unit tests** — the fixtures built their histories in chain order, so the
+list order happened to be right — and neither showed up in the totals, which
+were 26 either way. Only the per-stage split against SQL exposed them.
+
+The rule is now the chain: the last move of a tie is the one whose destination
+nobody else left from, read off `fromStage`. The test that catches it lists
+the later move **first**, which is the shape the database actually produced;
+the test written before it passed under both implementations and was useless.
+
+Ties are a seed artefact — it clamps a lead time that runs past today, which
+collapses several stages onto one instant — and are close to impossible in
+production, where one person advances one order at a time. The board is built
+on this replay, though, so a silent wrong stage was not worth leaving.
+
+### Three defects the earlier drive found that the build could not
 
 Two were **pre-existing**, in cards the *More analytics* disclosure hides —
 which is why the 2026-09-06 mobile sweep never saw them: it measured the

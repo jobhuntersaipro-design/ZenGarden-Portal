@@ -77,6 +77,7 @@ export function StackedStageChart({
   onActive,
   onPick,
   activeKey = null,
+  stages = STACK_ORDER,
   showTooltip = true,
 }: {
   points: StagePoint[];
@@ -100,6 +101,12 @@ export function StackedStageChart({
    * (measured 2026-09-22).
    */
   activeKey?: string | null;
+  /**
+   * Which stages to stack, bottom first. The stage board passes the five open
+   * ones: a delivered order has left its snapshot, so that segment would be a
+   * permanent zero.
+   */
+  stages?: readonly PoStage[];
   /**
    * Off where something below the chart already answers what a bar is made
    * of — two explanations of one bar, one of them following the pointer, is
@@ -126,7 +133,7 @@ export function StackedStageChart({
   }
 
   const dense = points.length > 60;
-  const top = STACK_ORDER.length - 1;
+  const top = stages.length - 1;
 
   return (
     // Bars need at least as much room per bucket as a line does; below that
@@ -204,7 +211,7 @@ export function StackedStageChart({
                 content={() => null}
               />
             )}
-            {STACK_ORDER.map((stage, index) => (
+            {stages.map((stage, index) => (
               <Bar
                 key={stage}
                 dataKey={stage}

@@ -3,16 +3,26 @@
 import Link from "next/link";
 import { usePathname, useSearchParams } from "next/navigation";
 import { useMemo, useState } from "react";
-import type { PoStage } from "@/generated/prisma/enums";
 import { StackedStageChart } from "@/components/dashboard/StackedStageChart";
 import { ChoiceButton } from "@/components/portal/ChoiceButton";
 import { SegmentGroup } from "@/components/portal/SegmentGroup";
 import { usePendingChoice } from "@/hooks/usePendingChoice";
 import { useEdgeFades } from "@/hooks/useEdgeFades";
+import { PoStage } from "@/generated/prisma/enums";
 import { PO_STAGES, stageLabel } from "@/lib/po-stages";
 import { STAGE_VARS, cssVar } from "@/lib/analytics/palette";
-import { NO_PRODUCT, type StageProductRow } from "@/lib/analytics/stage-products";
+import {
+  NO_PRODUCT,
+  type StageProductRow,
+} from "@/lib/analytics/stage-products";
 import { STAGE_WINDOWS, type StageWindow } from "@/lib/po-stage-window";
+
+/**
+ * The five stages an open order can stand at. Delivered is absent because a
+ * delivered order is off the board — it is finished work, not work in hand —
+ * so drawing it would be a segment and a legend row pinned at zero.
+ */
+const OPEN_STAGES = PO_STAGES.filter((stage) => stage !== PoStage.DELIVERED);
 import type { StagePoint } from "@/lib/analytics/fulfillment";
 import type { StageBreakdown } from "@/lib/analytics/fulfillment";
 
@@ -20,7 +30,11 @@ const num = (value: number) => value.toLocaleString("en-MY");
 
 /** Nothing counted is a dash, not a zero — the rule the whole portal reads by. */
 function Cell({ value }: { value: number }) {
-  return value === 0 ? <span className="text-ink-disabled">—</span> : <>{num(value)}</>;
+  return value === 0 ? (
+    <span className="text-ink-disabled">—</span>
+  ) : (
+    <>{num(value)}</>
+  );
 }
 
 /**
@@ -98,17 +112,17 @@ export function StageBoard({
           </p>
           <h2 className="font-display text-[length:var(--text-heading-md)] font-[650] tracking-[-0.91px] text-ink">
             {orderCount === 0 ? (
-              "No orders in this window"
+              "Nothing open right now"
             ) : (
               <>
-                {num(orderCount)}{" "}
-                {orderCount === 1 ? "order" : "orders"} in the last {window} days
+                {num(orderCount)} {orderCount === 1 ? "order" : "orders"} in
+                hand
               </>
             )}
           </h2>
           <p className="mt-xxs text-[length:var(--text-caption)] text-ink-tertiary">
-            Where each day&apos;s orders stand today · hover or tap a bar for
-            the products behind it
+            Where every open order stood at the end of each day · hover or tap a
+            bar for the products behind it
           </p>
         </div>
 
@@ -120,9 +134,7 @@ export function StageBoard({
               selected={windows.value === value}
               pending={windows.isPending(value)}
               dimmed={windows.pending && !windows.isPending(value)}
-              onClick={() =>
-                windows.choose(value, windowHref(value))
-              }
+              onClick={() => windows.choose(value, windowHref(value))}
             >
               {value} days
             </ChoiceButton>
@@ -135,6 +147,7 @@ export function StageBoard({
           points={points}
           onActive={setHovered}
           activeKey={active}
+          stages={[...OPEN_STAGES].reverse()}
           onPick={toggle}
           showTooltip={false}
         />
@@ -142,32 +155,45 @@ export function StageBoard({
 
       {/* The legend, and the way into the rows each count is over. */}
       <ul className="mt-md flex flex-wrap gap-x-md gap-y-xs">
-        {breakdown.map((entry) => (
-          <li key={entry.stage}>
-            <Link
-              href={`/purchase-orders?status=confirmed&stage=${entry.stage}&from=${from}&to=${to}`}
-              className="flex items-center gap-xxs text-[length:var(--text-caption)] text-ink-secondary hover:text-ink"
-            >
-              <span
-                aria-hidden
-                className="size-2 shrink-0 rounded-full"
-                style={{
-                  background: cssVar(
-                    STAGE_VARS[PO_STAGES.indexOf(entry.stage)],
-                  ),
-                }}
-              />
-              {stageLabel(entry.stage)}{" "}
-              <span className="tabular-nums text-ink">{num(entry.count)}</span>
-            </Link>
-          </li>
-        ))}
+        {breakdown
+          .filter((entry) => entry.stage !== PoStage.DELIVERED)
+          .map((entry) => (
+            <li key={entry.stage}>
+              <Link
+                href={`/purchase-orders?status=confirmed&stage=${entry.stage}&from=${from}&to=${to}`}
+                className="flex items-center gap-xxs text-[length:var(--text-caption)] text-ink-secondary hover:text-ink"
+              >
+                <span
+                  aria-hidden
+                  className="size-2 shrink-0 rounded-full"
+                  style={{
+                    background: cssVar(
+                      STAGE_VARS[PO_STAGES.indexOf(entry.stage)],
+                    ),
+                  }}
+                />
+                {stageLabel(entry.stage)}{" "}
+                <span className="tabular-nums text-ink">
+                  {num(entry.count)}
+                </span>
+              </Link>
+            </li>
+          ))}
       </ul>
 
       <div className="mt-lg border-t border-hairline pt-lg">
         <div className="flex flex-wrap items-baseline justify-between gap-xs">
           <h3 className="text-[length:var(--text-body-md)] font-medium text-ink">
-            {point ? point.label : `The last ${window} days`}
+            {/* The order count sits in the heading, next to the day it is
+                for: the rows below count *products*, and a reader who reads
+                the figures before the caption would otherwise have a column
+                adding to 85 with no 24 anywhere near it to reconcile against. */}
+            {point ? point.label : "In hand today"}
+            {" · "}
+            <span className="tabular-nums font-normal text-ink-secondary">
+              {num(point ? point.total : orderCount)}{" "}
+              {(point ? point.total : orderCount) === 1 ? "order" : "orders"}
+            </span>
           </h3>
           {pinned ? (
             <button
@@ -175,23 +201,19 @@ export function StageBoard({
               onClick={() => setPinned(null)}
               className="h-control-md sm:h-auto text-[length:var(--text-caption)] text-brand-link underline-offset-2 hover:underline"
             >
-              Show the whole window
+              Back to today
             </button>
           ) : null}
         </div>
         <p className="mt-xxs text-[length:var(--text-caption)] text-ink-tertiary">
           {rows.length === 0
-            ? "Nothing ordered here."
-            : "One row per product. An order carrying three products counts under each, so a column totals more orders than there are."}
+            ? "Nothing was open that day."
+            : "One row per product. An order carrying three products counts under each, so a column totals more than the order count above."}
         </p>
 
         {rows.length > 0 ? (
           <div className="relative mt-sm">
-            <div
-              ref={ref}
-              onScroll={measure}
-              className="overflow-x-auto"
-            >
+            <div ref={ref} onScroll={measure} className="overflow-x-auto">
               <table className="w-full min-w-stage-table border-collapse text-[length:var(--text-body-sm)]">
                 <thead>
                   <tr className="border-b border-hairline text-left">
@@ -201,7 +223,7 @@ export function StageBoard({
                     >
                       Product
                     </th>
-                    {PO_STAGES.map((stage) => (
+                    {OPEN_STAGES.map((stage) => (
                       <th
                         key={stage}
                         scope="col"
@@ -220,7 +242,10 @@ export function StageBoard({
                 </thead>
                 <tbody>
                   {rows.map((row) => (
-                    <tr key={row.productId} className="border-b border-hairline">
+                    <tr
+                      key={row.productId}
+                      className="border-b border-hairline"
+                    >
                       <th
                         scope="row"
                         className="max-w-72 truncate py-xs pr-sm text-left font-normal text-ink"
@@ -239,7 +264,7 @@ export function StageBoard({
                           </Link>
                         )}
                       </th>
-                      {PO_STAGES.map((stage) => (
+                      {OPEN_STAGES.map((stage) => (
                         <td
                           key={stage}
                           className="py-xs pl-sm text-right tabular-nums text-ink"
@@ -270,7 +295,6 @@ export function StageBoard({
           </div>
         ) : null}
       </div>
-
     </section>
   );
 }

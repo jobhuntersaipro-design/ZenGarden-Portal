@@ -1,8 +1,10 @@
 import type { PoStage } from "@/generated/prisma/enums";
-import type { Aggregation } from "@/lib/dates";
-import { bucketKey } from "@/lib/analytics/buckets";
 import { PO_STAGES } from "@/lib/po-stages";
-import type { AnalyticsOrder } from "@/lib/analytics/types";
+import {
+  openAt,
+  type Snapshot,
+  type StageOrder,
+} from "@/lib/analytics/stage-history";
 
 /**
  * One product, and how many of the period's orders carrying it stand at each
@@ -28,9 +30,9 @@ function emptyRow(productId: string, productName: string): StageProductRow {
 }
 
 /**
- * The matrix behind one bar of the stage chart: for the orders in `bucket`
- * (or every order when it is null), one row per product with that product's
- * orders counted into the stage each one stands at today.
+ * The matrix behind one bar of the stage chart: for the orders open at the
+ * end of that period, one row per product with that product's orders counted
+ * into the stage each one stood at *then*.
  *
  * **An order counts once per product, never once per line.** A document that
  * prints the same product twice is still one order standing at one stage, so
@@ -41,15 +43,12 @@ function emptyRow(productId: string, productName: string): StageProductRow {
  * genuinely in flight for all three.
  */
 export function stageByProduct(
-  orders: AnalyticsOrder[],
-  agg: Aggregation,
-  bucket: string | null,
+  orders: StageOrder[],
+  end: Date,
 ): StageProductRow[] {
   const rows = new Map<string, StageProductRow>();
 
-  for (const order of orders) {
-    if (bucket !== null && bucketKey(order.poDate, agg) !== bucket) continue;
-
+  for (const { order, stage } of openAt(orders, end)) {
     const seen = new Set<string>();
     for (const line of order.lineItems) {
       const id = line.productId ?? NO_PRODUCT;
@@ -57,9 +56,8 @@ export function stageByProduct(
       seen.add(id);
 
       const row =
-        rows.get(id) ??
-        emptyRow(id, line.productName ?? NO_PRODUCT_NAME);
-      row[order.stage] += 1;
+        rows.get(id) ?? emptyRow(id, line.productName ?? NO_PRODUCT_NAME);
+      row[stage] += 1;
       row.total += 1;
       rows.set(id, row);
     }
@@ -82,11 +80,10 @@ export function stageByProduct(
  * answer a hover from data it already holds rather than a round trip per bar.
  */
 export function stageProductsByBucket(
-  orders: AnalyticsOrder[],
-  agg: Aggregation,
-  keys: string[],
+  orders: StageOrder[],
+  snapshots: Snapshot[],
 ): Record<string, StageProductRow[]> {
   return Object.fromEntries(
-    keys.map((key) => [key, stageByProduct(orders, agg, key)]),
+    snapshots.map((s) => [s.key, stageByProduct(orders, s.end)]),
   );
 }
