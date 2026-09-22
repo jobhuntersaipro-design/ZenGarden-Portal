@@ -4,6 +4,7 @@ import { PageHeader } from "@/components/portal/PageHeader";
 import { DemandTable } from "@/components/demand/DemandTable";
 import { DemandToolbar } from "@/components/demand/DemandToolbar";
 import { PrintBoard } from "@/components/demand/PrintBoard";
+import { StageBoard } from "@/components/demand/StageBoard";
 import {
   lastPickableDate,
   loadDemandBoard,
@@ -12,6 +13,9 @@ import {
 } from "@/lib/queries/demand";
 import { DEMAND_CEILING, DEMAND_SPAN, type DemandGrain } from "@/lib/planning/grain";
 import { firstParam, type SearchParams } from "@/lib/queries/pagination";
+import { loadPoStageBoard } from "@/lib/queries/po-stages";
+import { resolveStageWindow } from "@/lib/po-stage-window";
+import { subDays } from "date-fns";
 
 export const metadata: Metadata = { title: "Demand Board · Zen Garden Portal" };
 export const dynamic = "force-dynamic";
@@ -99,7 +103,21 @@ export default async function DemandPage({
     family: firstParam(params, "family") ?? "",
     productId: firstParam(params, "product") ?? "",
   };
-  const board = await loadDemandBoard({ grain, window, filters });
+  // The stage board reads its own window, never this page's grain, span or
+  // filters: it answers where today's orders *stand*, where the board above
+  // it answers what is *coming*, and the two questions do not share a
+  // timeline — the demand board looks forward from today and this looks
+  // back. Its own `?stage_window=` keeps them from writing over each other,
+  // and a window the URL does not name falls back to 30 rather than drawing
+  // nothing.
+  const stageWindow = resolveStageWindow(firstParam(params, "stage_window"));
+  const stageTo = new Date();
+  const stageFrom = subDays(stageTo, Number(stageWindow) - 1);
+
+  const [board, stages] = await Promise.all([
+    loadDemandBoard({ grain, window, filters }),
+    loadPoStageBoard(stageFrom, stageTo, "day"),
+  ]);
 
   // A picked date owns the strip: no chip is selected beside it, the same as
   // a hand-typed span outside the two the chips offer.
@@ -157,6 +175,25 @@ export default async function DemandPage({
       ) : null}
 
       <DemandTable board={board} />
+
+      {/* Below the board, not above it: the master list is what this page is
+          opened for, and a chart before it would push thirty day columns
+          under the fold. `data-print-hide` because the printed sheet is the
+          committed board — `PrintBoard` scales the page to *that* table's
+          width, so a second scroller would print cut off, and a stage chart
+          is not what somebody carries into a planning meeting. */}
+      <div className="mt-xl" data-print-hide>
+        <StageBoard
+          points={stages.points}
+          breakdown={stages.breakdown}
+          all={stages.all}
+          byBucket={stages.byBucket}
+          orderCount={stages.orderCount}
+          window={stageWindow}
+          from={stageFrom.toLocaleDateString("en-CA")}
+          to={stageTo.toLocaleDateString("en-CA")}
+        />
+      </div>
     </div>
   );
 }

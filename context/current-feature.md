@@ -1,4 +1,4 @@
-# Current Feature: Order stage moves to Purchase orders, and reads by product
+# Current Feature: Order stage on the Demand Board, reading by product
 
 ## Status
 
@@ -9,11 +9,32 @@ chart, the table below will updated too. My idea is when user hover it, the
 table below will show Per product, then how many order under each stage for
 that hovered-selected bar by day."
 
-**The chart left the dashboard rather than being copied.** Where the orders
-*stand* is the purchase-order page's question, and it now sits beside the rows
-a stage count is a count of. The dashboard keeps the two cards that read by
-money — Sales over time and the trend — and carries no stage chart or stage
-bar at all.
+**The chart left the dashboard rather than being copied**, and then moved
+again the same day: first to the purchase-order page, then — asked for as
+"Can you move the order stage to deman tab instead?" — to the Demand Board,
+where it sits **below the committed board**. The master list is what that page
+is opened for, and a chart above it would push thirty day columns under the
+fold. The dashboard keeps the two cards that read by money — Sales over time
+and the trend — and the purchase-order page is back to the review queue, the
+filters and the table.
+
+**The two boards on that page answer opposite questions and share nothing.**
+The committed board looks *forward* from today, in cartons, over open orders,
+narrowed by its own grain, span, search and filters; the stage board looks
+*back* over the last 30/60/90 days, in orders, at every confirmed one, and
+reads only its own `?stage_window=`. A search that narrowed both would be one
+control narrowing two different populations over two different timelines.
+**Driven:** `?q=Meridian` on the demand board reads *2 open orders · 288
+cartons · 18 rows* before and after clicking the stage board's 90 days, the
+search box still holding "Meridian", while the stage board goes from 42 to
+**106 orders**. Its chips write the current path and keep every other
+parameter, so the grain, span and search survive the click.
+
+**It does not print.** `PrintBoard` scales the page to the *committed* table's
+own width, so a second scroller would print cut off, and a stage chart is not
+what somebody carries into a planning meeting. **Measured under print media:**
+the stage board's wrapper computes `display: none` while the demand table
+computes `table` and the heading stays `visible`.
 
 **The table is the bar's own breakdown, and that is the whole design.** The
 chart answers how many orders and at which stage; a reader looking at a tall
@@ -79,12 +100,14 @@ drive and **restored afterwards**; the cluster was stopped and deleted, and
   *24 Aug* with the release button present; release → back to the window.
 - **A stale window is dropped, not honoured.** `?stage_window=9999` drew the
   30-day board with the **30 days** chip selected.
-- **The dashboard no longer carries it:** "Order stage" and "still open" each
-  appear **0 times** on it, against 1 each before.
-- **Phone.** 390/390 with a bucket pinned and without. The table scrolls
-  inside its own frame (**789px in a 302px frame**) and the chart likewise
-  (816 in 302), so neither pushes the page. **No control under 44px.**
-  1440/1440 on the desktop.
+- **Neither the dashboard nor the purchase-order page carries it:** "Order
+  stage" appears **0 times** on each, against 1 on the dashboard before. The
+  purchase-order page's review queue and its 13 table rows are untouched.
+- **Phone.** 390/390 with a bucket pinned and without, on `/demand` as it was
+  on `/purchase-orders`. The table scrolls inside its own frame (**789px in a
+  302px frame**) and the chart likewise (816 in 302), so neither pushes the
+  page. **No control under 44px.** 1440/1440 on the desktop, and the stage
+  board sits at y=1336 against the demand table's 395 — below it, measured.
 - **Two counterfactuals watched failing**, then restored: counting per line
   rather than per distinct product (`expected 2 to be 1` — one order read as
   two); and letting the unmatched remainder sort with the rest

@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import { usePathname, useSearchParams } from "next/navigation";
 import { useMemo, useState } from "react";
 import type { PoStage } from "@/generated/prisma/enums";
 import { StackedStageChart } from "@/components/dashboard/StackedStageChart";
@@ -59,7 +60,19 @@ export function StageBoard({
   from: string;
   to: string;
 }) {
+  const pathname = usePathname();
+  const searchParams = useSearchParams();
   const windows = usePendingChoice<StageWindow>(window);
+
+  // Written against the page it is on, keeping everything else in the URL.
+  // A hardcoded path would send a reader somewhere else entirely, and
+  // replacing the query string would drop the grain, span and filters the
+  // board above it is drawn from.
+  const windowHref = (value: StageWindow) => {
+    const params = new URLSearchParams(searchParams.toString());
+    params.set("stage_window", value);
+    return `${pathname}?${params.toString()}`;
+  };
   const [hovered, setHovered] = useState<string | null>(null);
   const [pinned, setPinned] = useState<string | null>(null);
   const { ref, clipped, measure } = useEdgeFades<HTMLDivElement>();
@@ -108,7 +121,7 @@ export function StageBoard({
               pending={windows.isPending(value)}
               dimmed={windows.pending && !windows.isPending(value)}
               onClick={() =>
-                windows.choose(value, `/purchase-orders?stage_window=${value}`)
+                windows.choose(value, windowHref(value))
               }
             >
               {value} days
