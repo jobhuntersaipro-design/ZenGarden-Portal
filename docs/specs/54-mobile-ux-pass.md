@@ -99,11 +99,51 @@ extracted, **four of them read `—`, `—`, `0`, `RM 0.00`**.
 - The delete icon sits alone, centred, at the foot of each card, detached from
   the row it acts on.
 
-**Fix:** card mode shows a **summary, not a transcription** — title line,
-status, and the two or three facts that identify the record (buyer, total,
-date). A field whose value is `—` is **omitted on a card** rather than printed;
-on a phone a dash is a row of nothing, where in a table it holds a column open.
-Everything else moves to the record's own page, which is one tap away.
+**Fix, decided 2026-09-22:** card mode shows a **summary, not a
+transcription**. A field whose value is `—` is **omitted on a card** rather
+than printed: on a phone a dash is a row of nothing, where in a table it holds
+a column open. Everything else moves to the record's own page, one tap away.
+
+**The fields are the user's own choice: PO number, Order ID, Buyer.** All three
+are identifiers — the things you would quote on the phone — rather than
+figures. They come from `orderIdentity()` (`src/lib/order-identity.ts`), which
+already returns both numbers and nulls each correctly, so the card reuses it
+rather than re-deriving:
+
+```
+┌──────────────────────────────────┐
+│ PO-2026-0039        Needs review │   PO number, then status
+│ Orchid Textiles                  │   buyer
+└──────────────────────────────────┘
+
+┌──────────────────────────────────┐
+│ ACME-PO-771         Confirmed    │
+│ Order ID W-2609-00014            │   only where there is one
+│ Acme Industrial Sdn Bhd          │
+└──────────────────────────────────┘
+
+┌──────────────────────────────────┐
+│ scan-g2f77a.pdf     Needs review │   no PO number yet: the file names it
+│ Uploaded 2 days ago              │
+└──────────────────────────────────┘
+```
+
+**Order ID is absent on most cards and that is correct.** Only an order placed
+on the shop has one; every scan has none, and development holds 423 scans and
+no shop orders. Under the no-dash rule the line simply does not render — the
+same call the demand board's sub-row already makes.
+
+**One addition I am proposing rather than assuming: the status stays.** It was
+not among the three fields chosen, and it is not an identifier — but without it
+a card in the review queue is indistinguishable from a confirmed order, and
+"Needs review" is the reason somebody opens this list on a phone at all. It
+rides on the title line rather than taking a row of its own. **Say if you would
+rather it went.**
+
+**Total and date are dropped**, which is the real cost of this decision and is
+stated rather than buried: you will no longer be able to compare order values
+by scanning the list on a phone. That is the trade the compact card makes, and
+the desktop table still has both columns.
 
 ### F3 — Card titles are 21–24px tall, under the project's own 44px floor
 
@@ -193,10 +233,11 @@ the one that most changes how the portal feels on a phone.
 
 ## 5. Decisions I need before building
 
-- **How much belongs on a card (F2).** My proposal is title + status + two
-  facts. The alternative is to keep every field and accept the length, on the
-  grounds that ops staff read the table to compare rows rather than to find
-  one. This is the decision that shapes the phase.
+- ~~**How much belongs on a card (F2).**~~ **Decided 2026-09-22: the compact
+  summary**, carrying PO number, Order ID and Buyer, with null fields printing
+  no row. See F2 for the shape, the two consequences (Order ID absent on every
+  scan; total and date no longer comparable by scanning) and the one open
+  question — whether the status pill stays.
 - **Whether the filter sheet is worth it (F4)**, or whether a plain
   "Filters ▾" disclosure that expands in place is enough. The sheet is better
   on a phone and is more code.
@@ -222,8 +263,9 @@ seeded database, and re-measured at 768 and 1440 to prove nothing regressed.
 4. The hit test reports **zero covered controls** on all sixteen routes.
 5. The demand board's first data row is visible **within the first screen**.
 6. Horizontal overflow stays at **0 of 16 routes** at 390, 768 and 1440.
-7. A card whose field is null prints **no row for it**, proven on a queued scan
-   that has no PO number and no buyer.
+7. A card whose field is null prints **no row for it**, proven on all three
+   shapes: a queued scan with no PO number and no buyer, a confirmed scan with
+   no Order ID, and a shop order carrying both.
 8. Before and after screenshots of every changed screen, at 390, in the notes.
 
 ---
