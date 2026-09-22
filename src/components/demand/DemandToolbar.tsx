@@ -164,7 +164,10 @@ export function DemandToolbar({
           />
         </label>
 
-      <div className="flex flex-wrap items-center gap-sm">
+      {/* Its own line above the fold — `md:basis-full` in a wrapping row —
+          because the grain, window and date read as one question and the
+          search and its selects as another. */}
+      <div className="flex flex-wrap items-center gap-sm md:basis-full">
         <div className="relative">
           <Search
             aria-hidden

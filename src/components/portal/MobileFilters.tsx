@@ -52,9 +52,17 @@ export function MobileFilters({
         ) : null}
       </button>
 
+      {/* `md:contents` rather than `md:flex`: above the fold this wrapper
+          must not be a box at all, or its children become one column inside
+          whatever row they were part of. Wrapping the demand board's filters
+          in a `md:flex flex-col` stacked Window, the date and the search
+          beside Grain instead of flowing across the toolbar — reported as
+          "the search bar and filter look very bad", and correctly. With
+          `display: contents` the children are laid out by the toolbar itself,
+          so desktop is byte-for-byte what it was before the fold existed. */}
       <div
         id="mobile-filters"
-        className={`${open ? "flex" : "hidden"} flex-col gap-sm md:flex`}
+        className={`${open ? "flex" : "hidden"} flex-col gap-sm md:contents`}
       >
         {children}
       </div>
