@@ -20,9 +20,15 @@ before. The demand board's "Enter stock counts →" link goes to
 1. **Its own destination, `/stock`** — a sixth item in the sidebar and the
    phone tab bar. The tab bar is hardcoded `grid-cols-5` and becomes
    `grid-cols-6`, 65px a tab at 390, still clear of the 44px floor.
-2. **Both entry paths.** A stocktake sheet for counting many products in one
-   sitting, and a single form for one product. They must write identical rows
-   or the history lies, so both go through one action.
+2. ~~**Both entry paths.**~~ **Revised the same day: one path, a drawer.**
+   The stocktake sheet was built first — every active product in one flat
+   list with a live number box in each row — and was reported as hard to
+   maintain before it left development. At 308 products it has no search, no
+   paging and no order, so counting one product means scrolling past three
+   hundred. It is a `DataTable` now, shaped like `/products`: search, sort,
+   page, and a row that **opens** rather than a row you type into. The single
+   form is the only way in, and it is the one that was going to be right at
+   volume.
 3. **Append a correction, never overwrite.** A count for a date that already
    has one writes a new row that supersedes it. Nothing is destroyed, and the
    log is free because the ledger *is* the log.
@@ -52,10 +58,17 @@ StockCount
 
 ## 4. The surfaces
 
-- **`/stock`** — three tiles (counted, never counted, low), the stocktake
-  sheet, and recent activity. The sheet lists products with a number box each,
-  takes one note for the session, and saves what was filled in; a blank box is
-  not a count and writes nothing.
+- **`/stock`** — a search box, a paged table of products (Product · Cartons ·
+  Last counted), and recent activity below it. A row links to
+  `?product=<id>`, which opens the count drawer: cartons, the day it counts
+  and a note. Keeping the open drawer in the URL means it survives a reload
+  and the back button, and lets `DataTable` do the navigating with its own
+  `rowHref` rather than a second click handler.
+
+  **Search is the only filter, by choice.** The catalogue's brand, category
+  and market selects were offered and left out: the job here is finding one
+  product to count, and search does that in a keystroke where three selects
+  are three decisions. Sorting comes with the table.
 - **The product detail page** gains a Stock card: the current count, a trend
   chart over the counts, its own history, and a single-product count form.
 - **The product edit drawer and the create form lose their stock fields.**
