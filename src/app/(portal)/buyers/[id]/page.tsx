@@ -166,8 +166,14 @@ export default async function BuyerPage({
           value={<KpiMoney value={data.kpis.purchases} />}
           caption={`${data.kpis.orderCount} purchase orders in range${data.buyer.since ? ` · buyer since ${formatDate(data.buyer.since)}` : ""}`}
         />
+        {/* Full width on a phone like the two money tiles either side of it,
+            so this row is a single tile rather than a tile and an empty cell.
+            A KPI row below `sm` is one column or two and never a mix: the
+            money tiles cannot share a 390px row, and a half tile stranded
+            beside a gap was the orphan measured on 2026-09-22. */}
         <KpiTile
           compact
+          mobileFull
           label="Share of sales"
           value={
             <KpiNumber value={data.kpis.shareOfSales} decimals={1} suffix="%" />
@@ -311,6 +317,7 @@ export default async function BuyerPage({
           Purchase orders
         </p>
         <PoTable
+          hideBuyer
           rows={rows}
           sort={sort}
           page={page}

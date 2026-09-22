@@ -38,8 +38,19 @@ function HBarList({
       ? formatMYR(value.toFixed(2))
       : `${Math.round(value).toLocaleString("en-MY")} units`;
 
+  // The bars ran past the card at 390 and were clipped by the viewport, and
+  // `truncate` on each name never fired because the box it truncated into was
+  // wider than the card. A flex item defaults to `min-width: auto`, so this
+  // list would not shrink below its longest product name.
+  //
+  // `min-w-0` alone is the wrong fix and was tried first: it let the list
+  // shrink to the 158px the donut leaves beside it, so the names were clipped
+  // in a narrow column instead — the same trap `PageHeader` was in, where
+  // `flex-1` meant a row that never overflowed and so never wrapped.
+  // `basis-full` below `sm` makes the list take its own line under the donut,
+  // which is the only width at which a product name fits on a phone.
   return (
-    <ul className="flex flex-1 flex-col gap-sm">
+    <ul className="flex min-w-0 basis-full flex-col gap-sm sm:flex-1 sm:basis-0">
       {slices.map((slice, index) => {
         const swatch = (
           <span

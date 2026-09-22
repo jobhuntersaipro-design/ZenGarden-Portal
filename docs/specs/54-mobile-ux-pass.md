@@ -36,8 +36,13 @@ in as a real user, driven in a real browser.**
 
 Written down so this phase does not "fix" things that work.
 
-- **No horizontal overflow anywhere.** All 16 routes measure
-  `scrollWidth === innerWidth` at 390. The 2026-09-06 pass holds.
+- ~~**No horizontal overflow anywhere.**~~ **Wrong, corrected 2026-09-22.**
+  The probe ran in a context with `isMobile: true`, which emulates a mobile
+  meta viewport: when the page is too wide the browser **zooms out and grows
+  `innerWidth` to match**, so `scrollWidth === innerWidth` stays true however
+  far it overflows. Re-measured without that emulation, three routes overflow
+  at 390 — see §8. A test that cannot fail is worse than no test, and this one
+  had been passing since 2026-09-06.
 - **The fixed tab bar does not eat the end of a page.** The portal layout
   reserves `3.5rem + env(safe-area-inset-bottom)` with a spacer div. I expected
   this to be the first defect and it is not.
@@ -90,8 +95,13 @@ per-page edits.
 ### F2 — A record costs 550px, and half of it says nothing
 
 `DataTable` drops to card mode below `md`. On `/purchase-orders` one queued
-scan renders **7 label/value rows in ~550px** — and for a scan not yet
+scan renders **7 label/value rows in 278px** — and for a scan not yet
 extracted, **four of them read `—`, `—`, `0`, `RM 0.00`**.
+
+> **Corrected 2026-09-22.** This first read "~550px", measured off a
+> screenshot taken at `deviceScaleFactor: 2` — image pixels, not CSS pixels.
+> The card is 278px. The defect is real and the fix below is unchanged; the
+> figure was twice what it should have been.
 
 - **1.4 records per screen.** `/purchase-orders` is **5,083px — 6 screens**
   for 10 rows; `/buyers` 4,580px; `/products` 4,078px; the dashboard
@@ -160,14 +170,18 @@ sub-44px controls in one change rather than padding each one.
 
 | Page | controls before the first record | first record at |
 |---|---|---|
-| Demand board | 10 | **y = 553** of 844 |
+| Demand board | 10 | **y = 734** (table) |
 | Purchase orders | 24 | y = 80 (but behind the queue section) |
 | Dashboard | 11 | y = 80 |
 | Buyers | 9 | y = 80 |
 
-The demand board spends **65% of the first screen** on five stacked control
-rows — Grain, Window, "or up to" date, search, product select — before one row
-of the board. The board itself then scrolls sideways, so at rest a phone shows
+The demand board spends five stacked control rows — Grain, Window, "or up to"
+date, search, product select — before one row of the board, which starts at
+**y = 734**.
+
+> **Corrected 2026-09-22.** The table was first reported at y = 553. That was
+> the amber "Stock is not counted yet" callout, which matches the same
+> `rounded-lg` selector the probe used. The real table sat at 734. The board itself then scrolls sideways, so at rest a phone shows
 *Product* and *Overdue* and not a single week column.
 
 **Fix:** below `md`, collapse the secondary filters behind one **"Filters"**
@@ -183,9 +197,18 @@ The demand board's "or up to" field renders **`mm/dd/yyyy`** — a bare
 date reads `22 Sep 2026`. This is the clearest single piece of the
 "inconsistency" in the report.
 
-**Fix:** it is a native control and its placeholder is not ours to style; set
-the field's locale expectation explicitly, or replace the placeholder text with
-a caption that states the format the page uses.
+**Not fixed, and deliberately so (2026-09-22).** The proposed fix was to set
+the field's locale. **Measured: it does not work.** A `<input type="date">`
+rendered in a browser whose locale is `en-US` prints `mm/dd/yyyy` whether it
+carries `lang="en-GB"`, `lang="en-MY"` or nothing at all — Chromium takes the
+format from the browser's own locale and ignores the attribute.
+
+What is left is to replace the native control with a custom picker, and that
+costs more than it is worth: on a phone the native field is the OS date wheel,
+which is the best date entry on the platform. The field also shows **the
+reader's own** format, which is arguably right rather than wrong.
+
+Recorded as measured-and-rejected so nobody re-derives it.
 
 ### F6 — The one genuinely untappable control
 
@@ -286,3 +309,100 @@ seeded database, and re-measured at 768 and 1440 to prove nothing regressed.
 - **Landscape**, and any width between 390 and 768.
 - **Anything on production.** Every figure above is the project's own seed on a
   local database.
+
+---
+
+## 8. Built, and what it measured — 2026-09-22
+
+Driven the same way it was found: local Postgres with the project's own seed,
+signed in through the form, Chromium at 390 × 844 with touch, every page given
+3.2s past the count-up. Re-measured at 768 to prove nothing moved there.
+
+### The figures
+
+| | Before | After |
+|---|---|---|
+| Buyer detail `h1` | **76px wide, 125px tall, 4 lines** | **350px, 1 line** |
+| PO detail `h1` | 45px, 2 lines | 350px, 1 line |
+| Demand `h1` | 132px, 2 lines | 350px, 1 line |
+| A purchase-order card | 278px | **95px** |
+| `/purchase-orders` height | 5,083px | **2,262px** |
+| `/purchase-orders` sub-44px controls | 21 | **0** |
+| Demand board, first table row | y = 734 | **y = 581** |
+| Demand board height | 1,825px | 1,672px |
+| Buyer detail height | 7,872px | 5,952px |
+| Horizontal overflow, 13 routes | 0 | **0** |
+| Unreachable controls (hit test) | 1 | **0** |
+
+### What was done
+
+1. **`PageHeader` wraps for real.** `basis-full sm:flex-1 sm:basis-0` on the
+   title column. The `flex-wrap` added in September never fired because
+   `flex-1` means `flex-basis: 0`, so the title shrank instead of overflowing.
+   Eleven pages, one line.
+2. **`DataTable` gained `renderCard`**, and the purchase-order list and review
+   queue use it: PO number (or the file name, on a scan not yet read), status
+   on the same line, Order ID only where one exists, buyer below. Nulls print
+   nothing.
+3. **`MobileFilters`** folds the secondary filters below `md` behind one
+   button carrying a count of how many are set. The page's primary control —
+   grain on the demand board — stays outside the fold. **A disclosure, not the
+   sheet this spec first proposed**: a sheet is a portal, a focus trap and a
+   scroll lock for something that only needs to not be there.
+4. **The gallery's four icon buttons wrap.** Four 44px targets need 176px and
+   a tile in the phone's two-column grid is 170px, which is why "Remove image
+   1" sat under "Move image 2 earlier".
+5. **The orphan KPI cell is gone** — the short tile between two money tiles
+   takes the full row, so every row below `sm` is one tile or a pair.
+6. **The buyer's name is off the cards on the buyer's own page**, where it is
+   the page and printed 65 times down one list.
+
+### Two defects this phase introduced and fixed before shipping
+
+- The first card printed **"Waiting to be reviewed"** under every draft — true
+  of one waiting for a reviewer, a lie on one still extracting and on one whose
+  extraction failed. The badge already says which; the line is gone.
+- Folding the demand board's filters appeared to make it **worse** (553 → 581)
+  until the before figure turned out to be the callout rather than the table.
+  The real move is 734 → 581.
+
+### Left alone, with reasons
+
+- **F5, the `mm/dd/yyyy` date**, measured and rejected — see F5.
+- **Sub-44px links that are content rather than controls** — product names,
+  buyer names in other tables' cards, "Enter stock counts →". The purchase-order
+  list is at zero because its card is one tap target; the other lists keep the
+  default card and were out of scope. **Acceptance criterion 3 is therefore not
+  met** on `/buyers` (10), `/demand` (13), `/products/[id]` (25) and `/admin`
+  (20), and that is stated rather than quietly dropped.
+- **The amber "Stock is not counted yet" callout is 310px** and is now the
+  tallest thing above the demand board on a phone. It is correct and it is
+  permanent until somebody counts stock. Worth folding; not this phase.
+- **Eleven controls report as covered at 768** on the dashboard, buyer detail
+  and product detail — buyer-name links in table mode. **Measured before and
+  after this phase: 11 either way**, so it is pre-existing and not from these
+  changes. Unexplained, and worth its own look.
+
+### A third defect this phase introduced, and a measurement that was lying
+
+- **The admin tab row overflowed every admin page** — 430px against 390.
+  Four tabs need 390px inside a 310px column; three fitted, and the **Test
+  data** tab added on 2026-09-22 tipped it over. It scrolls sideways now
+  instead of pushing the page. Measured back to **390/390**.
+- **The overflow test could not fail.** Every sweep in this document until now
+  ran with Playwright's `isMobile: true`, which emulates a mobile meta
+  viewport: a page wider than the viewport makes the browser zoom out and
+  `window.innerWidth` grows with it, so `scrollWidth === innerWidth` holds at
+  any width. Re-run without it, **buyer detail reads 425/390 and product
+  detail 428/390**.
+- Those two are **pre-existing**, confirmed by measuring with this phase's work
+  stashed: 425 and 428 either way. The cause is in `HBarList` — a bar row's
+  minimum content is wider than the card, and every ancestor honours it, so
+  the card grows past the page. Diagnosed, **not fixed**: it is nobody's
+  regression and it wants its own change.
+- What *was* fixed there: the list now takes its own line under the donut
+  below `sm` (`basis-full`), where before it was squeezed into the 158px the
+  donut leaves. The first attempt at that was `min-w-0` alone — which is
+  exactly the trap F1 describes, letting the item shrink instead of forcing the
+  wrap, and it made the column narrower rather than wider. Corrected before
+  shipping.

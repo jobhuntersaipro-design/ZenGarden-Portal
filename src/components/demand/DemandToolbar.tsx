@@ -8,6 +8,7 @@ import { ChoiceButton } from "@/components/portal/ChoiceButton";
 import { SegmentGroup } from "@/components/portal/SegmentGroup";
 import { usePendingChoice } from "@/hooks/usePendingChoice";
 import { useUrlNavigation } from "@/hooks/useUrlNavigation";
+import { MobileFilters } from "@/components/portal/MobileFilters";
 import { DEMAND_SPAN, type DemandGrain } from "@/lib/planning/grain";
 import type { DemandOption } from "@/lib/queries/demand";
 
@@ -98,6 +99,20 @@ export function DemandToolbar({
 
   const today = new Date().toLocaleDateString("en-CA");
 
+  /**
+   * How many folded filters are set, for the disclosure's badge. Grain is not
+   * counted — it is outside the fold and always visible — and neither is the
+   * window while it is the grain's own default, which nobody chose.
+   */
+  const foldedActive = [
+    searchParams.get("until"),
+    searchParams.get("q"),
+    searchParams.get("family"),
+    searchParams.get("product"),
+    searchParams.get("window") &&
+      searchParams.get("window") !== String(DEMAND_SPAN[grain]),
+  ].filter(Boolean).length;
+
   return (
     <div className="flex flex-col gap-sm">
       <div className="flex flex-wrap items-center gap-md">
@@ -116,6 +131,8 @@ export function DemandToolbar({
           ))}
         </SegmentGroup>
 
+        {/* Grain is the page's primary control and stays out of the fold. */}
+        <MobileFilters active={foldedActive}>
         <SegmentGroup label="Window" busy={windows.pending}>
           {spans.map((option) => (
             <ChoiceButton
@@ -146,7 +163,6 @@ export function DemandToolbar({
             className="h-control-md sm:h-control-sm w-40"
           />
         </label>
-      </div>
 
       <div className="flex flex-wrap items-center gap-sm">
         <div className="relative">
@@ -205,6 +221,8 @@ export function DemandToolbar({
             ))}
           </select>
         ) : null}
+      </div>
+        </MobileFilters>
       </div>
     </div>
   );

@@ -23,7 +23,15 @@ export function AdminNav() {
   const pathname = usePathname();
 
   return (
-    <nav aria-label="Admin sections" className="mb-lg flex gap-xs border-b border-hairline">
+    <nav
+      aria-label="Admin sections"
+      // Scrolls sideways rather than pushing the page. The fourth tab (Test
+      // data, 2026-09-22) took the row to 390px inside a 310px column and gave
+      // every admin page a horizontal scroll at 390 — three tabs fitted, four
+      // do not. `-mb-px` on each tab sits on the border, so the border moves
+      // onto the nav itself and the scroller keeps it unbroken.
+      className="mb-lg flex gap-xs overflow-x-auto border-b border-hairline [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
+    >
       {TABS.map((tab) => {
         const active =
           tab.href === "/admin" ? pathname === "/admin" : pathname.startsWith(tab.href);
@@ -32,7 +40,7 @@ export function AdminNav() {
             key={tab.href}
             href={tab.href}
             aria-current={active ? "page" : undefined}
-            className={`relative -mb-px inline-flex min-h-control-md items-center gap-xxs px-sm text-[length:var(--text-body-sm)] transition-colors after:absolute after:inset-x-0 after:bottom-0 after:h-0 after:origin-center after:border-b-2 after:border-ink after:transition-transform after:duration-200 after:ease-out focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-focus motion-reduce:after:transition-none ${
+            className={`relative -mb-px inline-flex min-h-control-md shrink-0 items-center gap-xxs px-sm text-[length:var(--text-body-sm)] transition-colors after:absolute after:inset-x-0 after:bottom-0 after:h-0 after:origin-center after:border-b-2 after:border-ink after:transition-transform after:duration-200 after:ease-out focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-focus motion-reduce:after:transition-none ${
               active
                 ? "font-medium text-ink after:scale-x-100"
                 : "text-ink-secondary after:scale-x-0 hover:text-ink hover:after:scale-x-50 hover:after:border-hairline-strong"

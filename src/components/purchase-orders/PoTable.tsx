@@ -66,6 +66,7 @@ export function PoTable({
   size,
   total,
   canDeleteOrders = false,
+  hideBuyer = false,
 }: {
   rows: PoRow[];
   sort: { key: string; dir: SortDirection };
@@ -77,6 +78,8 @@ export function PoTable({
    * /purchase-orders passes it; the dashboard and buyer tables stay read-only.
    */
   canDeleteOrders?: boolean;
+  /** On a buyer's own page the buyer is the page; leave it off the cards. */
+  hideBuyer?: boolean;
 }) {
   const onSortChange = useTableSort();
 
@@ -89,9 +92,86 @@ export function PoTable({
         onSortChange={onSortChange}
         emptyText="No purchase orders match."
         rowHref={poRowHref}
+        renderCard={(row) => poCard(row, hideBuyer)}
       />
       <TablePagination page={page} size={size} total={total} />
     </>
+  );
+}
+
+/**
+ * A record on a phone: **PO number, Order ID, Buyer**, with the status beside
+ * the title — the fields the user chose on 2026-09-22, all three of them
+ * identifiers rather than figures, because a phone is where somebody looks an
+ * order up rather than compares values.
+ *
+ * **A field with no value prints no line at all.** The default card renders
+ * every column as a label/value row, so a queued scan came out seven rows and
+ * 550px with `—`, `—`, `0` and `RM 0.00` among them: 1.4 records to a screen.
+ * In a table a dash holds a column open and is worth printing; in a vertical
+ * card it is a row that says nothing.
+ *
+ * So the leading line is whichever identifier the row actually has — the PO
+ * number, or the file name where a scan has not been read yet — and the Order
+ * ID line exists only on an order placed on the shop. Total, PO date, items
+ * and source are on the row's own page, one tap away, and in the desktop
+ * table.
+ */
+export function poCard(row: PoRow, hideBuyer = false) {
+  // The buyer is unknown on an upload nobody has reviewed; the query fills the
+  // field with a placeholder rather than leaving it null, so ask the id.
+  // Hidden on a buyer's own page, where the name is the page and would print
+  // 65 times down one list. The same call the demand board's breakdown makes
+  // for market: a fact that is constant down every row is not worth a row.
+  const buyer = hideBuyer || !row.buyerId ? null : row.buyerName;
+
+  return (
+    <div className="flex flex-col gap-xxs">
+      <div className="flex items-start justify-between gap-sm">
+        <span className="flex min-w-0 items-center gap-xs text-[length:var(--text-body-md)] font-medium text-ink">
+          <span className="shrink-0 rounded-xxs bg-surface-soft px-xxs font-mono text-[length:var(--text-caption)] text-ink-tertiary">
+            {FILE_LABEL[row.fileType] ?? "FILE"}
+          </span>
+          <span className="truncate" title={row.poNumber ?? row.fileName ?? undefined}>
+            {row.poNumber ?? row.fileName ?? "Not read yet"}
+          </span>
+          {row.revision > 1 ? (
+            <span className="shrink-0 rounded-full bg-surface-soft px-xs text-[length:var(--text-caption)] text-ink-secondary">
+              Rev {row.revision}
+            </span>
+          ) : null}
+        </span>
+        {/* Status rides the title line rather than taking a row: it is why
+            somebody opens this list on a phone, and a card in the review queue
+            must not read the same as a confirmed order. */}
+        <span className="shrink-0">
+          {row.kind === "PO" && row.stage ? (
+            <StageBadge stage={row.stage as PoStage} />
+          ) : (
+            <StatusBadge status={row.status as IntakeStatus} />
+          )}
+        </span>
+      </div>
+
+      {/* Only an order placed on the shop has one, so this line is absent on
+          every scan — which is most of them. */}
+      {row.orderId ? (
+        <span className="truncate text-[length:var(--text-body-sm)] text-ink-secondary">
+          Order ID {row.orderId}
+        </span>
+      ) : null}
+
+      {/* No buyer, no line. An upload has none until somebody reviews it, and
+          the first draft of this card printed "Waiting to be reviewed" there —
+          which read as a lie on the two drafts that are not waiting on anyone:
+          one still being extracted, one whose extraction failed. The badge on
+          the title line already says which of the three a draft is. */}
+      {buyer ? (
+        <span className="truncate text-[length:var(--text-body-sm)] text-ink-secondary" title={buyer}>
+          {buyer}
+        </span>
+      ) : null}
+    </div>
   );
 }
 

@@ -4,6 +4,7 @@ import { DataTable } from "@/components/portal/DataTable";
 import { NavCount } from "@/components/portal/NavCount";
 import { ReviewCountSync } from "@/components/portal/ReviewCount";
 import {
+  poCard,
   poColumns,
   poRowHref,
   type PoRow,
@@ -74,6 +75,7 @@ export function ReviewQueue({
         onSortChange={ignoreSort}
         emptyText="Nothing needs review."
         rowHref={poRowHref}
+        renderCard={poCard}
       />
     </section>
   );

@@ -122,7 +122,13 @@ export function ProductImageManager({
                   </span>
                 ) : null}
               </div>
-              <div className="mt-xxs flex items-center justify-center gap-xxs">
+              {/* `flex-wrap`, because four 44px targets need 176px and a
+                  tile in the two-column phone grid is 170px: unwrapped they
+                  overflowed and "Remove image 1" sat under "Move image 2
+                  earlier", the one control in the portal a thumb could not
+                  land on (measured 2026-09-22). They wrap two-and-two below
+                  `sm` and sit in one row wherever there is room. */}
+              <div className="mt-xxs flex flex-wrap items-center justify-center gap-xxs">
                 <IconButton
                   label={`Move image ${index + 1} earlier`}
                   disabled={index === 0 || Boolean(working)}

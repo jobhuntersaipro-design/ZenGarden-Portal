@@ -49,6 +49,7 @@ export function DataTable<Row extends { id: string }>({
   onSortChange,
   emptyText,
   rowHref,
+  renderCard,
   entrance = false,
 }: {
   columns: Column<Row>[];
@@ -58,6 +59,19 @@ export function DataTable<Row extends { id: string }>({
   onSortChange: (key: string, dir: SortDirection) => void;
   emptyText: string;
   rowHref?: (row: Row) => string;
+  /**
+   * Below `md`, draw the whole card yourself instead of the default
+   * title-plus-`<dl>`.
+   *
+   * The default transcribes the table — every visible column becomes a
+   * label/value row — which on a phone is a record per 550px, four of whose
+   * seven rows can read `—`, `—`, `0` and `RM 0.00` on a scan nobody has
+   * extracted yet (measured 2026-09-22). A caller that knows which two or
+   * three fields identify its row, and which are null, can say so in a
+   * quarter of the height. Tables that have not been through that exercise
+   * keep the default.
+   */
+  renderCard?: (row: Row) => ReactNode;
   /**
    * Rows arrive with a short staggered rise (Phase 26, the admin room).
    * Opt-in: a 400-row purchase-order list is read, not watched, and every
@@ -207,19 +221,23 @@ export function DataTable<Row extends { id: string }>({
                     href ? "cursor-pointer hover:shadow-xs" : ""
                   } ${entrance ? `animate-rise ${staggerClass(rowIndex)}` : ""}`}
                 >
-                  <div className="text-[length:var(--text-body-md)] font-medium text-ink">
-                    {href ? (
-                      <Link
-                        href={href}
-                        className="block rounded-xxs focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-focus"
-                      >
-                        {titleColumn.cell(row)}
-                      </Link>
-                    ) : (
-                      titleColumn.cell(row)
-                    )}
-                  </div>
-                  {cardColumns.length > 0 ? (
+                  {renderCard ? (
+                    renderCard(row)
+                  ) : (
+                    <div className="text-[length:var(--text-body-md)] font-medium text-ink">
+                      {href ? (
+                        <Link
+                          href={href}
+                          className="block rounded-xxs focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-focus"
+                        >
+                          {titleColumn.cell(row)}
+                        </Link>
+                      ) : (
+                        titleColumn.cell(row)
+                      )}
+                    </div>
+                  )}
+                  {!renderCard && cardColumns.length > 0 ? (
                     <dl className="mt-xs grid grid-cols-[auto_1fr] items-baseline gap-x-md gap-y-xxs">
                       {cardColumns.map((column) => (
                         <Fragment key={column.key}>
