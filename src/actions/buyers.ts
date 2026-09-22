@@ -6,6 +6,7 @@ import { Prisma } from "@/generated/prisma/client";
 import { audit, changedFields } from "@/lib/audit";
 import { UnauthorizedError } from "@/lib/auth-guards";
 import { requirePermission } from "@/lib/permissions/require";
+import { optionalPaymentTermsSchema } from "@/lib/payment-terms";
 import { prisma } from "@/lib/prisma";
 
 export type ActionResult<T = undefined> =
@@ -25,7 +26,7 @@ const buyerPatchSchema = z.object({
   email: emptyToNull,
   phone: emptyToNull,
   address: emptyToNull,
-  paymentTerms: emptyToNull,
+  paymentTerms: optionalPaymentTermsSchema,
   remark: emptyToNull,
 });
 

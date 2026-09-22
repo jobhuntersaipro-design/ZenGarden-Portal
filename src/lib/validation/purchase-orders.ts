@@ -4,6 +4,7 @@ import { z } from "zod";
 // `@/generated/prisma/client` drags PrismaClient (and `node:module`) into the
 // bundle. `browser` exposes the same `Decimal` with none of the server runtime.
 import { Prisma } from "@/generated/prisma/browser";
+import { paymentTermsSchema } from "@/lib/payment-terms";
 
 /**
  * Money crosses this boundary as a string and is compared as a Decimal. A
@@ -92,7 +93,7 @@ const draftObject = z.object({
     newBuyerName: z.string().min(1).nullable().optional(),
     poDate: isoDate,
     currency: z.string().min(1).default("MYR"),
-    paymentTerms: z.string().nullable(),
+    paymentTerms: paymentTermsSchema,
     notes: z.string().nullable().optional(),
     lineItems: z.array(DraftLineItemSchema).min(1, "Add at least one line"),
     subtotal: decimalString("Subtotal"),

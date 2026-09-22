@@ -19,6 +19,7 @@ import {
   SheetTrigger,
 } from "@/components/ui/sheet";
 import { Textarea } from "@/components/ui/textarea";
+import { paymentTermsDaysInput } from "@/lib/payment-terms";
 
 /**
  * Order ID, PO number and PO date are shown, not edited (2026-09-17): they are
@@ -31,7 +32,8 @@ const LABELS: { key: keyof PurchaseOrderPatch; label: string; type?: string }[] 
   // when the order came from the shop — a date that moves silently is what
   // they would ring up about.
   { key: "deliveryDate", label: "Expected delivery", type: "date" },
-  { key: "paymentTerms", label: "Payment terms" },
+  // A whole number of days (2026-09-22); the action refuses anything else.
+  { key: "paymentTerms", label: "Payment terms (days)", type: "number" },
 ];
 
 /**
@@ -50,7 +52,12 @@ export function EditPurchaseOrderSheet({
 }) {
   const router = useRouter();
   const [open, setOpen] = useState(false);
-  const [patch, setPatch] = useState(initial);
+  // The field holds days; the stored value is "30 days", so it is parsed
+  // on open and the action writes the wording back.
+  const [patch, setPatch] = useState(() => ({
+    ...initial,
+    paymentTerms: paymentTermsDaysInput(initial.paymentTerms) || null,
+  }));
   const [pending, setPending] = useState(false);
   const [reasonMissing, setReasonMissing] = useState(false);
 
@@ -104,7 +111,13 @@ export function EditPurchaseOrderSheet({
                 type={type ?? "text"}
                 // The picker offers no delivery day before the PO date; the
                 // action refuses a typed one (2026-09-17).
-                min={key === "deliveryDate" ? patch.poDate || undefined : undefined}
+                min={
+                  key === "deliveryDate"
+                    ? patch.poDate || undefined
+                    : key === "paymentTerms"
+                      ? 0
+                      : undefined
+                }
                 value={patch[key] ?? ""}
                 onChange={(event) => set(key, event.target.value)}
               />

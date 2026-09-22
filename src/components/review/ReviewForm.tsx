@@ -47,6 +47,7 @@ import {
   DialogTrigger,
 } from "@/components/ui/dialog";
 import { PoDraftSchema, checkTotals, type PoDraft } from "@/lib/validation/purchase-orders";
+import { paymentTermsDaysInput } from "@/lib/payment-terms";
 
 const SAVE_DEBOUNCE_MS = 800;
 
@@ -372,10 +373,16 @@ export function ReviewForm({
                 confidence={confidence.currency}
                 onChange={(value) => dispatch({ type: "field", field: "currency", value })}
               />
+              {/* Days, not what the document printed. Claude reads the terms
+                  off the page and they arrive as anything — "Net 30", "COD" —
+                  so the number is parsed out where there is one and the
+                  reviewer states it where there is not (2026-09-22). */}
               <Field
                 id="paymentTerms"
-                label="Payment terms"
-                value={draft.paymentTerms ?? ""}
+                label="Payment terms (days)"
+                type="number"
+                min="0"
+                value={paymentTermsDaysInput(draft.paymentTerms)}
                 confidence={confidence.paymentTerms}
                 onChange={(value) =>
                   dispatch({ type: "field", field: "paymentTerms", value: value || null })

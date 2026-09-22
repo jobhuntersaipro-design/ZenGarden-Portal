@@ -306,7 +306,7 @@ describe("updatePurchaseOrder — the expected delivery date", () => {
     poNumber: "W-2609-00001",
     poDate: "2026-09-15",
     deliveryDate: "2026-10-02",
-    paymentTerms: "30 days",
+    paymentTerms: "30",
     notes: null,
     // Every patch that moves the date carries one; the action refuses it
     // otherwise, which is its own test below.
@@ -470,7 +470,7 @@ describe("updatePurchaseOrder — the expected delivery date", () => {
 
   /** A reason is asked for only when the date moves, so it is not recorded. */
   it("keeps the old field list when the date did not move", async () => {
-    await updatePurchaseOrder("po1", { ...patch, paymentTerms: "45 days" });
+    await updatePurchaseOrder("po1", { ...patch, paymentTerms: "45" });
     expect(eventWrite().note).toBe("Edited: payment terms");
   });
 

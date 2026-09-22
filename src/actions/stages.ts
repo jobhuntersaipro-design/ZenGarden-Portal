@@ -9,6 +9,7 @@ import { UnauthorizedError } from "@/lib/auth-guards";
 import { advanceKeyFor, type PermissionKey } from "@/lib/permissions/actions";
 import { requirePermission, rolesWithPermission } from "@/lib/permissions/require";
 import { roleLabel } from "@/lib/permissions/roles";
+import { optionalPaymentTermsSchema } from "@/lib/payment-terms";
 import { prisma } from "@/lib/prisma";
 import { nextStage, prevStage, stageLabel } from "@/lib/po-stages";
 import { composeEditNote } from "@/lib/po-activity";
@@ -42,7 +43,7 @@ const purchaseOrderPatchSchema = z.object({
   poDate: isoDate,
   /** The day the team committed to. Nullable: a scanned PO may carry none. */
   deliveryDate: isoDate.nullable(),
-  paymentTerms: emptyToNull,
+  paymentTerms: optionalPaymentTermsSchema,
   // The remark is the one free-prose field on an order, so it gets a bound.
   notes: emptyToNull.pipe(
     z

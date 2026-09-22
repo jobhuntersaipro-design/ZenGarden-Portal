@@ -68,7 +68,7 @@ const input = {
   name: "Acme Industrial Sdn Bhd",
   contact,
   address: "12 Jalan Satu",
-  paymentTerms: "30 days",
+  paymentTerms: "30",
   remark: "Pays late. Chase on day 25.",
 };
 

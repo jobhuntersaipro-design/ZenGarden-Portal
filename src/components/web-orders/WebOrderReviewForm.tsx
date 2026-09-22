@@ -15,6 +15,7 @@ import { checkTotals, type PoDraft } from "@/lib/validation/purchase-orders";
 // drags PrismaClient into the bundle.
 import { Prisma } from "@/generated/prisma/browser";
 import type { OpsWebOrder } from "@/lib/queries/web-orders";
+import { paymentTermsDaysInput } from "@/lib/payment-terms";
 
 /**
  * Built standalone rather than by extracting a shared editor out of
@@ -55,7 +56,9 @@ export function WebOrderReviewForm({ order }: { order: OpsWebOrder }) {
     newBuyerName: null,
     poDate: todayISO(),
     currency: "MYR",
-    paymentTerms: order.buyerPaymentTerms,
+    // Days, not the stored wording: the field is a number input and the
+    // action takes a whole number of days (2026-09-22).
+    paymentTerms: paymentTermsDaysInput(order.buyerPaymentTerms),
     notes: null,
     lineItems: order.lines.map((line) => ({
       sku: line.sku,
@@ -146,7 +149,9 @@ export function WebOrderReviewForm({ order }: { order: OpsWebOrder }) {
         />
         <Field
           id="paymentTerms"
-          label="Payment terms"
+          label="Payment terms (days)"
+          type="number"
+          min="0"
           value={draft.paymentTerms ?? ""}
           onChange={(value) =>
             dispatch({ type: "field", field: "paymentTerms", value })

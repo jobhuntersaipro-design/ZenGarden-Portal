@@ -206,11 +206,14 @@ export function BuyerForm({ afterCreate }: { afterCreate: string }) {
                 </div>
                 <div className="flex flex-col gap-xxs">
                   <label htmlFor="buyer-terms" className={label}>
-                    Payment terms
+                    Payment terms (days)
                   </label>
                   <Input
                     id="buyer-terms"
-                    placeholder="30 days"
+                    type="number"
+                    min={0}
+                    step={1}
+                    placeholder="30"
                     value={draft.paymentTerms}
                     onChange={(event) => set("paymentTerms", event.target.value)}
                   />

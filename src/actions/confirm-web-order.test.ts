@@ -116,7 +116,7 @@ const draft = (over: Record<string, unknown> = {}) =>
     poDate: "2026-09-10",
     currency: "MYR",
     // Required to confirm a shop order since 2026-09-17, like the date.
-    paymentTerms: "30 days",
+    paymentTerms: "30",
     lineItems: [line()],
     subtotal: "676.50",
     tax: "0.00",

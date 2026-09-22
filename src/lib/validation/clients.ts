@@ -1,6 +1,7 @@
 import { z } from "zod";
 import { emailSchema } from "@/lib/validation/auth";
 import { optionalText } from "@/lib/validation/common";
+import { paymentTermsSchema } from "@/lib/payment-terms";
 
 /**
  * A display handle. Lower-cased and trimmed before validation, exactly as
@@ -64,7 +65,7 @@ export const createBuyerSchema = z.object({
     phone: phoneSchema,
   }),
   address: optionalText(500),
-  paymentTerms: optionalText(120),
+  paymentTerms: paymentTermsSchema,
   remark: optionalText(2000),
 });
 
