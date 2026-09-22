@@ -3352,6 +3352,66 @@ file: generating a PDF remains Phase 19, still unbuilt.
   purchase-order file, is also unbuilt.
 
 ## History
+- 2026-09-22: A product's stock opens as a record, not a form — on
+  `main`. Asked for as: "For stock count / Show stock count trend for each
+  product when clicked, a slide in modal showing the daily trend and activity
+  for that product".
+  **Almost all of it already existed and nothing was rebuilt.** `StockTrend`,
+  `StockActivityFeed` and `loadProductStock` have been there since Phase 55,
+  already composed together by `ProductStockCard` on the product detail page,
+  and `/stock` already opened a slide-in on `?product=<id>`. The panel just
+  held the count form and nothing else — so this is a composition, and the
+  trend a reader sees in the drawer is the same component, reading the same
+  rows, as the one on `/products/[id]`. A figure cannot differ by which screen
+  it is read on.
+  **The reading leads and the form follows**, the user's choice from three
+  offered (that, form-first with the trend below, or two tabs). The panel now
+  opens with **On hand** — the figure a counter is about to replace, which the
+  bare form never showed at all — then the daily trend, then the activity, then
+  the count box under a rule. `CountStockDrawer` became `ProductStockDrawer`,
+  since a file by the old name showing a chart and a feed is the kind of drift
+  that misleads the next reader; `git mv`, so its history follows it.
+  **`autoFocus` had to go with that order**, and that is a consequence rather
+  than a stray change: focusing the cartons box scrolls it into view, which on
+  a phone would throw the panel straight past the trend it was opened to show
+  — the layout undoing itself on open.
+  **The open product's counts are fetched beside the sheet**, in the page's
+  existing `Promise.all`, so it is one round of queries whether or not a panel
+  is open and the panel is never drawn mid-fetch with an empty trend under a
+  real product's name.
+  Driven on a seeded local Postgres as the super admin, counting through the
+  real form rather than inserting rows. **Never counted:** "Not counted yet /
+  Nobody has counted this product / No counts yet." **One count:** *72 cartons
+  · Counted 22 Sep 2026 by Aisha Rahman*, the trend reading **"One count so
+  far — a trend needs a second."** — the state most of a fresh catalogue is in.
+  **Four counts** on 8/12/16/20 Sep: *On hand 145 cartons*, **4 dots** on the
+  chart and **4** activity rows newest first, carrying their notes and the
+  counter's avatar. **A fifth count on a day already counted is a correction,
+  not an overwrite:** the feed goes to **5** rows led by *"corrected 180 to
+  150 cartons for 16 Sep 2026"* with its note, the superseded row still there
+  reading *· since corrected*, the chart still **4 dots** with 16 Sep now at
+  150 and the y axis rescaled 180 → 160. Opened by **clicking the row** at
+  1440 and **tapping the card** at 390, both landing on `?product=<id>` with
+  the product's name as the title. No page overflow at either width
+  (1440/1440, 390/390), and the panel adds no new control, so the 44px floor
+  is untouched.
+  1468/1468 tests across 116 files, `tsc`, lint (the same 2 pre-existing
+  `username` warnings) and `npm run build` clean, `/stock` still dynamic.
+  **Not verified:** anything on production; a member's view — `/stock` needs
+  `product.view` to read and **`product.manage` to save a count**, so the
+  seeded `MEMBER` can open the panel and cannot count, which is pre-existing
+  and was met head-on here (the first drive saved nothing until it ran as the
+  super admin); a product with enough counts to need the chart's own
+  horizontal scroll, the widest tried being 4; and whether the panel should
+  stay open after a save — it still closes, as it did before, so a new point
+  is seen by reopening rather than landing under the eye.
+  **A mistake worth recording:** tearing down an earlier rig I ran
+  `rm -rf node_modules/xlsx` behind a guard that had already found the package
+  present, deleting the partial install this container held. It cannot be
+  re-fetched (cdn.sheetjs.com answers 403), so a typed local stand-in was
+  written in its place — types resolve, the runtime throws by design. That is
+  the same local state as before, `package.json` and `package-lock.json` are
+  untouched, and `npm ci` anywhere with network access restores the real one.
 - 2026-09-18: A carton stepper on the catalogue card — merged from
   `feature/shop-card-carton-stepper` and pushed. Asked for as part of a review
   of shop add-to-cart, of which **everything else already held and nothing was

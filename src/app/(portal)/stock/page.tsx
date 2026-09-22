@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 import { PageHeader } from "@/components/portal/PageHeader";
 import { TablePagination } from "@/components/portal/TablePagination";
-import { CountStockDrawer } from "@/components/stock/CountStockDrawer";
+import { ProductStockDrawer } from "@/components/stock/ProductStockDrawer";
 import { StockActivityFeed } from "@/components/stock/StockActivityFeed";
 import { StockSearch } from "@/components/stock/StockSearch";
 import { StockTable } from "@/components/stock/StockTable";
@@ -12,7 +12,12 @@ import {
   parseSort,
   type SearchParams,
 } from "@/lib/queries/pagination";
-import { loadStockFeed, loadStockSheet, type StockSheetRow } from "@/lib/queries/stock";
+import {
+  loadProductStock,
+  loadStockFeed,
+  loadStockSheet,
+  type StockSheetRow,
+} from "@/lib/queries/stock";
 import { TIME_ZONE } from "@/lib/dates";
 
 export const metadata: Metadata = { title: "Stock · Zen Garden Portal" };
@@ -57,7 +62,14 @@ export default async function StockPage({
   const q = firstParam(params, "q")?.trim() || undefined;
   const openId = firstParam(params, "product") ?? null;
 
-  const [rows, feed] = await Promise.all([loadStockSheet(q), loadStockFeed(20)]);
+  // The open product's own counts are fetched beside the sheet rather than
+  // after it: one round of queries whether or not a panel is open, and the
+  // panel is never rendered mid-fetch with an empty trend under a real name.
+  const [rows, feed, counts] = await Promise.all([
+    loadStockSheet(q),
+    loadStockFeed(20),
+    openId ? loadProductStock(openId) : Promise.resolve([]),
+  ]);
 
   const sort = parseSort(params, SORT_KEYS, { key: "lastCountedOn", dir: "asc" });
   const selected = selectRows(rows, sort);
@@ -83,7 +95,7 @@ export default async function StockPage({
       <StockTable rows={paged} sort={sort} />
       <TablePagination page={page} size={size} total={selected.length} />
 
-      <CountStockDrawer product={open} today={todayKL()} />
+      <ProductStockDrawer product={open} counts={counts} today={todayKL()} />
 
       <section className="mt-xl rounded-lg border border-hairline bg-canvas p-lg">
         <p className="font-mono text-[length:var(--text-eyebrow)] text-ink-tertiary">
