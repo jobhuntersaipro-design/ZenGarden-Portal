@@ -5,6 +5,7 @@ import { UploadPoButton } from "@/components/portal/UploadPoButton";
 import { PoFilters, type StatusChip } from "@/components/purchase-orders/PoFilters";
 import { PoTable, type PoRow } from "@/components/purchase-orders/PoTable";
 import { ReviewQueue } from "@/components/purchase-orders/ReviewQueue";
+import { StageBoard } from "@/components/purchase-orders/StageBoard";
 import { can } from "@/lib/permissions/require";
 import { formatMYR } from "@/lib/money";
 import {
@@ -23,6 +24,9 @@ import {
   listPurchaseOrders,
   listReviewQueue,
 } from "@/lib/queries/purchase-orders";
+import { loadPoStageBoard } from "@/lib/queries/po-stages";
+import { resolveStageWindow } from "@/lib/po-stage-window";
+import { subDays } from "date-fns";
 
 export const metadata: Metadata = {
   title: "Purchase orders · Zen Garden Portal",
@@ -71,17 +75,26 @@ export default async function PurchaseOrdersPage({
     to: asDate(firstParam(params, "to")),
   };
 
+  // The stage board reads its own window, never the list's filters: the
+  // table under the chart is a breakdown *of the bars*, so narrowing it by
+  // the search or a status chip would leave the two disagreeing about which
+  // orders they count. A window the URL does not name falls back to 30.
+  const stageWindow = resolveStageWindow(firstParam(params, "stage_window"));
+  const stageTo = new Date();
+  const stageFrom = subDays(stageTo, Number(stageWindow) - 1);
+
   const sort = parseSort(params, PO_LIST_SORT_KEYS, {
     key: "poDate",
     dir: "desc",
   });
   const { page, size, skip, take } = parsePagination(params);
 
-  const [{ rows, total, sum }, queue, { buyers, uploaders }] =
+  const [{ rows, total, sum }, queue, { buyers, uploaders }, board] =
     await Promise.all([
       listPurchaseOrders(filters, sort, take, skip),
       listReviewQueue(),
       listFilterOptions(),
+      loadPoStageBoard(stageFrom, stageTo, "day"),
     ]);
   const canDeleteOrders = await can("po.delete");
   const canUpload = await can("po.upload");
@@ -98,6 +111,17 @@ export default async function PurchaseOrdersPage({
         rows={queue.rows.map(toClientRow)}
         sum={queue.sum}
         canDeleteOrders={canDeleteOrders}
+      />
+
+      <StageBoard
+        points={board.points}
+        breakdown={board.breakdown}
+        all={board.all}
+        byBucket={board.byBucket}
+        orderCount={board.orderCount}
+        window={stageWindow}
+        from={stageFrom.toLocaleDateString("en-CA")}
+        to={stageTo.toLocaleDateString("en-CA")}
       />
 
       <PoFilters buyers={buyers} uploaders={uploaders} />

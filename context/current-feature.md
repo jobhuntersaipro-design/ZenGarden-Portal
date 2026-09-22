@@ -1,4 +1,142 @@
-# Current Feature: The dashboard reads by market
+# Current Feature: Order stage moves to Purchase orders, and reads by product
+
+## Status
+
+**Built and driven in a browser on `main`** (2026-09-22). Asked for as: "Move
+Order stage to Purchase Order Tab. I've also show u a screenshot of how it
+looks like in Vercel, I like the design. Basically when user hover in the bar
+chart, the table below will updated too. My idea is when user hover it, the
+table below will show Per product, then how many order under each stage for
+that hovered-selected bar by day."
+
+**The chart left the dashboard rather than being copied.** Where the orders
+*stand* is the purchase-order page's question, and it now sits beside the rows
+a stage count is a count of. The dashboard keeps the two cards that read by
+money — Sales over time and the trend — and carries no stage chart or stage
+bar at all.
+
+**The table is the bar's own breakdown, and that is the whole design.** The
+chart answers how many orders and at which stage; a reader looking at a tall
+bar immediately asks what is in it, and a tooltip cannot answer that — it
+holds six numbers about stages and nothing about products. Hovering a bar puts
+that day's orders in the table below, one row per product with that product's
+orders counted into the stage each one stands at. Moving off puts the whole
+window back. The tooltip is **off** on this chart for the same reason: two
+explanations of one bar, one of them following the pointer, is noise.
+
+**An order counts once per product it carries, never once per line.** A
+document printing the same product twice is still one order at one stage.
+Across *different* products it does count more than once, deliberately — an
+order carrying three products is genuinely in flight for all three — so the
+stage columns total more orders than exist. **The caption says so** rather
+than leaving a reader to add the column and find it disagrees with the bar.
+Measured: 42 orders in the window, **148 order-product pairs** in the table.
+
+**A tap pins, and tapping the same bar releases it**, because a phone has no
+hover. A "Show the whole window" button appears while a bucket is pinned, so
+there is always a way back that does not depend on a pointer.
+
+**Three chips, no grain switch.** 30 / 60 / 90 days at daily grain, its own
+`?stage_window=` that the list's filters do not touch. The board reads its own
+window on purpose: the table under the chart is a breakdown *of the bars*, so
+narrowing it by the search or a status chip would leave the chart and the
+table disagreeing about which orders they count. A window the URL does not
+name falls back to 30 rather than drawing nothing.
+
+**The unmatched remainder is a row, pinned last.** Lines that matched no
+product gather into one `*none` row, after the products whatever its count —
+the catalogue's own "No market" rule. It is not a product, and leading the
+board with it would bury the ones the reader came for.
+
+## Verified, with the figures
+
+**Driven in a real browser against a real database.** This container has no
+Neon endpoint, so a local Postgres 16 was stood up, the project's own seed run
+against it (423 purchase orders, 1,683 line items, 12 products), and
+`src/lib/prisma.ts` and `prisma/seed.ts` pointed at a local adapter for the
+drive and **restored afterwards**; the cluster was stopped and deleted, and
+`package.json` and `package-lock.json` are untouched.
+
+- **The stage counts reconcile to SQL, not to themselves.** Over the last 30
+  days the legend read **Order placed 5 · In production 4 · QC passed 8 · In
+  warehouse 4 · Delivering 5 · Delivered 16**, summing to the heading's **42
+  orders** — every one of those six figures matching its SQL equivalent
+  exactly.
+- **The windows too:** 60 days read **77 orders**, 90 days **106**, against
+  SQL's 77 and 106.
+- **A hovered bar's breakdown reconciles.** 24 Aug drew **10 rows**, every
+  figure in the Delivered column: `HAND SANITIZER 60ML — Fresh 3`, three
+  products at 2 and six at 1. SQL grouped by product id returns exactly those
+  ten rows; grouped by *name* it returns nine, because **two real products
+  share the name `ZEN 2.1L — Goat's Milk`** — the catalogue duplicate already
+  recorded on 2026-09-22. The board is right and the name-grouped query is
+  the one that lies.
+- **The whole-window table matches the same query:** ZEN D'LUX **19**,
+  H/WASH Strawberry **16**, ZEN 1L Royal Jelly **16**, and the two Goat's Milk
+  ids at **15** and **14** — SQL's 15 and 14, where by name they read 24.
+- **Hover, leave, pin, release** all driven: hover → *24 Aug*, 10 rows; leave
+  → *The last 30 days*, 12 rows; click then move the pointer away → still
+  *24 Aug* with the release button present; release → back to the window.
+- **A stale window is dropped, not honoured.** `?stage_window=9999` drew the
+  30-day board with the **30 days** chip selected.
+- **The dashboard no longer carries it:** "Order stage" and "still open" each
+  appear **0 times** on it, against 1 each before.
+- **Phone.** 390/390 with a bucket pinned and without. The table scrolls
+  inside its own frame (**789px in a 302px frame**) and the chart likewise
+  (816 in 302), so neither pushes the page. **No control under 44px.**
+  1440/1440 on the desktop.
+- **Two counterfactuals watched failing**, then restored: counting per line
+  rather than per distinct product (`expected 2 to be 1` — one order read as
+  two); and letting the unmatched remainder sort with the rest
+  (`expected [ '*none', 'p1' ] to deeply equal [ 'p1', '*none' ]`).
+- **1448/1448 tests across 115 files** (9 new), `tsc`, lint (the same 2
+  pre-existing `username` warnings) and `npm run build` clean.
+
+### Three defects the drive found that the build could not
+
+- **A value exported from a `"use client"` module is not that value on the
+  server.** `STAGE_WINDOWS` lived in the board component, and the page's
+  `STAGE_WINDOWS.includes(...)` threw *"is not a function"* on every request —
+  with `tsc` and all 1,448 tests clean. It is the Phase 51 `DEMAND_SPAN`
+  trap arriving from the opposite direction, and the constant now lives in
+  `src/lib/po-stage-window.ts`, which imports nothing.
+- **A tap could not pin the bar it landed on.** The click handler read
+  Recharts' own `activeTooltipIndex`, which lags the mousemove before it — with
+  a 60ms settle it worked, with none it failed at **390 and at 1440 alike**,
+  and a real tap has no settle. A `useRef` written in the hover handler did
+  **not** fix it (measured: still failing both widths), because Recharts had
+  not dispatched the move at all. The click is on each `<Bar>` now, which
+  carries its own datum and needs no hover to have happened.
+- **Hovering moved the table and left the plot unchanged**, so nothing on
+  screen said which bar was being read — the interaction's whole premise. The
+  bars beside the active one now fade to 25%.
+
+## Not verified
+
+- **Anything on production**, and no production or development database was
+  read or written. Every figure above is the project's own seed.
+- **Keyboard.** A bar is not a button: the breakdown can be reached by hover
+  or tap and by nothing else. The window chips and the product links tab
+  normally; choosing a bucket does not.
+- **A window wide enough to be unreadable.** 90 days draws 90 buckets and was
+  driven; the chart scrolls, but nothing caps how narrow a bar gets.
+- **A product whose breakdown is long.** The widest table was 12 rows, and it
+  is unpaged by design — the window is the paging.
+- **The `*none` row carrying a value.** All 1,683 seeded lines resolve to a
+  product, so the remainder row was never drawn. It is covered by unit tests
+  and has never been seen on screen — the same gap Phase 53 recorded for the
+  `noProduct` half of its unattributed figure.
+- **`StageCard` has no caller now.** It is left in the tree rather than
+  deleted, per `context/ai-interaction.md`'s rule about deleting files, and
+  `DashboardData` still computes `stages` and `stageBreakdown` from rows it
+  already holds — no extra query, but nothing reads them.
+- **`npm run build` without a stand-in for `xlsx`.** That package installs
+  from cdn.sheetjs.com, which this container's network policy answers 403 to,
+  which is why the 116th test file still fails here.
+
+## Previous phase
+
+**The dashboard reads by market**
 
 ## Status
 

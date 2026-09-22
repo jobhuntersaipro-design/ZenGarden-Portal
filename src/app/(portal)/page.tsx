@@ -13,18 +13,14 @@ import { KpiMoney, KpiNumber, KpiTile } from "@/components/dashboard/KpiTile";
 import { MoreAnalytics } from "@/components/dashboard/MoreAnalytics";
 import { PriceDriftList } from "@/components/dashboard/PriceDriftList";
 import { RangeControls } from "@/components/dashboard/RangeControls";
-import { StatusBar } from "@/components/dashboard/StatusBar";
 import { WorkQueue } from "@/components/dashboard/WorkQueue";
 import { SalesCard } from "@/components/dashboard/SalesCard";
-import { StageCard } from "@/components/dashboard/StageCard";
 import { PoTable, type PoRow } from "@/components/purchase-orders/PoTable";
 import { Button } from "@/components/ui/button";
 import { AGGREGATIONS, parseRange, rangeParams } from "@/lib/analytics/range";
 import type { SalesMeasure } from "@/lib/analytics/sales";
-import { STAGE_VARS, cssVar } from "@/lib/analytics/palette";
 import { formatDate } from "@/lib/dates";
 import { formatMYR } from "@/lib/money";
-import { PO_STAGES, stageLabel } from "@/lib/po-stages";
 import { TREND_SUBJECTS, type TrendSubject } from "@/lib/analytics/trend";
 import { loadDashboard } from "@/lib/queries/dashboard";
 import {
@@ -231,10 +227,10 @@ export default async function DashboardPage({
         />
       </div>
 
-      {/* 2. Two charts: what the range's orders were worth, then where they
-          stand. The stage bar under the second chart is its legend, and the
-          one place the dashboard reports the six stage counts — each count is
-          the way into the rows it counts (brief §2). */}
+      {/* 2. Two charts: what the range's orders were worth, and what moved.
+          Where the orders *stand* is the purchase-order page's question and
+          lives on that page now, beside the rows a stage count is a count
+          of — the dashboard reads by money and this board reads by order. */}
       <div className="mt-lg flex flex-col gap-lg">
         <SalesCard
           measure={measure}
@@ -249,19 +245,6 @@ export default async function DashboardPage({
           options={data.trend.options}
           slots={data.trend.slots}
         />
-        <StageCard points={data.stages} openCount={data.pipeline.openCount}>
-          <StatusBar
-            segments={data.stageBreakdown.map((entry) => ({
-              id: entry.stage,
-              label: stageLabel(entry.stage),
-              count: entry.count,
-              color: cssVar(STAGE_VARS[PO_STAGES.indexOf(entry.stage)]),
-              // Only confirmed orders have a stage, so the status is pinned
-              // too — the list disables its stage filter otherwise.
-              href: `/purchase-orders?status=confirmed&stage=${entry.stage}&from=${from}&to=${to}`,
-            }))}
-          />
-        </StageCard>
       </div>
 
       {/* 3. Everything a person goes looking for, behind one control. */}

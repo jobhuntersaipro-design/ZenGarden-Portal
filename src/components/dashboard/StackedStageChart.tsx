@@ -3,6 +3,7 @@
 import {
   Bar,
   CartesianGrid,
+  Cell,
   ComposedChart,
   LabelList,
   Line,
@@ -71,7 +72,41 @@ function StageTooltip({
  * this chart answers throughput, and mixing a money scale in would be the
  * dual-axis mistake. The legend is the stage bar the card renders below.
  */
-export function StackedStageChart({ points }: { points: StagePoint[] }) {
+export function StackedStageChart({
+  points,
+  onActive,
+  onPick,
+  activeKey = null,
+  showTooltip = true,
+}: {
+  points: StagePoint[];
+  /**
+   * The bucket under the pointer, or null once it leaves. Given so a card can
+   * open the bar's own breakdown below the chart; the chart itself keeps no
+   * state, because the card has to be able to pin a bucket on a tap and the
+   * two would then disagree.
+   */
+  onActive?: (key: string | null) => void;
+  /**
+   * The bucket that was clicked. A phone has no hover, so a tap is how a bar
+   * is chosen there — and on a desktop it is how a reader stops the
+   * breakdown moving while they read it.
+   */
+  onPick?: (key: string) => void;
+  /**
+   * The bucket the reader is on. The bars beside it fade, because a
+   * breakdown below the chart is unreadable if you cannot tell which bar it
+   * belongs to — hovering moved the table and left the plot unchanged
+   * (measured 2026-09-22).
+   */
+  activeKey?: string | null;
+  /**
+   * Off where something below the chart already answers what a bar is made
+   * of — two explanations of one bar, one of them following the pointer, is
+   * noise rather than depth.
+   */
+  showTooltip?: boolean;
+}) {
   const longest = points.reduce(
     (max, point) => Math.max(max, String(point.total).length),
     0,
@@ -109,6 +144,27 @@ export function StackedStageChart({ points }: { points: StagePoint[] }) {
             data={points}
             barCategoryGap={dense ? 1 : 2}
             margin={{ top: 16 }}
+            onMouseMove={
+              onActive
+                ? (state) => {
+                    // Recharts types the index as number | string | null —
+                    // a categorical axis can key on the label itself — and
+                    // `Number(null)` is 0, which would pin the first bar
+                    // every time the pointer left the plot. Refuse the
+                    // nullish case before converting.
+                    const raw = state?.activeTooltipIndex;
+                    if (raw === null || raw === undefined) return onActive(null);
+                    const index = Number(raw);
+                    onActive(
+                      Number.isInteger(index)
+                        ? (points[index]?.key ?? null)
+                        : null,
+                    );
+                  }
+                : undefined
+            }
+            onMouseLeave={onActive ? () => onActive(null) : undefined}
+            className={onPick ? "cursor-pointer" : undefined}
           >
             <CartesianGrid
               vertical={false}
@@ -135,10 +191,19 @@ export function StackedStageChart({ points }: { points: StagePoint[] }) {
                 fontSize: LABEL_FONT_SIZE,
               }}
             />
-            <Tooltip
-              cursor={{ fill: "var(--color-surface-soft)" }}
-              content={<StageTooltip />}
-            />
+            {showTooltip ? (
+              <Tooltip
+                cursor={{ fill: "var(--color-surface-soft)" }}
+                content={<StageTooltip />}
+              />
+            ) : (
+              // Kept for the cursor alone: without a Tooltip there is no
+              // active index, so nothing to hand to `onActive`.
+              <Tooltip
+                cursor={{ fill: "var(--color-surface-soft)" }}
+                content={() => null}
+              />
+            )}
             {STACK_ORDER.map((stage, index) => (
               <Bar
                 key={stage}
@@ -150,9 +215,35 @@ export function StackedStageChart({ points }: { points: StagePoint[] }) {
                 // discharges the CVD warning on the pink/aqua pair.
                 stroke="var(--color-canvas)"
                 strokeWidth={dense ? 1 : 2}
+                // On the bar, not on the chart: a chart-level click reads
+                // Recharts' own active index, which lags the mousemove that
+                // preceded it and which a tap outruns entirely — measured
+                // failing at 390 and at 1440. A segment carries its own
+                // datum and needs no hover to have happened.
+                onClick={
+                  onPick
+                    ? (entry: { payload?: StagePoint }) => {
+                        const key = entry?.payload?.key;
+                        if (key) onPick(key);
+                      }
+                    : undefined
+                }
                 // Only the topmost segment is rounded.
                 radius={index === top ? [3, 3, 0, 0] : undefined}
-              />
+              >
+                {/* The bars beside the active one fade. Without it, hovering
+                    moves the breakdown below and leaves the plot unchanged,
+                    so nothing on screen says which bar is being read
+                    (measured 2026-09-22). */}
+                {activeKey
+                  ? points.map((point) => (
+                      <Cell
+                        key={point.key}
+                        fillOpacity={point.key === activeKey ? 1 : 0.25}
+                      />
+                    ))
+                  : null}
+              </Bar>
             ))}
             {/* An invisible line at each bucket's total carries the label: a
               LabelList on the top segment goes missing wherever that segment

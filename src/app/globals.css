@@ -209,6 +209,12 @@
      headers collided and Amount was clipped off the card (measured
      2026-09-07). */
   --spacing-line-items: 952px;
+  /* The stage board's product table: a name column with room for a real
+     product name, plus six stage columns and an order count. Named rather
+     than reaching for Tailwind's own `3xl`, because `min-w-<name>` resolves
+     against the spacing scale before the container one and this system names
+     its spacing steps xs/sm/md/lg — the trap of 2026-09-06. */
+  --spacing-stage-table: 720px;
   /* The purchase order sheet, landscape since Phase 45 for its ten-column
      line grid, and the totals block on it. Not A4's own 1123px: the shop's
      content column (container-page less its gutters, the frame's border and
