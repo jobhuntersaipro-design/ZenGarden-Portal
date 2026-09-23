@@ -315,6 +315,23 @@
      the moment it paints; only an 8px rise is decoration. `backwards` holds
      the offset through a stagger delay and leaves no transform once it ends. */
   --animate-page-arrive: page-arrive 200ms cubic-bezier(0.2, 0.7, 0.2, 1) backwards;
+  /* An auth card arriving on an otherwise empty canvas (sign-in, forgot,
+     reset, the forced change). Deliberately not `rise`: 8px on a 480px card
+     that a whole screen holds nothing else of is imperceptible, and a card is
+     a slower object than a table row.
+
+     The card owns the *fade* and `auth-settle` owns the *slide*, and that
+     split is the whole point. Giving the contents `rise` — which fades too —
+     was measured and read as broken: the card's height is final from the
+     first frame and its own fade is ~85% done by 100ms, so a form a few steps
+     down the stagger left an empty white card on screen. With the fade held
+     here and the children only sliding, a child is never dimmer than the card
+     it sits in, so no delay can make one go missing. */
+  --animate-auth-card: auth-card 420ms cubic-bezier(0.2, 0.7, 0.2, 1) backwards;
+  /* One line of an auth card settling into place behind it. Pair with
+     `stagger-N` for its step. `backwards` holds the offset through the delay
+     and leaves nothing applied afterwards, as `rise` does. */
+  --animate-auth-settle: auth-settle 340ms cubic-bezier(0.2, 0.7, 0.2, 1) backwards;
   /* The review count beside Purchase Orders: a ring that fades outward and
      rests for most of its cycle, so it is noticed rather than watched. */
   --animate-count-ping: count-ping 3s cubic-bezier(0, 0, 0.2, 1) infinite;
@@ -504,6 +521,34 @@
   }
   to {
     transform: none;
+  }
+}
+
+@keyframes auth-card {
+  from {
+    opacity: 0;
+    transform: translateY(16px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+@keyframes auth-settle {
+  from {
+    transform: translateY(10px);
+  }
+  to {
+    transform: none;
+  }
+}
+
+/* An arrival is decoration; under reduced motion the card is simply there. */
+@media (prefers-reduced-motion: reduce) {
+  .animate-auth-card,
+  .animate-auth-settle {
+    animation: none;
   }
 }
 
