@@ -18,14 +18,18 @@ export default async function ShopHome() {
   return (
     <div className="pt-lg">
       <Hero />
-      <div className="mt-lg">
-        <HowItWorks />
+      {/* Product directly under the opening band, which is what shrinking the
+          hero was for: on a phone the rail used to sit fourth, below a
+          full-screen gradient card and How it works, and nothing buyable was
+          on the first screen. */}
+      <div className="mt-xl">
+        <BestSellers products={home.bestSellers} isFallback={home.bestSellersAreFallback} />
       </div>
       <div className="mt-xl">
         <CategoryGrid categories={home.categories} />
       </div>
       <div className="mt-xl">
-        <BestSellers products={home.bestSellers} isFallback={home.bestSellersAreFallback} />
+        <HowItWorks />
       </div>
       <div className="mt-xl">
         <BrandCards brands={home.brands} />

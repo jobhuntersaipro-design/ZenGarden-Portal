@@ -3372,6 +3372,95 @@ file: generating a PDF remains Phase 19, still unbuilt.
   purchase-order file, is also unbuilt.
 
 ## History
+- 2026-09-23: The shop's front door — product above the fold, and a category
+  tile that is not two letters. Asked for as: "Redesign these 2 sections /
+  Include relevant images / Search zen garden malaysia related images also
+  related to the content", three directions drawn and **A — Shop the shelf**
+  chosen.
+  **The category monogram was never an identifier, and the screenshot proved
+  it.** `categoryInitials` took the first two letters of a category's *first
+  word*, so of the nine seeded categories **three** reduce to `HA` — Hand wash
+  & soap, Hair care, Hand sanitizer — and the user's own phone screenshot
+  showed two identical `HA` circles side by side. **Reproduced live** on a
+  seeded database before changing anything: the shop drew `HA` on Hair care,
+  Hand sanitizer *and* Hand wash & soap, three tiles carrying one mark.
+  **A shape can tell them apart and two letters cannot.** Each tile now shows
+  the category's own photographed product where one exists, and a drawn mark
+  where none does — a pump with a spout, a flat flip-top cap, an angled pump
+  nozzle for the three that used to collide, a jug with a handle for detergent,
+  a squat atomiser for fragrance. Matched on **keywords, not the exact names**,
+  because a category is a growing `CatalogLabel`: production says "Hair & body
+  care" where the seed says "Hair care", and an unrecognised label gets the
+  plainest bottle in the set rather than nothing. `hair` is tested before
+  `body` so "Hair & body care" reads as hair care, and `sanitiz` on its own
+  stem so "Hand sanitizer" is never caught by the `hand wash` rule.
+  **The photo is a real slot through `ProductThumb`**, not a bare `<img>`,
+  which buys the defect that component already fixes: a presigned R2 URL
+  expires, its object can be gone, and an image that fails before hydration
+  never replays its error. It gained one optional `fallback` prop so the mark
+  takes that place; its two existing callers pass none and are untouched.
+  **The query asks only for products that carry an image** (`images: { some: {} }`,
+  `distinct: ["category"]`), because a representative product without a photo
+  is a row that cannot answer the question. A category whose object will not
+  presign is dropped rather than carrying a dead URL into the payload.
+  **The hero stopped being a billboard.** It was a full-bleed gradient card
+  with an eyebrow, a two-line display heading, a four-line paragraph and a
+  button — on a 390px phone, the entire first screen, with no product, no
+  price and nothing to buy on it — and its own bottle silhouettes were
+  `lg:flex`, so the one brand image in it was hidden exactly where the traffic
+  is. It is a signature now: eyebrow, the same two lines, the three brand
+  names, an ink pill. **The gradient goes with it**, and still carries the
+  brand in the wordmark above, where the design system says it belongs.
+  **`BestSellers` moved directly under it**, which is what shrinking the hero
+  was *for*; `HowItWorks` drops below the categories as the consequence.
+  Driven in a real browser against a local Postgres 16 seeded with the
+  project's own seed (12 products, 7 of them shop-visible across the three
+  colliding categories, 423 purchase orders). `src/lib/prisma.ts` and
+  `prisma/seed.ts` were pointed at a `PrismaPg` adapter for the drive and
+  **restored afterwards**; the cluster was stopped and dropped, `.env.local`
+  deleted, and `package.json` and `package-lock.json` are untouched.
+  - **The first buyable product moved from y=2035 to y=600** at 390×844 —
+    from two and a half screens down onto the first screen. At 1440 it went
+    1385 → 567.
+  - **Monograms: 3 identical `HA` before, zero monograms after.** Every one of
+    the seven tiles carries its own mark, read off the live DOM.
+  - **Both halves of the tile were seen, on one screen.** With the R2 request
+    fulfilled by a real PNG, six categories decoded a **780×1858** photo into
+    the 4:3 slot while **Hand sanitizer drew its mark**, because its seeded
+    product genuinely has no image row. Unfulfilled, all seven fall back to
+    marks — which is production's own state, and it is the fallback rather
+    than a broken-image icon.
+  - **Rows are level.** A tile whose name wraps used to leave its neighbour
+    short; measured after the fix, every row is a single height
+    (`[212,212] [191,191] [191,191]` at 390, `[265×4] [265×3]` at 1440) with
+    `ragged: false`.
+  - **No page overflow** — 390/390 and 1440/1440 — and no new sub-44px
+    control (19 at 390 and 20 at 1440, before and after alike).
+  - **The guard was watched failing.** Put the two-letter rule back and five
+    of the ten new tests go red, `expected 'HA' not to be 'HA'` among them —
+    the screenshot's defect, reproduced in a test.
+  - 1534/1534 tests across 119 files (13 new), `tsc`, lint (the same 4
+    pre-existing `ShopHeader` ref errors and 2 `username` warnings) and
+    `npm run build` clean.
+  **Not verified:** anything on production. **A real photograph**: no product
+  in the catalogue carries one — `public/` holds a single Lottie file, and
+  this container's egress proxy blocks `lovinghands.my` and every retailer, so
+  no Zen Garden photo could be downloaded or hotlinked and the slot was proven
+  with a served PNG instead. Every mark is therefore what production will show
+  until someone uploads photos. The final three marks (hair, sanitizer,
+  fragrance) were sharpened *after* the browser drive and read off a contact
+  sheet rendered from the real component, not from the running app — they sit
+  inside a fixed 4:3 box at `h-20 w-auto`, so the layout above still holds.
+  **Recorded, not fixed:** the product cards in `BestSellers` still print
+  `ProductThumb`'s initials tile (`ZD`, `M1`) where a product has no photo,
+  which now sits directly under the hero and reads weakly beside the drawn
+  category marks; the same `fallback` prop would take a mark there, and
+  `ShopProductCard` was outside the two sections asked for. Design A's tinted
+  category grounds were **left out**: the tints wanted either the status
+  palette or the chart palette, both of which mean something else in this
+  system, and a category palette is eight new `@theme` tokens nobody has
+  asked for — the marks carry the difference in shape alone, and colour is a
+  follow-up if it is wanted.
 - 2026-09-23: The auth card arrives, and the Dashboard loses its Upload PO
   button. Asked for as: "add some animation and motion subtely when this link
   is open up? https://www.lovinghandsportal.com/signin" and "Also remove the

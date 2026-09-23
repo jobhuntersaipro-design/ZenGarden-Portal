@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState, type ReactNode } from "react";
 import { initials } from "@/lib/avatar";
 
 /**
@@ -8,13 +8,20 @@ import { initials } from "@/lib/avatar";
  * URL can expire, and the object can be missing entirely — a broken-image icon
  * is worse than no image, because it reads as the page being broken rather
  * than the product lacking a photo.
+ *
+ * `fallback` replaces the initials for a caller whose subject is not a
+ * product — the shop's category tiles draw their own mark there. It is a prop
+ * rather than a second component because what is worth sharing is the effect
+ * below, which took a shipped defect to find.
  */
 export function ProductThumb({
   name,
   url,
+  fallback,
 }: {
   name: string;
   url: string | null;
+  fallback?: ReactNode;
 }) {
   const [failed, setFailed] = useState(false);
   const image = useRef<HTMLImageElement>(null);
@@ -31,6 +38,7 @@ export function ProductThumb({
   }, []);
 
   if (!url || failed) {
+    if (fallback !== undefined) return <>{fallback}</>;
     return (
       <span className="flex size-full items-center justify-center bg-canvas font-display text-[length:var(--text-display-md)] font-[650] text-ink-disabled">
         {initials(name)}
