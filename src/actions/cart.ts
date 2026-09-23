@@ -5,8 +5,8 @@ import { revalidatePath } from "next/cache";
 import { Prisma } from "@/generated/prisma/client";
 import { WebOrderStatus } from "@/generated/prisma/enums";
 import { UnauthorizedError, requireClient } from "@/lib/auth-guards";
+import { rolesWithPermission } from "@/lib/permissions/require";
 import { lineTotal } from "@/lib/cartons";
-import { Role } from "@/generated/prisma/enums";
 import { WebOrderPlaced, webOrderPlacedSubject } from "@/emails/WebOrderPlaced";
 import { WebOrderReceipt, webOrderReceiptSubject } from "@/emails/WebOrderReceipt";
 import { sendEmail } from "@/lib/email";
@@ -539,9 +539,16 @@ async function notify(
     // Rendered once and shared: the team and the buyer get the same preview.
     const po = await preparePoEmail(order.id, order.reference, file);
 
+    // Whoever can see the queue, read off the grid — not a hardcoded pair of
+    // roles. This said `[MEMBER, SUPER_ADMIN]` from Phase 16 until 2026-09-23,
+    // which was every ops role there was; Phase 48 then added Production
+    // planner, QC and Warehouse, all three of which hold `po.view` by default
+    // and watch the review queue, and none of which was ever told an order had
+    // arrived. Asking the permission rather than naming the roles is also what
+    // stops the next role added from reopening the same hole.
     const staff = await prisma.user.findMany({
       where: {
-        role: { in: [Role.MEMBER, Role.SUPER_ADMIN] },
+        role: { in: await rolesWithPermission("po.view") },
         disabledAt: null,
       },
       select: { email: true },

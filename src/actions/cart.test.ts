@@ -13,6 +13,13 @@ const lineUpdate = vi.fn();
 const requireClient = vi.fn();
 const prismaWebOrderFindUnique = vi.fn();
 const userFindMany = vi.fn();
+// Who is told a shop order has arrived is read off the permission grid, not
+// from a hardcoded pair of roles (2026-09-23). Mocked rather than exercised
+// through Prisma because `@/lib/permissions/require` pulls in the auth guards
+// this file already replaces; the roles it returns are asserted below, and so
+// is the key it is asked for.
+const rolesWithPermission = vi.fn();
+vi.mock("@/lib/permissions/require", () => ({ rolesWithPermission }));
 
 const tx = {
   webOrder: { findFirst: webOrderFindFirst, update: webOrderUpdate },
@@ -128,6 +135,13 @@ beforeEach(() => {
   webOrderUpdate.mockResolvedValue({});
   prismaWebOrderFindUnique.mockResolvedValue(null);
   userFindMany.mockResolvedValue([]);
+  rolesWithPermission.mockResolvedValue([
+    "SUPER_ADMIN",
+    "PRODUCTION_PLANNER",
+    "QC",
+    "WAREHOUSE",
+    "MEMBER",
+  ]);
   sendEmail.mockResolvedValue({ sent: true });
   attachWebOrderDocument.mockResolvedValue({
     documentId: "doc1",
@@ -329,6 +343,41 @@ describe("submitWebOrder", () => {
     const recipients = sendEmail.mock.calls.map((call) => call[0].to);
     expect(recipients).toContainEqual(["aisha@acme.test"]);
     expect(recipients).toContainEqual(["ops@lovinghands.test"]);
+  });
+
+  /**
+   * Phase 48 added Production planner, QC and Warehouse. This list said
+   * `[MEMBER, SUPER_ADMIN]` from Phase 16 until 2026-09-23, so all three
+   * watched the review queue and were never told an order had arrived.
+   * Pinned as the *key* rather than as a list of roles, because naming roles
+   * here is the thing that went stale in the first place.
+   */
+  it("tells whoever may see the queue, not a hardcoded pair of roles", async () => {
+    webOrderFindFirst.mockResolvedValue(cartWith([line()]));
+    prismaWebOrderFindUnique.mockResolvedValue({
+      id: "w1",
+      reference: "W-2609-00001",
+      buyerReference: null,
+      subtotal: dec("2268.00"),
+      buyer: { name: "Acme" },
+      placedBy: { name: "Aisha", email: "aisha@acme.test" },
+      _count: { lines: 1 },
+    });
+    userFindMany.mockResolvedValue([{ email: "ops@lovinghands.test" }]);
+
+    await submitWebOrder(SENT);
+    await flushAfter();
+
+    expect(rolesWithPermission).toHaveBeenCalledWith("po.view");
+    expect(userFindMany.mock.calls[0][0].where.role.in).toEqual([
+      "SUPER_ADMIN",
+      "PRODUCTION_PLANNER",
+      "QC",
+      "WAREHOUSE",
+      "MEMBER",
+    ]);
+    // Disabled accounts are still left out of it.
+    expect(userFindMany.mock.calls[0][0].where.disabledAt).toBeNull();
   });
 
   it("still sends the client their receipt when there is no ops staff to tell", async () => {
