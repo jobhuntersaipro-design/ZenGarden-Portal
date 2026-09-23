@@ -267,7 +267,7 @@ function haystack(
 }
 
 export async function loadDemandBoard({
-  grain = "week",
+  grain = "day",
   window = DEMAND_SPAN[grain],
   filters = {},
   now = new Date(),

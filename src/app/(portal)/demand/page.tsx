@@ -48,8 +48,13 @@ const SPANS: Record<DemandGrain, { value: string; label: string }[]> = {
   ],
 };
 
+/**
+ * Daily is the default, and the window follows it: `DEMAND_SPAN.day` is 30, so
+ * a board opened with no query string draws the next 30 days. A grain the URL
+ * does not name falls back here rather than drawing nothing.
+ */
 function parseGrain(raw: string | undefined): DemandGrain {
-  return raw === "day" || raw === "month" ? raw : "week";
+  return raw === "week" || raw === "month" ? raw : "day";
 }
 
 /**

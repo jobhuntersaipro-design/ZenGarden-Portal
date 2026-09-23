@@ -3352,6 +3352,42 @@ file: generating a PDF remains Phase 19, still unbuilt.
   purchase-order file, is also unbuilt.
 
 ## History
+- 2026-09-23: The Demand Board opens Daily, next 30 days — on `main`. Asked for
+  as: "Default show daily and next 30 days".
+  **A one-line change, and the window follows for free.** `parseGrain` resolved
+  an absent or unrecognised `?by=` to `"week"`; it resolves to `"day"` now, and
+  `resolveWindow` already falls back to `DEMAND_SPAN[grain]`, which is **30**
+  for days. `loadDemandBoard`'s own `grain = "week"` default parameter was
+  aligned in the same commit — a query holding a second opinion about the
+  default is the kind of drift that only shows up when somebody calls it
+  without a grain.
+  **Both boards move together**, because yesterday's change made the stage
+  board read the page's resolved grain and window rather than its own. Nothing
+  in the toolbar changed: it still lists all three grains, and each grain still
+  offers its own spans.
+  Driven in a real browser against a seeded local Postgres, as the super admin,
+  today being 23 Sep 2026.
+  - **A bare `/demand` reads Daily · Next 30 days**, both chips selected: the
+    committed table draws **36 columns**, `Product · Overdue · 23 Sep … 22 Oct
+    · Committed · Orders · Stock count (carton) · Short by`, and the stage
+    board **30 daily bars** under the caption *"at the end of each day"*.
+    Before, the same URL drew 10 columns over four weekly buckets.
+  - **The grain chips still navigate both ways:** Weekly gives
+    `?by=week&window=4` (10 columns, 4 bars); Daily gives `?by=day&window=30`.
+  - **The date picker still mirrors:** `?by=day&until=2026-11-30` draws 69 days
+    forward on the table and 69 bars back on the chart.
+  - **Phone.** 390/390 and 1440/1440, no page overflow; no control added or
+    removed, so the 44px floor is untouched.
+  - 1496/1496 tests across 117 files unchanged, `tsc`, lint (the same 2
+    pre-existing `username` warnings) and `npm run build` clean, `/demand`
+    still dynamic.
+  **A cost worth knowing, recorded rather than smoothed over:** a link saved
+  from the old weekly board carrying **only** `?window=` and no `?by=` now
+  reads as days. **Measured:** `?window=12` draws 12 daily columns with no
+  window chip selected, where it used to draw 12 weeks. Every link the toolbar
+  writes carries `by`, so this is only a bookmark made from a bare `/demand`,
+  and the board it lands on is right there to correct.
+  **Not verified:** anything on production; a member's view.
 - 2026-09-23: Grain and window drive the stage board too, and it loses its own
   Window chips — on `main`. Asked for as: "For Grain, and Window filter, please
   make sure Order Stage table is filtered too. Then remove the Window filter in
