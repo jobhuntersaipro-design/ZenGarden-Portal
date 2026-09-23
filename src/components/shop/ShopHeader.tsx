@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import { useLayoutEffect } from "react";
 import { KeyRound, List, LogOut, ShoppingCart, User } from "lucide-react";
 import { signOut } from "next-auth/react";
 import { Wordmark } from "@/components/portal/Wordmark";
@@ -10,6 +11,7 @@ import { ShopAccountMenu, type ShopAccountMenuRow } from "@/components/shop/Shop
 import { ShopSearch } from "@/components/shop/ShopSearch";
 import { useShopViewer } from "@/components/shop/ShopViewer";
 import type { CartSummary } from "@/lib/queries/cart";
+import { useEdgeFades } from "@/hooks/useEdgeFades";
 import { shopHref } from "@/lib/shop-routes";
 
 /**
@@ -52,6 +54,12 @@ export function ShopHeader({
 }) {
   const viewer = useShopViewer();
   const rows = viewer.kind === "client" ? ACCOUNT_ROWS : [];
+  const chips = useEdgeFades<HTMLDivElement>();
+  // The hook measures in an effect, after paint. Measure in layout so the
+  // first frame already fades the side that is clipped.
+  useLayoutEffect(() => {
+    chips.measure();
+  }, [chips.measure]);
 
   return (
     <header className="sticky top-0 z-30 border-b border-hairline bg-canvas">
@@ -144,8 +152,29 @@ export function ShopHeader({
         <ShopSearch />
       </div>
 
-      <div className="overflow-x-auto px-md pb-sm md:hidden">
-        <CategoryStrip categories={categories} variant="chips" />
+      {/* A hard clip mid-label reads as a broken chip. The fade is only on
+          the side that still has labels, and it drops once that side is
+          scrolled fully into view. */}
+      <div className="relative md:hidden">
+        <div
+          ref={chips.ref}
+          onScroll={chips.measure}
+          className="overflow-x-auto px-md pb-sm [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
+        >
+          <CategoryStrip categories={categories} variant="chips" />
+        </div>
+        {chips.clipped.left ? (
+          <div
+            aria-hidden
+            className="pointer-events-none absolute top-0 bottom-sm left-0 w-xl bg-linear-to-r from-canvas to-transparent"
+          />
+        ) : null}
+        {chips.clipped.right ? (
+          <div
+            aria-hidden
+            className="pointer-events-none absolute top-0 right-0 bottom-sm w-xl bg-linear-to-l from-canvas to-transparent"
+          />
+        ) : null}
       </div>
     </header>
   );

@@ -40,6 +40,26 @@ bar and its legend *cannot* disagree, rather than merely happening to agree.
 
 ---
 
+## 4. `1fr` inside `overflow-hidden` clips the whole track
+
+**Rule.** A grid track written `1fr` is `minmax(auto, 1fr)`. Its minimum is
+the widest thing in it that cannot shrink. If that track sits in a card with
+`overflow-hidden`, the card clips every line in the track at the same edge —
+a title that looks like it should wrap, and a price that breaks mid-glyph.
+Size the text track with `minmax(0, 1fr)`, and do not put a control row that
+cannot shrink into the text column. A horizontal scroller with no edge cue
+has the same shape: a label cut at the box edge reads as broken, not as
+"there is more". Fade the side that still has content.
+
+**The case (2026-09-23).** On the shop cart at 390px the line's stepper,
+amount and remove sat in the title's column. The stepper's 160px minimum
+widened that column past the card, so "Test Hand Wash 500ML — Lavender" and
+"RM 198.00" were both cut by the card. The category chips scrolled, and
+"Hair & body care" was cut at the screen edge with only a thin scrollbar to
+say so.
+
+---
+
 ## 2. A link must be able to express what it counts
 
 **Rule.** Before linking a figure to a filtered list, check the list can

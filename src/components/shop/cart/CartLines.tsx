@@ -61,7 +61,7 @@ function CartRow({
 
   return (
     <div
-      className={`grid grid-cols-[88px_1fr] items-start gap-sm border-b border-hairline p-md last:border-b-0 md:grid-cols-[88px_1fr_140px_120px_40px] md:items-center md:gap-md md:p-lg ${
+      className={`grid grid-cols-[88px_minmax(0,1fr)] items-start gap-sm border-b border-hairline p-md last:border-b-0 md:grid-cols-[88px_1fr_140px_120px_40px] md:items-center md:gap-md md:p-lg ${
         line.unavailable ? "bg-surface" : "bg-canvas"
       }`}
     >
@@ -76,7 +76,7 @@ function CartRow({
       <div className="min-w-0">
         <Link
           href={shopHref.product(line.productId)}
-          className={`text-[length:var(--text-body-sm)] font-semibold hover:underline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-focus ${
+          className={`block break-words text-[length:var(--text-body-sm)] font-semibold hover:underline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-focus ${
             line.unavailable ? "text-ink-tertiary" : "text-ink"
           }`}
         >
@@ -98,8 +98,13 @@ function CartRow({
         )}
       </div>
 
-      <div className="col-start-2 flex items-center justify-between gap-sm md:contents">
-        <div className={line.unavailable ? "opacity-45" : ""}>
+      {/* The stepper alone is 160px, and the amount plus the remove control
+          need the rest. Below `md` that row used to sit in the title's column
+          (~210px at 390px), so the card's overflow clipped the title on one
+          line and wrapped the amount to "R / 198.0". The row now spans the
+          card and wraps, amount and remove staying together. */}
+      <div className="col-span-2 flex min-w-0 flex-wrap items-center justify-between gap-x-sm gap-y-xs md:contents">
+        <div className={line.unavailable ? "shrink-0 opacity-45" : "shrink-0"}>
           <CartonStepper
             value={line.cartons}
             packSize={line.packSize}
@@ -109,25 +114,27 @@ function CartRow({
             onChange={(cartons) => onSetCartons(line.productId, cartons)}
           />
         </div>
-        <p
-          className={`text-right text-[length:var(--text-body-md)] font-semibold tabular-nums ${
-            line.unavailable ? "text-ink-disabled" : "text-ink"
-          }`}
-        >
-          {line.unavailable ? "—" : formatMYR(line.amount)}
-        </p>
-        <button
-          type="button"
-          aria-label={`Remove ${line.name}`}
-          onClick={() => onRemove(line.productId)}
-          className={`flex size-11 shrink-0 items-center justify-center focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-focus ${
-            line.unavailable
-              ? "text-accent-red"
-              : "text-ink-tertiary hover:text-ink"
-          }`}
-        >
-          <Trash2 className="size-4" aria-hidden />
-        </button>
+        <div className="ml-auto flex shrink-0 items-center gap-sm md:contents">
+          <p
+            className={`text-right text-[length:var(--text-body-md)] font-semibold whitespace-nowrap tabular-nums md:whitespace-normal ${
+              line.unavailable ? "text-ink-disabled" : "text-ink"
+            }`}
+          >
+            {line.unavailable ? "—" : formatMYR(line.amount)}
+          </p>
+          <button
+            type="button"
+            aria-label={`Remove ${line.name}`}
+            onClick={() => onRemove(line.productId)}
+            className={`flex size-11 shrink-0 items-center justify-center focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-focus ${
+              line.unavailable
+                ? "text-accent-red"
+                : "text-ink-tertiary hover:text-ink"
+            }`}
+          >
+            <Trash2 className="size-4" aria-hidden />
+          </button>
+        </div>
       </div>
     </div>
   );
