@@ -13,7 +13,7 @@ import { EditPurchaseOrderSheet } from "@/components/purchase-orders/EditPurchas
 import { LifecycleActions } from "@/components/purchase-orders/LifecycleActions";
 import { StageStepper } from "@/components/purchase-orders/StageStepper";
 import { advanceKeyFor } from "@/lib/permissions/actions";
-import { can, rolesWithPermission } from "@/lib/permissions/require";
+import { can, requirePagePermission, rolesWithPermission } from "@/lib/permissions/require";
 import { roleLabel } from "@/lib/permissions/roles";
 import { formatDate, formatDateTime, TIME_ZONE } from "@/lib/dates";
 import { formatMYR } from "@/lib/money";
@@ -36,6 +36,10 @@ export async function generateMetadata({
   params: Promise<{ id: string }>;
 }): Promise<Metadata> {
   const { id } = await params;
+  // The tab title names the record, so it answers the same question the
+  // page does and is withheld on the same terms. `can`, not the page
+  // guard: metadata has no 404 to render, it just says less.
+  if (!(await can("po.view"))) return { title: "Purchase order · Zen Garden Portal" };
   const po = await prisma.purchaseOrder.findUnique({
     where: { id },
     select: ORDER_IDENTITY_SELECT,
@@ -52,6 +56,8 @@ export default async function PurchaseOrderPage({
 }: {
   params: Promise<{ id: string }>;
 }) {
+  // Phase 48: this destination is what `po.view` names.
+  await requirePagePermission("po.view");
   const { id } = await params;
 
   const po = await prisma.purchaseOrder.findUnique({

@@ -31,6 +31,7 @@ import {
 } from "@/lib/queries/pagination";
 import { PO_LIST_SORT_KEYS } from "@/lib/queries/po-list.sql";
 import { listPurchaseOrders } from "@/lib/queries/purchase-orders";
+import { requirePagePermission } from "@/lib/permissions/require";
 
 export const metadata: Metadata = { title: "Dashboard · Zen Garden Portal" };
 export const dynamic = "force-dynamic";
@@ -40,6 +41,8 @@ export default async function DashboardPage({
 }: {
   searchParams: Promise<SearchParams>;
 }) {
+  // Phase 48: this destination is what `dashboard.view` names.
+  await requirePagePermission("dashboard.view");
   const params = await searchParams;
   const range = parseRange(params);
   const measure: SalesMeasure =

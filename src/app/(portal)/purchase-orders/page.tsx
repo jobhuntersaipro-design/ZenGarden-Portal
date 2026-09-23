@@ -5,7 +5,7 @@ import { UploadPoButton } from "@/components/portal/UploadPoButton";
 import { PoFilters, type StatusChip } from "@/components/purchase-orders/PoFilters";
 import { PoTable, type PoRow } from "@/components/purchase-orders/PoTable";
 import { ReviewQueue } from "@/components/purchase-orders/ReviewQueue";
-import { can } from "@/lib/permissions/require";
+import { can, requirePagePermission } from "@/lib/permissions/require";
 import { formatMYR } from "@/lib/money";
 import {
   firstParam,
@@ -56,6 +56,8 @@ export default async function PurchaseOrdersPage({
 }: {
   searchParams: Promise<SearchParams>;
 }) {
+  // Phase 48: this destination is what `po.view` names.
+  await requirePagePermission("po.view");
   const params = await searchParams;
 
   const status = firstParam(params, "status");

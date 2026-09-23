@@ -5,7 +5,7 @@ import { ProductStockDrawer } from "@/components/stock/ProductStockDrawer";
 import { StockActivityFeed } from "@/components/stock/StockActivityFeed";
 import { StockSearch } from "@/components/stock/StockSearch";
 import { StockTable } from "@/components/stock/StockTable";
-import { requirePermission } from "@/lib/permissions/require";
+import { requirePagePermission } from "@/lib/permissions/require";
 import {
   firstParam,
   parsePagination,
@@ -57,7 +57,7 @@ export default async function StockPage({
 }: {
   searchParams: Promise<SearchParams>;
 }) {
-  await requirePermission("product.view");
+  await requirePagePermission("product.view");
   const params = await searchParams;
   const q = firstParam(params, "q")?.trim() || undefined;
   const openId = firstParam(params, "product") ?? null;

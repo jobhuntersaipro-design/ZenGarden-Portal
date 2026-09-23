@@ -12,6 +12,8 @@ import { AvatarChangeListener } from "@/components/portal/AvatarBroadcast";
 import { AvatarSavingProvider } from "@/components/portal/AvatarSaving";
 import { NavProgressProvider } from "@/components/portal/NavProgress";
 import { MobileTabBar, MobileTopBar } from "@/components/portal/MobileNav";
+import { NAV } from "@/components/portal/nav";
+import { roleCan } from "@/lib/permissions/require";
 import { SkipLink } from "@/components/portal/SkipLink";
 import { ReviewCountProvider } from "@/components/portal/ReviewCount";
 import { Sidebar } from "@/components/portal/Sidebar";
@@ -58,6 +60,23 @@ export default async function PortalLayout({
   const displayEmail = profile?.email ?? user.email ?? "";
   const displayRole = profile?.role ?? user.role;
 
+  // Which destinations this role may open. The nav is a client component and
+  // cannot read a permission itself, so the hrefs are resolved here and passed
+  // down — a row that only ever 404s is worse than no row. `roleCan` is
+  // `cache()`d per request, so these six checks share one read of the grid,
+  // and `displayRole` is the row's own rather than the JWT's, which is up to
+  // five minutes stale — the same trade the name and picture already make.
+  const allowedNav = (
+    await Promise.all(
+      NAV.map(async (entry) => ({
+        href: entry.href,
+        allowed: await roleCan(displayRole, entry.permission),
+      })),
+    )
+  )
+    .filter((entry) => entry.allowed)
+    .map((entry) => entry.href);
+
   return (
     <TooltipProvider delayDuration={200}>
       {/* Every in-place filter, sort, range and page change reports its
@@ -82,6 +101,7 @@ export default async function PortalLayout({
               userRoleName={roleLabel(displayRole)}
               userIsSuperAdmin={displayRole === Role.SUPER_ADMIN}
               userImage={displayImage}
+              allowed={allowedNav}
             />
             {/* `min-w-0` on the column, not just the main: a flex child defaults
               to `min-width: auto`, so without it a wide table would widen the
@@ -112,7 +132,7 @@ export default async function PortalLayout({
               />
             </div>
           </div>
-          <MobileTabBar />
+          <MobileTabBar allowed={allowedNav} />
           </ReviewCountProvider>
         </AvatarSavingProvider>
       </NavProgressProvider>

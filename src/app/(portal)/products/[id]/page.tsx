@@ -36,6 +36,7 @@ import {
   type SearchParams,
 } from "@/lib/queries/pagination";
 import { prisma } from "@/lib/prisma";
+import { can, requirePagePermission } from "@/lib/permissions/require";
 
 export const dynamic = "force-dynamic";
 
@@ -57,6 +58,10 @@ export async function generateMetadata({
   params: Promise<{ id: string }>;
 }): Promise<Metadata> {
   const { id } = await params;
+  // The tab title names the record, so it answers the same question the
+  // page does and is withheld on the same terms. `can`, not the page
+  // guard: metadata has no 404 to render, it just says less.
+  if (!(await can("product.view"))) return { title: "Product · Zen Garden Portal" };
   const product = await prisma.product.findUnique({
     where: { id },
     select: { name: true },
@@ -71,6 +76,8 @@ export default async function ProductPage({
   params: Promise<{ id: string }>;
   searchParams: Promise<SearchParams>;
 }) {
+  // Phase 48: this destination is what `product.view` names.
+  await requirePagePermission("product.view");
   const { id } = await params;
   const query = await searchParams;
 

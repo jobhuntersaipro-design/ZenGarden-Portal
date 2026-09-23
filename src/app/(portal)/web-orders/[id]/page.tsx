@@ -5,8 +5,7 @@ import { PageHeader } from "@/components/portal/PageHeader";
 import { DocumentPreview } from "@/components/review/DocumentPreviewLoader";
 import { SubmittedOrderPane } from "@/components/web-orders/SubmittedOrderPane";
 import { WebOrderReviewForm } from "@/components/web-orders/WebOrderReviewForm";
-import { requireUser } from "@/lib/auth-guards";
-import { can } from "@/lib/permissions/require";
+import { can, requirePagePermission } from "@/lib/permissions/require";
 import { prisma } from "@/lib/prisma";
 import { loadWebOrderForReview } from "@/lib/queries/web-orders";
 
@@ -26,7 +25,9 @@ export default async function WebOrderReviewPage({
   params: Promise<{ id: string }>;
 }) {
   const { id } = await params;
-  await requireUser();
+  // Phase 48: reading a shop order is `po.view` — it was a bare
+  // `requireUser()`, which is every ops role whatever the grid says.
+  await requirePagePermission("po.view");
   // Phase 48: reading a shop order is `po.view`; deciding it is `po.confirm`.
   // Without it the page is the summary alone, with no form to submit.
   const canConfirm = await can("po.confirm");

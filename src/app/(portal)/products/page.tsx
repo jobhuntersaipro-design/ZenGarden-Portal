@@ -1,6 +1,6 @@
 import type { Metadata } from "next";
 import Link from "next/link";
-import { can } from "@/lib/permissions/require";
+import { can, requirePagePermission } from "@/lib/permissions/require";
 import { PageHeader } from "@/components/portal/PageHeader";
 import { TablePagination } from "@/components/portal/TablePagination";
 import { KpiMoney, KpiNumber, KpiTile } from "@/components/dashboard/KpiTile";
@@ -65,6 +65,8 @@ export default async function ProductsPage({
 }: {
   searchParams: Promise<SearchParams>;
 }) {
+  // Phase 48: this destination is what `product.view` names.
+  await requirePagePermission("product.view");
   const params = await searchParams;
   const { products, families, markets: marketRows } = await listProducts();
   const canManageProducts = await can("product.manage");

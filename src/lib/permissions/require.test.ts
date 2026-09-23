@@ -10,6 +10,14 @@ vi.mock("@/lib/prisma", () => ({
 
 class UnauthorizedErrorStub extends Error {}
 
+// `notFound()` throws a sentinel Next catches at the route boundary. Stubbed
+// so a test can tell "this page 404s" apart from "this page threw".
+class NotFoundStub extends Error {}
+const notFound = vi.fn(() => {
+  throw new NotFoundStub("NEXT_NOT_FOUND");
+});
+vi.mock("next/navigation", () => ({ notFound }));
+
 const getSessionUser = vi.fn();
 const requireUser = vi.fn();
 vi.mock("@/lib/auth-guards", () => ({
@@ -32,6 +40,7 @@ beforeEach(() => {
   findMany.mockReset();
   getSessionUser.mockReset();
   requireUser.mockReset();
+  notFound.mockClear();
 });
 
 describe("roleCan", () => {
@@ -167,5 +176,56 @@ describe("unauthorizedStatus", () => {
     expect(
       unauthorizedStatus(new UnauthorizedErrorStub("This is not a portal account.")),
     ).toBe(403);
+  });
+});
+
+/**
+ * The page half of the guard. Until 2026-09-23 only `/stock` asked for a view
+ * key at all, and it asked with the bare `requirePermission` — which throws,
+ * and with no `error.tsx` anywhere in this app that is Next's 500 for a
+ * reader whose role simply may not look here.
+ */
+describe("requirePagePermission", () => {
+  const planner = { id: "u1", role: Role.PRODUCTION_PLANNER };
+
+  it("returns the user when the role holds the key", async () => {
+    findMany.mockResolvedValue([{ action: "buyer.view" }]);
+    requireUser.mockResolvedValue(planner);
+    const { requirePagePermission } = await load();
+
+    expect(await requirePagePermission("buyer.view")).toEqual(planner);
+    expect(notFound).not.toHaveBeenCalled();
+  });
+
+  it("404s rather than throwing when the grid has taken the page away", async () => {
+    findMany.mockResolvedValue([{ action: "po.view" }]);
+    requireUser.mockResolvedValue(planner);
+    const { requirePagePermission } = await load();
+
+    await expect(requirePagePermission("buyer.view")).rejects.toBeInstanceOf(
+      NotFoundStub,
+    );
+    expect(notFound).toHaveBeenCalledTimes(1);
+  });
+
+  it("still lets a super admin through with the table denying everything", async () => {
+    findMany.mockResolvedValue([]);
+    requireUser.mockResolvedValue({ id: "u2", role: Role.SUPER_ADMIN });
+    const { requirePagePermission } = await load();
+
+    await expect(requirePagePermission("buyer.view")).resolves.toMatchObject({
+      role: Role.SUPER_ADMIN,
+    });
+    expect(notFound).not.toHaveBeenCalled();
+  });
+
+  it("lets anything that is not an authorization failure through to Next", async () => {
+    requireUser.mockRejectedValue(new Error("the database is down"));
+    const { requirePagePermission } = await load();
+
+    await expect(requirePagePermission("po.view")).rejects.toThrow(
+      "the database is down",
+    );
+    expect(notFound).not.toHaveBeenCalled();
   });
 });

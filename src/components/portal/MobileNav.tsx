@@ -6,7 +6,12 @@ import { NavCount, withCountLabel } from "@/components/portal/NavCount";
 import { useReviewCount } from "@/components/portal/ReviewCount";
 import { UserMenu } from "@/components/portal/UserMenu";
 import { Wordmark } from "@/components/portal/Wordmark";
-import { NAV, REVIEW_QUEUE_HREF, isActive } from "@/components/portal/nav";
+import {
+  REVIEW_QUEUE_HREF,
+  TAB_BAR_COLUMNS,
+  isActive,
+  navFor,
+} from "@/components/portal/nav";
 
 /**
  * The mobile shell, below `lg`. The desktop `Sidebar` used to collapse into a
@@ -66,23 +71,30 @@ export function MobileTopBar({
  * indicator inset, comfortably past the 44px touch minimum the review found 55
  * violations of.
  */
-export function MobileTabBar() {
+export function MobileTabBar({ allowed }: { allowed: readonly string[] }) {
   const pathname = usePathname();
   // Orders waiting on the team, on the Orders tab (Phase 46).
   const { count: reviewCount } = useReviewCount();
+  const tabs = navFor(allowed);
+
+  // A role with no destination at all has no bar to draw. It cannot happen
+  // with the shipped defaults — every ops role holds all four view keys — but
+  // an empty grid with a top border is a stray line across the bottom of the
+  // screen, and the reader is on a 404 anyway.
+  if (tabs.length === 0) return null;
 
   return (
     <nav
       aria-label="Main"
-      // grid-cols-6 tracks NAV's length (2026-09-22, when stock counts made
-      // it six). It is not derived because a Tailwind class built at
-      // runtime is not compiled — if a sixth destination is ever added, this
-      // number moves with it or the bar wraps onto two rows. Six tabs is
-      // 65px each at 390, still clear of the 44px floor.
-      className="fixed inset-x-0 bottom-0 z-30 grid grid-cols-6 border-t border-hairline bg-surface lg:hidden"
+      // The column count is a literal class from TAB_BAR_COLUMNS, never
+      // `grid-cols-${n}`: Tailwind compiles what it can see in the source, so
+      // a class built at runtime is no class at all and the bar wraps onto
+      // two rows. Six tabs is 65px each at 390, still clear of the 44px
+      // floor; a filtered bar only ever has fewer, and wider.
+      className={`fixed inset-x-0 bottom-0 z-30 grid ${TAB_BAR_COLUMNS[tabs.length]} border-t border-hairline bg-surface lg:hidden`}
       style={{ paddingBottom: "env(safe-area-inset-bottom)" }}
     >
-      {NAV.map(({ href, short, label, icon: Icon }) => {
+      {tabs.map(({ href, short, label, icon: Icon }) => {
         const active = isActive(pathname, href);
         const count = href === REVIEW_QUEUE_HREF ? reviewCount : 0;
         return (

@@ -1,10 +1,9 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { redirect } from "next/navigation";
-import { Role } from "@/generated/prisma/enums";
 import { BackLink } from "@/components/portal/BackLink";
 import { BuyerForm } from "@/components/buyers/BuyerForm";
-import { getSessionUser } from "@/lib/auth-guards";
+import { can } from "@/lib/permissions/require";
 
 export const metadata: Metadata = {
   title: "New buyer · Zen Garden Portal",
@@ -12,11 +11,14 @@ export const metadata: Metadata = {
 export const dynamic = "force-dynamic";
 
 export default async function NewBuyerPage() {
-  const user = await getSessionUser();
-  // The directory only offers this link to a super admin, but the link is a
-  // URL and anyone can type it. `createBuyer` refuses either way; this is
-  // so a member sees the directory rather than a form that can never save.
-  if (user?.role !== Role.SUPER_ADMIN) redirect("/buyers");
+  // The directory only offers this link to whoever may use it, but the link
+  // is a URL and anyone can type it. `createBuyer` refuses either way; this
+  // is so a reader sees the directory rather than a form that can never save.
+  //
+  // The key, not the role: `createBuyer` itself guards on `buyer.manage`, so
+  // a role the grid has granted it would otherwise be redirected away from a
+  // form the action would have accepted.
+  if (!(await can("buyer.manage"))) redirect("/buyers");
 
   return (
     <>

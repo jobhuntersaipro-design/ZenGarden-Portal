@@ -1,6 +1,6 @@
 import type { Metadata } from "next";
 import Link from "next/link";
-import { can } from "@/lib/permissions/require";
+import { can, requirePagePermission } from "@/lib/permissions/require";
 import { LinkSpinner } from "@/components/portal/LinkSpinner";
 import { PageHeader } from "@/components/portal/PageHeader";
 import { UploadPoButton } from "@/components/portal/UploadPoButton";
@@ -38,6 +38,8 @@ export default async function BuyersPage({
 }: {
   searchParams: Promise<SearchParams>;
 }) {
+  // Phase 48: this destination is what `buyer.view` names.
+  await requirePagePermission("buyer.view");
   const params = await searchParams;
   const canManageBuyers = await can("buyer.manage");
   const range = parseBuyerRange(params);

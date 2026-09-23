@@ -1,5 +1,6 @@
 import "server-only";
 import { cache } from "react";
+import { notFound } from "next/navigation";
 import { Role } from "@/generated/prisma/enums";
 import {
   UnauthorizedError,
@@ -66,6 +67,34 @@ export async function requirePermission(
   throw new UnauthorizedError(
     message ?? `Your role can't ${permissionAction(key).label.toLowerCase()}.`,
   );
+}
+
+/**
+ * The same guard, for a **page** rather than an action.
+ *
+ * A Server Component has no `{ success: false, error }` to return, and there
+ * is no `error.tsx` anywhere in this app — so a bare `requirePermission` in a
+ * page renders Next's own 500 for a reader whose role simply may not look
+ * here. That is both wrong and louder than the truth.
+ *
+ * `notFound()` instead, which is the treatment `/admin` and `/shop` already
+ * get in `src/proxy.ts` and for the same reason: a role that may not open a
+ * page should not learn it is a real one. The content is right; the status is
+ * 200 rather than 404 on a streamed layout, which is the app-wide gap
+ * recorded on 2026-09-10 and not this guard's to fix.
+ *
+ * Signed out is impossible here in practice — `(portal)/layout.tsx` redirects
+ * first — so the 404 covers both cases without a second branch.
+ */
+export async function requirePagePermission(
+  key: PermissionKey,
+): Promise<SessionUser> {
+  try {
+    return await requirePermission(key);
+  } catch (cause) {
+    if (cause instanceof UnauthorizedError) notFound();
+    throw cause;
+  }
 }
 
 /**

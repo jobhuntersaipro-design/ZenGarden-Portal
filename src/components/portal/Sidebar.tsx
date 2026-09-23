@@ -7,7 +7,7 @@ import { NavCount, withCountLabel } from "@/components/portal/NavCount";
 import { useReviewCount } from "@/components/portal/ReviewCount";
 import { UserMenu } from "@/components/portal/UserMenu";
 import { Wordmark } from "@/components/portal/Wordmark";
-import { NAV, REVIEW_QUEUE_HREF, isActive } from "@/components/portal/nav";
+import { REVIEW_QUEUE_HREF, isActive, navFor } from "@/components/portal/nav";
 
 /**
  * The desktop sidebar, from `lg` up.
@@ -24,12 +24,19 @@ export function Sidebar({
   userRoleName,
   userIsSuperAdmin,
   userImage = null,
+  allowed,
 }: {
   userName: string;
   userEmail: string;
   userRoleName: string;
   userIsSuperAdmin: boolean;
   userImage?: string | null;
+  /**
+   * The destinations this role may open, resolved on the server by
+   * `(portal)/layout.tsx`. Required rather than defaulted to "all": a caller
+   * that forgets it should fail the build, not quietly show every row.
+   */
+  allowed: readonly string[];
 }) {
   const pathname = usePathname();
   // Orders waiting on the team, beside Purchase Orders (Phase 46).
@@ -55,7 +62,7 @@ export function Sidebar({
         className="flex min-h-0 flex-1 flex-col gap-xxs overflow-y-auto"
         aria-label="Main"
       >
-        {NAV.map(({ href, label, icon: Icon }) => {
+        {navFor(allowed).map(({ href, label, icon: Icon }) => {
           const active = isActive(pathname, href);
           const count = href === REVIEW_QUEUE_HREF ? reviewCount : 0;
           return (

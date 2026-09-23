@@ -1,12 +1,11 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { redirect } from "next/navigation";
-import { Role } from "@/generated/prisma/enums";
 import { BackLink } from "@/components/portal/BackLink";
 import { ProductForm } from "@/components/products/ProductForm";
-import { getSessionUser } from "@/lib/auth-guards";
 import { listFamilies } from "@/lib/queries/product-families";
 import { listAllLabels } from "@/lib/queries/products";
+import { can } from "@/lib/permissions/require";
 
 export const metadata: Metadata = {
   title: "New product · Zen Garden Portal",
@@ -23,11 +22,15 @@ export const dynamic = "force-dynamic";
 export const maxDuration = 120;
 
 export default async function NewProductPage() {
-  const user = await getSessionUser();
-  // The catalog only offers this link to a super admin, but the link is a URL
-  // and anyone can type it. `createProductVariants` refuses either way; this
-  // is so a member sees the catalog rather than a form that can never save.
-  if (user?.role !== Role.SUPER_ADMIN) redirect("/products");
+  // The catalog only offers this link to whoever may use it, but the link is
+  // a URL and anyone can type it. `createProductVariants` refuses either way;
+  // this is so a reader sees the catalog rather than a form that can never
+  // save.
+  //
+  // The key, not the role: the action itself guards on `product.manage`, so a
+  // role the grid has granted it would otherwise be redirected away from a
+  // form the action would have accepted.
+  if (!(await can("product.manage"))) redirect("/products");
 
   const [labels, families] = await Promise.all([listAllLabels(), listFamilies()]);
 

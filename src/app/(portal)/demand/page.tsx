@@ -15,6 +15,7 @@ import { DEMAND_CEILING, DEMAND_SPAN, type DemandGrain } from "@/lib/planning/gr
 import { firstParam, type SearchParams } from "@/lib/queries/pagination";
 import { loadPoStageBoard } from "@/lib/queries/po-stages";
 import { resolveStageShow } from "@/lib/po-stage-window";
+import { requirePagePermission } from "@/lib/permissions/require";
 
 export const metadata: Metadata = { title: "Demand Board · Zen Garden Portal" };
 export const dynamic = "force-dynamic";
@@ -99,6 +100,8 @@ export default async function DemandPage({
 }: {
   searchParams: Promise<SearchParams>;
 }) {
+  // Phase 48: this destination is what `po.view` names.
+  await requirePagePermission("po.view");
   const params = await searchParams;
   const grain = parseGrain(firstParam(params, "by"));
   const { window, until } = resolveWindow(params, grain);
