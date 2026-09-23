@@ -3352,6 +3352,66 @@ file: generating a PDF remains Phase 19, still unbuilt.
   purchase-order file, is also unbuilt.
 
 ## History
+- 2026-09-23: A click outside the bars puts the stage board back to today — on
+  `main`. Asked for as: "If click outside the bar chart, it should reset
+  everything to default, right now it still show the previous selected day".
+  **A pinned day had no way out but the two controls that knew about it** — a
+  second tap on the same bar, or the "Back to today" link beside the table
+  heading — so a reader who pinned 29 Aug, looked away and came back was
+  reading a past day under the belief it was now. The board's whole premise is
+  that the subject follows the pointer; a subject that sticks until you find
+  the one control that releases it is the opposite.
+  **A document `click` listener, registered only while a day is pinned**, with
+  two regions deliberately exempt. A **bar** is exempt because it owns the
+  choice through its own handler and must still toggle itself off on a second
+  tap — releasing here as well would unpin and re-pin in one gesture. The
+  **breakdown below** is exempt because it is the pinned bar's own table:
+  opening a product row there must not change what the row is a breakdown
+  *of*, under the reader's hand. Everything else releases, and **Escape** does
+  too, which is the one way a keyboard can reach the state at all.
+  **On `click`, not `pointerdown`,** and that is the load-bearing detail. React
+  attaches at the root container and fires on the way up, so clearing at
+  pointer-down would unpin, let the bar's own click re-pin, and leave a second
+  tap unable ever to release. **Watched:** with `click`, tapping the same bar
+  twice still returns to today; the listener sees the bar and stands aside.
+  **The release clears the hover as well as the pin**, so "everything to
+  default" is literal rather than nearly: a reading left on screen by a
+  pointer that never moved off is the same defect wearing the other piece of
+  state.
+  Driven in a real browser against a seeded local Postgres, as the super
+  admin, 30-day window opening 23 Sep 2026. Ten checks at 1440, four at 390
+  under touch emulation:
+  - **Pinning still works and still reads its own day:** a bar pins to
+    *29 Aug · 8 orders* against *In hand today · 27 orders · 8 overdue* at
+    rest.
+  - **The two exemptions hold, measured rather than argued.** Opening a
+    product row inside the breakdown keeps the pin (*29 Aug · 8 orders*,
+    `aria-expanded=true`), and so does clicking a plain cell in the same
+    table. Under the naive rule both would have released.
+  - **Everything else releases.** A click on the page background reads
+    *In hand today · 27 orders · 8 overdue* with the expanded row collapsed
+    (`aria-expanded=false`); **Escape** reads the same.
+  - **Toggling and switching are untouched.** The same bar twice releases to
+    today; a *different* bar moves the pin rather than clearing it
+    (*5 Sep · 16 orders*).
+  - **A window chip pressed while pinned** lands on `?stage_window=60` reading
+    today, since the board remounts.
+  - **Phone.** Tapping a bar pins; tapping the board's own heading releases.
+    390/390 and 1440/1440, no page overflow either way, and no new control.
+  - 1479/1479 tests across 116 files unchanged, `tsc`, lint (the same 2
+    pre-existing `username` warnings) and `npm run build` clean, `/demand`
+    still dynamic.
+  **Not verified:** anything on production; a member's view. **No unit test
+  covers this**, and that is stated rather than hidden — the suite runs under
+  `environment: "node"` with `renderToStaticMarkup`, which is exactly the
+  limitation `context/lessons.md` §3 records, and the rule is DOM wiring with
+  no pure half worth extracting. The browser drive above is the whole
+  evidence.
+  **Pre-existing, found while driving and not fixed:** under touch emulation
+  Recharts leaves `hovered` set after a tap, so tapping the same bar twice can
+  leave that day on screen even once the pin is gone — **reproduced
+  identically on `HEAD` before this change**, so it is the hover path's, not
+  this one's. The outside tap now gives a reliable way back regardless.
 - 2026-09-23: Overdue on the stage board, and a product row that opens into
   its orders — on `main`. Asked for as: "how to show the overdue order here?
   and add filter for the overdue. The point is to let user aware the overdue

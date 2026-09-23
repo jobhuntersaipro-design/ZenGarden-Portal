@@ -3,7 +3,7 @@
 import { differenceInCalendarDays, parseISO } from "date-fns";
 import Link from "next/link";
 import { usePathname, useSearchParams } from "next/navigation";
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { StackedStageChart } from "@/components/dashboard/StackedStageChart";
 import { ChoiceButton } from "@/components/portal/ChoiceButton";
 import { SegmentGroup } from "@/components/portal/SegmentGroup";
@@ -131,6 +131,7 @@ export function StageBoard({
   const [pinned, setPinned] = useState<string | null>(null);
   const [open, setOpen] = useState<string | null>(null);
   const { ref, clipped, measure } = useEdgeFades<HTMLDivElement>();
+  const tableRef = useRef<HTMLDivElement>(null);
 
   const active = pinned ?? hovered;
   const point = active ? points.find((p) => p.key === active) : undefined;
@@ -157,6 +158,44 @@ export function StageBoard({
   // the whole window without hunting for the link that says so.
   const toggle = (key: string) =>
     setPinned((current) => (current === key ? null : key));
+
+  /**
+   * A click anywhere else puts the board back to today.
+   *
+   * A pinned day is a temporary reading, and leaving it pinned because
+   * nobody found the release is how a reader ends up studying last Tuesday
+   * believing it is now. Two places are deliberately exempt: a **bar**, which
+   * owns the choice through its own handler and must still toggle itself off
+   * on a second tap; and the **breakdown below**, which is the pinned bar's
+   * own table — expanding a row there cannot be allowed to change what the
+   * row is a breakdown *of*, under the reader's hand.
+   *
+   * On `click` rather than `pointerdown`, because React's own handler fires
+   * on the way up: clearing at pointer-down would unpin, let the bar's click
+   * re-pin, and leave a second tap unable ever to release.
+   */
+  useEffect(() => {
+    if (!pinned) return;
+    const release = (event: MouseEvent | KeyboardEvent) => {
+      if (event instanceof KeyboardEvent) {
+        if (event.key !== "Escape") return;
+      } else {
+        const target = event.target as Element | null;
+        if (!target?.isConnected) return;
+        if (target.closest(".recharts-bar-rectangle")) return;
+        if (tableRef.current?.contains(target)) return;
+      }
+      setPinned(null);
+      setHovered(null);
+      setOpen(null);
+    };
+    document.addEventListener("click", release);
+    document.addEventListener("keydown", release);
+    return () => {
+      document.removeEventListener("click", release);
+      document.removeEventListener("keydown", release);
+    };
+  }, [pinned]);
 
   const columns = OPEN_STAGES.length + (anyOverdue ? 2 : 1) + 1;
 
@@ -306,7 +345,7 @@ export function StageBoard({
         })}
       </ul>
 
-      <div className="mt-lg border-t border-hairline pt-lg">
+      <div ref={tableRef} className="mt-lg border-t border-hairline pt-lg">
         <div className="flex flex-wrap items-baseline justify-between gap-xs">
           <h3 className="text-[length:var(--text-body-md)] font-medium text-ink">
             {/* The order count sits in the heading, next to the day it is
