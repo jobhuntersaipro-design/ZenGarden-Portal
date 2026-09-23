@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useRef } from "react";
-import { useRouter } from "next/navigation";
+import { useAwaitableRefresh } from "@/hooks/useAwaitableRefresh";
 import { toast } from "sonner";
 import { mergeGuestCart } from "@/actions/cart";
 import { useGuestCart } from "@/components/shop/GuestCartProvider";
@@ -28,7 +28,7 @@ import { GUEST_CART_KEY, parseGuestCart } from "@/lib/guest-cart";
 export function GuestCartMerge() {
   const viewer = useShopViewer();
   const { clear } = useGuestCart();
-  const router = useRouter();
+  const refresh = useAwaitableRefresh();
   const ran = useRef(false);
 
   useEffect(() => {
@@ -66,7 +66,7 @@ export function GuestCartMerge() {
           ? ` — ${skipped} ${skipped === 1 ? "line is" : "lines are"} no longer available`
           : "";
       toast.success(`Your cart moved to your account${suffix}`);
-      router.refresh();
+      void refresh();
     }).catch((cause: unknown) => {
       // A rejected promise (offline, a deploy mid-flight, an aborted POST) is
       // not the same as `{success:false}` above — without this, it is an
@@ -78,7 +78,7 @@ export function GuestCartMerge() {
       ran.current = false;
       toast.error("We couldn't move your cart. Try again.");
     });
-  }, [viewer.kind, clear, router]);
+  }, [viewer.kind, clear, refresh]);
 
   return null;
 }

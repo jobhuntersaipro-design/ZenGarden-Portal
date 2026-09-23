@@ -218,11 +218,13 @@ export function PermissionGrid({ matrix }: { matrix: PermissionMatrix }) {
 
       <div className="mt-lg flex items-center gap-sm">
         <Button onClick={() => void save()} pending={saving} disabled={changes.length === 0}>
-          {changes.length === 0
-            ? "Save changes"
-            : changes.length === 1
-              ? "Save 1 change"
-              : `Save ${changes.length} changes`}
+          {saving
+            ? "Saving…"
+            : changes.length === 0
+              ? "Save changes"
+              : changes.length === 1
+                ? "Save 1 change"
+                : `Save ${changes.length} changes`}
         </Button>
         {changes.length > 0 ? (
           <button

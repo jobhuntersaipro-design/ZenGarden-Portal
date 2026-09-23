@@ -1,3 +1,5 @@
+import { RouteSkeletonSignal } from "@/components/portal/RouteSkeletonSignal";
+
 /**
  * The shared loading language (brief G1).
  *
@@ -6,8 +8,10 @@
  * when it lands. A centred spinner on a dense page still reads as lag, which
  * is the thing the 2026-09-06 review was filed about.
  *
- * These are server components — a `loading.tsx` must not pull the client
- * bundle in ahead of the page it stands in for.
+ * These are server components — a `loading.tsx` must not pull a feature's
+ * client bundle in ahead of the page it stands in for. The one exception is
+ * `RouteSkeletonSignal`, a leaf whose only job is to tell the progress bar
+ * that this skeleton is on screen.
  */
 
 /** The one skeleton fill. `surface-soft`, so it reads as a placeholder tile. */
@@ -27,6 +31,7 @@ export function Shimmer({ className = "" }: { className?: string }) {
 export function PageSkeleton({ children }: { children: React.ReactNode }) {
   return (
     <div role="status" aria-live="polite">
+      <RouteSkeletonSignal />
       <span className="sr-only">Loading…</span>
       {children}
     </div>

@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import Link from "next/link";
-import { useRouter } from "next/navigation";
+import { useAwaitableRefresh } from "@/hooks/useAwaitableRefresh";
 import { toast } from "sonner";
 import { updateProduct } from "@/actions/products";
 import { FamilyPicker, type FamilyChoice } from "@/components/products/FamilyPicker";
@@ -52,7 +52,7 @@ export function ProductSheet({
   families: FamilyOption[];
   trigger: React.ReactNode;
 }) {
-  const router = useRouter();
+  const refresh = useAwaitableRefresh();
   const [open, setOpen] = useState(false);
   const [form, setForm] = useState<ProductInput>(product);
   const [family, setFamily] = useState<FamilyChoice>({
@@ -422,14 +422,15 @@ export function ProductSheet({
                   familyId: family.familyId,
                   newFamily,
                 });
-                setPending(false);
                 if (!result.success) {
+                  setPending(false);
                   toast.error(result.error);
                   return;
                 }
                 setOpen(false);
                 toast.success("Product saved");
-                router.refresh();
+                await refresh();
+                setPending(false);
               }}
             >
               {pending ? "Saving…" : "Save changes"}

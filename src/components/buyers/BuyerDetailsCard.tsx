@@ -1,8 +1,8 @@
 "use client";
 
 import { useState } from "react";
-import { useRouter } from "next/navigation";
 import { toast } from "sonner";
+import { useAwaitableRefresh } from "@/hooks/useAwaitableRefresh";
 import { updateBuyer, type BuyerPatch } from "@/actions/buyers";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -48,7 +48,7 @@ export function BuyerDetailsCard({
   buyer: BuyerDetails;
   canRename: boolean;
 }) {
-  const router = useRouter();
+  const refresh = useAwaitableRefresh();
   const [open, setOpen] = useState(false);
   const [patch, setPatch] = useState<BuyerPatch>({
     contactName: buyer.contactName,
@@ -145,14 +145,15 @@ export function BuyerDetailsCard({
             onClick={async () => {
               setPending(true);
               const result = await updateBuyer(buyer.id, patch);
-              setPending(false);
               if (!result.success) {
+                setPending(false);
                 toast.error(result.error);
                 return;
               }
               setOpen(false);
               toast.success("Details saved");
-              router.refresh();
+              await refresh();
+              setPending(false);
             }}
           >
             {pending ? "Saving…" : "Save details"}

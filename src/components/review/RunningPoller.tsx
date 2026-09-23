@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect } from "react";
-import { useRouter } from "next/navigation";
+import { useAwaitableRefresh } from "@/hooks/useAwaitableRefresh";
 import { getExtractionStatus } from "@/actions/purchase-orders";
 import { ExtractionStatus } from "@/generated/prisma/enums";
 
@@ -13,7 +13,7 @@ const POLL_MS = 3000;
  * poll until the row settles (docs/specs/04-extraction-review.md §3).
  */
 export function RunningPoller({ extractionId }: { extractionId: string }) {
-  const router = useRouter();
+  const refresh = useAwaitableRefresh();
 
   useEffect(() => {
     const timer = setInterval(() => {
@@ -23,12 +23,12 @@ export function RunningPoller({ extractionId }: { extractionId: string }) {
           result.data.status !== ExtractionStatus.RUNNING &&
           result.data.status !== ExtractionStatus.PENDING
         ) {
-          router.refresh();
+          void refresh();
         }
       });
     }, POLL_MS);
     return () => clearInterval(timer);
-  }, [extractionId, router]);
+  }, [extractionId, refresh]);
 
   return (
     <div className="grid gap-xl lg:grid-cols-2">

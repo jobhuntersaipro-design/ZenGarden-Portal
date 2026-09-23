@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import { OPS_ROLES, roleLabel } from "@/lib/permissions/roles";
-import { useRouter } from "next/navigation";
+import { useAwaitableRefresh } from "@/hooks/useAwaitableRefresh";
 import { toast } from "sonner";
 import {
   createUser,
@@ -43,7 +43,7 @@ export function UserDrawer({
   open: boolean;
   onClose: () => void;
 }) {
-  const router = useRouter();
+  const refresh = useAwaitableRefresh();
   const isNew = user === null;
 
   const [form, setForm] = useState({
@@ -63,7 +63,7 @@ export function UserDrawer({
 
   const done = (message: string) => {
     toast.success(message);
-    router.refresh();
+    void refresh();
     onClose();
   };
 
@@ -187,7 +187,7 @@ export function UserDrawer({
                   if (result.data.password) {
                     setCreatedPassword(result.data.password);
                     toast.success("User created — the password is shown once");
-                    router.refresh();
+                    void refresh();
                     return;
                   }
                   done("They can sign in with Google now");

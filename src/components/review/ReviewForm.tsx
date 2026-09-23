@@ -11,6 +11,8 @@ import {
 } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
+import { beginRouteProgress } from "@/lib/route-progress";
+import { useAwaitableRefresh } from "@/hooks/useAwaitableRefresh";
 import { toast } from "sonner";
 import { ExtractionStatus } from "@/generated/prisma/enums";
 import {
@@ -86,6 +88,7 @@ export function ReviewForm({
   locked: { poNumber: boolean; poDate: boolean };
 }) {
   const router = useRouter();
+  const refresh = useAwaitableRefresh();
   const [draft, dispatch] = useReducer(draftReducer, initialDraft);
   const [saveState, setSaveState] = useState<"idle" | "saving" | "saved">("idle");
   /**
@@ -204,9 +207,13 @@ export function ReviewForm({
     toast.success(`${draft.poNumber} saved`, {
       action: {
         label: "View",
-        onClick: () => router.push(`/purchase-orders/${result.data.poId}`),
+        onClick: () => {
+          beginRouteProgress();
+          router.push(`/purchase-orders/${result.data.poId}`);
+        },
       },
     });
+    beginRouteProgress();
     router.push(
       result.data.nextExtractionId
         ? `/review/${result.data.nextExtractionId}?queue=${encodeURIComponent(queue.join(","))}`
@@ -243,7 +250,7 @@ export function ReviewForm({
               setRetrying(true);
               const result = await retryExtraction(extractionId);
               setRetrying(false);
-              if (result.success) router.refresh();
+              if (result.success) void refresh();
               else toast.error(result.error);
             }}
           >
@@ -494,6 +501,7 @@ export function ReviewForm({
                       setDiscarding(true);
                       const result = await discardExtraction(extractionId);
                       if (result.success) {
+                        beginRouteProgress();
                         router.push("/purchase-orders");
                         return;
                       }

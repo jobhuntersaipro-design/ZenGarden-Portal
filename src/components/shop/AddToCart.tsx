@@ -72,7 +72,9 @@ export function AddToCart({
       )}
     >
       <Plus className="size-4 shrink-0" aria-hidden />
-      {variant === "card" ? (
+      {pending ? (
+        <span>Adding…</span>
+      ) : variant === "card" ? (
         <>
           <span className="hidden sm:inline">{fullLabel}</span>
           <span className="sm:hidden">Add</span>

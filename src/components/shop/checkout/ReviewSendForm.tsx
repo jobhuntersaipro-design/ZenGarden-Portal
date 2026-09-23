@@ -2,6 +2,7 @@
 
 import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
+import { beginRouteProgress } from "@/lib/route-progress";
 import { Send } from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
@@ -121,6 +122,7 @@ export function ReviewSendForm({
         toast.error(result.error);
         return;
       }
+      beginRouteProgress();
       router.push(shopHref.orderSent(result.data.reference));
     });
   };
@@ -328,7 +330,7 @@ export function ReviewSendForm({
               onClick={send}
             >
               <Send className="size-4 shrink-0" aria-hidden />
-              Send order
+              {pending ? "Sending…" : "Send order"}
             </Button>
           </DialogFooter>
         </DialogContent>

@@ -3,6 +3,7 @@
 import { Fragment, useState, type MouseEvent, type ReactNode } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
+import { beginRouteProgress } from "@/lib/route-progress";
 import { useIsUpdating } from "@/components/portal/NavProgress";
 import { staggerClass } from "@/components/portal/Rise";
 import { Spinner } from "@/components/portal/Spinner";
@@ -140,6 +141,7 @@ export function DataTable<Row extends { id: string }>({
     // they just deleted.
     if ((event.target as HTMLElement).closest("a, button")) return;
     if (window.getSelection()?.toString()) return;
+    beginRouteProgress();
     router.push(href);
   };
 

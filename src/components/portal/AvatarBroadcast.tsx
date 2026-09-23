@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect } from "react";
-import { useRouter } from "next/navigation";
+import { useAwaitableRefresh } from "@/hooks/useAwaitableRefresh";
 
 /**
  * One channel, one message: "the signed-in person's picture changed".
@@ -34,14 +34,14 @@ export function announceAvatarChange(): void {
  * including the ones that show other people's pictures beside their names.
  */
 export function AvatarChangeListener() {
-  const router = useRouter();
+  const refresh = useAwaitableRefresh();
 
   useEffect(() => {
     if (typeof BroadcastChannel === "undefined") return;
     const channel = new BroadcastChannel(CHANNEL);
-    channel.onmessage = () => router.refresh();
+    channel.onmessage = () => void refresh();
     return () => channel.close();
-  }, [router]);
+  }, [refresh]);
 
   return null;
 }

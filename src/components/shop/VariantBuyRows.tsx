@@ -168,7 +168,7 @@ export function VariantBuyRows({
         className="mt-sm h-control-lg w-full gap-xs"
       >
         <Plus className="size-4 shrink-0" aria-hidden />
-        Add to cart
+        {pending ? "Adding…" : "Add to cart"}
       </Button>
     </div>
   );
