@@ -55,14 +55,16 @@ describe("failed-upload columns stay inside the card", () => {
     }
   });
 
-  it("drops date, items and source until the card clears md", () => {
+  it("keeps expected delivery on the 1280 card and drops it under wide", () => {
+    // Ground truth at 1280 shows this header fully inside the card.
+    // A ~1100px window's card is under 56rem, where the header clips Status.
+    expect(showAt.deliveryDate).toBe("wide");
     expect(showAt.poDate).toBe("md");
     expect(showAt.itemCount).toBe("md");
-    expect(showAt.source).toBe("md");
   });
 
-  it("drops expected delivery until the card clears lg", () => {
-    expect(showAt.deliveryDate).toBe("lg");
+  it("drops source until the card clears lg — it is the column cut at 1280", () => {
+    expect(showAt.source).toBe("lg");
   });
 
   it("drops the two avatar columns until the card clears xl", () => {
@@ -77,7 +79,7 @@ describe("failed-upload columns stay inside the card", () => {
     const markup = renderToStaticMarkup(
       <>{columns[0].cell(draft({ fileName: name }))}</>,
     );
-    expect(markup).toContain("max-w-56");
+    expect(markup).toContain("max-w-40");
     expect(markup).toContain("truncate");
     expect(markup).toContain(`title="Uploaded file ${name} — no Order ID"`);
     expect(markup).toContain(name);
@@ -92,6 +94,7 @@ describe("table scroll helpers", () => {
   it("hides a column until the named card width", () => {
     expect(columnShowClass(undefined)).toBe("");
     expect(columnShowClass("md")).toBe("@max-table-md:hidden");
+    expect(columnShowClass("wide")).toBe("@max-table-wide:hidden");
     expect(columnShowClass("lg")).toBe("@max-table-lg:hidden");
     expect(columnShowClass("xl")).toBe("@max-table-xl:hidden");
   });

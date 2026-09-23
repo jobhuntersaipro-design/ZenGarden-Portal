@@ -214,9 +214,10 @@ export function poColumns({
             // beside the file badge, is what tells two of them apart — shown
             // as the file it is, never in the PO number column. Capped, or
             // the filename becomes the column width and pushes Status off
-            // the card (measured: an uncapped name added ~370px).
+            // the card. `max-w-40` (10rem) still shows test-scan-c5atgf.pdf
+            // in full; `max-w-48` left 19px of overflow at 1280.
             <span
-              className="block min-w-0 max-w-56 truncate text-ink-secondary"
+              className="block min-w-0 max-w-40 truncate text-ink-secondary"
               title={`Uploaded file ${row.fileName} — no Order ID`}
             >
               {row.fileName}
@@ -270,9 +271,8 @@ export function poColumns({
     {
       key: "poDate",
       header: "PO date",
-      // The card at 1024 (sidebar up) is ~700px. Date, items and source
-      // come back once that card clears `md`; below it they would push
-      // Status past the edge.
+      // Date and items fit once the card clears 48rem. Below that they
+      // push Status past the edge (the 1024 window's card is ~700px).
       showAt: "md",
       defaultDir: "desc",
       cell: (row) =>
@@ -285,10 +285,10 @@ export function poColumns({
     {
       key: "deliveryDate",
       header: "Expected delivery",
-      // The widest header. It fits once the card clears 64rem — a ~1344px
-      // window with the sidebar, and every wider one — and not in the ~960px
-      // card a 1280px window leaves. Blank on a failed scan either way.
-      showAt: "lg",
+      // On the 1280 failed list the card is ~960px and this header sits
+      // fully inside it. Below 56rem (a ~1100px window, card ~780px) the
+      // same header pushes Status past the edge, so it waits.
+      showAt: "wide",
       // Soonest first: the order about to leave is the one to look at.
       defaultDir: "asc",
       cell: (row) =>
@@ -327,7 +327,10 @@ export function poColumns({
     {
       key: "source",
       header: "Source",
-      showAt: "md",
+      // The first column cut off at 1280: with the file badge in Order ID,
+      // Source starts under the card edge. It returns once the card clears
+      // 64rem (a ~1440px window).
+      showAt: "lg",
       // Deliberately not mobileHidden. Card mode drops the two avatar columns
       // as noise, but where an order came from is the one thing this column
       // exists to say.

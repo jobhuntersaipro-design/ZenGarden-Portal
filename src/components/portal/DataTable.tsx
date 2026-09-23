@@ -31,12 +31,12 @@ export type Column<Row> = {
   mobileHidden?: boolean;
   /**
    * Leave this column out of the desktop table until the card itself is at
-   * least this wide (`--container-table-md/lg/xl`: 48rem / 64rem / 90rem).
+   * least this wide (`--container-table-md/wide/lg/xl`: 48 / 56 / 64 / 90rem).
    * That is the card, not the viewport — the sidebar takes 240px, so a
    * 1280px window is a ~960px card. `@md` is not this: it is Tailwind's
    * 28rem container scale.
    */
-  showAt?: "md" | "lg" | "xl";
+  showAt?: "md" | "wide" | "lg" | "xl";
   cell: (row: Row) => ReactNode;
 };
 
@@ -47,6 +47,7 @@ export type Column<Row> = {
  */
 export function columnShowClass(showAt: Column<never>["showAt"]): string {
   if (showAt === "md") return "@max-table-md:hidden";
+  if (showAt === "wide") return "@max-table-wide:hidden";
   if (showAt === "lg") return "@max-table-lg:hidden";
   if (showAt === "xl") return "@max-table-xl:hidden";
   return "";
@@ -422,7 +423,9 @@ export function DataTable<Row extends { id: string }>({
 
         {/* Fades, not scrollbars: a scrollbar on a trackpad is invisible until
             you already know to scroll. Each one only appears while there is
-            something on that side to reach. */}
+            something on that side to reach. The right fade is surface-soft,
+            not canvas: canvas is white, and a white wash on a white cell
+            does not read as an edge. */}
         {clipped.left ? (
           <div
             aria-hidden
@@ -432,7 +435,7 @@ export function DataTable<Row extends { id: string }>({
         {clipped.right ? (
           <div
             aria-hidden
-            className="pointer-events-none absolute inset-y-px right-px z-30 w-xl rounded-r-lg bg-linear-to-l from-canvas to-transparent"
+            className="pointer-events-none absolute inset-y-px right-px z-30 w-xl rounded-r-lg bg-linear-to-l from-surface-soft from-40% to-transparent"
           />
         ) : null}
       </div>

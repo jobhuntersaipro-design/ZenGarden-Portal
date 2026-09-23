@@ -139,10 +139,11 @@ mounted the entire time; it never flipped to on.
 **Rule.** A nowrap table is as wide as its columns. When that is wider than
 the card, drop the columns that do not identify the row until the card can
 hold the rest. What is still off-screen scrolls *inside* the card, the
-identifier stays pinned, and the edge that has more fades. A header cut at
-the card edge is not a column. The width that matters is the card's, not
-the viewport's: `@md` in this project is Tailwind's 28rem container scale,
-not a 768px screen.
+identifier stays pinned, and the edge that has more fades. A fade painted
+`from-canvas` on a white cell is invisible — use a token that is not the
+cell's own background. A header cut at the card edge is not a column. The
+width that matters is the card's, not the viewport's: `@md` in this project
+is Tailwind's 28rem container scale, not a 768px screen.
 
 **The case (2026-09-23).** Purchase orders filtered to Failed, at 1280 with
 the sidebar. Twelve columns measured 1159px in a 958px card. Source was the
