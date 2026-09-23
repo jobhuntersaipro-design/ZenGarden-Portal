@@ -131,3 +131,38 @@ waits a short grace, cancelled when the skeleton mounts.
 left `data-route-progress="off"` for the whole soft-nav. The same build's
 shop header links raised the bar during the click. The portal node was
 mounted the entire time; it never flipped to on.
+
+---
+
+## 7. A label you derive is not an identifier
+
+**Rule.** Shortening a name to make a mark — initials, a monogram, a slug, an
+abbreviation, a colour picked from a hash — throws information away, and two
+different things can land on the same output. Before shipping one, run the
+derivation over **the whole real list** and count the distinct results. If it
+is fewer than the inputs, the mark identifies nothing. Where the list can
+grow at runtime, the check has to cover the shape of future values too, and
+the fallback has to be a value, never a blank.
+
+**Smell.** A function that takes a name and returns 1–3 characters, with no
+test that feeds it every name the product actually holds. `slice(0, 2)`,
+`split(" ")[0]`, "first letter of each word".
+
+**The case (2026-09-23, reported by the user).** The shop's category tiles
+printed the first two letters of a category's first word. Three of the nine
+seeded categories reduce to `HA` — Hand wash & soap, Hair care, Hand
+sanitizer — and production's own labels drew **two identical `HA` circles side
+by side** on the home page. Nine categories, six marks. The code was four
+lines long, carried a careful comment about *why* it differed from the
+person-name `initials()`, and had no test over the category list.
+
+**What makes it worse.** The same file already had the counter-example in it:
+the comment explained that `initials()` would turn "Shower cream & gel" into
+`SC`, so a second rule was written — and the new rule was never run over the
+list either. **Reasoning about one input is not checking the set.**
+
+**The fix shape.** Identify by something that cannot collapse: a shape, an
+image, the full name. Where a derived mark is genuinely wanted, pin it with a
+test that asserts `new Set(list.map(derive)).size === list.length` over the
+real list, and watch it fail against the old rule — the guard that replaced
+this one reports `expected 'HA' not to be 'HA'`.
