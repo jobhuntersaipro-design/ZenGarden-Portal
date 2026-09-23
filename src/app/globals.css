@@ -196,6 +196,12 @@
   --spacing-picker: 360px;
   /* The admin shell's top bar (Phase 09), per design reference §3.7. */
   --spacing-topbar: 60px;
+  /* The permissions matrix scrolls inside its card. Short of the viewport so
+     the role header can stick to this box — a page-level sticky header cannot,
+     because the horizontal scroller is already an overflow container. 36rem
+     shows a group and the start of the next; the 12rem keeps the card's own
+     heading, the role filter and the top bar on screen with it. */
+  --spacing-permission-grid: min(36rem, calc(100dvh - 12rem));
 
   /* Review screen (Phase 04). The source column's resting height, so the
      skeleton, the PDF loader and the poller all reserve the same space; and
