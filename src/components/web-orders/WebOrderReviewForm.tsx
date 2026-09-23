@@ -2,6 +2,7 @@
 
 import { useMemo, useReducer, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
+import { beginRouteProgress } from "@/lib/route-progress";
 import { toast } from "sonner";
 import { Field, ReadOnlyField } from "@/components/review/Field";
 import { TotalsBanner } from "@/components/review/TotalsBanner";
@@ -194,6 +195,7 @@ export function WebOrderReviewForm({ order }: { order: OpsWebOrder }) {
               });
               if (result.success) {
                 toast.success("Order confirmed.");
+                beginRouteProgress();
                 router.push(`/purchase-orders/${result.data.poId}`);
               } else {
                 toast.error(result.error);
@@ -201,7 +203,7 @@ export function WebOrderReviewForm({ order }: { order: OpsWebOrder }) {
             });
           }}
         >
-          Confirm order
+          {pending && !declining ? "Confirming…" : "Confirm order"}
         </Button>
         <Button variant="secondary" onClick={() => setDeclining((v) => !v)}>
           {declining ? "Cancel" : "Decline"}
@@ -249,6 +251,7 @@ export function WebOrderReviewForm({ order }: { order: OpsWebOrder }) {
                     // Not `?status=web`: since Phase 46 that chip holds
                     // confirmed shop orders only, and a declined one is in
                     // neither the queue nor the table.
+                    beginRouteProgress();
                     router.push("/purchase-orders");
                   } else {
                     toast.error(result.error);

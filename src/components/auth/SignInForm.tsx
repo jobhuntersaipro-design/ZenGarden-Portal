@@ -3,6 +3,8 @@
 import { useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
+import { beginRouteProgress } from "@/lib/route-progress";
+import { useAwaitableRefresh } from "@/hooks/useAwaitableRefresh";
 import { signIn } from "next-auth/react";
 import { Input } from "@/components/ui/input";
 import { FieldLabel } from "@/components/auth/FieldLabel";
@@ -28,6 +30,7 @@ export function SignInForm({
   showGoogle?: boolean;
 }) {
   const router = useRouter();
+  const refresh = useAwaitableRefresh();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [error, setError] = useState<string | null>(null);
@@ -49,8 +52,9 @@ export function SignInForm({
         setError(result.code === "too_many_attempts" ? RATE_LIMITED : WRONG);
         return;
       }
+      beginRouteProgress();
       router.push(next);
-      router.refresh();
+      void refresh();
     } catch {
       setError("We could not sign you in. Try again.");
     } finally {

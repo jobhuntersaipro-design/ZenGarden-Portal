@@ -32,7 +32,7 @@ export function ProductCard({
   return (
     <Link
       href={`/products/${product.id}`}
-      className="group flex flex-col overflow-hidden rounded-lg border border-hairline bg-canvas transition-all hover:-translate-y-0.5 hover:border-hairline-strong hover:shadow-sm focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-focus"
+      className="group flex flex-col overflow-hidden rounded-lg border border-hairline bg-canvas transition-all hover:border-hairline-strong hover:shadow-sm motion-safe:hover:-translate-y-0.5 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-focus"
     >
       <div className="relative aspect-4/3 bg-surface-soft">
         <ProductThumb name={product.name} url={imageUrl} />

@@ -2,6 +2,8 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
+import { beginRouteProgress } from "@/lib/route-progress";
+import { useAwaitableRefresh } from "@/hooks/useAwaitableRefresh";
 import { signOut } from "next-auth/react";
 import { changePassword } from "@/actions/auth";
 import { Notice } from "@/components/auth/Notice";
@@ -10,6 +12,7 @@ import { Button } from "@/components/ui/button";
 
 export function ChangePasswordForm({ forced }: { forced: boolean }) {
   const router = useRouter();
+  const refresh = useAwaitableRefresh();
   const [current, setCurrent] = useState("");
   const [password, setPassword] = useState("");
   const [confirm, setConfirm] = useState("");
@@ -41,8 +44,9 @@ export function ChangePasswordForm({ forced }: { forced: boolean }) {
         // out. This one is re-minted by the action; if that did not happen,
         // the only honest thing left is to send the user back to sign in.
         if (result.data.reauthenticated) {
+          beginRouteProgress();
           router.push("/");
-          router.refresh();
+          void refresh();
         } else {
           // Relative on purpose, and not via `redirectTo` — see
           // ResetPasswordForm: Auth.js would send a shop-host client to the

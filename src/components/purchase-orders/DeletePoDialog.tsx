@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
+import { beginRouteProgress } from "@/lib/route-progress";
 import { toast } from "sonner";
 import { deletePurchaseOrder } from "@/actions/purchase-orders";
 import { RowDeleteButton } from "@/components/purchase-orders/RowDeleteButton";
@@ -152,10 +153,13 @@ export function DeletePoDialog({
                 }
                 setOpen(false);
                 toast.success(`${reference} deleted`);
-                if (variant === "button") router.push("/purchase-orders");
+                if (variant === "button") {
+                  beginRouteProgress();
+                  router.push("/purchase-orders");
+                }
               }}
             >
-              Delete order
+              {pending ? "Deleting…" : "Delete order"}
             </Button>
           </DialogFooter>
         </DialogContent>

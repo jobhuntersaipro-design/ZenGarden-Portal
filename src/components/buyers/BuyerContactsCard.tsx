@@ -348,7 +348,7 @@ export function BuyerContactsCard({
           />
           <div className="flex items-center gap-xs">
             <Button type="submit" pending={busy === "invite"}>
-              Send invite
+              {busy === "invite" ? "Sending…" : "Send invite"}
             </Button>
             <p className="text-[length:var(--text-caption)] text-ink-tertiary">
               They get a temporary password and sign in on the shop.

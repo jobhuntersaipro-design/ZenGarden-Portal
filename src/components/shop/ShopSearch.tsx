@@ -2,8 +2,9 @@
 
 import { Suspense, useId } from "react";
 import { Search } from "lucide-react";
-import { useSearchParams } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import { cn } from "cn";
+import { beginRouteProgress, requestSoftNavigation } from "@/lib/route-progress";
 
 /**
  * A plain `<form action="/products" method="get">` — the browser does the
@@ -13,6 +14,7 @@ import { cn } from "cn";
  */
 function ShopSearchField({ className }: { className?: string }) {
   const searchParams = useSearchParams();
+  const router = useRouter();
   // The desktop and mobile headers both render this field at once (only
   // `display` differs, so both are in the DOM), so a fixed id would collide
   // and the mobile label would resolve to the hidden desktop input.
@@ -22,6 +24,16 @@ function ShopSearchField({ className }: { className?: string }) {
     <form
       action="/products"
       method="get"
+      onSubmit={(event) => {
+        event.preventDefault();
+        const query = String(new FormData(event.currentTarget).get("q") ?? "").trim();
+        const href = query ? `/products?q=${encodeURIComponent(query)}` : "/products";
+        // Already on the catalogue: keep the grid and refresh it. Anywhere
+        // else this is a route change, and the catalogue skeleton should show.
+        if (window.location.pathname === "/products" && requestSoftNavigation(href)) return;
+        beginRouteProgress();
+        router.push(href);
+      }}
       className={cn(
         "flex h-control-md items-center gap-sm rounded-pill border border-hairline-strong bg-canvas pr-xxs pl-md",
         className,

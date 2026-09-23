@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { useRouter } from "next/navigation";
+import { useAwaitableRefresh } from "@/hooks/useAwaitableRefresh";
 import { toast } from "sonner";
 import { advanceStage, revertStage } from "@/actions/stages";
 import type { PoStage } from "@/generated/prisma/enums";
@@ -40,7 +40,7 @@ export function LifecycleActions({
   advanceBlockedReason: string | null;
   canMoveBack: boolean;
 }) {
-  const router = useRouter();
+  const refresh = useAwaitableRefresh();
   const [note, setNote] = useState("");
   const [backNote, setBackNote] = useState("");
   const [backOpen, setBackOpen] = useState(false);
@@ -131,7 +131,7 @@ export function LifecycleActions({
                         toast.success(
                           `Moved back to ${stageLabel(result.data.stage)}`,
                         );
-                        router.refresh();
+                        await refresh();
                       } catch {
                         // An action that throws — an unreachable server, a
                         // deploy mid-click — rejects the promise, and without
@@ -198,7 +198,7 @@ export function LifecycleActions({
                       setAdvanceOpen(false);
                       setNote("");
                       toast.success(`Moved to ${stageLabel(result.data.stage)}`);
-                      router.refresh();
+                      await refresh();
                     } catch {
                       toast.error("We couldn't reach the server. Try again.");
                     } finally {

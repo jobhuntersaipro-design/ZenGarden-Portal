@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import { OPS_ROLES, roleLabel } from "@/lib/permissions/roles";
-import { useRouter } from "next/navigation";
+import { useAwaitableRefresh } from "@/hooks/useAwaitableRefresh";
 import { toast } from "sonner";
 import { approveAccessRequest, declineAccessRequest } from "@/actions/users";
 import { RingBadge } from "@/components/admin/RingBadge";
@@ -21,7 +21,7 @@ export type PendingRequest = {
 };
 
 export function PendingRequests({ requests }: { requests: PendingRequest[] }) {
-  const router = useRouter();
+  const refresh = useAwaitableRefresh();
   const [roles, setRoles] = useState<Record<string, Role>>({});
   const [notify, setNotify] = useState<Record<string, boolean>>({});
   /**
@@ -124,7 +124,7 @@ export function PendingRequests({ requests }: { requests: PendingRequest[] }) {
                   if (!result.success) toast.error(result.error);
                   else {
                     toast.success(`Declined ${request.name}`);
-                    router.refresh();
+                    void refresh();
                   }
                 }}
               >
@@ -147,7 +147,7 @@ export function PendingRequests({ requests }: { requests: PendingRequest[] }) {
                   if (!result.success) toast.error(result.error);
                   else {
                     toast.success(`${request.name} is in`);
-                    router.refresh();
+                    void refresh();
                   }
                 }}
               >

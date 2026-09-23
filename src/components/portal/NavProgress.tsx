@@ -7,25 +7,33 @@ import {
   useEffect,
   useId,
   useMemo,
-  useRef,
   useState,
+  useTransition,
   type ReactNode,
 } from "react";
+import { usePathname, useRouter } from "next/navigation";
+import {
+  beginRouteProgress,
+  classifyAnchorNavigation,
+  noteRouteLocation,
+  registerSoftNavigation,
+  subscribeRouteProgress,
+} from "@/lib/route-progress";
+import { RouteSkeletonSignal } from "@/components/portal/RouteSkeletonSignal";
 
 /**
- * The one place the app says "something is happening" for an in-place update.
+ * The one place the app says "something is happening".
  *
- * A route change is covered by `loading.tsx`, which Next streams the moment
- * the click lands. A filter, sort, range or page change is not: it re-renders
- * the same route with new `searchParams`, React keeps the old UI on screen
- * while the server works, and the 2026-09-06 review recorded exactly that as
- * "laggy / unresponsive". Every URL write goes through `useUrlNavigation`,
- * which reports its transition here, and this provider turns the union of
- * those into one indicator (brief G1).
+ * Two waits share the bar. A route change (a different path) starts it on the
+ * click and holds it until that route's `loading.tsx` skeleton unmounts — the
+ * URL moves earlier, when the skeleton is first allowed on screen. A refresh
+ * (a new query on the same path, or `router.refresh()` inside a transition)
+ * keeps the screen that is already up and says "Updating…" beside the bar.
  *
- * A counter rather than a boolean: two controls can be pending at once — a
+ * A map rather than a boolean: two controls can be pending at once — a
  * debounced search settling while someone clicks a chip — and the bar must
- * only clear when the last one does.
+ * only clear when the last one does. Route and refresh stay distinct so a
+ * route does not dim the page it is leaving as if the numbers were merely stale.
  */
 /**
  * How long the session history was when this document loaded.
@@ -49,25 +57,86 @@ export function hasInAppHistory(): boolean {
   return typeof window !== "undefined" && window.history.length > entryHistoryLength;
 }
 
+type WaitKind = "route" | "refresh";
+
 type NavProgressValue = {
-  /** True while any registered transition is in flight. */
-  active: boolean;
-  report: (id: string, pending: boolean) => void;
+  /** True while a refresh of the current screen is in flight. */
+  refreshing: boolean;
+  report: (id: string, pending: boolean, kind?: WaitKind) => void;
 };
 
 const NavProgressContext = createContext<NavProgressValue | null>(null);
 
 export function NavProgressProvider({ children }: { children: ReactNode }) {
-  const pendingIds = useRef(new Set<string>());
-  const [active, setActive] = useState(false);
+  // Keep the skeleton signal in this chunk. A `loading.tsx` can then run it
+  // in the same commit as the skeleton. Rendering it here would count as a
+  // mounted skeleton and the bar would never settle.
+  void RouteSkeletonSignal;
+  const router = useRouter();
+  const pathname = usePathname();
+  const [waits, setWaits] = useState<ReadonlyMap<string, WaitKind>>(() => new Map());
+  const [softPending, startSoft] = useTransition();
 
-  const report = useCallback((id: string, pending: boolean) => {
-    if (pending) pendingIds.current.add(id);
-    else pendingIds.current.delete(id);
-    setActive(pendingIds.current.size > 0);
+  const report = useCallback((id: string, pending: boolean, kind: WaitKind = "refresh") => {
+    setWaits((current) => {
+      const next = new Map(current);
+      if (pending) next.set(id, kind);
+      else next.delete(id);
+      return next;
+    });
   }, []);
 
-  const value = useMemo(() => ({ active, report }), [active, report]);
+  useEffect(() => subscribeRouteProgress((route) => report("route", route, "route")), [report]);
+
+  let routeWait = false;
+  let refreshWait = softPending;
+  for (const kind of waits.values()) {
+    if (kind === "route") routeWait = true;
+    else refreshWait = true;
+  }
+  const barOn = routeWait || refreshWait;
+  const refreshing = refreshWait;
+
+  useEffect(() => {
+    noteRouteLocation();
+  }, [pathname]);
+
+  useEffect(() => {
+    return registerSoftNavigation((href) => {
+      startSoft(() => router.replace(href, { scroll: false }));
+    });
+  }, [router]);
+
+  useEffect(() => {
+    const onClick = (event: MouseEvent) => {
+      if (event.defaultPrevented || event.button !== 0) return;
+      const anchor = (event.target as Element | null)?.closest?.("a");
+      if (!anchor) return;
+      const decision = classifyAnchorNavigation({
+        href: anchor.href,
+        current: window.location.href,
+        target: anchor.getAttribute("target"),
+        download: anchor.hasAttribute("download"),
+        modified: event.metaKey || event.ctrlKey || event.shiftKey || event.altKey,
+      });
+      if (decision.kind === "ignore") return;
+      if (decision.kind === "refresh") {
+        event.preventDefault();
+        startSoft(() => router.replace(decision.href, { scroll: false }));
+        return;
+      }
+      beginRouteProgress();
+    };
+    const onPop = () => beginRouteProgress();
+    document.addEventListener("click", onClick, true);
+    window.addEventListener("popstate", onPop);
+    return () => {
+      document.removeEventListener("click", onClick, true);
+      window.removeEventListener("popstate", onPop);
+    };
+  }, [router]);
+
+  const value = useMemo(() => ({ refreshing, report }), [refreshing, report]);
 
   return (
     <NavProgressContext value={value}>
@@ -75,15 +144,25 @@ export function NavProgressProvider({ children }: { children: ReactNode }) {
           bar: a short fill sliding a track. The length of a server render is
           unknown, so the bar reports motion and never a fraction. */}
       <div
-        aria-hidden={!active}
+        data-route-progress={barOn ? "on" : "off"}
+        aria-hidden={!barOn}
         className={`pointer-events-none fixed inset-x-0 top-0 z-50 h-0.5 overflow-hidden transition-opacity duration-[0.15s] ${
-          active ? "bg-surface-soft opacity-100" : "opacity-0"
+          barOn ? "bg-surface-soft opacity-100" : "opacity-0"
         }`}
       >
-        {active ? (
+        {barOn ? (
           <div className="h-full w-2/5 rounded-pill bg-brand-gradient animate-indeterminate" />
         ) : null}
       </div>
+      {refreshing ? (
+        <p
+          role="status"
+          data-updating="on"
+          className="pointer-events-none fixed top-sm right-md z-50 rounded-pill border border-hairline bg-canvas px-sm py-xxs text-[length:var(--text-caption)] text-brand-link shadow-sm"
+        >
+          Updating…
+        </p>
+      ) : null}
       {children}
     </NavProgressContext>
   );
@@ -106,7 +185,7 @@ export function useNavProgress(pending: boolean): void {
   }, [id, pending, report]);
 }
 
-/** True while any in-place update is running. Drives the "Updating…" hints. */
+/** True while the current screen is refreshing. Drives the "Updating…" hints. */
 export function useIsUpdating(): boolean {
-  return useContext(NavProgressContext)?.active ?? false;
+  return useContext(NavProgressContext)?.refreshing ?? false;
 }

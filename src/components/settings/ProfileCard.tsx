@@ -1,7 +1,6 @@
 "use client";
 
 import { useState } from "react";
-import { useRouter } from "next/navigation";
 import { useSession } from "next-auth/react";
 import { toast } from "sonner";
 import { updateProfile } from "@/actions/profile";
@@ -13,6 +12,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import type { AvatarStyleId } from "@/lib/avatar-style-ids";
 import { formatDate } from "@/lib/dates";
+import { useAwaitableRefresh } from "@/hooks/useAwaitableRefresh";
 
 const LABEL = "font-mono text-[length:var(--text-eyebrow)] text-ink-tertiary";
 
@@ -28,7 +28,7 @@ export function ProfileCard(props: {
   currentSeed: string | null;
 }) {
   const { update } = useSession();
-  const router = useRouter();
+  const refresh = useAwaitableRefresh();
   const [name, setName] = useState(props.name);
   const [pending, setPending] = useState(false);
 
@@ -57,15 +57,18 @@ export function ProfileCard(props: {
             event.preventDefault();
             setPending(true);
             const result = await updateProfile({ name });
-            setPending(false);
             if (!result.success) {
+              setPending(false);
               toast.error(result.error);
               return;
             }
             // update() rewrites the session cookie; refresh() is what makes
-            // the server-rendered sidebar read it.
+            // the server-rendered sidebar read it. Both finish before the
+            // button leaves "Saving…", and the refresh stays inside a
+            // transition so the form is not replaced by the route skeleton.
             await update();
-            router.refresh();
+            await refresh();
+            setPending(false);
             toast.success("Saved");
           }}
         >
@@ -106,7 +109,7 @@ export function ProfileCard(props: {
 
           <div>
             <Button type="submit" pending={pending}>
-              Save
+              {pending ? "Saving…" : "Save"}
             </Button>
           </div>
         </form>

@@ -96,3 +96,20 @@ could be tested: its guard asserts every bar's legend equals the breakdown at
 that bar's own instant, on a fixture whose first and last day deliberately
 differ. Expressed as the defect — every bar read from the last snapshot — it
 goes red. A fixture where the days agree would have passed under both.
+
+---
+
+## 5. Settle a route bar when the skeleton leaves
+
+**Rule.** A same-path link is a refresh of the screen already up. Sending it
+through a normal `<Link>` lets `loading.tsx` replace that screen. A route
+progress bar finishes when that route's loading skeleton unmounts, not when
+the URL changes. The URL moves as soon as the skeleton is allowed on screen,
+which is before the page data arrives.
+
+**The case (2026-09-23).** On the preview, Purchase orders, Buyers and
+Products raised the shared bar 27–35ms after the click. Settings painted
+`Loading…` with the bar still on. Sorting Purchase orders kept the heading
+and showed Updating…. Under reduced motion the bar's fill stopped sliding
+and sat at full width, and `.animate-in` / `.animate-rise` computed to
+`animation-name: none`.

@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { useRouter } from "next/navigation";
+import { useAwaitableRefresh } from "@/hooks/useAwaitableRefresh";
 import { toast } from "sonner";
 import { formatDate } from "@/lib/dates";
 import type { OrderIdentity } from "@/lib/order-identity";
@@ -50,7 +50,7 @@ export function EditPurchaseOrderSheet({
   identity: OrderIdentity;
   initial: PurchaseOrderPatch;
 }) {
-  const router = useRouter();
+  const refresh = useAwaitableRefresh();
   const [open, setOpen] = useState(false);
   // The field holds days; the stored value is "30 days", so it is parsed
   // on open and the action writes the wording back.
@@ -186,8 +186,8 @@ export function EditPurchaseOrderSheet({
               }
               setPending(true);
               const result = await updatePurchaseOrder(poId, patch);
-              setPending(false);
               if (!result.success) {
+                setPending(false);
                 toast.error(result.error);
                 return;
               }
@@ -197,7 +197,8 @@ export function EditPurchaseOrderSheet({
               // re-using the last reason.
               setPatch((current) => ({ ...current, reason: null }));
               toast.success("Changes saved");
-              router.refresh();
+              await refresh();
+              setPending(false);
             }}
           >
             {pending ? "Saving…" : "Save changes"}

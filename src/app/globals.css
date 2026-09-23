@@ -311,6 +311,10 @@
      lingering transform would make a table row the containing block for its
      sticky first cell. Pair with `stagger-N` for the delay. */
   --animate-rise: rise 320ms cubic-bezier(0.2, 0.7, 0.2, 1) backwards;
+  /* A page arriving. Opacity stays at 1 so a `loading.tsx` skeleton is visible
+     the moment it paints; only an 8px rise is decoration. `backwards` holds
+     the offset through a stagger delay and leaves no transform once it ends. */
+  --animate-page-arrive: page-arrive 200ms cubic-bezier(0.2, 0.7, 0.2, 1) backwards;
   /* The review count beside Purchase Orders: a ring that fades outward and
      rests for most of its cycle, so it is noticed rather than watched. */
   --animate-count-ping: count-ping 3s cubic-bezier(0, 0, 0.2, 1) infinite;
@@ -494,6 +498,15 @@
   }
 }
 
+@keyframes page-arrive {
+  from {
+    transform: translateY(8px);
+  }
+  to {
+    transform: none;
+  }
+}
+
 /*
  * A folding section (the new-buyer form's "More details"): the grid's one
  * row goes from nothing to its content's height, which `height: auto`
@@ -559,6 +572,18 @@
 }
 
 /*
+ * Overlay enter/exit (dialog, sheet, menu, popover, tooltip) is one animation
+ * that fades and also zooms or slides. Reduced motion keeps the end state and
+ * drops the motion, which is an instant opacity change.
+ */
+@media (prefers-reduced-motion: reduce) {
+  .animate-in,
+  .animate-out {
+    animation: none;
+  }
+}
+
+/*
  * The primary pill's feel, for a link styled as one: it lifts a pixel with the
  * indigo shadow on hover and gives a little under the finger. `Button` has the
  * same motion as utilities; this is for the CTAs that must be real `<a>`s.
@@ -589,12 +614,12 @@
 /*
  * A page arriving after a navigation (`PageTransition`): each top-level block
  * rises in turn, 30ms apart, capped at the sixth so a long page is never still
- * arriving. The same `rise` as a table row, and the same `backwards` fill, so
- * nothing is left holding a transform once it lands.
+ * arriving. Opacity stays put — a skeleton that fades in from nothing is a
+ * blank jump — and `backwards` leaves no transform once it lands.
  */
 @utility page-enter {
   & > * {
-    animation: var(--animate-rise);
+    animation: var(--animate-page-arrive);
   }
   & > :nth-child(2) {
     animation-delay: 30ms;

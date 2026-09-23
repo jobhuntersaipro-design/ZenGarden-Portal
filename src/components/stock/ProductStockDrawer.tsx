@@ -202,7 +202,7 @@ export function ProductStockDrawer({
 
             <div className="flex flex-wrap items-center gap-sm">
               <Button onClick={save} disabled={!valid} pending={saving}>
-                Save count
+                {saving ? "Saving…" : "Save count"}
               </Button>
               <Button variant="secondary" onClick={close} disabled={saving}>
                 Cancel

@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useRef, useTransition } from "react";
 import { useRouter } from "next/navigation";
+import { useNavProgress } from "@/components/portal/NavProgress";
 
 /** A refresh that hangs must not hold a spinner open for ever. */
 const GIVE_UP_MS = 8000;
@@ -23,6 +24,7 @@ const GIVE_UP_MS = 8000;
 export function useAwaitableRefresh(): () => Promise<void> {
   const router = useRouter();
   const [pending, startTransition] = useTransition();
+  useNavProgress(pending);
   const waiting = useRef<(() => void)[]>([]);
 
   useEffect(() => {
