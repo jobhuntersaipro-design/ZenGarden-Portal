@@ -14,7 +14,7 @@ import {
 import { usePathname, useRouter } from "next/navigation";
 import {
   beginRouteProgress,
-  classifyAnchorNavigation,
+  decideAnchorClick,
   noteRouteLocation,
   registerSoftNavigation,
   subscribeRouteProgress,
@@ -109,16 +109,12 @@ export function NavProgressProvider({ children }: { children: ReactNode }) {
 
   useEffect(() => {
     const onClick = (event: MouseEvent) => {
-      if (event.defaultPrevented || event.button !== 0) return;
-      const anchor = (event.target as Element | null)?.closest?.("a");
-      if (!anchor) return;
-      const decision = classifyAnchorNavigation({
-        href: anchor.href,
-        current: window.location.href,
-        target: anchor.getAttribute("target"),
-        download: anchor.hasAttribute("download"),
-        modified: event.metaKey || event.ctrlKey || event.shiftKey || event.altKey,
-      });
+      // Hit-testing lives in `decideAnchorClick` (composed path, then
+      // closest). The window listener and `onRouterTransitionStart` begin
+      // the same route earlier; this pass still owns same-path refresh,
+      // which has to `preventDefault` so `loading.tsx` does not replace
+      // the screen.
+      const decision = decideAnchorClick(event, window.location.href);
       if (decision.kind === "ignore") return;
       if (decision.kind === "refresh") {
         event.preventDefault();

@@ -113,3 +113,21 @@ Products raised the shared bar 27–35ms after the click. Settings painted
 and showed Updating…. Under reduced motion the bar's fill stopped sliding
 and sat at full width, and `.animate-in` / `.animate-rise` computed to
 `animation-name: none`.
+
+---
+
+## 6. The route bar starts when the router starts
+
+**Rule.** Turn the route bar on from the navigation Next actually begins
+(`onRouterTransitionStart`), and resolve the click's anchor from
+`composedPath` before `closest`. Keep that state on one `globalThis` slot:
+the instrumentation entry and the shell are separate bundles, and a begin
+in one copy never reaches a bar subscribed in the other. Do not clear the
+bar on a URL commit that has no skeleton yet. A skeleton mounting later
+only increments depth — it cannot turn the bar back on — so that commit
+waits a short grace, cancelled when the skeleton mounts.
+
+**The case (2026-09-23).** On www, Products → Buyers → Stock under Slow 3G
+left `data-route-progress="off"` for the whole soft-nav. The same build's
+shop header links raised the bar during the click. The portal node was
+mounted the entire time; it never flipped to on.
