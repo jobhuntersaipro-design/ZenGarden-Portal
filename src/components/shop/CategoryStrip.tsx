@@ -37,8 +37,11 @@ export function CategoryStrip({
     <nav
       aria-label="Shop by category"
       className={cn(
-        "flex items-center overflow-x-auto",
-        variant === "nav" ? "gap-lg" : "gap-xs",
+        "flex items-center",
+        // Chips size to their labels. The header scroller is the scrollport;
+        // overflow here would scroll inside the nav and the fade would never
+        // see anything past the edge.
+        variant === "nav" ? "gap-lg overflow-x-auto" : "w-max gap-xs",
       )}
     >
       {items.map(({ key, label, category }) => {
