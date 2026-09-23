@@ -3352,6 +3352,80 @@ file: generating a PDF remains Phase 19, still unbuilt.
   purchase-order file, is also unbuilt.
 
 ## History
+- 2026-09-23: Grain and window drive the stage board too, and it loses its own
+  Window chips — on `main`. Asked for as: "For Grain, and Window filter, please
+  make sure Order Stage table is filtered too. Then remove the Window filter in
+  Order Stage".
+  **The whole toolbar governs both boards now.** Earlier today search, family
+  and product were made to narrow the stage board while grain and window were
+  held back, on the argument that the two boards run in opposite directions in
+  time. The screenshot is what settles it: a Monthly / Next 6 months toolbar
+  sitting directly above a chart still drawing thirty daily bars, beside a
+  second Window strip offering 30 / 60 / 90, is one question asked twice with
+  two answers on screen at once.
+  **The window is read as a span, not a direction**, and that is the whole
+  reconciliation. The committed board projects it *forward* from today; the
+  stage board replays the same span *backward*, at the same grain. Any other
+  reading collapses — a snapshot of what has already happened cannot be drawn
+  into next March, and every future bar would simply repeat today. So "Next 6
+  months" at monthly grain is six monthly snapshots ending now.
+  **The date picker mirrors without a second rule.** `resolveWindow` already
+  turns `?until=` into a number of buckets, so "up to 30 Nov" — 68 days ahead —
+  draws the 68 days behind. One conversion, both directions.
+  **`All open` is the span there is rather than the span asked for.** It opens
+  at the grain's own ceiling (365 days, 260 weeks, 120 months) and the empty
+  buckets before the first order was open are trimmed, so the board reaches
+  back exactly as far as it has anything to show. One bucket always survives, so
+  a board a filter has emptied still has an axis to say so on.
+  **A defect the grain change would have introduced, caught before it
+  shipped.** The last bucket ended at *its own start* — harmless while every
+  bar was a day, and wrong the moment one is a month: September's bar would
+  have read the pipeline as it stood on the 1st. The last bucket now runs to
+  **now**, and its lateness is measured against today. **Watched failing:** with
+  the old line back, the monthly board reads `[0, 0, 0]` where `[0, 0, 3]` is
+  expected — the whole current month empty.
+  **The board's own Window strip is gone** and `?stage_window=` is no longer
+  read; a saved link carrying one is simply ignored. `Show` stays, because
+  nothing above it asks that question. The caption follows the grain — *"at the
+  end of each day / week / month"* — rather than always saying "day".
+  Driven in a real browser against a seeded local Postgres, as the super admin,
+  with three markets and two families written onto the seeded catalogue and the
+  cluster deleted afterwards. Today is 23 Sep 2026.
+  - **The span mirrors, read off the axis each time.** `day/30` →
+    **25 Aug … 21 Sep**; `day/60` → **26 Jul … 19 Sep**; `week/4` →
+    **31 Aug–6 Sep … 21–27 Sep**; `week/12` → **6–12 Jul … 21–27 Sep**;
+    `month/6` → **Apr 2026 … Sep 2026**; `month/12` → **Oct 2025 … Sep 2026**.
+  - **The date picker too:** `?until=2026-11-30` at daily grain, 68 days ahead,
+    draws the 68 days back — **17 Jul … 21 Sep**.
+  - **`All open` at daily grain reaches the 365-day ceiling** on this seed —
+    **24 Sep 2025 … 31 Aug 2026** — because something was open on every one of
+    those days, so there was nothing to trim.
+  - **The running month reads today, not its first day.** The monthly board's
+    bar totals climb **18 · 11 · 13 · 21 · 25 · 27**, ending on the same 27 the
+    heading and the table read. Under the old bucket rule that last bar was the
+    1st of September.
+  - **The filters still compose.** `?by=month&window=6&q=Meridian` reads
+    **2 orders in hand · 1 overdue** against 27 unfiltered, at monthly grain.
+  - **The strip is gone and the caption follows:** the board carries **Show**
+    and **no Window**; the caption reads *"at the end of each month"* on a
+    monthly board and *"each week"* on a weekly one. A stale
+    `?stage_window=90` changes nothing.
+  - **Clicking Monthly in the toolbar** moves the chart with the table —
+    `?by=month&window=6`, and the caption with it.
+  - **Phone.** 390/390 and 1440/1440, no page overflow; one control fewer, so
+    the 44px floor is untouched.
+  - 1496/1496 tests across 117 files (7 new), `tsc`, lint (the same 2
+    pre-existing `username` warnings) and `npm run build` clean, `/demand`
+    still dynamic.
+  **Not verified:** anything on production; a member's view. **The seeded
+  catalogue carries no market and no family of its own**, so three markets and
+  two families were written onto its 12 products for the drive.
+  **A cost worth knowing, recorded rather than smoothed over:** `All open` is
+  the one chip whose two directions are genuinely lopsided — forward it drew 18
+  columns on this seed, backward 365 bars, because demand runs out when the
+  last order is delivered while history does not. The grain ceiling bounds it
+  and `ChartScroller` keeps the bars readable, but it is the widest thing the
+  toolbar can now ask the stage board for.
 - 2026-09-23: Order stage moves above the table, and the toolbar governs both
   boards — on `main`. Asked for as: "move the Order Stage section above the
   table, then make sure the filter works for this page".

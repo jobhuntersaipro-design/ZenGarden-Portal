@@ -24,11 +24,8 @@ import {
   type StageProductRow,
 } from "@/lib/analytics/stage-products";
 import type { StageOrderMeta } from "@/lib/queries/po-stages";
-import {
-  STAGE_WINDOWS,
-  type StageShowParam,
-  type StageWindow,
-} from "@/lib/po-stage-window";
+import type { StageShowParam } from "@/lib/po-stage-window";
+import type { DemandGrain } from "@/lib/planning/grain";
 
 /**
  * The five stages an open order can stand at. Delivered is absent because a
@@ -38,6 +35,13 @@ import {
 const OPEN_STAGES = PO_STAGES.filter((stage) => stage !== PoStage.DELIVERED);
 
 const num = (value: number) => value.toLocaleString("en-MY");
+
+/** What one bar covers, for the caption. */
+const PERIOD: Record<DemandGrain, string> = {
+  day: "day",
+  week: "week",
+  month: "month",
+};
 
 /** Nothing counted is a dash, not a zero — the rule the whole portal reads by. */
 function Cell({ value }: { value: number }) {
@@ -100,7 +104,7 @@ export function StageBoard({
   overdueCount,
   openCount,
   show,
-  window: stageWindow,
+  grain,
 }: {
   points: StageSplitPoint[];
   breakdown: StageSplitBreakdown;
@@ -111,11 +115,10 @@ export function StageBoard({
   overdueCount: number;
   openCount: number;
   show: StageShowParam;
-  window: StageWindow;
+  grain: DemandGrain;
 }) {
   const pathname = usePathname();
   const searchParams = useSearchParams();
-  const windows = usePendingChoice<StageWindow>(stageWindow);
   const shows = usePendingChoice<StageShowParam>(show);
 
   // Written against the page it is on, keeping everything else in the URL.
@@ -237,8 +240,10 @@ export function StageBoard({
             )}
           </h2>
           <p className="mt-xxs text-[length:var(--text-caption)] text-ink-tertiary">
-            Where every open order stood at the end of each day · hover or tap a
-            bar for the products behind it
+            {/* The grain is the toolbar's, so the caption names what the bars
+                are rather than always saying "day". */}
+            Where every open order stood at the end of each {PERIOD[grain]} ·
+            hover or tap a bar for the products behind it
           </p>
         </div>
 
@@ -259,23 +264,6 @@ export function StageBoard({
                 onClick={() => shows.choose(value, hrefFor("stage_show", value))}
               >
                 {label}
-              </ChoiceButton>
-            ))}
-          </SegmentGroup>
-
-          <SegmentGroup label="Window" busy={windows.pending}>
-            {STAGE_WINDOWS.map((value) => (
-              <ChoiceButton
-                key={value}
-                look="segment"
-                selected={windows.value === value}
-                pending={windows.isPending(value)}
-                dimmed={windows.pending && !windows.isPending(value)}
-                onClick={() =>
-                  windows.choose(value, hrefFor("stage_window", value))
-                }
-              >
-                {value} days
               </ChoiceButton>
             ))}
           </SegmentGroup>

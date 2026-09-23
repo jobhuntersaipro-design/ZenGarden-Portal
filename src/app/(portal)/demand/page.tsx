@@ -14,8 +14,7 @@ import {
 import { DEMAND_CEILING, DEMAND_SPAN, type DemandGrain } from "@/lib/planning/grain";
 import { firstParam, type SearchParams } from "@/lib/queries/pagination";
 import { loadPoStageBoard } from "@/lib/queries/po-stages";
-import { resolveStageShow, resolveStageWindow } from "@/lib/po-stage-window";
-import { subDays } from "date-fns";
+import { resolveStageShow } from "@/lib/po-stage-window";
 
 export const metadata: Metadata = { title: "Demand Board · Zen Garden Portal" };
 export const dynamic = "force-dynamic";
@@ -103,25 +102,24 @@ export default async function DemandPage({
     family: firstParam(params, "family") ?? "",
     productId: firstParam(params, "product") ?? "",
   };
-  // The stage board reads this page's **filters** and not its window.
+  // **The whole toolbar drives the stage board now**, grain and window
+  // included — it sits directly under those controls, and one that governed
+  // the table two sections down while leaving the chart beneath it untouched
+  // would be broken on its face.
   //
-  // Search, family and product pick which orders a reader is asking about,
-  // and the toolbar that writes them now sits directly above this board — a
-  // control that governed the table two sections down and not the chart
-  // immediately beneath it would be broken on its face.
+  // The window is read as a **span rather than a direction**: the committed
+  // board projects it forward from today and the stage board replays the
+  // same span backward, at the same grain. That is the only reading that
+  // composes — a snapshot of what *has* happened cannot be drawn into next
+  // March, and every future bar would simply repeat today.
   //
-  // The window is the opposite case: the committed board looks *forward*
-  // from today and this one looks *back*, so one span cannot mean both. This
-  // board keeps its own `?stage_window=`, and a window the URL does not name
-  // falls back to 30 rather than drawing nothing.
-  const stageWindow = resolveStageWindow(firstParam(params, "stage_window"));
+  // `stage_show` stays the board's own, because nothing above it asks that
+  // question.
   const stageShow = resolveStageShow(firstParam(params, "stage_show"));
-  const stageTo = new Date();
-  const stageFrom = subDays(stageTo, Number(stageWindow) - 1);
 
   const [board, stages] = await Promise.all([
     loadDemandBoard({ grain, window, filters }),
-    loadPoStageBoard(stageFrom, stageTo, "day", stageShow, filters),
+    loadPoStageBoard({ grain, periods: window, show: stageShow, filters }),
   ]);
 
   // A picked date owns the strip: no chip is selected beside it, the same as
@@ -178,7 +176,7 @@ export default async function DemandPage({
           overdueCount={stages.overdueCount}
           openCount={stages.openCount}
           show={stages.show}
-          window={stageWindow}
+          grain={stages.grain}
         />
       </div>
 

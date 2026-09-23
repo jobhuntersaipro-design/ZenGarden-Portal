@@ -1,10 +1,11 @@
-import { addDays, subDays } from "date-fns";
+import { addDays, addMonths, addWeeks, subDays } from "date-fns";
 import { PoEventKind, PoStage } from "@/generated/prisma/enums";
-import { formatDate, TIME_ZONE, type Aggregation } from "@/lib/dates";
+import { formatDate, TIME_ZONE } from "@/lib/dates";
 import { ORDER_IDENTITY_SELECT, orderIdentity, orderLabel } from "@/lib/order-identity";
 import { prisma } from "@/lib/prisma";
 import { makeBuckets } from "@/lib/analytics/buckets";
 import { boardHaystack } from "@/lib/planning/search";
+import { DEMAND_CEILING, type DemandGrain } from "@/lib/planning/grain";
 import {
   openAt,
   pointBreakdown,
@@ -95,14 +96,32 @@ export type StageOrderMeta = {
   deliveryIso: string | null;
 };
 
+/** One period back, at the grain being read. */
+const STEP = { day: addDays, week: addWeeks, month: addMonths } as const;
+
+/**
+ * How many periods the board draws, mirroring the committed table above it.
+ *
+ * The toolbar's window is a **span**, not a direction: the committed board
+ * projects it forward from today and this one replays it backward, so "Next
+ * 6 months" at monthly grain is six monthly snapshots ending now. That is the
+ * only reading that composes — a snapshot of what *has* happened cannot be
+ * drawn into next March, and every future bar would repeat today.
+ *
+ * `all` is the span there is rather than a span asked for: it opens at the
+ * grain's own ceiling and the empty buckets before the first order was open
+ * are trimmed, so the board goes back exactly as far as it has anything to
+ * show.
+ */
+export type StagePeriods = number | "all";
+
 /**
  * The page's own filters, which this board reads because the toolbar that
  * writes them now sits directly above it.
  *
  * Only the three that pick **which orders** — the search box, the family and
- * the product. Grain and window are deliberately not among them: the
- * committed board looks forward from today and this one looks back, so one
- * window cannot mean both, and this board keeps its own `?stage_window=`.
+ * the product. Grain and window are not filters and are not here: they say
+ * how the board is *drawn*, and arrive as `grain` and `periods`.
  */
 export type StageFilters = {
   q?: string;
@@ -131,6 +150,8 @@ export type PoStageBoard = {
    * counts 27 of the orders the search left, not of the whole board.
    */
   openCount: number;
+  /** The grain the bars are drawn at, so the caption can name it. */
+  grain: DemandGrain;
   show: StageShow;
 };
 
@@ -156,32 +177,48 @@ export type PoStageBoard = {
  * expansion all walk the same narrowed list. A chart counting 27 under a
  * heading of 8 is then impossible by construction rather than by care.
  */
-export async function loadPoStageBoard(
-  from: Date,
-  to: Date,
-  agg: Aggregation,
-  show: StageShow = "all",
-  filters: StageFilters = {},
-): Promise<PoStageBoard> {
-  const buckets = makeBuckets(from, to, agg);
+export async function loadPoStageBoard({
+  grain,
+  periods,
+  show = "all",
+  filters = {},
+  now = new Date(),
+}: {
+  grain: DemandGrain;
+  periods: StagePeriods;
+  show?: StageShow;
+  filters?: StageFilters;
+  now?: Date;
+}): Promise<PoStageBoard> {
+  // The window ends today and reaches back, so the first bucket is the one
+  // `span - 1` periods ago. A span past the grain's own ceiling is clamped
+  // rather than refused: unlike a hand-typed `?window=`, this one arrives
+  // from a control the committed board has already accepted.
+  const span = Math.min(
+    periods === "all" ? DEMAND_CEILING[grain] : periods,
+    DEMAND_CEILING[grain],
+  );
+  const from = STEP[grain](now, -(span - 1));
+  const buckets = makeBuckets(from, now, grain);
 
-  // A bucket's period runs out when the next one opens; the last runs to the
-  // end of its own day, which for today is simply "everything so far".
+  // A bucket's period runs out when the next one opens; the **last** runs to
+  // now rather than to the end of its own period, so a month that has not
+  // finished reads as everything so far rather than as its first day.
   //
-  // `day` is the last calendar day *inside* the bucket, which is what
-  // lateness is measured against — at daily grain the key itself, and at a
-  // coarser one the day before the next bucket opens, because a promise for
-  // the 3rd is not broken until the week holding it has run out.
-  const snapshots: Snapshot[] = buckets.map((bucket, i) => {
+  // `day` is the last calendar day the bucket covers, which is what lateness
+  // is measured against — at daily grain the key itself, at a coarser one the
+  // day before the next bucket opens, because a promise for the 3rd is not
+  // broken until the week holding it has run out, and today for the bucket
+  // still running.
+  const everyBucket: Snapshot[] = buckets.map((bucket, i) => {
     const next = buckets[i + 1];
     return {
       key: bucket.key,
       label: bucket.label,
-      end: next?.start ?? addDays(bucket.start, 1),
-      day: next ? isoDay(subDays(next.start, 1)) : isoDay(bucket.start),
+      end: next?.start ?? addDays(now, 1),
+      day: next ? isoDay(subDays(next.start, 1)) : isoDay(now),
     };
   });
-  const last = snapshots.at(-1);
 
   const rows = await prisma.purchaseOrder.findMany({
     where: {
@@ -266,21 +303,38 @@ export async function loadPoStageBoard(
     };
   }
 
-  const points = stageSnapshotSeries(orders, snapshots, show);
-  const now = points.at(-1);
+  // **"All open" is the span there is, not the span asked for.** It opens at
+  // the grain's ceiling, which is a year of days, so the buckets before the
+  // earliest order was open are dropped rather than drawn as a long run of
+  // empty bars. One always survives: a board narrowed to nothing still needs
+  // an axis to say so on.
+  const drawn = stageSnapshotSeries(orders, everyBucket, show);
+  const first =
+    periods === "all"
+      ? Math.min(
+          drawn.findIndex((point) => point.total > 0) === -1
+            ? drawn.length - 1
+            : drawn.findIndex((point) => point.total > 0),
+          drawn.length - 1,
+        )
+      : 0;
+  const snapshots = everyBucket.slice(Math.max(first, 0));
+  const points = drawn.slice(Math.max(first, 0));
+
+  const last = snapshots.at(-1);
+  const current = points.at(-1);
 
   return {
     points,
     // The legend is the last bar, never a second count of the same orders.
-    breakdown: now ? pointBreakdown(now) : [],
+    breakdown: current ? pointBreakdown(current) : [],
     all: last ? stageByProduct(orders, last, show) : [],
     byBucket: stageProductsByBucket(orders, snapshots, show),
     orders: meta,
-    orderCount: now?.total ?? 0,
-    overdueCount: now?.lateTotal ?? 0,
-    openCount: last
-      ? openAt(orders, last).length
-      : 0,
+    orderCount: current?.total ?? 0,
+    overdueCount: current?.lateTotal ?? 0,
+    openCount: last ? openAt(orders, last).length : 0,
+    grain,
     show,
   };
 }

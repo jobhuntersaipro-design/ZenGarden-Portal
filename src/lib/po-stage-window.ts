@@ -1,6 +1,9 @@
 /**
- * The stage board's own URL vocabulary: how far back it looks, and which
- * orders it is about.
+ * The stage board's own URL vocabulary: which orders it is about.
+ *
+ * Nothing about *how far back* lives here any more. The toolbar above the
+ * board owns the grain and the span for both boards on the page, so a second
+ * window control would have been one question asked twice with two answers.
  *
  * Its own module, and that is not tidiness. The board is a client component
  * and the page is a server one; exporting this array from the component would
@@ -9,18 +12,6 @@
  * The same defect `DEMAND_SPAN` was moved out of `queries/demand` to avoid,
  * arriving from the opposite direction.
  */
-export const STAGE_WINDOWS = ["30", "60", "90"] as const;
-
-export type StageWindow = (typeof STAGE_WINDOWS)[number];
-
-export const DEFAULT_STAGE_WINDOW: StageWindow = "30";
-
-/** The window the URL asked for, or the default where it named nothing real. */
-export function resolveStageWindow(value: string | undefined): StageWindow {
-  return STAGE_WINDOWS.includes(value as StageWindow)
-    ? (value as StageWindow)
-    : DEFAULT_STAGE_WINDOW;
-}
 
 /**
  * Which open orders the board counts.
