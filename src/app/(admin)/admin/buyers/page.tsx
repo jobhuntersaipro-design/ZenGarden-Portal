@@ -4,6 +4,7 @@ import { BuyersTable } from "@/components/admin/BuyersTable";
 import { LinkSpinner } from "@/components/portal/LinkSpinner";
 import { Rise } from "@/components/portal/Rise";
 import { Button } from "@/components/ui/button";
+import { buyerMarketOptions, resolveBuyerMarket } from "@/lib/buyer-markets";
 import {
   ACCESS_FILTERS,
   accessCounts,
@@ -31,8 +32,15 @@ export default async function AdminBuyersPage({
   const accessParam = firstParam(params, "access") as AccessFilter;
   const access = ACCESS_FILTERS.includes(accessParam) ? accessParam : "all";
   const sort = parseSort(params, ADMIN_BUYER_SORT_KEYS, { key: "name", dir: "asc" });
-  const rows = selectAdminBuyers(buyers, { q, access, sort });
+  // Resolved against the whole roster, never the filtered one: a market
+  // nobody is in any more is dropped rather than drawing an empty table with
+  // the select still showing it, and the options offered always match
+  // somebody. The page passes the *resolved* value down, so the control can
+  // never show a filter the rows are not under.
+  const market = resolveBuyerMarket(firstParam(params, "market"), buyers);
+  const rows = selectAdminBuyers(buyers, { q, access, market, sort });
   const counts = accessCounts(buyers);
+  const marketOptions = buyerMarketOptions(buyers);
 
   return (
     <>
@@ -76,7 +84,15 @@ export default async function AdminBuyersPage({
         </Rise>
       ) : (
         <Rise index={1}>
-          <BuyersTable buyers={rows} sort={sort} access={access} counts={counts} />
+          <BuyersTable
+            buyers={rows}
+            sort={sort}
+            access={access}
+            counts={counts}
+            market={market}
+            markets={marketOptions.markets}
+            hasNoMarket={marketOptions.hasNoMarket}
+          />
         </Rise>
       )}
     </>

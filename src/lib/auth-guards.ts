@@ -94,17 +94,25 @@ export async function requireSuperAdmin(): Promise<SessionUser> {
  * lookup by primary key — the same trade `(portal)/layout.tsx` already makes
  * for the sidebar.
  */
-export async function requireClient(): Promise<SessionUser & { buyerId: string }> {
+export async function requireClient(): Promise<
+  SessionUser & { buyerId: string; market: string | null }
+> {
   const user = await requireAccount();
   if (user.role !== Role.CLIENT) {
     throw new UnauthorizedError("This is not a shop account.");
   }
   const fresh = await prisma.user.findUnique({
     where: { id: user.id },
-    select: { buyerId: true },
+    // The market comes from the guard, read fresh off the buyer's own row
+    // in the same query, so every shop action is handed the one value that
+    // decides what it may touch rather than resolving it for itself. A
+    // market moved by ops takes effect on the client's next request, not
+    // within five minutes — the same reason `buyerId` is read here at all
+    // rather than taken from the token.
+    select: { buyerId: true, buyer: { select: { market: true } } },
   });
   if (!fresh?.buyerId) {
     throw new UnauthorizedError("This account is not linked to a buyer.");
   }
-  return { ...user, buyerId: fresh.buyerId };
+  return { ...user, buyerId: fresh.buyerId, market: fresh.buyer?.market ?? null };
 }

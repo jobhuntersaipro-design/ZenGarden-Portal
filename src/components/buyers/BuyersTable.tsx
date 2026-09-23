@@ -12,6 +12,11 @@ import {
 import { Sparkline } from "@/components/buyers/Sparkline";
 import { Input } from "@/components/ui/input";
 import { useTableSort } from "@/hooks/useTableSort";
+import {
+  NO_MARKET,
+  NO_MARKET_LABEL,
+  type BuyerMarketFilter,
+} from "@/lib/buyer-markets";
 import { formatDate } from "@/lib/dates";
 import { formatMYR } from "@/lib/money";
 import type { BuyerFilter, BuyerRosterRow } from "@/lib/queries/buyers";
@@ -33,6 +38,9 @@ export function BuyersTable({
   size,
   total,
   filter,
+  market,
+  markets,
+  hasNoMarket,
 }: {
   rows: BuyerRosterRow[];
   sort: { key: string; dir: SortDirection };
@@ -40,6 +48,10 @@ export function BuyersTable({
   size: number;
   total: number;
   filter: BuyerFilter;
+  /** The filter the query actually applied, never the raw parameter. */
+  market: BuyerMarketFilter;
+  markets: string[];
+  hasNoMarket: boolean;
 }) {
   const onSortChange = useTableSort();
   const { replace } = useUrlNavigation();
@@ -74,6 +86,27 @@ export function BuyersTable({
           {row.name}
         </span>
       ),
+    },
+    {
+      key: "market",
+      header: "Market",
+      mobileHidden: true,
+      cell: (row) =>
+        row.market ? (
+          <span className="block max-w-40 truncate" title={row.market}>
+            {row.market}
+          </span>
+        ) : (
+          // A buyer with no market cannot see anything in the shop, so this
+          // is a state to act on rather than a blank. Amber, like every
+          // other "needs attention" figure in the portal.
+          <span
+            className="text-brand-amber"
+            title="No market set — this buyer's shop is empty until one is."
+          >
+            Not set
+          </span>
+        ),
     },
     {
       key: "orders",
@@ -166,6 +199,26 @@ export function BuyersTable({
           />
         </div>
 
+        {/* Offered from the unfiltered roster, so narrowing to one market
+            never removes the others from the control that would take you
+            back. "No market" appears only while some buyer has none. */}
+        {markets.length > 0 || hasNoMarket ? (
+          <select
+            aria-label="Market"
+            value={market ?? ""}
+            onChange={(event) => write({ market: event.target.value || null })}
+            className="h-control-md rounded-sm border border-hairline-strong bg-transparent px-xs text-[length:var(--text-body-sm)] text-ink focus-visible:border-focus focus-visible:outline-2 focus-visible:outline-focus sm:h-control-sm"
+          >
+            <option value="">All markets</option>
+            {markets.map((value) => (
+              <option key={value} value={value}>
+                {value}
+              </option>
+            ))}
+            {hasNoMarket ? <option value={NO_MARKET}>{NO_MARKET_LABEL}</option> : null}
+          </select>
+        ) : null}
+
         <div className="flex items-center gap-sm">
           <p className="text-[length:var(--text-body-sm)] text-ink-secondary">
             <span className="tabular-nums">{total}</span>{" "}
@@ -173,14 +226,17 @@ export function BuyersTable({
             {/* The summary names the filter that is on, so the number is never
                 unexplained. */}
             {filter ? ` · ${FILTER_LABEL[filter]}` : ""}
+            {market
+              ? ` · ${market === NO_MARKET ? "no market set" : `${market} only`}`
+              : ""}
           </p>
-          {filter || query ? (
+          {filter || query || market ? (
             <button
               type="button"
               onClick={() => {
                 if (timer.current) clearTimeout(timer.current);
                 setQuery("");
-                write({ filter: null, q: null });
+                write({ filter: null, q: null, market: null });
               }}
               className="text-[length:var(--text-body-sm)] text-brand-link underline-offset-2 hover:underline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-focus"
             >

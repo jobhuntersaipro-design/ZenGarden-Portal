@@ -63,25 +63,49 @@ const ORDERABLE_PRODUCT_SELECT = {
   active: true,
   needsReview: true,
   listPrice: true,
+  market: true,
 } as const;
 
-const isOrderable = (product: {
-  active: boolean;
-  needsReview: boolean;
-  listPrice: Prisma.Decimal;
-}) => product.active && !product.needsReview && product.listPrice.greaterThan(0);
+/**
+ * Whether this client may order this product.
+ *
+ * The market is a **required** second argument rather than something read
+ * inside, and that is the enforcement: every caller has to have the buyer's
+ * own market in hand, and `tsc` finds any that does not. A `null` market —
+ * a buyer nobody has assigned one — returns false for every product, so the
+ * rule fails closed by construction and not by a caller remembering to
+ * check first.
+ *
+ * `submitWebOrder` used to inline these conditions rather than call this,
+ * which is exactly how a fourth copy of a rule goes out of step with the
+ * other three; it calls this now.
+ */
+const isOrderable = (
+  product: {
+    active: boolean;
+    needsReview: boolean;
+    listPrice: Prisma.Decimal;
+    market: string | null;
+  },
+  buyerMarket: string | null,
+) =>
+  product.active &&
+  !product.needsReview &&
+  product.listPrice.greaterThan(0) &&
+  buyerMarket !== null &&
+  product.market === buyerMarket;
 
 /**
  * A product is orderable only while it is in the shop. Checked on every write
  * as well as on render, because a product can be archived or priced out while
  * a cart sits open.
  */
-async function orderableProduct(productId: string) {
+async function orderableProduct(productId: string, buyerMarket: string | null) {
   const product = await prisma.product.findUnique({
     where: { id: productId },
     select: ORDERABLE_PRODUCT_SELECT,
   });
-  if (!product || !isOrderable(product)) return null;
+  if (!product || !isOrderable(product, buyerMarket)) return null;
   return product;
 }
 
@@ -167,7 +191,10 @@ export async function addToCart(input: {
   }
 
   try {
-    if (!(await orderableProduct(parsed.data.productId))) {
+    if (!(await orderableProduct(parsed.data.productId, user.market))) {
+      // One message for every reason, deliberately: withdrawn, unpriced and
+      // "not in your market" all read the same, so naming a product id in
+      // another market cannot be used to learn that it exists.
       return { success: false, error: "That product is not available to order." };
     }
     const cart = await openCart(user.id, user.buyerId);
@@ -215,7 +242,9 @@ export async function addManyToCart(input: {
       select: ORDERABLE_PRODUCT_SELECT,
     });
     const orderableIds = new Set(
-      products.filter(isOrderable).map((product) => product.id),
+      products
+        .filter((product) => isOrderable(product, user.market))
+        .map((product) => product.id),
     );
 
     const lines = parsed.data.lines.filter((line) => orderableIds.has(line.productId));
@@ -272,7 +301,9 @@ export async function mergeGuestCart(
       select: ORDERABLE_PRODUCT_SELECT,
     });
     const orderableIds = new Set(
-      products.filter(isOrderable).map((product) => product.id),
+      products
+        .filter((product) => isOrderable(product, user.market))
+        .map((product) => product.id),
     );
 
     const cart = await openCart(user.id, user.buyerId);
@@ -334,7 +365,7 @@ export async function setCartons(input: {
       return { success: false, error: "That line is no longer in your order." };
     }
     revalidateShop();
-    return { success: true, data: await loadCart(user.id) };
+    return { success: true, data: await loadCart(user.id, user.market) };
   } catch (cause) {
     console.error("[cart] setCartons", cause);
     return { success: false, error: "We couldn't change that quantity." };
@@ -354,7 +385,7 @@ export async function removeFromCart(productId: string): Promise<ActionResult<Ca
       },
     });
     revalidateShop();
-    return { success: true, data: await loadCart(user.id) };
+    return { success: true, data: await loadCart(user.id, user.market) };
   } catch (cause) {
     console.error("[cart] removeFromCart", cause);
     return { success: false, error: "We couldn't remove that line." };
@@ -420,9 +451,7 @@ export async function submitWebOrder(
                 select: {
                   packSize: true,
                   unit: true,
-                  listPrice: true,
-                  active: true,
-                  needsReview: true,
+                  ...ORDERABLE_PRODUCT_SELECT,
                 },
               },
             },
@@ -432,11 +461,13 @@ export async function submitWebOrder(
       if (!cart) throw new Error("EMPTY");
       if (cart.lines.length === 0) throw new Error("EMPTY");
 
+      // The shared predicate, not a fourth copy of its conditions: this is
+      // the last gate before a price is written, and a line whose product
+      // has left the buyer's market must not get through it. Re-checked here
+      // rather than trusted from the add, because ops can move a market
+      // while a cart sits open.
       const unavailable = cart.lines.find(
-        (line) =>
-          !line.product.active ||
-          line.product.needsReview ||
-          line.product.listPrice.lessThanOrEqualTo(0),
+        (line) => !isOrderable(line.product, user.market),
       );
       if (unavailable) throw new Error("UNAVAILABLE");
 

@@ -1,11 +1,17 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { BuyerForm } from "@/components/buyers/BuyerForm";
+import { listLabels } from "@/lib/queries/products";
 
 export const metadata: Metadata = { title: "New buyer · Zen Garden Portal" };
 export const dynamic = "force-dynamic";
 
-export default function NewAdminBuyerPage() {
+export default async function NewAdminBuyerPage() {
+  // The MARKET vocabulary, so the picker offers the same values
+  // `Product.market` is chosen from — the two have to match exactly for a
+  // buyer to see anything.
+  const markets = await listLabels("market");
+
   return (
     <>
       <Link
@@ -14,7 +20,7 @@ export default function NewAdminBuyerPage() {
       >
         ‹ Buyer management
       </Link>
-      <BuyerForm afterCreate="/admin/buyers" />
+      <BuyerForm markets={markets} afterCreate="/admin/buyers" />
     </>
   );
 }

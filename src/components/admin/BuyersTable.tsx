@@ -11,6 +11,11 @@ import { PersonAvatar } from "@/components/ui/person";
 import { usePendingChoice } from "@/hooks/usePendingChoice";
 import { useTableSort } from "@/hooks/useTableSort";
 import { useUrlNavigation } from "@/hooks/useUrlNavigation";
+import {
+  NO_MARKET,
+  NO_MARKET_LABEL,
+  type BuyerMarketFilter,
+} from "@/lib/buyer-markets";
 import { formatDate, formatDateTime } from "@/lib/dates";
 import {
   ACCESS_FILTERS,
@@ -35,11 +40,18 @@ export function BuyersTable({
   sort,
   access,
   counts,
+  market,
+  markets,
+  hasNoMarket,
 }: {
   buyers: AdminBuyerRow[];
   sort: { key: string; dir: SortDirection };
   access: AccessFilter;
   counts: Record<AccessFilter, number>;
+  /** The *resolved* filter, never the raw parameter — see the page. */
+  market: BuyerMarketFilter;
+  markets: string[];
+  hasNoMarket: boolean;
 }) {
   const onSortChange = useTableSort();
   const { replace } = useUrlNavigation();
@@ -79,6 +91,27 @@ export function BuyersTable({
           </span>
         </span>
       ),
+    },
+    {
+      key: "market",
+      header: "Market",
+      cell: (row) =>
+        row.market ? (
+          <span title={row.market} className="block max-w-48 truncate">
+            {row.market}
+          </span>
+        ) : (
+          // Not a dash alone: since 2026-09-23 a buyer with no market has an
+          // empty shop, so this cell is the reason a customer cannot see
+          // anything and the `title` says so rather than leaving a reader to
+          // infer it from a blank.
+          <span
+            title="No market set — this buyer's shop is empty until one is."
+            className="text-brand-amber"
+          >
+            Not set
+          </span>
+        ),
     },
     {
       key: "access",
@@ -134,7 +167,7 @@ export function BuyersTable({
       <div className="mb-sm flex flex-wrap items-center gap-sm">
         <Input
           aria-label="Search buyers"
-          placeholder="Company, contact or email…"
+          placeholder="Company, contact, email or market…"
           value={query}
           onChange={(event) => {
             setQuery(event.target.value);
@@ -142,6 +175,28 @@ export function BuyersTable({
           }}
           className="h-control-md w-64 sm:h-control-sm"
         />
+        {/* Read off the roster, so it can never offer a market no buyer is
+            in. "Not set" is offered only while some buyer has none — which
+            on the first deploy is every one of them, and is the worklist
+            this feature creates. */}
+        {markets.length > 0 || hasNoMarket ? (
+          <select
+            aria-label="Market"
+            value={market ?? ""}
+            onChange={(event) =>
+              replace(hrefWith({ market: event.target.value || null }))
+            }
+            className="h-control-md rounded-sm border border-hairline-strong bg-transparent px-xs text-[length:var(--text-body-sm)] text-ink focus-visible:border-focus focus-visible:outline-2 focus-visible:outline-focus sm:h-control-sm"
+          >
+            <option value="">All markets</option>
+            {markets.map((value) => (
+              <option key={value} value={value}>
+                {value}
+              </option>
+            ))}
+            {hasNoMarket ? <option value={NO_MARKET}>{NO_MARKET_LABEL}</option> : null}
+          </select>
+        ) : null}
         <div
           role="group"
           aria-label="Filter by shop access"

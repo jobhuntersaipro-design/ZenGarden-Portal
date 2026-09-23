@@ -27,6 +27,13 @@ const buyerPatchSchema = z.object({
   phone: emptyToNull,
   address: emptyToNull,
   paymentTerms: optionalPaymentTermsSchema,
+  /**
+   * The one market this buyer buys in. Changing it changes what their shop
+   * shows the next time they load it, which is why it is an audited field
+   * like every other on this row rather than a setting edited somewhere
+   * quieter.
+   */
+  market: emptyToNull,
   remark: emptyToNull,
 });
 
@@ -73,6 +80,7 @@ export async function updateBuyer(
         phone: true,
         address: true,
         paymentTerms: true,
+        market: true,
         remark: true,
       },
     });

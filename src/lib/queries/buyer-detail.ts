@@ -21,6 +21,8 @@ export type BuyerDetail = {
     phone: string | null;
     address: string | null;
     paymentTerms: string | null;
+    /** What their shop shows. Null means it shows nothing. */
+    market: string | null;
     remark: string | null;
     since: string | null;
   };
@@ -68,6 +70,7 @@ export async function loadBuyer(
       phone: true,
       address: true,
       paymentTerms: true,
+      market: true,
       remark: true,
     },
   });

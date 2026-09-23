@@ -150,6 +150,17 @@ model Buyer {
   phone          String?
   address        String?
   paymentTerms   String?
+  /**
+   * The one market this buyer buys in — a `CatalogLabel` of kind MARKET, the
+   * same growing list `Product.market` is drawn from, matched exactly.
+   *
+   * It is what the shop is scoped by: a signed-in contact sees the products
+   * carrying this market and no others. NULL means nobody has assigned one
+   * yet, and it fails **closed** — such a buyer's shop is empty and says so,
+   * rather than falling back to the whole catalogue. A product carrying no
+   * market is likewise visible to nobody. See `src/lib/shop-market.ts`.
+   */
+  market         String?
   /// Internal note about this customer. Ops only — no shop query may select it.
   remark         String?
   createdAt      DateTime        @default(now())
@@ -161,6 +172,8 @@ model Buyer {
   purchaseOrders PurchaseOrder[]
   webOrders      WebOrder[]
   auditEvents    AuditEvent[]
+
+  @@index([market])
 }
 
 model Document {

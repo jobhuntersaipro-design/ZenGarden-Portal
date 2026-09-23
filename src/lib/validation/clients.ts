@@ -64,6 +64,17 @@ export const createBuyerSchema = z.object({
     email: emailSchema,
     phone: phoneSchema,
   }),
+  /**
+   * The one market this buyer buys in — what their shop is scoped by. Chosen
+   * from the MARKET vocabulary, but stored as free text like `Product.market`
+   * itself, so a market entered on the form and one entered on a product are
+   * the same value and match each other.
+   *
+   * Nullable and never required: a buyer can be created before anyone has
+   * decided, and the form says what that costs. It fails closed — no market
+   * means an empty shop, not the whole catalogue.
+   */
+  market: optionalText(56),
   address: optionalText(500),
   paymentTerms: paymentTermsSchema,
   remark: optionalText(2000),

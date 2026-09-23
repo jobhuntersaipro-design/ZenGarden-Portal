@@ -15,6 +15,7 @@ import {
   variantsOfProduct,
 } from "@/lib/queries/shop-catalogue";
 import { shopHref } from "@/lib/shop-routes";
+import { loadShopAudience } from "@/lib/shop-viewer";
 
 export const dynamic = "force-dynamic";
 
@@ -25,17 +26,28 @@ export default async function ShopProductPage({
 }) {
   const { id } = await params;
 
-  const product = await loadShopProduct(id);
-  // loadShopProduct applies SHOP_VISIBLE, so a product that is not on offer
-  // — archived, needsReview, or unpriced — 404s here rather than showing a
-  // price nobody can order at.
+  const audience = await loadShopAudience();
+  // A buyer with no market has no product pages either — and this 404s
+  // rather than showing the explanatory panel, because a bookmarked id must
+  // not confirm that the product exists. The panel is what they get on the
+  // pages they navigate to; a direct URL gets nothing.
+  if (audience.kind === "unassigned") notFound();
+
+  const product = await loadShopProduct(id, audience.market);
+  // `loadShopProduct` applies the market predicate, so a product that is not
+  // on offer — archived, needsReview, unpriced, or **in another market** —
+  // 404s here rather than showing a price nobody can order at. This is the
+  // check that makes another market's catalogue unreachable by URL, not
+  // merely absent from the grid.
   if (!product) notFound();
 
   // The flavours first: "More from {brand}" must not offer a sibling the
-  // picker is already showing on this page.
-  const variants = await variantsOfProduct(product);
+  // picker is already showing on this page. Both are scoped, so a flavour or
+  // a related product in another market is not offered either.
+  const variants = await variantsOfProduct(product, audience.market);
   const related = await relatedShopProducts(
     product,
+    audience.market,
     variants.map((sibling) => sibling.id),
   );
 

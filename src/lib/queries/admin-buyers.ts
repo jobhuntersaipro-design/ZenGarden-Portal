@@ -1,4 +1,5 @@
 import { Role, WebOrderStatus } from "@/generated/prisma/enums";
+import { matchesMarket, type BuyerMarketFilter } from "@/lib/buyer-markets";
 import { prisma } from "@/lib/prisma";
 import {
   accessCounts,
@@ -20,6 +21,13 @@ export type AdminBuyerRow = {
   id: string;
   name: string;
   contactName: string | null;
+  /**
+   * The one market this buyer buys in, or null while nobody has set one.
+   * Shown as a column and filtered on, because since 2026-09-23 it decides
+   * what their shop holds: a buyer with no market has an empty shop, so this
+   * column is the worklist as much as it is a fact about the account.
+   */
+  market: string | null;
   /** The company's own accounts address — search only, never shown as a column. */
   email: string | null;
   /** Their shop contacts, for search only — the table shows counts. */
@@ -36,6 +44,7 @@ export type AdminBuyerRow = {
 
 export const ADMIN_BUYER_SORT_KEYS = [
   "name",
+  "market",
   "lastActiveAt",
   "orders",
   "createdAt",
@@ -56,6 +65,7 @@ export async function listAdminBuyers(): Promise<AdminBuyerRow[]> {
       name: true,
       contactName: true,
       email: true,
+      market: true,
       createdAt: true,
       _count: {
         select: {
@@ -95,6 +105,7 @@ export async function listAdminBuyers(): Promise<AdminBuyerRow[]> {
       name: buyer.name,
       contactName: buyer.contactName,
       email: buyer.email,
+      market: buyer.market,
       contactNames: buyer.contacts.map((contact) => contact.name),
       contactEmails: buyer.contacts.map((contact) => contact.email),
       active: buyer.contacts.filter((c) => !c.disabledAt && !c.mustChangePassword).length,
@@ -115,10 +126,12 @@ export function selectAdminBuyers(
   {
     q,
     access = "all",
+    market = null,
     sort,
   }: {
     q?: string;
     access?: AccessFilter;
+    market?: BuyerMarketFilter;
     sort: { key: AdminBuyerSortKey; dir: "asc" | "desc" };
   },
 ): AdminBuyerRow[] {
@@ -126,11 +139,16 @@ export function selectAdminBuyers(
 
   const filtered = rows.filter((row) => {
     if (!matchesAccess(row, access)) return false;
+    if (!matchesMarket(row, market)) return false;
     if (!needle) return true;
+    // The market is searchable as well as filterable: typing "Vietnam" into
+    // the box should find that market's buyers, the same way typing a
+    // contact's name does, rather than only working through the select.
     const haystack = [
       row.name,
       row.contactName ?? "",
       row.email ?? "",
+      row.market ?? "",
       ...row.contactNames,
       ...row.contactEmails,
     ];
@@ -141,6 +159,16 @@ export function selectAdminBuyers(
     switch (sort.key) {
       case "name":
         return row.name.toLowerCase();
+      case "market":
+        /**
+         * A buyer with no market is not a buyer in a market called nothing,
+         * so it sinks in both directions — the portal's rule since Phase 35,
+         * and here it is what keeps the unassigned buyers from filling the
+         * top of an ascending sort where somebody is reading down a market.
+         * The sentinel flips with the direction because the comparator
+         * negates itself for `desc`.
+         */
+        return row.market?.toLowerCase() ?? (sort.dir === "asc" ? "\uffff" : "");
       case "lastActiveAt":
         // 0, so "Never" sorts as older than every real timestamp rather than
         // landing arbitrarily as NaN.

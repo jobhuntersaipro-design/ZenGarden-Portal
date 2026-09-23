@@ -1,7 +1,7 @@
 import { Prisma } from "@/generated/prisma/client";
 import { twelveMonthWindow } from "@/lib/analytics/products";
 import { prisma } from "@/lib/prisma";
-import { SHOP_VISIBLE, thumbUrl, type ShopProduct } from "@/lib/queries/shop-catalogue";
+import { shopVisible, thumbUrl, type ShopProduct } from "@/lib/queries/shop-catalogue";
 
 export type ShopHome = {
   categories: ShopHomeCategory[];
@@ -71,9 +71,9 @@ async function toShopProduct(row: HomeProductRow): Promise<ShopProduct> {
 }
 
 /** The fallback when nothing has sold in the window: the newest four visible products. */
-async function newestProducts(): Promise<ShopProduct[]> {
+async function newestProducts(market: string): Promise<ShopProduct[]> {
   const rows = await prisma.product.findMany({
-    where: SHOP_VISIBLE,
+    where: shopVisible(market),
     orderBy: { createdAt: "desc" },
     take: 4,
     select: HOME_PRODUCT_SELECT,
@@ -91,16 +91,19 @@ async function newestProducts(): Promise<ShopProduct[]> {
  * `newestProducts()` — the caller needs to know this to stop badging an
  * arbitrary new product "Best seller".
  */
-async function bestSellingProducts(window: {
-  from: Date;
-  to: Date;
-}): Promise<{ products: ShopProduct[]; isFallback: boolean }> {
+async function bestSellingProducts(
+  window: { from: Date; to: Date },
+  market: string,
+): Promise<{ products: ShopProduct[]; isFallback: boolean }> {
   const totals = await prisma.lineItem.groupBy({
     by: ["productId"],
     where: {
       productId: { not: null },
       purchaseOrder: { poDate: { gte: window.from }, supersededBy: null },
-      product: SHOP_VISIBLE,
+      // The *whole business's* best sellers would name products this buyer
+      // cannot order — and would say what other markets are buying. Scoped,
+      // so "best selling" means best selling among what they can have.
+      product: shopVisible(market),
     },
     _sum: { quantity: true },
     orderBy: { _sum: { quantity: "desc" } },
@@ -110,7 +113,9 @@ async function bestSellingProducts(window: {
   const ids = totals
     .map((row) => row.productId)
     .filter((id): id is string => Boolean(id));
-  if (ids.length === 0) return { products: await newestProducts(), isFallback: true };
+  if (ids.length === 0) {
+    return { products: await newestProducts(market), isFallback: true };
+  }
 
   const rows = await prisma.product.findMany({
     where: { id: { in: ids } },
@@ -133,9 +138,9 @@ async function bestSellingProducts(window: {
  * has no photographed product — the tile's own mark covers that, and covers it
  * for the whole catalogue today, where no product carries a photo.
  */
-async function categoryImages(): Promise<Map<string, string>> {
+async function categoryImages(market: string): Promise<Map<string, string>> {
   const rows = await prisma.product.findMany({
-    where: { ...SHOP_VISIBLE, images: { some: {} } },
+    where: { ...shopVisible(market), images: { some: {} } },
     distinct: ["category"],
     orderBy: { category: "asc" },
     select: {
@@ -160,9 +165,11 @@ async function categoryImages(): Promise<Map<string, string>> {
 }
 
 /** Distinct brand → its categories, folded from a brand/category-sorted read. */
-async function brandCards(): Promise<{ name: string; categories: string[] }[]> {
+async function brandCards(
+  market: string,
+): Promise<{ name: string; categories: string[] }[]> {
   const rows = await prisma.product.findMany({
-    where: { ...SHOP_VISIBLE, brand: { not: null } },
+    where: { ...shopVisible(market), brand: { not: null } },
     distinct: ["brand", "category"],
     select: { brand: true, category: true },
     orderBy: [{ brand: "asc" }, { category: "asc" }],
@@ -179,19 +186,19 @@ async function brandCards(): Promise<{ name: string; categories: string[] }[]> {
 }
 
 /** Everything the home page needs, in one call — §5.2. */
-export async function loadShopHome(): Promise<ShopHome> {
+export async function loadShopHome(market: string): Promise<ShopHome> {
   const window = twelveMonthWindow();
 
   const [categoryRows, images, brands, bestSellers] = await Promise.all([
     prisma.product.groupBy({
       by: ["category"],
-      where: SHOP_VISIBLE,
+      where: shopVisible(market),
       _count: { _all: true },
       orderBy: { category: "asc" },
     }),
-    categoryImages(),
-    brandCards(),
-    bestSellingProducts(window),
+    categoryImages(market),
+    brandCards(market),
+    bestSellingProducts(window, market),
   ]);
 
   return {

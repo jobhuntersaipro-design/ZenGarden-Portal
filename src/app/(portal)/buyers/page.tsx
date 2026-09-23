@@ -55,7 +55,9 @@ export default async function BuyersPage({
   });
   const { page, size, skip, take } = parsePagination(params);
 
-  const roster = await listBuyers(range, previous, filter, q, sort, skip, take);
+  const market = firstParam(params, "market");
+
+  const roster = await listBuyers(range, previous, filter, q, market, sort, skip, take);
 
   return (
     <>
@@ -149,6 +151,9 @@ export default async function BuyersPage({
         size={size}
         total={roster.total}
         filter={filter}
+        market={roster.market}
+        markets={roster.markets.markets}
+        hasNoMarket={roster.markets.hasNoMarket}
       />
     </>
   );

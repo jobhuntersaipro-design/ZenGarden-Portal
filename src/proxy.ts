@@ -4,7 +4,6 @@ import { Role } from "@/generated/prisma/enums";
 import { authConfig } from "@/lib/auth.config";
 // `shop-routes.ts` has no imports of its own, so pulling one function from it
 // keeps this file's promise of reading only `process.env` and the JWT.
-import { isShopPrivatePath } from "@/lib/shop-routes";
 
 /**
  * Route protection (docs/specs/02-auth.md §2). Runs on the Node runtime — Next
@@ -61,13 +60,21 @@ export default auth((request) => {
 
   if (!session?.user) {
     if (isPublic) return NextResponse.next();
-    // The shop is public. Only the account-shaped corners of it need a session,
-    // and those are listed in one place (src/lib/shop-routes.ts).
-    if (onShopHost && !isShared(pathname) && !isShopPrivatePath(pathname)) {
-      return NextResponse.rewrite(
-        new URL(`${SHOP_PREFIX}${pathname === "/" ? "" : pathname}${search}`, request.nextUrl),
-      );
-    }
+    /**
+     * The shop is no longer public (2026-09-23). Phase 17 rewrote a guest's
+     * request under /shop and let them browse; since the catalogue became
+     * market-scoped there is nothing a guest can correctly be shown — a
+     * guest has no buyer and so no market, and the alternative readings
+     * ("show them everything" or "show them the unmarketed products") were
+     * both declined. So every shop path now asks for a sign-in, with `next`
+     * carrying where they were going.
+     *
+     * Turned back **here** rather than in the storefront layout so it is a
+     * real 307 rather than a page that renders and then redirects, and so
+     * the decision cannot be reached by a route that forgets to check. The
+     * layout refuses a guest as well, because a rule this consequential is
+     * worth holding in two places.
+     */
     const signin = new URL("/signin", request.nextUrl);
     signin.searchParams.set("next", `${pathname}${search}`);
     return NextResponse.redirect(signin);
@@ -103,15 +110,16 @@ export default auth((request) => {
   // against a real session rather than this token, which is up to five
   // minutes stale.
 
-  // The shop host is public unless the path is private — a guest reaches this
-  // point only for a path `isShopPrivatePath` already let through above, so a
-  // signed-in visitor gets the same rewrite here with no further check. The
-  // private list lives in one place, `src/lib/shop-routes.ts`
-  // (`SHOP_PRIVATE_PATHS`), so a later phase adding an account-shaped page
-  // there is what keeps a guest out of it — nothing to remember here. Links
-  // inside the storefront are written unprefixed and revalidatePath uses the
-  // real path — see src/lib/shop-routes.ts, which is the only place either is
-  // written.
+  // Every shop path needs a session now, so a guest never reaches this line:
+  // the unauthenticated branch above redirects them to sign-in rather than
+  // rewriting them under /shop. `isShopPrivatePath` is therefore no longer
+  // consulted here — the whole shop is private — though
+  // `SHOP_PRIVATE_PATHS` is kept in `src/lib/shop-routes.ts` as the list of
+  // the account-shaped pages, which other code still reads.
+  //
+  // Links inside the storefront are written unprefixed and revalidatePath
+  // uses the real path — see src/lib/shop-routes.ts, which is the only place
+  // either is written.
   //
   // Sign-in, password reset, the forced password change and the API are shared
   // by both audiences and live at their own paths on either host. Rewriting

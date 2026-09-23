@@ -16,6 +16,9 @@ vi.mock("@/lib/r2", () => ({ presignGet }));
 const { loadShopHome } = await import("@/lib/queries/shop-home");
 const { Prisma } = await import("@/generated/prisma/client");
 
+/** The signed-in buyer's market. Every shop read is scoped to it. */
+const MARKET = "Vietnam";
+
 const dec = (v: string) => new Prisma.Decimal(v);
 
 const productRow = (over: Partial<Record<string, unknown>> = {}) => ({
@@ -61,7 +64,7 @@ describe("loadShopHome — bestSellers", () => {
       return Promise.resolve([]);
     });
 
-    const home = await loadShopHome();
+    const home = await loadShopHome(MARKET);
     expect(home.bestSellers.map((p) => p.id)).toEqual(["p2", "p1"]);
     expect(home.bestSellersAreFallback).toBe(false);
 
@@ -87,7 +90,7 @@ describe("loadShopHome — bestSellers", () => {
       return Promise.resolve([]);
     });
 
-    const home = await loadShopHome();
+    const home = await loadShopHome(MARKET);
     expect(home.bestSellers.map((p) => p.id)).toEqual(["n1", "n2"]);
     expect(home.bestSellersAreFallback).toBe(true);
 
@@ -115,7 +118,7 @@ describe("loadShopHome — brands", () => {
       return Promise.resolve([]);
     });
 
-    const home = await loadShopHome();
+    const home = await loadShopHome(MARKET);
     expect(home.brands).toEqual([
       { name: "L.HANDS", categories: ["Dishwash & cleanser", "Laundry detergent"] },
       { name: "MR. KING", categories: ["Body care"] },
@@ -138,7 +141,7 @@ describe("loadShopHome — categories", () => {
       { category: "Hair care", _count: { _all: 9 } },
     ]);
 
-    const home = await loadShopHome();
+    const home = await loadShopHome(MARKET);
     expect(home.categories).toEqual([
       { name: "Body care", count: 4, imageUrl: null },
       { name: "Hair care", count: 9, imageUrl: null },
@@ -156,7 +159,7 @@ describe("loadShopHome — category pictures", () => {
     productFindMany.mock.calls.find((call) => call[0].distinct?.[0] === "category");
 
   it("asks only for products that actually carry an image, one per category", async () => {
-    await loadShopHome();
+    await loadShopHome(MARKET);
 
     const call = categoriesCall();
     expect(call).toBeDefined();
@@ -185,7 +188,7 @@ describe("loadShopHome — category pictures", () => {
     });
     presignGet.mockResolvedValue("https://r2.example/signed-hair");
 
-    const home = await loadShopHome();
+    const home = await loadShopHome(MARKET);
 
     expect(presignGet).toHaveBeenCalledWith("thumb/hair");
     expect(home.categories).toEqual([
@@ -207,7 +210,7 @@ describe("loadShopHome — category pictures", () => {
     });
     presignGet.mockRejectedValue(new Error("gone"));
 
-    const home = await loadShopHome();
+    const home = await loadShopHome(MARKET);
 
     expect(home.categories).toEqual([{ name: "Hair care", count: 9, imageUrl: null }]);
   });

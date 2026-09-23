@@ -1,3 +1,199 @@
+# Current feature: a buyer sees only their own market
+
+## Status
+
+**Built and driven in a browser on `claude/charming-volta-q1ush5`**
+(2026-09-23). Asked for as: "If a product is listed in a certain market,
+those products can be only seen by users belong to that market. For example,
+products listed in Indonesia can be seen, order placed by user from
+Indonesia", and "for Buyer Management and Buyer tab table, make a filter for
+Market, also show the market info in the table".
+
+**Four readings were the user's, and all four were taken at the strict end.**
+Asked before building, with the cost of each spelled out:
+
+- **One market per buyer**, a column on `Buyer`, not a set.
+- **A product carrying no market is visible to nobody** — not "the general
+  catalogue".
+- **A guest sees nothing**: the shop requires a sign-in, reversing Phase 17.
+- **A buyer nobody has assigned a market sees nothing**, like a guest.
+
+**So this ships closed, and that was said before it was built.** Production
+holds 309 products, most with no market, and 11 buyers with none — under
+these rules every one of those shops is empty until ops assigns markets on
+both sides. That is the intended behaviour rather than an oversight, and the
+migration says so in its own comment; what the build adds is that the empty
+state *explains itself* rather than looking broken.
+
+**The rule lives in one function, and its signature is the enforcement.**
+`SHOP_VISIBLE` was a constant — `{ active, needsReview, listPrice }` — spread
+into fourteen places. A constant can be spread by a caller that never thought
+about who was asking. `shopVisible(market: string)` cannot: a page that has
+not resolved an audience cannot call it, so **`tsc` turned up all fourteen
+call sites** the moment the rule changed. That is the only reason to believe
+none was left drawing the whole catalogue. It is the Phase 53 lesson — adding
+a column turned nine files red — applied to a visibility rule instead of a
+figure.
+
+**Two states, not three.** `ShopAudience` is `scoped` or `unassigned`, and
+there is deliberately no `guest` arm: a guest cannot reach a shop page, so
+"not signed in" can never become "sees everything" by omission. `loadShopAudience`
+returns `unassigned` for a guest or a member too, so even a route that somehow
+escaped both redirects fails closed.
+
+**The write path is a separate check, because a filter on a grid is not a
+permission.** `isOrderable(product, buyerMarket)` takes the market as a
+required second argument and returns false for a null one. `submitWebOrder`
+had its own inlined copy of the three old conditions — a fourth copy of a
+rule, which is exactly how one goes out of step — and calls the shared
+predicate now. **Measured:** naming another market's product id straight to
+`addToCart` is refused, and with one message for every reason, so a probe
+cannot learn that the id exists.
+
+**A cart outlives a market move, so the market is re-derived on every read.**
+An out-of-market line reuses Phase 17's own "No longer available" mechanism
+rather than a second one: the line is still shown so it can be removed, its
+price and amount read `0.00`, it is out of the subtotal, and the existing
+checkout guard bounces the buyer back to the cart. Nothing new had to be
+designed for it.
+
+**The public guest-cart pricing action is closed, and that is part of the
+decision rather than a tidy-up.** `priceCart` looked products up by id,
+outside any catalogue filter, for an unauthenticated caller — so left
+answering it would have let anyone POST ids and read back a product's name,
+brand, variant, market and pack size. A rule enforced only in the UI is not
+enforced. It returns the empty cart; `GuestCart` and the localStorage module
+are kept so reversing the sign-in requirement is a matter of restoring one
+body.
+
+**The buyer tables carry the market and filter on it**, on both rosters. The
+select is read off the roster rather than the vocabulary, so it can never
+offer a market no buyer is in; a `?market=` naming one nothing carries is
+dropped rather than honoured, and the toolbar renders the **resolved** filter,
+so the control can never show a filter the rows are not under. `No market`
+reuses the catalogue's own `*none` sentinel, and on the first deploy it is the
+worklist this feature creates. A buyer with no market prints an amber
+**Not set** with the consequence in its `title` — a dash would have said
+nothing about why that customer cannot order.
+
+**The market picker is not folded into the disclosure** with address and
+terms. It is the one field that decides whether the buyer can see anything,
+so it is on the page with a caption saying what leaving it blank costs.
+
+**The market is read off the buyer's row by the guard**, not from the token:
+`requireClient` returns it, so a market ops moves takes effect on the client's
+next request rather than within five minutes.
+
+## Verified, with the figures
+
+**Driven in a real browser against a real database.** This container has no
+Neon endpoint, so a local Postgres 16 was stood up as the `postgres` user, the
+project's own seed run against it (423 purchase orders, 1,697 line items, 12
+products), and `src/lib/prisma.ts` and `prisma/seed.ts` pointed at a
+`PrismaPg` adapter for the drive and **restored afterwards**; the cluster was
+stopped and deleted, `.env.local` deleted, and `package.json` /
+`package-lock.json` are untouched. Fixture: the 12 sellable products split
+three ways — 4 Vietnam, 4 Mydin, 4 deliberately left with no market — and
+three buyers, one in each state.
+
+- **The migration applied for real**, alongside all 28 others.
+  `\d "Buyer"` reads `market | text | nullable` with `Buyer_market_idx`.
+- **The public shop closed, measured both ways.** With the two guards removed,
+  a guest's `curl` on the shop host returned **200** on `/`, `/products` and
+  `/cart`. With them, all five paths return **307 to
+  `/signin?next=…`** — `/`, `/products`, `/products/xyz`, `/cart`, `/orders`,
+  each carrying where they were going.
+- **Two buyers, two catalogues, zero overlap.** Vietnam reads *4 products ·
+  showing 1–4*, every card `· Vietnam`; Mydin reads *4 products*, every card
+  `· Mydin`; **0 product links in common**. The category strip differs too —
+  Vietnam *Fragrance · Hand sanitizer · Shower cream & gel* against Mydin
+  *Dishwash & cleanser · Hand wash & soap · Laundry detergent · Shower cream &
+  gel* — so the chrome is scoped, not just the grid.
+- **Another market's product is unreachable by URL, symmetrically.** The
+  Vietnam buyer opening Mydin's product renders **"Page not found"**, and the
+  Mydin buyer opening Vietnam's does the same; each opens their own fine. The
+  status is 200, which is the app-wide streaming-layout gap recorded since
+  2026-09-10, not this change — the *content* leaks nothing.
+- **The no-market buyer gets a sentence, not an empty grid**: "No products to
+  show you yet / Your account isn't assigned to a market… Our team sets this
+  up — nothing is wrong with your sign-in." 0 product links, no category
+  strip.
+- **A market moved under an open cart, end to end.** The Vietnam buyer added a
+  product; ops moved their buyer to Mydin in the database; the same session
+  reloaded the cart and read **"One product is no longer on sale…"**, the line
+  badged **No longer available**, amount **—**, *0 products · 0 cartons*,
+  **Total RM 0.00**, *Review and send* **disabled** under "Remove the
+  unavailable line first" — and `/checkout/review` **redirected back to
+  `/cart`**. No price reached the page.
+- **Both buyer tables.** Columns `Buyer · Market · Shop access · Last active ·
+  Orders · Since` and `Buyer · Market · Orders · Total · …`; the select offers
+  **All markets · Mydin · Vietnam · No market** on both; `?market=Vietnam`
+  gives **1 row** on each and `*none` gives **9** (11 − 2 assigned).
+- **A market saved through the edit sheet**, read back from the database:
+  Hexa Components `null → "Mydin"`, toast *Details saved*, and the audit row's
+  `detail.fields` reads `["market", "paymentTerms"]`.
+- **The create form** shows the Market section with the picker offering the
+  whole vocabulary — *No market · Malaysia · Mydin · Vietnam*, Malaysia
+  included because a picker chooses from the list where the filter reads the
+  roster — and, while blank, the amber line "Without a market their shop is
+  empty".
+- **Phone.** `/admin/buyers`, `/buyers`, `/admin/buyers/new` all **390/390**
+  and **1440/1440**, with **no non-link control under 44px**; the no-market
+  shop home 390/390 and 1440/1440.
+- **Four counterfactuals watched failing**, then restored:
+  - letting an unmarketed product through to everyone (`OR [{market}, {market:
+    null}]`) turns **5** red, including the `where`-shape pins two layers up;
+  - dropping the market from the write-path predicate turns **3** red — the
+    add, the bulk add and the no-market case;
+  - dropping it from the cart's `unavailable` — which **passed**, so that half
+    was genuinely unguarded; three tests were written and the counterfactual
+    re-run until it went red;
+  - the best-seller roll-up losing its relation filter turns the scope guard
+    red.
+- **A new structural guard**, `shop-market-scope.test.ts`: it runs every shop
+  read and asserts each `where` Prisma receives constrains the market —
+  including `lineItem.groupBy`, which reaches Product through a relation
+  filter and is the shape a scoping rule gets missed on. It also refuses
+  `"market":null` anywhere in a shop `where`.
+- **1590/1590 tests across 124 files** (39 new), `tsc`, `npm run build` clean,
+  and **lint identical to the untouched tree** (the same 4 pre-existing
+  `ShopHeader` ref errors and 3 warnings, confirmed by stashing).
+
+## Not verified
+
+- **Anything on production.** Not deployed, and no production row was read or
+  written. **On deploy every shop goes empty** until ops sets a market on each
+  buyer and on the products that buyer may order — that is the chosen
+  behaviour, but it is a migration of *data*, not of schema, and nobody has
+  done it.
+- **Calling a Server Action directly** as an out-of-market buyer. Covered by
+  unit tests and by the type-required predicate; a crafted Server-Action POST
+  is not a valid probe here (Phase 40 recorded it answers "Server action not
+  found" for a super admin too). What *was* driven live is the equivalent
+  reachable path: the market moved under an open cart.
+- **A buyer whose market is renamed in the vocabulary.** `renameLabel` rewrites
+  `Product.market`; it does **not** rewrite `Buyer.market`, so renaming a
+  market today silently empties the shops of every buyer in it. Recorded
+  rather than fixed — it is a change to the catalogue-vocabulary action and
+  was not asked for.
+- **The shop order → purchase order path** with a market moved mid-flight, and
+  a buyer's **past orders**, which are deliberately *not* re-filtered: an order
+  placed before a market moved stays readable (`ORDER_HISTORY_IS_NOT_SCOPED`
+  names the decision) and that was not driven.
+- **Emails**, none sent; **the guest-cart merge**, now unreachable; and the
+  four other auth screens.
+- **A pre-existing defect found while driving, not fixed:** the seed writes
+  `Buyer.paymentTerms` as `"30 days"` while `optionalPaymentTermsSchema` wants
+  a plain number, so **saving any seeded buyer from the edit sheet is refused**
+  with "Payment terms are a whole number of days, 0 or more." Reproduced on
+  the untouched schema and seed; the market save was proven by setting that
+  one field to `"30"` first. It predates this change and affects every field
+  on that sheet.
+- **`npm run build` without a stand-in for `xlsx`**, which is why the 125th
+  test file still fails here.
+
+## Previous phase
+
 # Fix: Failed purchase-order table stays inside its card (z8v9xngduu)
 
 On `/purchase-orders?status=failed` the desktop table was wider than the

@@ -61,7 +61,7 @@ export async function createBuyer(
       error: parsed.error.issues[0]?.message ?? "That buyer could not be created.",
     };
   }
-  const { name, contact, address, paymentTerms, remark } = parsed.data;
+  const { name, contact, market, address, paymentTerms, remark } = parsed.data;
 
   // Hashed before the transaction opens: bcrypt at cost 12 takes a few hundred
   // milliseconds, and spending that inside a transaction holds a Neon
@@ -75,6 +75,7 @@ export async function createBuyer(
       const buyer = await tx.buyer.create({
         data: {
           name,
+          market,
           address,
           paymentTerms,
           remark,

@@ -111,7 +111,21 @@ describe("createBuyer", () => {
       contactName: "Siti",
       email: "siti@acme.com",
       phone: "+60 12-345 6789",
+      market: null,
     });
+  });
+
+  it("stores the market the form chose, which is what scopes their shop", async () => {
+    await createBuyer({ ...input, market: "Vietnam" });
+    expect(buyerCreate.mock.calls[0][0].data.market).toBe("Vietnam");
+  });
+
+  it("stores no market rather than a blank one, so the shop fails closed", async () => {
+    // `optionalText` trims to null. A stored "" would scope the shop to
+    // products whose market is "" — an empty shop with no explanation — where
+    // null is the state every surface already words as "not set".
+    await createBuyer({ ...input, market: "   " });
+    expect(buyerCreate.mock.calls[0][0].data.market).toBeNull();
   });
 
   it("writes null for the folded fields when the disclosure was never opened", async () => {
@@ -120,6 +134,7 @@ describe("createBuyer", () => {
     expect(data.address).toBeNull();
     expect(data.paymentTerms).toBeNull();
     expect(data.remark).toBeNull();
+    expect(data.market).toBeNull();
   });
 
   it("always creates the contact as a CLIENT of that buyer, with a handle from their email", async () => {

@@ -1,5 +1,6 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { WebOrderStatus } from "@/generated/prisma/enums";
+import { NO_MARKET } from "@/lib/buyer-markets";
 
 const buyerFindMany = vi.fn();
 
@@ -21,6 +22,7 @@ const row = (over: Partial<AdminBuyerRow>): AdminBuyerRow => ({
   name: "Acme Industrial Sdn Bhd",
   contactName: "Raj",
   email: "accounts@acme.com",
+  market: "Mydin",
   contactNames: ["Siti"],
   contactEmails: ["siti@acme.com"],
   active: 1,
@@ -292,5 +294,64 @@ describe("listAdminBuyers", () => {
         createdAt: "2026-02-01T00:00:00.000Z",
       },
     ]);
+  });
+});
+
+describe("selectAdminBuyers, by market", () => {
+  const roster = [
+    row({ id: "a", name: "Alpha", market: "Vietnam" }),
+    row({ id: "b", name: "Bravo", market: "Mydin" }),
+    row({ id: "c", name: "Charlie", market: null }),
+    row({ id: "d", name: "Delta", market: "Vietnam" }),
+  ];
+  const sort = { key: "name" as const, dir: "asc" as const };
+
+  it("narrows to one market", () => {
+    const rows = selectAdminBuyers(roster, { market: "Vietnam", sort });
+    expect(rows.map((r) => r.id)).toEqual(["a", "d"]);
+  });
+
+  it("asks for the buyers nobody has assigned a market", () => {
+    const rows = selectAdminBuyers(roster, { market: NO_MARKET, sort });
+    expect(rows.map((r) => r.id)).toEqual(["c"]);
+  });
+
+  it("shows everyone when no market is chosen", () => {
+    expect(selectAdminBuyers(roster, { sort })).toHaveLength(4);
+  });
+
+  it("composes with the search box rather than replacing it", () => {
+    const rows = selectAdminBuyers(roster, { market: "Vietnam", q: "delta", sort });
+    expect(rows.map((r) => r.id)).toEqual(["d"]);
+  });
+
+  it("finds a market through the search box too", () => {
+    const rows = selectAdminBuyers(roster, { q: "mydin", sort });
+    expect(rows.map((r) => r.id)).toEqual(["b"]);
+  });
+
+  it("composes with the access filter", () => {
+    const mixed = [
+      row({ id: "a", market: "Vietnam", active: 1 }),
+      row({ id: "b", market: "Vietnam", active: 0, invited: 0, disabled: 0 }),
+    ];
+    const rows = selectAdminBuyers(mixed, { market: "Vietnam", access: "none", sort });
+    expect(rows.map((r) => r.id)).toEqual(["b"]);
+  });
+
+  it("sinks a buyer with no market in BOTH directions", () => {
+    // The rule this project has followed since Phase 35. Sorting it as an
+    // empty string would put every unassigned buyer at the top of an
+    // ascending sort, which is the end somebody reads when going down a
+    // market — and a naive `?? ""` passes an ascending-only test.
+    const asc = selectAdminBuyers(roster, {
+      sort: { key: "market", dir: "asc" },
+    });
+    expect(asc.map((r) => r.id)).toEqual(["b", "a", "d", "c"]);
+
+    const desc = selectAdminBuyers(roster, {
+      sort: { key: "market", dir: "desc" },
+    });
+    expect(desc[desc.length - 1]?.id).toBe("c");
   });
 });

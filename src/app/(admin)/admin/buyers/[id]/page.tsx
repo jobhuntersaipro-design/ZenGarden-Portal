@@ -15,6 +15,7 @@ import { ACTIVITY_KINDS, type ActivityKind } from "@/lib/queries/buyer-activity-
 import { listBuyerContacts } from "@/lib/queries/clients";
 import { firstParam, parsePagination, type SearchParams } from "@/lib/queries/pagination";
 import { prisma } from "@/lib/prisma";
+import { listLabels } from "@/lib/queries/products";
 
 export const dynamic = "force-dynamic";
 
@@ -29,6 +30,7 @@ async function loadBuyer(id: string) {
       phone: true,
       address: true,
       paymentTerms: true,
+      market: true,
       remark: true,
       createdAt: true,
       // A cart is a `WebOrder` too — `openCart` creates one at DRAFT the
@@ -81,7 +83,13 @@ export default async function AdminBuyerPage({
   const kind = ACTIVITY_KINDS.includes(kindParam) ? kindParam : "all";
   const { page } = parsePagination(query);
 
-  const [buyer, contacts] = await Promise.all([loadBuyer(id), listBuyerContacts(id)]);
+  const [buyer, contacts, markets] = await Promise.all([
+    loadBuyer(id),
+    listBuyerContacts(id),
+    // The MARKET vocabulary for the edit sheet's picker — the same list
+    // `Product.market` is chosen from, so the two sides can be matched.
+    listLabels("market"),
+  ]);
   if (!buyer) notFound();
 
   const activity = await loadBuyerActivity(id, { page, kind });
@@ -147,9 +155,11 @@ export default async function AdminBuyerPage({
               phone: buyer.phone,
               address: buyer.address,
               paymentTerms: buyer.paymentTerms,
+              market: buyer.market,
               remark: buyer.remark,
               since: buyer.purchaseOrders[0]?.poDate.toISOString() ?? null,
             }}
+            markets={markets}
             // This route is super-admin-only twice over: the layout redirects
             // and the proxy 404s. Anyone rendering this can rename.
             canRename

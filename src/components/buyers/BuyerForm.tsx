@@ -7,6 +7,7 @@ import { createBuyer } from "@/actions/admin-buyers";
 import { Rise } from "@/components/portal/Rise";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { GrowingListPicker } from "@/components/products/GrowingListPicker";
 import { Textarea } from "@/components/ui/textarea";
 import { useUrlNavigation } from "@/hooks/useUrlNavigation";
 
@@ -16,6 +17,7 @@ const caption = "text-[length:var(--text-caption)] text-ink-tertiary";
 type Draft = {
   name: string;
   contact: { name: string; email: string; phone: string };
+  market: string | null;
   address: string;
   paymentTerms: string;
   remark: string;
@@ -24,6 +26,7 @@ type Draft = {
 const BLANK: Draft = {
   name: "",
   contact: { name: "", email: "", phone: "" },
+  market: null,
   address: "",
   paymentTerms: "",
   remark: "",
@@ -41,7 +44,14 @@ const BLANK: Draft = {
  * the portal and from the admin room, and landing a super admin back in the
  * wrong one is the kind of thing a default quietly does forever.
  */
-export function BuyerForm({ afterCreate }: { afterCreate: string }) {
+export function BuyerForm({
+  afterCreate,
+  markets,
+}: {
+  afterCreate: string;
+  /** The MARKET vocabulary, the same list `Product.market` is chosen from. */
+  markets: string[];
+}) {
   const { pending: navigating, push } = useUrlNavigation();
   const [draft, setDraft] = useState<Draft>(BLANK);
   const [moreOpen, setMoreOpen] = useState(false);
@@ -160,7 +170,39 @@ export function BuyerForm({ afterCreate }: { afterCreate: string }) {
         </section>
       </Rise>
 
+      {/* Not folded into the disclosure with address and terms, and that is
+          deliberate: since 2026-09-23 this one field decides whether the
+          buyer can see anything in the shop at all. Leaving it out is a
+          choice worth making on purpose, so it is on the page with a caption
+          that says what leaving it blank costs. Picked from the same growing
+          list `Product.market` is, so the two sides can be matched. */}
       <Rise index={2} className="mb-lg">
+        <section className="flex flex-col gap-md rounded-lg border border-hairline bg-canvas p-lg">
+          <div>
+            <h2 className={label}>Market</h2>
+            <p className={`mt-xxs ${caption}`}>
+              What they can buy. This buyer&rsquo;s shop shows the products in this
+              market and no others.
+            </p>
+          </div>
+          <div className="flex flex-col gap-xxs">
+            <GrowingListPicker
+              label="Market"
+              value={draft.market}
+              known={markets}
+              onChange={(market) => set("market", market)}
+            />
+            {draft.market ? null : (
+              <p className="text-[length:var(--text-caption)] text-brand-amber">
+                Without a market their shop is empty — they can sign in and see no
+                products. You can set it later from the buyer&rsquo;s own page.
+              </p>
+            )}
+          </div>
+        </section>
+      </Rise>
+
+      <Rise index={3} className="mb-lg">
         <section className="rounded-lg border border-hairline bg-canvas">
           <button
             type="button"
@@ -236,7 +278,7 @@ export function BuyerForm({ afterCreate }: { afterCreate: string }) {
         </section>
       </Rise>
 
-      <Rise index={3} className="flex flex-wrap items-center gap-sm">
+      <Rise index={4} className="flex flex-wrap items-center gap-sm">
         <Button type="submit" pending={busy}>
           {busy ? "Creating…" : "Create buyer"}
         </Button>

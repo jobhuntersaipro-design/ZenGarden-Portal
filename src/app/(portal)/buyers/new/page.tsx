@@ -3,6 +3,7 @@ import Link from "next/link";
 import { redirect } from "next/navigation";
 import { BackLink } from "@/components/portal/BackLink";
 import { BuyerForm } from "@/components/buyers/BuyerForm";
+import { listLabels } from "@/lib/queries/products";
 import { can } from "@/lib/permissions/require";
 
 export const metadata: Metadata = {
@@ -20,6 +21,11 @@ export default async function NewBuyerPage() {
   // form the action would have accepted.
   if (!(await can("buyer.manage"))) redirect("/buyers");
 
+  // The MARKET vocabulary, so the picker offers the same values
+  // `Product.market` is chosen from — the two have to match exactly for a
+  // buyer to see anything.
+  const markets = await listLabels("market");
+
   return (
     <>
       <BackLink fallbackHref="/buyers" />
@@ -36,7 +42,7 @@ export default async function NewBuyerPage() {
         </span>
       </nav>
 
-      <BuyerForm afterCreate="/buyers" />
+      <BuyerForm markets={markets} afterCreate="/buyers" />
     </>
   );
 }

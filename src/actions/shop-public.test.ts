@@ -40,53 +40,49 @@ beforeEach(() => {
 });
 
 describe("priceCart", () => {
-  it("returns EMPTY_CART for an empty line list, without querying the catalogue", async () => {
-    const result = await priceCart([]);
+  /**
+   * Closed on 2026-09-23. The shop requires a sign-in since the catalogue
+   * became market-scoped, so there is no guest cart to price — and this
+   * action looked products up by id, outside any catalogue filter, so left
+   * answering it would have let an unauthenticated caller read back a
+   * product's name, brand, variant, market and pack size. These tests pin
+   * the closure rather than the pricing it used to do.
+   */
+  it("returns EMPTY_CART however many lines it is handed", async () => {
+    const result = await priceCart([
+      { productId: "p1", cartons: 2 },
+      { productId: "p2", cartons: 1 },
+    ]);
     // Against the exported constant, not a hand-built copy of its shape:
     // a field added to `Cart` should not fail this test for the wrong reason.
     expect(result).toEqual({ success: true, data: EMPTY_CART });
-    expect(productFindMany).not.toHaveBeenCalled();
   });
 
-  it("drops a line whose product id the catalogue does not hold", async () => {
-    productFindMany.mockResolvedValue([product()]);
-    const result = await priceCart([
-      { productId: "p1", cartons: 2 },
-      { productId: "gone", cartons: 1 },
-    ]);
-    if (!result.success) throw new Error("expected success");
-    expect(result.data.lines).toHaveLength(1);
-    expect(result.data.lines[0].productId).toBe("p1");
+  it("returns EMPTY_CART for an empty line list too", async () => {
+    expect(await priceCart([])).toEqual({ success: true, data: EMPTY_CART });
   });
 
-  it("marks a needsReview product unavailable and excludes it from the subtotal", async () => {
-    productFindMany.mockResolvedValue([
-      product({ id: "p1", needsReview: true }),
-      product({ id: "p2", sku: "P2" }),
-    ]);
-    const result = await priceCart([
+  it("never reads the catalogue, whatever ids it is given", async () => {
+    // The assertion that matters: a signed-out caller cannot turn a guessed
+    // product id into a name, a market or a pack size. If this action is
+    // ever reopened, it has to be reopened deliberately and this test has to
+    // be rewritten with it.
+    await priceCart([
       { productId: "p1", cartons: 1 },
-      { productId: "p2", cartons: 1 },
+      { productId: "definitely-not-a-product", cartons: 1 },
     ]);
-    if (!result.success) throw new Error("expected success");
-    const bySku = Object.fromEntries(
-      result.data.lines.map((line) => [line.sku, line.unavailable]),
-    );
-    expect(bySku["ZEN-SC-1000-GM-VN"]).toBe(true);
-    expect(bySku.P2).toBe(false);
-    expect(result.data.subtotal).toBe("189.00");
-  });
-
-  it("refuses more than 100 lines with an error, and does not query the catalogue", async () => {
-    const lines = Array.from({ length: 101 }, (_, i) => ({ productId: `p${i}`, cartons: 1 }));
-    const result = await priceCart(lines);
-    expect(result.success).toBe(false);
     expect(productFindMany).not.toHaveBeenCalled();
+    expect(presignGet).not.toHaveBeenCalled();
   });
 
-  it("returns a typed error, rather than a rejected promise, when the query fails", async () => {
-    productFindMany.mockRejectedValue(new Error("connection reset"));
-    const result = await priceCart([{ productId: "p1", cartons: 1 }]);
-    expect(result).toEqual({ success: false, error: "We couldn't price your cart." });
+  it("leaks nothing about a product a caller names", async () => {
+    // Even with the catalogue mocked to return a real row, nothing of it
+    // reaches the response — the action never asks.
+    productFindMany.mockResolvedValue([product()]);
+    const result = await priceCart([{ productId: "p1", cartons: 2 }]);
+    if (!result.success) throw new Error("expected success");
+    expect(result.data.lines).toEqual([]);
+    expect(JSON.stringify(result)).not.toContain("ZEN-SC-1000-GM-VN");
+    expect(JSON.stringify(result)).not.toContain("189.00");
   });
 });

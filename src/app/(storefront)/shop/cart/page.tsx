@@ -19,9 +19,18 @@ export default async function CartPage() {
   if (viewer === "staff") return null;
 
   if (viewer.kind === "client") {
-    const cart = await loadCart(viewer.id);
+    // The market is passed, not looked up: a line whose product has left it
+    // prices at 0.00 and reads "No longer available", the same as one that
+    // was archived — so an open cart cannot quote for something the buyer
+    // may no longer order.
+    const cart = await loadCart(viewer.id, viewer.market);
     return <ClientCart cart={cart} />;
   }
 
+  // Unreachable since 2026-09-23: a guest is redirected to sign-in by the
+  // proxy and again by the storefront layout, so there is no guest cart to
+  // draw. Kept rather than deleted, with `GuestCart` and its localStorage
+  // module, because reversing the sign-in requirement should not mean
+  // rebuilding them.
   return <GuestCart />;
 }

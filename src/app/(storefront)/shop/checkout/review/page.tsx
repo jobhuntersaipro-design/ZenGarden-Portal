@@ -29,11 +29,14 @@ export default async function CheckoutReviewPage() {
   }
 
   const [cart, buyer] = await Promise.all([
-    loadCart(viewer.id),
+    loadCart(viewer.id, viewer.market),
     loadReviewBuyer(viewer.buyerId),
   ]);
 
   if (cart.lines.length === 0) redirect(shopHref.cart());
+  // Already covers a product that has left the buyer's market: `loadCart`
+  // marks such a line unavailable, so this existing guard sends them back to
+  // the cart to remove it rather than letting it reach `submitWebOrder`.
   if (cart.lines.some((line) => line.unavailable)) redirect(shopHref.cart());
 
   return (

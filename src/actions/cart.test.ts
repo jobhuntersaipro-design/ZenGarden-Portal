@@ -121,11 +121,21 @@ const sellable = {
   active: true,
   needsReview: false,
   listPrice: dec("189.00"),
+  // In the same market as the signed-in client below. Since 2026-09-23 that
+  // is a condition of being orderable at all, not merely of being listed.
+  market: "Vietnam",
 };
 
 beforeEach(() => {
   vi.resetAllMocks();
-  requireClient.mockResolvedValue({ id: "c1", buyerId: "b1", role: "CLIENT" });
+  // `market` comes from the guard, which reads it off the buyer's row — every
+  // cart action is handed it rather than resolving it for itself.
+  requireClient.mockResolvedValue({
+    id: "c1",
+    buyerId: "b1",
+    role: "CLIENT",
+    market: "Vietnam",
+  });
   productFindUnique.mockResolvedValue(sellable);
   productFindMany.mockResolvedValue([sellable]);
   webOrderFindFirst.mockResolvedValue({ id: "cart1", reference: "W-2609-00001", lines: [] });
@@ -172,6 +182,11 @@ describe("addToCart", () => {
     ["archived", { ...sellable, active: false }],
     ["still needing review", { ...sellable, needsReview: true }],
     ["unpriced", { ...sellable, listPrice: dec("0") }],
+    // The one this feature adds: a real, active, priced product that simply
+    // belongs to another market. Named by id straight to the action, which
+    // is the path a UI filter cannot cover.
+    ["in another market", { ...sellable, market: "Mydin" }],
+    ["in no market at all", { ...sellable, market: null }],
     ["gone", null],
   ])("refuses a product that is %s", async (_label, product) => {
     productFindUnique.mockResolvedValue(product);
@@ -207,7 +222,10 @@ describe("setCartons", () => {
     const repriced = { id: "cart1", lines: [], subtotal: "756.00", cartonCount: 4 };
     loadCart.mockResolvedValue(repriced);
     const result = await setCartons({ productId: "p1", cartons: 4 });
-    expect(loadCart).toHaveBeenCalledWith("c1");
+    // With the market: the cart is re-priced against the caller's own, so a
+    // line whose product has left it comes back unavailable rather than
+    // priced.
+    expect(loadCart).toHaveBeenCalledWith("c1", "Vietnam");
     expect(result).toEqual({ success: true, data: repriced });
   });
 });
@@ -222,7 +240,10 @@ describe("removeFromCart", () => {
       placedById: "c1",
       status: "DRAFT",
     });
-    expect(loadCart).toHaveBeenCalledWith("c1");
+    // With the market: the cart is re-priced against the caller's own, so a
+    // line whose product has left it comes back unavailable rather than
+    // priced.
+    expect(loadCart).toHaveBeenCalledWith("c1", "Vietnam");
     expect(result).toEqual({ success: true, data: repriced });
   });
 });
@@ -509,7 +530,12 @@ describe("mergeGuestCart", () => {
 });
 
 describe("addManyToCart", () => {
-  const client = { id: "user-1", buyerId: "buyer-1", role: "CLIENT" };
+  const client = {
+    id: "user-1",
+    buyerId: "buyer-1",
+    role: "CLIENT",
+    market: "Vietnam",
+  };
 
   beforeEach(() => {
     requireClient.mockResolvedValue(client);
@@ -519,8 +545,8 @@ describe("addManyToCart", () => {
 
   it("upserts every line in one transaction", async () => {
     productFindMany.mockResolvedValue([
-      { id: "p-1", active: true, needsReview: false, listPrice: new Prisma.Decimal("10") },
-      { id: "p-2", active: true, needsReview: false, listPrice: new Prisma.Decimal("20") },
+      { id: "p-1", active: true, needsReview: false, listPrice: new Prisma.Decimal("10"), market: "Vietnam" },
+      { id: "p-2", active: true, needsReview: false, listPrice: new Prisma.Decimal("20"), market: "Vietnam" },
     ]);
 
     const result = await addManyToCart({
@@ -541,8 +567,8 @@ describe("addManyToCart", () => {
 
   it("reads every product in one query, not one per line", async () => {
     productFindMany.mockResolvedValue([
-      { id: "p-1", active: true, needsReview: false, listPrice: new Prisma.Decimal("10") },
-      { id: "p-2", active: true, needsReview: false, listPrice: new Prisma.Decimal("20") },
+      { id: "p-1", active: true, needsReview: false, listPrice: new Prisma.Decimal("10"), market: "Vietnam" },
+      { id: "p-2", active: true, needsReview: false, listPrice: new Prisma.Decimal("20"), market: "Vietnam" },
     ]);
     await addManyToCart({
       lines: [
@@ -556,8 +582,8 @@ describe("addManyToCart", () => {
 
   it("skips a line whose product has left the shop, and counts it", async () => {
     productFindMany.mockResolvedValue([
-      { id: "p-1", active: true, needsReview: false, listPrice: new Prisma.Decimal("10") },
-      { id: "p-2", active: false, needsReview: false, listPrice: new Prisma.Decimal("20") },
+      { id: "p-1", active: true, needsReview: false, listPrice: new Prisma.Decimal("10"), market: "Vietnam" },
+      { id: "p-2", active: false, needsReview: false, listPrice: new Prisma.Decimal("20"), market: "Vietnam" },
     ]);
 
     const result = await addManyToCart({
@@ -569,6 +595,27 @@ describe("addManyToCart", () => {
 
     expect(result).toEqual({ success: true, data: { added: 1, skipped: 1 } });
     expect(lineUpsert).toHaveBeenCalledTimes(1);
+  });
+
+  it("skips a line whose product is in another market, however live it is", async () => {
+    // Both products are active, reviewed and priced. The only difference is
+    // the market, and that is the whole point: adding several at once is the
+    // bulk path, and a filter on the grid cannot police it.
+    productFindMany.mockResolvedValue([
+      { id: "p-1", active: true, needsReview: false, listPrice: new Prisma.Decimal("10"), market: "Vietnam" },
+      { id: "p-2", active: true, needsReview: false, listPrice: new Prisma.Decimal("20"), market: "Mydin" },
+    ]);
+
+    const result = await addManyToCart({
+      lines: [
+        { productId: "p-1", cartons: 1 },
+        { productId: "p-2", cartons: 1 },
+      ],
+    });
+
+    expect(result).toEqual({ success: true, data: { added: 1, skipped: 1 } });
+    expect(lineUpsert).toHaveBeenCalledTimes(1);
+    expect(lineUpsert.mock.calls[0][0].where.webOrderId_productId.productId).toBe("p-1");
   });
 
   it("refuses when every line has left the shop", async () => {

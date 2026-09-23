@@ -23,6 +23,9 @@ const { listShopProducts, relatedShopProducts, variantsOfProduct } = await impor
 );
 const { parseShopQuery } = await import("@/lib/shop-filters");
 
+/** The signed-in buyer's market. Every shop read is scoped to it. */
+const MARKET = "Vietnam";
+
 const Decimal = Prisma.Decimal;
 
 beforeEach(() => {
@@ -78,7 +81,7 @@ describe("listShopProducts — grouping", () => {
   it("draws one card for a product sold in several flavours", async () => {
     serveRows([variantRow("Papaya"), variantRow("Goat's Milk"), variantRow("Carrot")]);
 
-    const catalogue = await listShopProducts(parseShopQuery({}));
+    const catalogue = await listShopProducts(parseShopQuery({}), MARKET);
 
     expect(catalogue.total).toBe(1);
     expect(catalogue.groups).toHaveLength(1);
@@ -99,7 +102,7 @@ describe("listShopProducts — grouping", () => {
       variantRow("Carrot", { name: "2.1L ZEN SIGNATURE — Carrot", family }),
     ]);
 
-    const catalogue = await listShopProducts(parseShopQuery({}));
+    const catalogue = await listShopProducts(parseShopQuery({}), MARKET);
     expect(catalogue.total).toBe(1);
     expect(catalogue.groups[0].name).toBe("Zen Garden Shower Cream 2.1L");
     expect(catalogue.groups[0].variants.map((v) => v.familyId)).toEqual(["fam1", "fam1"]);
@@ -113,7 +116,7 @@ describe("listShopProducts — grouping", () => {
       variantRow("Papaya", { id: "p-big", sku: "ZEN-PP-12", packSize: 12 }),
     ]);
 
-    const catalogue = await listShopProducts(parseShopQuery({}));
+    const catalogue = await listShopProducts(parseShopQuery({}), MARKET);
 
     expect(catalogue.groups).toHaveLength(1);
     expect(catalogue.groups[0]!.variants).toHaveLength(2);
@@ -123,7 +126,7 @@ describe("listShopProducts — grouping", () => {
   it("brackets a group's price and leaves the two equal when every flavour costs the same", async () => {
     serveRows([variantRow("Papaya"), variantRow("Carrot")]);
 
-    const [group] = (await listShopProducts(parseShopQuery({}))).groups;
+    const [group] = (await listShopProducts(parseShopQuery({}), MARKET)).groups;
     expect({ from: group.priceFrom, to: group.priceTo }).toEqual({
       from: "220.50",
       to: "220.50",
@@ -136,7 +139,7 @@ describe("listShopProducts — grouping", () => {
       variantRow("Carrot", { listPrice: new Decimal("199.00") }),
     ]);
 
-    const [group] = (await listShopProducts(parseShopQuery({}))).groups;
+    const [group] = (await listShopProducts(parseShopQuery({}), MARKET)).groups;
     expect({ from: group.priceFrom, to: group.priceTo }).toEqual({
       from: "199.00",
       to: "220.50",
@@ -149,6 +152,7 @@ describe("listShopProducts — filters", () => {
     serveRows([]);
     await listShopProducts(
       parseShopQuery({ category: "Shower cream & gel", q: "lavender", brand: "ZEN GARDEN" }),
+      MARKET,
     );
 
     const where = productFindMany.mock.calls[0][0].where;
@@ -165,7 +169,7 @@ describe("listShopProducts — filters", () => {
       variantRow("Kiwi", { id: "p-tl", sku: "TL-KW", brand: "Therapy Level", name: "H/WASH — Kiwi" }),
     ]);
 
-    const catalogue = await listShopProducts(parseShopQuery({ brand: "Therapy Level" }));
+    const catalogue = await listShopProducts(parseShopQuery({ brand: "Therapy Level" }), MARKET);
     expect(catalogue.total).toBe(1);
     expect(catalogue.groups[0].brand).toBe("Therapy Level");
   });
@@ -173,7 +177,7 @@ describe("listShopProducts — filters", () => {
   it("counts cards, not products, in a facet", async () => {
     serveRows([variantRow("Papaya"), variantRow("Carrot"), variantRow("Kiwi")]);
 
-    const catalogue = await listShopProducts(parseShopQuery({}));
+    const catalogue = await listShopProducts(parseShopQuery({}), MARKET);
     // Three products, one card.
     expect(catalogue.facets.brands).toEqual([{ value: "ZEN GARDEN", count: 1 }]);
   });
@@ -181,7 +185,7 @@ describe("listShopProducts — filters", () => {
   it("offers a pack chip for every carton size one card holds", async () => {
     serveRows([variantRow("Lemon", { packSize: 12 }), variantRow("Lime", { packSize: 6 })]);
 
-    const catalogue = await listShopProducts(parseShopQuery({}));
+    const catalogue = await listShopProducts(parseShopQuery({}), MARKET);
     // Pack size left `groupKey` in Phase 40, so these are one card — but both
     // cartons are genuinely for sale and `?pack=6` returns this card, so both
     // values must be offered. Still cards, not products: the card counts once
@@ -202,6 +206,7 @@ describe("listShopProducts — filters", () => {
 
     const catalogue = await listShopProducts(
       parseShopQuery({ brand: "Therapy Level", pack: "6" }),
+      MARKET,
     );
     // Brands ignore the brand tick, so both are still offered; but they do
     // respect the pack tick, which drops the 24-pack row before grouping.
@@ -222,7 +227,7 @@ describe("listShopProducts — sort and paging", () => {
       variantRow("Kiwi", { id: "p-tl", sku: "TL-KW", brand: "Therapy Level", name: "H/WASH — Kiwi", listPrice: new Decimal("120.00") }),
     ]);
 
-    const catalogue = await listShopProducts(parseShopQuery({ sort: "price-asc" }));
+    const catalogue = await listShopProducts(parseShopQuery({ sort: "price-asc" }), MARKET);
     expect(catalogue.groups.map((g) => g.name)).toEqual(["H/WASH", "ZEN 2.1L"]);
   });
 
@@ -232,13 +237,13 @@ describe("listShopProducts — sort and paging", () => {
       variantRow("Kiwi", { id: "p-tl", sku: "TL-KW", brand: "Therapy Level", name: "H/WASH — Kiwi" }),
     ]);
 
-    const catalogue = await listShopProducts(parseShopQuery({}));
+    const catalogue = await listShopProducts(parseShopQuery({}), MARKET);
     expect(catalogue.groups.map((g) => g.name)).toEqual(["H/WASH", "ZEN 2.1L"]);
   });
 
   it("asks the database for images only for the cards on this page", async () => {
     serveRows([variantRow("Papaya"), variantRow("Carrot")]);
-    await listShopProducts(parseShopQuery({}));
+    await listShopProducts(parseShopQuery({}), MARKET);
 
     // By shape, not by index: `shopCategories` issues its own read alongside
     // the grouping one, so the ids read is neither first nor reliably second.
@@ -248,7 +253,7 @@ describe("listShopProducts — sort and paging", () => {
 
   it("does not ask for any rows when the page is empty", async () => {
     serveRows([]);
-    await listShopProducts(parseShopQuery({}));
+    await listShopProducts(parseShopQuery({}), MARKET);
     // One read for grouping, one for the categories, and nothing else.
     expect(productFindMany.mock.calls).toHaveLength(2);
   });
@@ -267,7 +272,7 @@ describe("variantsOfProduct", () => {
   };
 
   it("asks the database for the family outright when the product has one", async () => {
-    await variantsOfProduct(product);
+    await variantsOfProduct(product, MARKET);
     const where = productFindMany.mock.calls[0][0].where;
     expect(where.familyId).toBe("fam1");
     expect(where.brand).toBeUndefined();
@@ -277,7 +282,7 @@ describe("variantsOfProduct", () => {
   });
 
   it("falls back to brand and market for a product in no family", async () => {
-    await variantsOfProduct({ ...product, familyId: null });
+    await variantsOfProduct({ ...product, familyId: null }, MARKET);
     const where = productFindMany.mock.calls[0][0].where;
     expect(where.familyId).toBeUndefined();
     expect(where.brand).toBe("ZEN GARDEN");
@@ -295,7 +300,7 @@ describe("variantsOfProduct", () => {
       variant: "Papaya",
       packSize: 6,
       market: "Malaysia",
-    });
+    }, MARKET);
     const where = productFindMany.mock.calls.at(-1)?.[0]?.where;
     expect(where).not.toHaveProperty("packSize");
     expect(where).toMatchObject({ familyId: "fam-1", market: "Malaysia" });
@@ -323,11 +328,14 @@ describe("relatedShopProducts", () => {
   };
 
   it("matches the same brand and category, excludes the product itself and orders by name", async () => {
-    await relatedShopProducts(product);
+    await relatedShopProducts(product, MARKET);
 
     const call = productFindMany.mock.calls[0];
     expect(call[0].where).toEqual({
       active: true,
+      // The market is part of the shape, not merely present: a related
+      // product from another market is the exact thing this must not offer.
+      market: MARKET,
       needsReview: false,
       listPrice: { gt: 0 },
       brand: "ZEN GARDEN",
@@ -342,7 +350,7 @@ describe("relatedShopProducts", () => {
     const other = { ...row({ id: "other", sku: "ZEN-OT", name: "ZEN 1L SCRUB" }) };
     productFindMany.mockResolvedValue([sibling, other]);
 
-    const related = await relatedShopProducts(product, ["sibling"]);
+    const related = await relatedShopProducts(product, MARKET, ["sibling"]);
     expect(related.map((r) => r.id)).toEqual(["other"]);
   });
 
@@ -350,16 +358,19 @@ describe("relatedShopProducts", () => {
     productFindMany.mockResolvedValue(
       Array.from({ length: 9 }, (_, i) => row({ id: `r${i}`, sku: `SKU-${i}` })),
     );
-    const related = await relatedShopProducts(product);
+    const related = await relatedShopProducts(product, MARKET);
     expect(related).toHaveLength(4);
   });
 
   it("matches on category alone when the product has no brand", async () => {
-    await relatedShopProducts({ ...product, brand: null });
+    await relatedShopProducts({ ...product, brand: null }, MARKET);
 
     const call = productFindMany.mock.calls[0];
     expect(call[0].where).toEqual({
       active: true,
+      // The market is part of the shape, not merely present: a related
+      // product from another market is the exact thing this must not offer.
+      market: MARKET,
       needsReview: false,
       listPrice: { gt: 0 },
       category: "Shower cream & gel",

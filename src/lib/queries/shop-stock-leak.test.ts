@@ -36,6 +36,9 @@ const { PRICED_PRODUCT_SELECT, PRICED_PRODUCT_SELECT_NO_IMAGES } = await import(
 );
 const { parseShopQuery } = await import("@/lib/shop-filters");
 
+/** The signed-in buyer's market. Every shop read is scoped to it. */
+const MARKET = "Vietnam";
+
 beforeEach(() => {
   vi.resetAllMocks();
   presignGet.mockResolvedValue("https://r2.example/signed");
@@ -77,9 +80,9 @@ describe("no shop read asks for stock", () => {
       imageUrl: null,
     };
 
-    await listShopProducts(parseShopQuery({}));
-    await variantsOfProduct(shopProduct);
-    await relatedShopProducts({ ...shopProduct, description: null, imageUrls: [] });
+    await listShopProducts(parseShopQuery({}), MARKET);
+    await variantsOfProduct(shopProduct, MARKET);
+    await relatedShopProducts({ ...shopProduct, description: null, imageUrls: [] }, MARKET);
 
     expect(productFindMany.mock.calls.length).toBeGreaterThan(0);
     for (const select of selectsSent()) {
@@ -88,7 +91,7 @@ describe("no shop read asks for stock", () => {
   });
 
   it("leaves it out of the shop home", async () => {
-    await loadShopHome();
+    await loadShopHome(MARKET);
 
     expect(productFindMany.mock.calls.length).toBeGreaterThan(0);
     for (const select of selectsSent()) {
@@ -112,8 +115,8 @@ describe("no shop read asks for stock", () => {
    * that pulled the relation would leak more than the column ever could.
    */
   it("leaves the count ledger out of every shop read", async () => {
-    await listShopProducts(parseShopQuery({}));
-    await loadShopHome();
+    await listShopProducts(parseShopQuery({}), MARKET);
+    await loadShopHome(MARKET);
 
     for (const select of selectsSent()) {
       expect(keysOf(select)).not.toContain("stockCounts");

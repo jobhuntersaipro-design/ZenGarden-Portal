@@ -38,7 +38,7 @@ describe("priceProductLines", () => {
   it("prices each line through lineTotal", async () => {
     const { lines } = await priceProductLines([
       { productId: "p1", cartons: 3, product: product() },
-    ]);
+    ], "Vietnam");
     expect(lines[0].unitPrice).toBe("189.00");
     expect(lines[0].amount).toBe("567.00");
   });
@@ -49,7 +49,7 @@ describe("priceProductLines", () => {
       { productId: "p2", cartons: 1, product: product({ sku: "P2", needsReview: true }) },
       { productId: "p3", cartons: 1, product: product({ sku: "P3", listPrice: dec("0.00") }) },
       { productId: "p4", cartons: 1, product: product({ sku: "P4" }) },
-    ]);
+    ], "Vietnam");
     const bySku = Object.fromEntries(lines.map((l) => [l.sku, l.unavailable]));
     expect(bySku["ZEN-SC-1000-GM-VN"]).toBe(true);
     expect(bySku.P2).toBe(true);
@@ -57,11 +57,54 @@ describe("priceProductLines", () => {
     expect(bySku.P4).toBe(false);
   });
 
+  it("marks a line unavailable when its product is in another market", async () => {
+    // The display half of the market rule. A cart can outlive a market move —
+    // ops reassigns the buyer, or the product — so this is re-derived on every
+    // read rather than trusted from whenever the line was added.
+    const { lines } = await priceProductLines(
+      [
+        { productId: "p1", cartons: 1, product: product({ sku: "OURS" }) },
+        { productId: "p2", cartons: 1, product: product({ sku: "THEIRS", market: "Mydin" }) },
+        { productId: "p3", cartons: 1, product: product({ sku: "NOWHERE", market: null }) },
+      ],
+      "Vietnam",
+    );
+    const bySku = Object.fromEntries(lines.map((l) => [l.sku, l.unavailable]));
+    expect(bySku.OURS).toBe(false);
+    expect(bySku.THEIRS).toBe(true);
+    expect(bySku.NOWHERE).toBe(true);
+  });
+
+  it("quotes no price at all for an out-of-market line, and leaves it out of the subtotal", async () => {
+    // Not merely flagged: the real list price must not come back. Otherwise
+    // the flag is cosmetic and the figure is still on the wire.
+    const { lines, subtotal } = await priceProductLines(
+      [
+        { productId: "p1", cartons: 1, product: product({ sku: "OURS" }) },
+        { productId: "p2", cartons: 5, product: product({ sku: "THEIRS", market: "Mydin" }) },
+      ],
+      "Vietnam",
+    );
+    const theirs = lines.find((line) => line.sku === "THEIRS");
+    expect(theirs?.unitPrice).toBe("0.00");
+    expect(theirs?.amount).toBe("0.00");
+    expect(subtotal).toBe("189.00");
+  });
+
+  it("marks every line unavailable when the buyer has no market", async () => {
+    const { lines, subtotal } = await priceProductLines(
+      [{ productId: "p1", cartons: 1, product: product({ sku: "OURS" }) }],
+      null,
+    );
+    expect(lines[0].unavailable).toBe(true);
+    expect(subtotal).toBe("0.00");
+  });
+
   it("excludes unavailable lines from the subtotal", async () => {
     const { subtotal } = await priceProductLines([
       { productId: "p1", cartons: 1, product: product({ sku: "AVAILABLE" }) },
       { productId: "p2", cartons: 5, product: product({ sku: "GONE", active: false }) },
-    ]);
+    ], "Vietnam");
     expect(subtotal).toBe("189.00");
   });
 
@@ -69,7 +112,7 @@ describe("priceProductLines", () => {
     const { lines, subtotal } = await priceProductLines([
       { productId: "p1", cartons: 1, product: product({ sku: "AVAILABLE" }) },
       { productId: "p2", cartons: 5, product: product({ sku: "GONE", active: false }) },
-    ]);
+    ], "Vietnam");
     const gone = lines.find((line) => line.sku === "GONE");
     expect(gone?.unitPrice).toBe("0.00");
     expect(gone?.amount).toBe("0.00");
@@ -80,7 +123,7 @@ describe("priceProductLines", () => {
     const { cartonCount } = await priceProductLines([
       { productId: "p1", cartons: 3, product: product({ sku: "A" }) },
       { productId: "p2", cartons: 2, product: product({ sku: "B", active: false }) },
-    ]);
+    ], "Vietnam");
     expect(cartonCount).toBe(5);
   });
 
@@ -89,7 +132,7 @@ describe("priceProductLines", () => {
       { productId: "p1", cartons: 1, product: product({ sku: "Z", name: "Zebra Wash" }) },
       { productId: "p2", cartons: 1, product: product({ sku: "A", name: "Aloe Wash" }) },
       { productId: "p3", cartons: 1, product: product({ sku: "B", name: "Aloe Wash" }) },
-    ]);
+    ], "Vietnam");
     expect(lines.map((l) => l.sku)).toEqual(["A", "B", "Z"]);
   });
 });
@@ -105,7 +148,7 @@ describe("priceProductLines — thumbnail presigning", () => {
           images: [{ thumbKey: "products/p1/thumb.webp", r2Key: "products/p1/original.jpg" }],
         }),
       },
-    ]);
+    ], "Vietnam");
     expect(presignGet).toHaveBeenCalledWith("products/p1/thumb.webp");
     expect(lines[0].imageUrl).toBe("https://r2.example/thumb.webp");
   });
@@ -118,7 +161,7 @@ describe("priceProductLines — thumbnail presigning", () => {
         cartons: 1,
         product: product({ images: [{ thumbKey: null, r2Key: "products/p1/original.jpg" }] }),
       },
-    ]);
+    ], "Vietnam");
     expect(presignGet).toHaveBeenCalledWith("products/p1/original.jpg");
     expect(lines[0].imageUrl).toBe("https://r2.example/original.jpg");
   });
@@ -127,7 +170,7 @@ describe("priceProductLines — thumbnail presigning", () => {
     presignGet.mockRejectedValue(new Error("R2 unreachable"));
     const { lines } = await priceProductLines([
       { productId: "p1", cartons: 1, product: product({ images: [{ thumbKey: "t", r2Key: "r" }] }) },
-    ]);
+    ], "Vietnam");
     expect(lines[0].imageUrl).toBeNull();
     expect(lines[0].amount).toBe("189.00");
   });
@@ -135,7 +178,7 @@ describe("priceProductLines — thumbnail presigning", () => {
   it("leaves imageUrl null when the product has no images at all", async () => {
     const { lines } = await priceProductLines([
       { productId: "p1", cartons: 1, product: product() },
-    ]);
+    ], "Vietnam");
     expect(lines[0].imageUrl).toBeNull();
     expect(presignGet).not.toHaveBeenCalled();
   });
@@ -149,7 +192,7 @@ describe("cartSummary", () => {
         { productId: "p2", cartons: 2, product: product({ sku: "B", active: false }) },
       ],
     });
-    const summary = await cartSummary("user-1");
+    const summary = await cartSummary("user-1", "Vietnam");
     expect(summary.count).toBe(2);
     expect(summary.cartonCount).toBe(5);
     expect(summary.subtotal).toBe("567.00");
@@ -161,7 +204,7 @@ describe("cartSummary", () => {
 
   it("returns an empty summary when the client has no draft order", async () => {
     webOrderFindFirst.mockResolvedValue(null);
-    const summary = await cartSummary("user-1");
+    const summary = await cartSummary("user-1", "Vietnam");
     expect(summary).toEqual({ count: 0, cartonCount: 0, subtotal: "0.00", lines: [] });
   });
 });

@@ -14,6 +14,7 @@ import { ShopViewerProvider } from "@/components/shop/ShopViewer";
 import { env } from "@/lib/env";
 import { cartSummary } from "@/lib/queries/cart";
 import { listShopCategories } from "@/lib/queries/shop-catalogue";
+import { shopAudience } from "@/lib/shop-market";
 import { loadShopViewer } from "@/lib/shop-viewer";
 import { PageTransition } from "@/components/portal/PageTransition";
 
@@ -33,10 +34,12 @@ export const dynamic = "force-dynamic";
  * - every `revalidatePath` names the real path (`/shop/cart`), because
  *   revalidation keys on the resolved route, not the URL the browser asked for.
  *
- * Phase 17: a guest now gets this layout too — no `requireClient()` here any
- * more. Every page below still calls it for its own data (Tasks 8–11 rewrite
- * them to read `useShopViewer()` instead), so a guest reaches a page and is
- * turned back only where the page actually needs a buyer.
+ * Phase 17 made a guest welcome here. **2026-09-23 reversed that**: the
+ * catalogue is scoped to the buyer's market, and a guest has no buyer and so
+ * no market, so there is nothing that can correctly be shown to one. The
+ * proxy turns a guest into a 307 to sign-in before this layout runs; the
+ * check below is the second place that rule is held, because a rewrite rule
+ * is easy to widen by accident and this one decides who sees prices.
  */
 export default async function StorefrontLayout({
   children,
@@ -49,10 +52,23 @@ export default async function StorefrontLayout({
   // its origin stripped — both hosts are one deployment — and the browser then
   // loops against the same host (measured 2026-09-09).
   if (viewer === "staff") redirect(env.APP_URL);
+  // Belt and braces with the proxy, which already redirects an
+  // unauthenticated request to sign-in. Reached only if a guest ever gets
+  // past it — and then they get the sign-in page rather than a catalogue.
+  if (viewer.kind === "guest") redirect("/signin");
 
+  // The category strip is part of the chrome, so it is scoped like every
+  // other read: a buyer with no market gets no categories rather than the
+  // whole catalogue's list, which would otherwise say which categories exist
+  // in markets they cannot buy from. The components below already handle an
+  // empty list — that is what the shop looked like before any product was
+  // priced.
+  const audience = shopAudience(viewer.market);
   const [categories, summary] = await Promise.all([
-    listShopCategories(),
-    viewer.kind === "client" ? cartSummary(viewer.id) : Promise.resolve(null),
+    audience.kind === "scoped"
+      ? listShopCategories(audience.market)
+      : Promise.resolve([]),
+    cartSummary(viewer.id, viewer.market),
   ]);
 
   return (

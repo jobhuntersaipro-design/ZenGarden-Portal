@@ -8,6 +8,8 @@ import { pageRange, type SearchParams } from "@/lib/queries/pagination";
 import { listShopProducts } from "@/lib/queries/shop-catalogue";
 import { SHOP_PER_PAGE, parseShopQuery, shopQueryHref } from "@/lib/shop-filters";
 import { shopHref } from "@/lib/shop-routes";
+import { NoMarketPanel } from "@/components/shop/NoMarketPanel";
+import { loadShopAudience } from "@/lib/shop-viewer";
 
 export const metadata: Metadata = { title: "Products · Zen Garden" };
 export const dynamic = "force-dynamic";
@@ -28,7 +30,17 @@ export default async function ShopCataloguePage({
 }) {
   const params = await searchParams;
   const query = parseShopQuery(params);
-  const catalogue = await listShopProducts(query);
+
+  const audience = await loadShopAudience();
+  if (audience.kind === "unassigned") {
+    return (
+      <div className="pt-xl">
+        <NoMarketPanel heading="No products to show you yet" />
+      </div>
+    );
+  }
+
+  const catalogue = await listShopProducts(query, audience.market);
   const { from, to } = pageRange(query.page, SHOP_PER_PAGE, catalogue.total);
   const heading = query.category ?? "All products";
 

@@ -3,6 +3,7 @@ import { prisma } from "@/lib/prisma";
 import { groupProducts, type ProductGroup } from "@/lib/product-groups";
 import { presignGet } from "@/lib/r2";
 import { SHOP_PER_PAGE, type ShopCatalogueQuery, type ShopSort } from "@/lib/shop-filters";
+import { shopVisible } from "@/lib/shop-market";
 
 /**
  * What the shop shows.
@@ -15,11 +16,16 @@ import { SHOP_PER_PAGE, type ShopCatalogueQuery, type ShopSort } from "@/lib/sho
  * One consequence worth knowing: `updateProduct` clears `needsReview` on any
  * save, so correcting a typo publishes a product the moment it has a price.
  */
-export const SHOP_VISIBLE = {
-  active: true,
-  needsReview: false,
-  listPrice: { gt: 0 },
-} satisfies Prisma.ProductWhereInput;
+/**
+ * Re-exported so every shop query in this file reads the one predicate.
+ *
+ * It replaced a `SHOP_VISIBLE` **constant** on 2026-09-23. A constant could
+ * be spread by a caller that had never thought about who was asking; a
+ * function taking a required market cannot, so `tsc` found all fourteen
+ * call sites when the rule changed — which is the only reason to be
+ * confident none was left showing the whole catalogue.
+ */
+export { shopVisible };
 
 export type ShopProduct = {
   id: string;
@@ -118,11 +124,14 @@ export async function thumbUrl(
 }
 
 /** The categories a product in the shop actually carries, ascending. */
-async function shopCategories(): Promise<string[]> {
+async function shopCategories(market: string): Promise<string[]> {
   // The filter lists are built from what is *in the shop*, not from the whole
-  // catalogue: offering a category with nothing behind it is a dead end.
+  // catalogue: offering a category with nothing behind it is a dead end. Since
+  // the shop became market-scoped that is per buyer — a category whose only
+  // products belong to another market is a dead end for *this* reader, and
+  // listing it would also say which categories exist elsewhere.
   const categories = await prisma.product.findMany({
-    where: SHOP_VISIBLE,
+    where: shopVisible(market),
     distinct: ["category"],
     select: { category: true },
     orderBy: { category: "asc" },
@@ -132,8 +141,8 @@ async function shopCategories(): Promise<string[]> {
 
 /** Same list `listShopProducts` builds its filter chips from — exported for
  * the layout, which needs it before any product is loaded. */
-export async function listShopCategories(): Promise<string[]> {
-  return shopCategories();
+export async function listShopCategories(market: string): Promise<string[]> {
+  return shopCategories(market);
 }
 
 /** The family's id and name, selected wherever a product is grouped. */
@@ -201,8 +210,11 @@ async function toShopProduct(row: ShopProductRow): Promise<ShopProduct> {
  * grouping, the facet counts and the page are all computed from it — where
  * before there were six queries, each answering about rows.
  */
-function baseWhere(query: ShopCatalogueQuery): Prisma.ProductWhereInput {
-  const where: Prisma.ProductWhereInput = { ...SHOP_VISIBLE };
+function baseWhere(
+  query: ShopCatalogueQuery,
+  market: string,
+): Prisma.ProductWhereInput {
+  const where: Prisma.ProductWhereInput = { ...shopVisible(market) };
   if (query.category) where.category = query.category;
   const q = query.q?.trim();
   if (q) {
@@ -323,14 +335,15 @@ function facetCounts<T extends string | number>(
 
 export async function listShopProducts(
   query: ShopCatalogueQuery,
+  market: string,
 ): Promise<ShopCatalogue> {
   const [rows, categories] = await Promise.all([
     prisma.product.findMany({
-      where: baseWhere(query),
+      where: baseWhere(query, market),
       select: GROUPING_SELECT,
       orderBy: { name: "asc" },
     }),
-    shopCategories(),
+    shopCategories(market),
   ]);
 
   const matching = rows.filter((row) => matchesFacets(row, query)).map(groupable);
@@ -427,11 +440,12 @@ export type ShopProductDetail = ShopProduct & {
  */
 export async function relatedShopProducts(
   product: ShopProductDetail,
+  market: string,
   /** The product's own flavours, which the page already shows in its picker. */
   siblingIds: readonly string[] = [],
 ): Promise<ShopProduct[]> {
   const where: Prisma.ProductWhereInput = {
-    ...SHOP_VISIBLE,
+    ...shopVisible(market),
     ...(product.brand ? { brand: product.brand } : {}),
     category: product.category,
     id: { not: product.id },
@@ -471,10 +485,10 @@ export async function variantsOfProduct(product: {
   variant: string | null;
   packSize: number | null;
   market: string | null;
-}): Promise<ShopVariant[]> {
+}, buyerMarket: string): Promise<ShopVariant[]> {
   const candidates = await prisma.product.findMany({
     where: {
-      ...SHOP_VISIBLE,
+      ...shopVisible(buyerMarket),
       ...(product.familyId ? { familyId: product.familyId } : { brand: product.brand }),
       // Pack size is deliberately absent (Phase 40): it is a variant now, so
       // the 12-carton row must be offered on the 6-carton row's page.
@@ -501,12 +515,15 @@ export async function variantsOfProduct(product: {
 
 export async function loadShopProduct(
   id: string,
+  market: string,
 ): Promise<ShopProductDetail | null> {
   const row = await prisma.product.findFirst({
-    // SHOP_VISIBLE here too: a product that is not in the shop has no page in
-    // it either, so a guessed or bookmarked id 404s rather than leaking a
-    // price that is not on offer.
-    where: { id, ...SHOP_VISIBLE },
+    // The same predicate here: a product that is not in *this buyer's* shop
+    // has no page in it either, so a guessed or bookmarked id 404s rather
+    // than leaking a price that is not on offer to them. This is the check
+    // that makes another market's product unreachable by URL, not merely
+    // absent from the grid.
+    where: { id, ...shopVisible(market) },
     select: {
       id: true,
       sku: true,

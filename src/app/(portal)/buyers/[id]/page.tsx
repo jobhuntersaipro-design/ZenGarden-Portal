@@ -27,6 +27,7 @@ import { getSessionUser } from "@/lib/auth-guards";
 import { formatDate, type Aggregation } from "@/lib/dates";
 import { loadBuyer } from "@/lib/queries/buyer-detail";
 import { listBuyerContacts } from "@/lib/queries/clients";
+import { listLabels } from "@/lib/queries/products";
 import {
   firstParam,
   parsePagination,
@@ -83,10 +84,14 @@ export default async function BuyerPage({
   const productSlots = firstParam(query, "products")?.split(",") ?? [];
   const selectedProducts = productSlots.filter(Boolean);
 
-  const [data, user, contacts] = await Promise.all([
+  const [data, user, contacts, markets] = await Promise.all([
     loadBuyer(id, range, previous, agg, measure, selectedProducts),
     getSessionUser(),
     listBuyerContacts(id),
+    // The MARKET vocabulary for the details card's picker. Fetched beside
+    // the rest rather than inside the card, so the sheet is never drawn with
+    // an empty list under a buyer who already has a market.
+    listLabels("market"),
   ]);
   if (!data) notFound();
 
@@ -266,6 +271,7 @@ export default async function BuyerPage({
         <BuyerDetailsCard
           buyer={data.buyer}
           canRename={user?.role === Role.SUPER_ADMIN}
+          markets={markets}
         />
       </div>
 

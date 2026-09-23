@@ -13,6 +13,7 @@ import {
   SheetTitle,
   SheetTrigger,
 } from "@/components/ui/sheet";
+import { GrowingListPicker } from "@/components/products/GrowingListPicker";
 import { Textarea } from "@/components/ui/textarea";
 import { formatDate } from "@/lib/dates";
 
@@ -24,6 +25,8 @@ export type BuyerDetails = {
   phone: string | null;
   address: string | null;
   paymentTerms: string | null;
+  /** What their shop shows. Null means it shows nothing — see `shop-market.ts`. */
+  market: string | null;
   remark: string | null;
   since: string | null;
 };
@@ -44,9 +47,12 @@ const CONTACT_FIELDS: { key: keyof BuyerPatch; label: string }[] = [
 export function BuyerDetailsCard({
   buyer,
   canRename,
+  markets,
 }: {
   buyer: BuyerDetails;
   canRename: boolean;
+  /** The MARKET vocabulary, the same list `Product.market` is chosen from. */
+  markets: string[];
 }) {
   const refresh = useAwaitableRefresh();
   const [open, setOpen] = useState(false);
@@ -56,6 +62,7 @@ export function BuyerDetailsCard({
     phone: buyer.phone,
     address: buyer.address,
     paymentTerms: buyer.paymentTerms,
+    market: buyer.market,
     remark: buyer.remark,
     ...(canRename ? { name: buyer.name } : {}),
   });
@@ -120,6 +127,22 @@ export function BuyerDetailsCard({
               </div>
             ),
           )}
+
+          <div className="flex flex-col gap-xxs">
+            <span className="font-mono text-[length:var(--text-eyebrow)] text-ink-tertiary">
+              Market
+            </span>
+            <GrowingListPicker
+              label="Market"
+              value={patch.market ?? null}
+              known={markets}
+              onChange={(market) => setPatch((current) => ({ ...current, market }))}
+            />
+            <p className="text-[length:var(--text-caption)] text-ink-tertiary">
+              What they can buy. Their shop shows the products in this market and no
+              others; with no market it shows nothing.
+            </p>
+          </div>
 
           <div className="flex flex-col gap-xxs">
             <label
@@ -198,6 +221,21 @@ export function BuyerDetailsCard({
       )}
 
       <dl className="mt-md flex flex-col gap-sm border-t border-hairline pt-md">
+        <div>
+          <dt className="font-mono text-[length:var(--text-eyebrow)] text-ink-tertiary">
+            Market
+          </dt>
+          <dd className="text-[length:var(--text-body-md)] text-ink">
+            {buyer.market ?? (
+              // Amber and a sentence, not "Not set": this is the one field
+              // whose absence stops the customer buying anything at all, and
+              // a reader should not have to know that to understand the row.
+              <span className="text-brand-amber">
+                Not set — their shop is empty until it is
+              </span>
+            )}
+          </dd>
+        </div>
         <div>
           <dt className="font-mono text-[length:var(--text-eyebrow)] text-ink-tertiary">
             Payment terms

@@ -1,4 +1,10 @@
 import { Prisma } from "@/generated/prisma/client";
+import {
+  buyerMarketOptions,
+  matchesMarket,
+  resolveBuyerMarket,
+  type BuyerMarketFilter,
+} from "@/lib/buyer-markets";
 import { prisma } from "@/lib/prisma";
 import { buyerStatus, type BuyerStatusClass } from "@/lib/analytics/buyer-status";
 import { reorderSignals } from "@/lib/analytics/reorder";
@@ -8,6 +14,13 @@ import type { AnalyticsOrder } from "@/lib/analytics/types";
 export type BuyerRosterRow = {
   id: string;
   name: string;
+  /**
+   * The one market this buyer buys in, or null while nobody has set one.
+   * Since 2026-09-23 it decides what their shop holds, so it is a column
+   * here as well as on the management roster — a planner reading this table
+   * can see which accounts cannot order anything yet.
+   */
+  market: string | null;
   orders: number;
   total: number;
   overdue: number;
@@ -23,6 +36,7 @@ export type BuyerFilter = "lapsed" | "at-risk" | "overdue" | null;
 
 export const BUYER_SORT_KEYS = [
   "name",
+  "market",
   "orders",
   "total",
   "overdue",
@@ -87,6 +101,19 @@ const toAnalytics = (row: OrderRow, buyerName: string): AnalyticsOrder => ({
 export type BuyerRoster = {
   rows: BuyerRosterRow[];
   total: number;
+  /**
+   * Read off the **unfiltered** roster, so narrowing to one market never
+   * removes the other markets from the control that would take you back —
+   * the rule the demand board's family and product pickers already follow.
+   */
+  markets: { markets: string[]; hasNoMarket: boolean };
+  /**
+   * The filter actually applied. A `?market=` naming something no buyer is
+   * in any more is **dropped** here rather than honoured, and the toolbar
+   * renders this rather than the URL — so the select can never show a
+   * filter the rows are not under (Phase 53's `resolveFilter`).
+   */
+  market: BuyerMarketFilter;
   attention: { lapsed: number; atRisk: number; overdue: number };
   kpis: {
     buyersWithOrders: number;
@@ -115,13 +142,22 @@ export async function listBuyers(
   previous: { from: Date; to: Date },
   filter: BuyerFilter,
   q: string | undefined,
+  /** The raw `?market=`; resolved below and echoed back on the roster. */
+  marketParam: string | undefined,
   sort: { key: BuyerSortKey; dir: "asc" | "desc" },
   skip: number,
   take: number,
   now: Date = new Date(),
 ): Promise<BuyerRoster> {
   const [buyers, history] = await Promise.all([
-    prisma.buyer.findMany({ select: { id: true, name: true }, orderBy: { name: "asc" } }),
+    prisma.buyer.findMany({
+      // Still narrow: the roster reads a name, an id and now the market the
+      // shop is scoped by. `remark` stays unselected — it is the internal
+      // note, and this list is one product decision away from a screen a
+      // buyer could see.
+      select: { id: true, name: true, market: true },
+      orderBy: { name: "asc" },
+    }),
     prisma.purchaseOrder.findMany({
       where: LATEST_ONLY,
       select: {
@@ -168,6 +204,7 @@ export async function listBuyers(
     return {
       id: buyer.id,
       name: buyer.name,
+      market: buyer.market,
       orders: current.length,
       total,
       overdue: overdueCount,
@@ -186,9 +223,21 @@ export async function listBuyers(
     overdue: all.filter((row) => row.overdue > 0).length,
   };
 
+  const marketOptions = buyerMarketOptions(all);
+  const market = resolveBuyerMarket(marketParam, all);
+
   const needle = q?.trim().toLowerCase();
   const filtered = all.filter((row) => {
-    if (needle && !row.name.toLowerCase().includes(needle)) return false;
+    if (!matchesMarket(row, market)) return false;
+    // The market is searchable as well as filterable, as it is on the
+    // management roster: one control meaning one thing on both screens.
+    if (
+      needle &&
+      !row.name.toLowerCase().includes(needle) &&
+      !(row.market ?? "").toLowerCase().includes(needle)
+    ) {
+      return false;
+    }
     if (filter === "lapsed") return row.status === "lapsed";
     if (filter === "at-risk") return row.status === "at-risk";
     if (filter === "overdue") return row.overdue > 0;
@@ -199,6 +248,11 @@ export async function listBuyers(
     switch (sort.key) {
       case "name":
         return row.name.toLowerCase();
+      case "market":
+        // A blank sinks in both directions, as blanks do everywhere in the
+        // portal since Phase 35 — the sentinel flips with the direction
+        // because the comparator negates itself for `desc`.
+        return row.market?.toLowerCase() ?? (sort.dir === "asc" ? "\uffff" : "");
       case "orders":
         return row.orders;
       case "total":
@@ -235,6 +289,8 @@ export async function listBuyers(
   return {
     rows: sorted.slice(skip, skip + take),
     total: sorted.length,
+    markets: marketOptions,
+    market,
     attention,
     kpis: {
       buyersWithOrders: withOrders.length,
