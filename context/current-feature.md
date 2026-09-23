@@ -3352,6 +3352,59 @@ file: generating a PDF remains Phase 19, still unbuilt.
   purchase-order file, is also unbuilt.
 
 ## History
+- 2026-09-23: The auth card arrives, and the Dashboard loses its Upload PO
+  button. Asked for as: "add some animation and motion subtely when this link
+  is open up? https://www.lovinghandsportal.com/signin" and "Also remove the
+  Upload PO button".
+  **The card fades and the contents only slide, and that split is the whole
+  design.** `/signin` painted in one frame with nothing to say it had loaded.
+  It now rises 16px and fades as one object (`animate-auth-card`, 420ms) while
+  its parts settle into place a step behind it — wordmark, heading, subtitle,
+  then whatever form the screen carries — 30ms apart on the existing
+  `stagger-N` utility, everything in place by about 460ms.
+  **The obvious build of that was measured and looked broken.** Giving the
+  contents `rise`, which fades as well as slides, left a visible white card
+  with nothing in it: the card's height is final from the first frame and its
+  own fade is ~85% done by 100ms, so a form four steps down the stagger had
+  not started. Photographed at 100ms and again at 260ms with the longer lead
+  first tried — a page that has failed to load, not one arriving.
+  `auth-settle` therefore carries **no opacity at all**, so a child can never
+  be dimmer than the card it sits in and no delay can make one go missing.
+  **It is `AuthCard`, not the sign-in page**, so forgot-password, reset, the
+  forced change and the pending screen arrive the same way — one card
+  component, one arrival, rather than a motion that exists on one of five
+  screens of the same kind.
+  **Upload PO is gone from the Dashboard only** — the button in the
+  screenshot. `/purchase-orders` and `/buyers` keep theirs, and the empty
+  dashboard keeps its gradient "Upload a PO" CTA, so `/upload` is still
+  reachable from three places; removing it everywhere would have closed the
+  intake pipeline's front door, which is not what a screenshot of one header
+  asks for.
+  Driven in a real browser against the production build.
+  - **Every element animates, read off computed style:** the card
+    `auth-card` 0.42s at 0s delay, then `auth-settle` 0.34s at **0.03 / 0.06 /
+    0.09 / 0.12s** for the wordmark, the heading, the subtitle and the form.
+  - **Under `prefers-reduced-motion: reduce` all five compute
+    `animation-name: none` and `opacity: 1`**, and the first frame of the load
+    is the settled card.
+  - **No page overflow** — 1440/1440 and 390/390, mid-arrival and at rest.
+  - 1496/1496 tests across 117 files unchanged, `tsc` and `npm run build`
+    clean.
+  **Not verified:** anything on production; the four other auth screens, which
+  take the same component and were not opened; and Safari and Firefox, which
+  were not tried. **A measurement trap worth not re-deriving:** `npm start`
+  will not rebind port 3000, so a stale server keeps serving the previous
+  build's HTML while its CSS chunk has been overwritten — every animation then
+  reads `animation-name: none`, because `animation: var(--x)` with the token
+  missing is invalid at computed-value time. That is a dead server, not a dead
+  animation. `pgrep -f next-server` also matches the shell command containing
+  that string, so killing by that pattern kills the caller.
+  **Recorded, not fixed:** `npm run lint` in this container now reports **4
+  errors** in `src/components/shop/ShopHeader.tsx` ("Cannot access refs during
+  render") beside the 2 long-standing `username` warnings. They reproduce on
+  an unmodified tree, so they are a floated `eslint-plugin-react-hooks`, not
+  this change — but the clean-lint bar this file has claimed since Phase 01 is
+  no longer met until somebody looks at them.
 - 2026-09-23: The Demand Board opens Daily, next 30 days — on `main`. Asked for
   as: "Default show daily and next 30 days".
   **A one-line change, and the window follows for free.** `parseGrain` resolved

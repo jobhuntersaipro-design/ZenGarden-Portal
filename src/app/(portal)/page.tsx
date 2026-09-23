@@ -1,7 +1,6 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { PageHeader } from "@/components/portal/PageHeader";
-import { UploadPoButton } from "@/components/portal/UploadPoButton";
 import { ChurnList } from "@/components/dashboard/ChurnList";
 import { DashboardFilters } from "@/components/dashboard/DashboardFilters";
 import { DeliveryByMarket } from "@/components/dashboard/DeliveryByMarket";
@@ -76,11 +75,7 @@ export default async function DashboardPage({
   if (!data.hasAnyOrders) {
     return (
       <>
-        <PageHeader
-          eyebrow="Overview"
-          title="Dashboard"
-          action={<UploadPoButton />}
-        />
+        <PageHeader eyebrow="Overview" title="Dashboard" />
         <section className="rounded-xxl border border-hairline bg-canvas p-xl text-center">
           <p className="font-mono text-[length:var(--text-eyebrow)] text-ink-tertiary">
             Get started
@@ -138,11 +133,7 @@ export default async function DashboardPage({
 
   return (
     <>
-      <PageHeader
-        eyebrow="Overview"
-        title="Dashboard"
-        action={<UploadPoButton />}
-      />
+      <PageHeader eyebrow="Overview" title="Dashboard" />
 
       {/* Before the range controls, because it does not obey them: a draft has
           no PO date to filter on. */}
