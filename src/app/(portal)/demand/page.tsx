@@ -14,7 +14,7 @@ import {
 import { DEMAND_CEILING, DEMAND_SPAN, type DemandGrain } from "@/lib/planning/grain";
 import { firstParam, type SearchParams } from "@/lib/queries/pagination";
 import { loadPoStageBoard } from "@/lib/queries/po-stages";
-import { resolveStageWindow } from "@/lib/po-stage-window";
+import { resolveStageShow, resolveStageWindow } from "@/lib/po-stage-window";
 import { subDays } from "date-fns";
 
 export const metadata: Metadata = { title: "Demand Board · Zen Garden Portal" };
@@ -111,12 +111,13 @@ export default async function DemandPage({
   // and a window the URL does not name falls back to 30 rather than drawing
   // nothing.
   const stageWindow = resolveStageWindow(firstParam(params, "stage_window"));
+  const stageShow = resolveStageShow(firstParam(params, "stage_show"));
   const stageTo = new Date();
   const stageFrom = subDays(stageTo, Number(stageWindow) - 1);
 
   const [board, stages] = await Promise.all([
     loadDemandBoard({ grain, window, filters }),
-    loadPoStageBoard(stageFrom, stageTo, "day"),
+    loadPoStageBoard(stageFrom, stageTo, "day", stageShow),
   ]);
 
   // A picked date owns the strip: no chip is selected beside it, the same as
@@ -188,7 +189,11 @@ export default async function DemandPage({
           breakdown={stages.breakdown}
           all={stages.all}
           byBucket={stages.byBucket}
+          orders={stages.orders}
           orderCount={stages.orderCount}
+          overdueCount={stages.overdueCount}
+          openCount={stages.openCount}
+          show={stages.show}
           window={stageWindow}
         />
       </div>

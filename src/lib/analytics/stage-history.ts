@@ -1,6 +1,6 @@
 import { PoStage } from "@/generated/prisma/enums";
 import { PO_STAGES } from "@/lib/po-stages";
-import type { StageBreakdown, StagePoint } from "@/lib/analytics/fulfillment";
+import type { StagePoint } from "@/lib/analytics/fulfillment";
 
 /** One recorded move, as `PoStageEvent` stores it. */
 export type StageMove = {
@@ -19,12 +19,73 @@ export type StageMove = {
  * the query look like it had figures it never read.
  */
 export type StageOrder = {
+  id: string;
   stageEvents: StageMove[];
   lineItems: { productId: string | null; productName: string | null }[];
+  /**
+   * The date we committed to, as a calendar day (`yyyy-MM-dd`) rather than a
+   * `Date`. `PurchaseOrder.deliveryDate` is `@db.Date`, so it *is* a calendar
+   * day, and comparing it as a string against a bucket's own day keeps the
+   * whole overdue rule out of reach of the timezone trap this project has
+   * been bitten by twice — a raw timestamp truncates to a **UTC** date and
+   * admits an extra day.
+   *
+   * Null is not a zero: nobody committed to a date, so the order can never be
+   * overdue, and it is not counted as on time either.
+   */
+  deliveryDate: string | null;
 };
 
-/** A bucket, and the instant its period runs out. */
-export type Snapshot = { key: string; label: string; end: Date };
+/** A bucket, the instant its period runs out, and the last day inside it. */
+export type Snapshot = {
+  key: string;
+  label: string;
+  end: Date;
+  /**
+   * The bucket's own last calendar day, which is what "overdue then" is
+   * measured against. At daily grain it is the key; at a coarser one it is
+   * the last day of the period, because a promise for the 3rd is not broken
+   * until the week holding it has run out.
+   */
+  day: string;
+};
+
+/**
+ * Was this order already past its expected delivery date when `day` ran out?
+ *
+ * **Measured at the day being read, never at today.** The board replays
+ * history, so a bar for 15 Sep has to say what was late *on 15 Sep*; reading
+ * today's lateness onto a past bar is the same defect the board was rebuilt
+ * to remove, and it would make every bar in the window trend red purely
+ * because time had passed.
+ *
+ * Strictly before: an order expected on the 15th is not late at the end of
+ * the 15th. That matches the demand board's own `due today`, which is not
+ * lateness, and it is the reading that does not round in our favour.
+ */
+export const isOverdueAt = (order: StageOrder, day: string): boolean =>
+  order.deliveryDate !== null && order.deliveryDate < day;
+
+/** Which open orders a board is about: everything, or only the late ones. */
+export type StageShow = "all" | "overdue";
+
+/**
+ * A bar, with the late share of each of its stages.
+ *
+ * The two live on one datum rather than in two parallel series because the
+ * chart draws each stage as a solid band and a hatched one, and a second
+ * lookup is a second thing that can disagree with the first.
+ */
+export type StageSplitPoint = StagePoint & {
+  /** The bucket's own last calendar day — what "N days late" is measured to. */
+  day: string;
+  late: Record<PoStage, number>;
+  lateTotal: number;
+};
+
+/** One legend row: the stage, its orders, and how many of them are late. */
+export type StageSplitRow = { stage: PoStage; count: number; late: number };
+export type StageSplitBreakdown = StageSplitRow[];
 
 const openOrNull = (stage: PoStage) =>
   stage === PoStage.DELIVERED ? null : stage;
@@ -94,62 +155,78 @@ export function stageAt(events: StageMove[], end: Date): PoStage | null {
  */
 export function openAt<T extends StageOrder>(
   orders: T[],
-  end: Date,
-): { order: T; stage: PoStage }[] {
-  const open: { order: T; stage: PoStage }[] = [];
+  at: Snapshot,
+  show: StageShow = "all",
+): { order: T; stage: PoStage; overdue: boolean }[] {
+  const open: { order: T; stage: PoStage; overdue: boolean }[] = [];
   for (const order of orders) {
-    const stage = stageAt(order.stageEvents, end);
-    if (stage) open.push({ order, stage });
+    const stage = stageAt(order.stageEvents, at.end);
+    if (!stage) continue;
+    const overdue = isOverdueAt(order, at.day);
+    // The filter is applied here and nowhere else on purpose: the series, the
+    // legend and the table all walk this one function, so narrowing to the
+    // late orders cannot leave one of them counting a different population.
+    if (show === "overdue" && !overdue) continue;
+    open.push({ order, stage, overdue });
   }
   return open;
 }
 
 /**
  * One bar per snapshot: how many open orders stood at each stage when that
- * period ran out.
+ * period ran out, and how many of each stage's were already late.
  *
  * `DELIVERED` is always zero — a delivered order has left the board — and the
  * card does not draw that segment. It stays in the shape so `StagePoint` is
  * one type across the app rather than two that drift.
+ *
+ * `stageSnapshotBreakdown` used to sit beside this and count the same orders
+ * a second time for the legend. It is gone: the legend reads the last bar
+ * through `pointBreakdown`, so the two cannot drift — which is exactly the
+ * defect `context/lessons.md` §1 records.
  */
 export function stageSnapshotSeries(
   orders: StageOrder[],
   snapshots: Snapshot[],
-): StagePoint[] {
-  return snapshots.map(({ key, label, end }) => {
-    const point = { key, label, total: 0 } as StagePoint;
-    for (const stage of PO_STAGES) point[stage] = 0;
+  show: StageShow = "all",
+): StageSplitPoint[] {
+  return snapshots.map((snapshot) => {
+    const point = {
+      key: snapshot.key,
+      label: snapshot.label,
+      day: snapshot.day,
+      total: 0,
+      late: {} as Record<PoStage, number>,
+      lateTotal: 0,
+    } as StageSplitPoint;
+    for (const stage of PO_STAGES) {
+      point[stage] = 0;
+      point.late[stage] = 0;
+    }
 
-    for (const { stage } of openAt(orders, end)) {
+    for (const { stage, overdue } of openAt(orders, snapshot, show)) {
       point[stage] += 1;
       point.total += 1;
+      if (overdue) {
+        point.late[stage] += 1;
+        point.lateTotal += 1;
+      }
     }
     return point;
   });
 }
 
-/** All six stages with their counts at `end`, for the card's legend. */
-export function stageSnapshotBreakdown(
-  orders: StageOrder[],
-  end: Date,
-): StageBreakdown {
-  const counts = new Map<PoStage, number>(PO_STAGES.map((s) => [s, 0]));
-  for (const { stage } of openAt(orders, end)) {
-    counts.set(stage, (counts.get(stage) ?? 0) + 1);
-  }
-  return PO_STAGES.map((stage) => ({ stage, count: counts.get(stage) ?? 0 }));
-}
-
 /**
- * A bar's own legend: the counts the chart has just drawn for that bucket.
+ * A bar's own legend: the counts the chart has just drawn for that bucket,
+ * each with the share of it that was already late.
  *
  * It exists so the legend under the chart and the bar above it cannot come
  * from two different reads. Delivered is left out, as it is everywhere on
  * this board — an order leaves the day it is delivered, so its segment, its
  * legend row and its column would all be pinned at zero.
  */
-export function pointBreakdown(point: StagePoint): StageBreakdown {
+export function pointBreakdown(point: StageSplitPoint): StageSplitBreakdown {
   return PO_STAGES.filter((stage) => stage !== PoStage.DELIVERED).map(
-    (stage) => ({ stage, count: point[stage] }),
+    (stage) => ({ stage, count: point[stage], late: point.late[stage] }),
   );
 }

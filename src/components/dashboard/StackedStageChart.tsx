@@ -32,6 +32,42 @@ const STACK_ORDER = [...PO_STAGES].reverse();
 const colorFor = (stage: PoStage) =>
   cssVar(STAGE_VARS[PO_STAGES.indexOf(stage)]);
 
+/**
+ * A point, optionally carrying the late share of each of its stages.
+ *
+ * Optional because the dashboard's own card draws the same chart from a plain
+ * `StagePoint`; where `late` is absent every segment is solid, which is the
+ * truthful drawing of a series that was never asked about lateness.
+ */
+type ChartPoint = StagePoint & { late?: Record<PoStage, number> };
+
+/**
+ * Each stage becomes two stacked bars — the late share, then the rest — so
+ * one band of the stage's own colour carries both. The hatch says *late*; the
+ * colour still says *which stage*, which is what keeps an overdue order
+ * readable at the stage it is actually stuck at rather than bundled at the
+ * foot of the bar with every other late order.
+ */
+const LATE = (stage: PoStage) => `${stage}__late`;
+const ON_TIME = (stage: PoStage) => `${stage}__on`;
+const hatchId = (stage: PoStage) => `stage-hatch-${PO_STAGES.indexOf(stage)}`;
+
+function splitRows(points: ChartPoint[]) {
+  return points.map((point) => {
+    const row: Record<string, string | number> = {
+      key: point.key,
+      label: point.label,
+      total: point.total,
+    };
+    for (const stage of PO_STAGES) {
+      const late = point.late?.[stage] ?? 0;
+      row[LATE(stage)] = late;
+      row[ON_TIME(stage)] = point[stage] - late;
+    }
+    return row;
+  });
+}
+
 function StageTooltip({
   active,
   payload,
@@ -42,10 +78,15 @@ function StageTooltip({
   label?: string;
 }) {
   if (!active || !payload?.length) return null;
-  // The label line rides along in the payload as "total"; only stages count.
-  const stages = payload.filter((entry) =>
-    (PO_STAGES as readonly string[]).includes(String(entry.dataKey)),
-  );
+  // The label line rides along in the payload as "total"; only stages count,
+  // and each arrives as its late half and its on-time half.
+  const byStage = new Map<string, number>();
+  for (const entry of payload) {
+    const [stage, half] = String(entry.dataKey).split("__");
+    if (!half || !(PO_STAGES as readonly string[]).includes(stage)) continue;
+    byStage.set(stage, (byStage.get(stage) ?? 0) + (entry.value ?? 0));
+  }
+  const stages = [...byStage].map(([dataKey, value]) => ({ dataKey, value }));
   const total = stages.reduce((sum, entry) => sum + (entry.value ?? 0), 0);
   return (
     <div className="rounded-md bg-ink p-sm text-canvas shadow-sm">
@@ -80,7 +121,7 @@ export function StackedStageChart({
   stages = STACK_ORDER,
   showTooltip = true,
 }: {
-  points: StagePoint[];
+  points: ChartPoint[];
   /**
    * The bucket under the pointer, or null once it leaves. Given so a card can
    * open the bar's own breakdown below the chart; the chart itself keeps no
@@ -134,6 +175,7 @@ export function StackedStageChart({
 
   const dense = points.length > 60;
   const top = stages.length - 1;
+  const rows = splitRows(points);
 
   return (
     // Bars need at least as much room per bucket as a line does; below that
@@ -148,7 +190,7 @@ export function StackedStageChart({
         <ResponsiveContainer onResize={labels.onResize}>
           {/* Room above the tallest bar for its label. */}
           <ComposedChart
-            data={points}
+            data={rows}
             barCategoryGap={dense ? 1 : 2}
             margin={{ top: 16 }}
             onMouseMove={
@@ -211,47 +253,91 @@ export function StackedStageChart({
                 content={() => null}
               />
             )}
-            {stages.map((stage, index) => (
-              <Bar
-                key={stage}
-                dataKey={stage}
-                stackId="a"
-                fill={colorFor(stage)}
-                {...CHART_ANIMATION}
-                // A 2px surface gap keeps adjacent fills apart, which is what
-                // discharges the CVD warning on the pink/aqua pair.
-                stroke="var(--color-canvas)"
-                strokeWidth={dense ? 1 : 2}
-                // On the bar, not on the chart: a chart-level click reads
-                // Recharts' own active index, which lags the mousemove that
-                // preceded it and which a tap outruns entirely — measured
-                // failing at 390 and at 1440. A segment carries its own
-                // datum and needs no hover to have happened.
-                onClick={
-                  onPick
-                    ? (entry: { payload?: StagePoint }) => {
-                        const key = entry?.payload?.key;
-                        if (key) onPick(key);
-                      }
-                    : undefined
-                }
-                // Only the topmost segment is rounded.
-                radius={index === top ? [3, 3, 0, 0] : undefined}
-              >
-                {/* The bars beside the active one fade. Without it, hovering
-                    moves the breakdown below and leaves the plot unchanged,
-                    so nothing on screen says which bar is being read
-                    (measured 2026-09-22). */}
-                {activeKey
-                  ? points.map((point) => (
-                      <Cell
-                        key={point.key}
-                        fillOpacity={point.key === activeKey ? 1 : 0.25}
-                      />
-                    ))
-                  : null}
-              </Bar>
-            ))}
+            {/* One hatch per stage, in that stage's own colour. Recharts
+                renders a `defs` child as-is, which is how its own gradient
+                examples work. */}
+            <defs>
+              {stages.map((stage) => (
+                <pattern
+                  key={stage}
+                  id={hatchId(stage)}
+                  width="6"
+                  height="6"
+                  patternUnits="userSpaceOnUse"
+                  patternTransform="rotate(45)"
+                >
+                  <rect
+                    width="6"
+                    height="6"
+                    fill={colorFor(stage)}
+                    fillOpacity={0.35}
+                  />
+                  <line
+                    x1="0"
+                    y1="0"
+                    x2="0"
+                    y2="6"
+                    stroke={colorFor(stage)}
+                    strokeWidth="3"
+                  />
+                </pattern>
+              ))}
+            </defs>
+            {stages.flatMap((stage, index) =>
+              // Late first, so it sits at the foot of its own stage's band
+              // and the top of the bar stays the on-time segment — which is
+              // what lets the rounded cap stay where the canvas puts it.
+              ([LATE(stage), ON_TIME(stage)] as const).map((dataKey) => (
+                <Bar
+                  key={dataKey}
+                  dataKey={dataKey}
+                  stackId="a"
+                  fill={
+                    dataKey === LATE(stage)
+                      ? `url(#${hatchId(stage)})`
+                      : colorFor(stage)
+                  }
+                  {...CHART_ANIMATION}
+                  // A 2px surface gap keeps adjacent fills apart, which is what
+                  // discharges the CVD warning on the pink/aqua pair. The two
+                  // halves of one stage are not separated: they are one band.
+                  stroke="var(--color-canvas)"
+                  strokeWidth={dataKey === LATE(stage) ? 0 : dense ? 1 : 2}
+                  // On the bar, not on the chart: a chart-level click reads
+                  // Recharts' own active index, which lags the mousemove that
+                  // preceded it and which a tap outruns entirely — measured
+                  // failing at 390 and at 1440. A segment carries its own
+                  // datum and needs no hover to have happened.
+                  onClick={
+                    onPick
+                      ? (entry: { payload?: { key?: string } }) => {
+                          const key = entry?.payload?.key;
+                          if (key) onPick(key);
+                        }
+                      : undefined
+                  }
+                  // Only the topmost segment is rounded.
+                  radius={
+                    index === top && dataKey === ON_TIME(stage)
+                      ? [3, 3, 0, 0]
+                      : undefined
+                  }
+                >
+                  {/* The bars beside the active one fade. Without it, hovering
+                      moves the breakdown below and leaves the plot unchanged,
+                      so nothing on screen says which bar is being read
+                      (measured 2026-09-22). */}
+                  {activeKey
+                    ? points.map((point) => (
+                        <Cell
+                          key={point.key}
+                          fillOpacity={point.key === activeKey ? 1 : 0.25}
+                        />
+                      ))
+                    : null}
+                </Bar>
+              )),
+            )}
             {/* An invisible line at each bucket's total carries the label: a
               LabelList on the top segment goes missing wherever that segment
               is zero, and every segment is zero somewhere. */}

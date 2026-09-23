@@ -1,15 +1,30 @@
 import { describe, expect, it } from "vitest";
 import { PoStage } from "@/generated/prisma/enums";
+import { PO_STAGES } from "@/lib/po-stages";
 import {
+  isOverdueAt,
   openAt,
   pointBreakdown,
   stageAt,
-  stageSnapshotBreakdown,
   stageSnapshotSeries,
 } from "@/lib/analytics/stage-history";
-import type { StageMove, StageOrder } from "@/lib/analytics/stage-history";
+import type {
+  Snapshot,
+  StageMove,
+  StageOrder,
+} from "@/lib/analytics/stage-history";
 
 const at = (day: string) => new Date(`${day}T00:00:00+08:00`);
+
+/** The bucket for `day`, which runs out when the next day opens. */
+const snap = (day: string, end: string): Snapshot => ({
+  key: day,
+  label: day,
+  end: at(end),
+  day,
+});
+
+let nextId = 0;
 
 /** A history, chained through `fromStage` the way the database records it. */
 const history = (moves: [PoStage, string][]): StageMove[] =>
@@ -19,7 +34,12 @@ const history = (moves: [PoStage, string][]): StageMove[] =>
     changedAt: at(day),
   }));
 
-const order = (moves: [PoStage, string][]): StageOrder => ({
+const order = (
+  moves: [PoStage, string][],
+  deliveryDate: string | null = null,
+): StageOrder => ({
+  id: `po${(nextId += 1)}`,
+  deliveryDate,
   stageEvents: history(moves),
   lineItems: [],
 });
@@ -80,7 +100,7 @@ describe("openAt", () => {
         order([placed("2026-09-10"), [PoStage.DELIVERED, "2026-09-11"]]),
         order([placed("2026-09-20")]),
       ],
-      at("2026-09-13"),
+      snap("2026-09-12", "2026-09-13"),
     );
     expect(open).toHaveLength(1);
     expect(open[0].stage).toBe(PoStage.ORDER_PLACED);
@@ -96,6 +116,7 @@ describe("stageSnapshotSeries", () => {
   ].map((key, i) => ({
     key,
     label: key,
+    day: key,
     end: at(["2026-09-11", "2026-09-12", "2026-09-13", "2026-09-14"][i]),
   }));
 
@@ -143,18 +164,19 @@ describe("stageSnapshotSeries", () => {
   });
 });
 
-describe("stageSnapshotBreakdown", () => {
+describe("stageSnapshotSeries, every stage", () => {
   it("counts every stage, zeros included, as things stand", () => {
-    const rows = stageSnapshotBreakdown(
+    const [point] = stageSnapshotSeries(
       [
         order([placed("2026-09-10")]),
         order([placed("2026-09-10"), [PoStage.DELIVERING, "2026-09-11"]]),
         order([placed("2026-09-10"), [PoStage.DELIVERED, "2026-09-11"]]),
       ],
-      at("2026-09-13"),
+      [snap("2026-09-12", "2026-09-13")],
     );
-    expect(rows).toHaveLength(6);
-    expect(Object.fromEntries(rows.map((r) => [r.stage, r.count]))).toEqual({
+    expect(
+      Object.fromEntries(PO_STAGES.map((stage) => [stage, point[stage]])),
+    ).toEqual({
       ORDER_PLACED: 1,
       IN_PRODUCTION: 0,
       QC_PASSED: 0,
@@ -162,6 +184,7 @@ describe("stageSnapshotBreakdown", () => {
       DELIVERING: 1,
       DELIVERED: 0,
     });
+    expect(point.total).toBe(2);
   });
 });
 
@@ -184,6 +207,8 @@ describe("events sharing a timestamp", () => {
     // delivery.
     const same = at("2026-09-12");
     const o: StageOrder = {
+      id: "tie",
+      deliveryDate: null,
       lineItems: [],
       stageEvents: [
         {
@@ -221,6 +246,7 @@ describe("pointBreakdown", () => {
   const snapshots = days.map((key, i) => ({
     key,
     label: key,
+    day: key,
     end: at(["2026-09-11", "2026-09-12", "2026-09-13", "2026-09-14"][i]),
   }));
 
@@ -262,12 +288,18 @@ describe("pointBreakdown", () => {
     ]);
   });
 
-  it("agrees with the breakdown at that same instant, on every bar", () => {
+  it("agrees with the orders open at that same instant, on every bar", () => {
     const points = stageSnapshotSeries(orders, snapshots);
     for (const [i, point] of points.entries()) {
-      expect(pointBreakdown(point)).toEqual(
-        stageSnapshotBreakdown(orders, snapshots[i].end).filter(
-          (entry) => entry.stage !== PoStage.DELIVERED,
+      // Counted straight off `openAt`, the primitive, rather than off the
+      // series again: two paths that have to agree, not one call made twice.
+      const counts = new Map<PoStage, number>();
+      for (const { stage } of openAt(orders, snapshots[i])) {
+        counts.set(stage, (counts.get(stage) ?? 0) + 1);
+      }
+      expect(pointBreakdown(point).map((e) => [e.stage, e.count])).toEqual(
+        PO_STAGES.filter((stage) => stage !== PoStage.DELIVERED).map(
+          (stage) => [stage, counts.get(stage) ?? 0],
         ),
       );
     }
@@ -290,5 +322,79 @@ describe("pointBreakdown", () => {
         PoStage.DELIVERED,
       );
     }
+  });
+});
+
+describe("isOverdueAt", () => {
+  const o = (deliveryDate: string | null) =>
+    order([placed("2026-09-01")], deliveryDate);
+
+  it("is late only once the expected day has passed", () => {
+    // Not on the day itself: "due today" is not lateness, and rounding the
+    // other way would be the board rounding in its own favour.
+    expect(isOverdueAt(o("2026-09-15"), "2026-09-14")).toBe(false);
+    expect(isOverdueAt(o("2026-09-15"), "2026-09-15")).toBe(false);
+    expect(isOverdueAt(o("2026-09-15"), "2026-09-16")).toBe(true);
+  });
+
+  it("is never late without an expected date", () => {
+    // Null is not a zero: nobody committed to a date, so there is nothing to
+    // be late against — and it is not counted as on time either.
+    expect(isOverdueAt(o(null), "2030-01-01")).toBe(false);
+  });
+});
+
+describe("overdue on the board", () => {
+  const snapshots = ["2026-09-10", "2026-09-11", "2026-09-12"].map((key, i) =>
+    snap(key, ["2026-09-11", "2026-09-12", "2026-09-13"][i]),
+  );
+
+  // One order goes late partway through the window, one never does.
+  const orders = [
+    order([placed("2026-09-10")], "2026-09-10"),
+    order([placed("2026-09-10"), [PoStage.QC_PASSED, "2026-09-12"]], "2026-09-30"),
+  ];
+
+  it("counts the late share at the stage it is stuck at, day by day", () => {
+    const points = stageSnapshotSeries(orders, snapshots);
+    // Both open all three days; only the first is ever late, and it never
+    // leaves Order placed.
+    expect(points.map((p) => p.total)).toEqual([2, 2, 2]);
+    expect(points.map((p) => p.lateTotal)).toEqual([0, 1, 1]);
+    expect(points.map((p) => p.late.ORDER_PLACED)).toEqual([0, 1, 1]);
+    expect(points.map((p) => p.late.QC_PASSED)).toEqual([0, 0, 0]);
+  });
+
+  it("never reports more late than the stage holds", () => {
+    for (const point of stageSnapshotSeries(orders, snapshots)) {
+      for (const stage of PO_STAGES) {
+        expect(point.late[stage]).toBeLessThanOrEqual(point[stage]);
+      }
+    }
+  });
+
+  it("carries the late share into the legend", () => {
+    const [, second] = stageSnapshotSeries(orders, snapshots);
+    expect(
+      pointBreakdown(second).map((e) => [e.stage, e.count, e.late]),
+    ).toEqual([
+      [PoStage.ORDER_PLACED, 2, 1],
+      [PoStage.IN_PRODUCTION, 0, 0],
+      [PoStage.QC_PASSED, 0, 0],
+      [PoStage.IN_WAREHOUSE, 0, 0],
+      [PoStage.DELIVERING, 0, 0],
+    ]);
+  });
+
+  it("narrows every figure together when the filter is on", () => {
+    const points = stageSnapshotSeries(orders, snapshots, "overdue");
+    // The subject is the late orders, so the totals *are* the late counts —
+    // a bar of two under a heading of one is the defect the filter exists to
+    // avoid, and it is avoided by narrowing in `openAt` alone.
+    expect(points.map((p) => p.total)).toEqual([0, 1, 1]);
+    expect(points.map((p) => p.lateTotal)).toEqual([0, 1, 1]);
+    expect(points.map((p) => p.total)).toEqual(points.map((p) => p.lateTotal));
+    expect(openAt(orders, snapshots[2], "overdue")).toHaveLength(1);
+    expect(openAt(orders, snapshots[2])).toHaveLength(2);
   });
 });

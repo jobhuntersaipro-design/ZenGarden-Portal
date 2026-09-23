@@ -3352,6 +3352,95 @@ file: generating a PDF remains Phase 19, still unbuilt.
   purchase-order file, is also unbuilt.
 
 ## History
+- 2026-09-23: Overdue on the stage board, and a product row that opens into
+  its orders — on `main`. Asked for as: "how to show the overdue order here?
+  and add filter for the overdue. The point is to let user aware the overdue
+  order status", and "for each product, when click, it will show all the PO +
+  OrderID relatively for that product".
+  **The first three designs were rejected, and the rejection was right.** They
+  drew *how many* orders were late — a red line, a red figure, a red band —
+  and none of them said **where the late ones are stuck**. "12 overdue" is not
+  actionable: twelve orders nobody has started is a different problem from
+  twelve already on a lorry. The second set answered that, and the user chose
+  the one that puts lateness **inside each stage**.
+  **Every stage band splits: solid on time, hatched already late.** The stack
+  still totals the day's orders, so the bar means what it always meant, and
+  the colour still says *which stage* — the hatch is the only thing carrying
+  lateness. That is what a red band across the foot of the bar could not do:
+  it sat over Delivering and In warehouse and read as though those were the
+  late ones. The legend says the same in words — `In warehouse 7 · 2 late`.
+  **Overdue is measured at the day being read, never at today.** The board
+  replays history, so the bar for 15 Sep has to say what was late *on the
+  15th*; reading today's lateness onto a past bar is the defect the board was
+  rebuilt to remove, and it would turn the whole window red purely because
+  time had passed. Strictly before, so "due that day" is not lateness. **An
+  order with no expected date is never overdue** — null is not zero, and it is
+  not counted as on time either.
+  **The comparison is two calendar-date strings**, not two timestamps:
+  `deliveryDate` is `@db.Date` and each bucket carries its own last day, so
+  the whole rule is out of reach of the UTC-truncation trap this project has
+  been bitten by twice.
+  **`All open` / `Overdue only` narrows everything**, because it is applied in
+  exactly one place — `openAt`, which the bars, the legend and the table all
+  walk. A chart of 27 under a heading of 8 is lesson 1 arriving by another
+  door, and it cannot happen here by construction rather than by care.
+  **A product row opens into its orders**, one sub-row each: buyer, the
+  buyer's `PO number …` as the link, our `Order ID W-…` underneath where there
+  is one, the expected date with `· 6 days late` in red, and the stage that
+  order stood at *then*. Each puts a 1 in its own stage column, so **the
+  sub-rows sum to the row above them** rather than merely accompanying it.
+  Identity is carried once in a dictionary keyed by order id and joined per
+  bucket, because a buyer's name does not change from one day to the next and
+  repeating it in all thirty buckets would multiply the payload by the window.
+  **`stageSnapshotBreakdown` was deleted rather than updated.** It counted the
+  same orders a second time for the legend; the legend now reads the last bar
+  through `pointBreakdown`, so there is one source and nothing to drift.
+  Driven on a seeded local Postgres as the super admin, 30-day window opening
+  23 Sep 2026.
+  - **The figures reconcile against SQL, not against the screen.** The board
+    reads **27 orders in hand · 8 overdue**, against SQL's own 27 open and 8
+    past their date; the legend's split reads **In warehouse 7 · 2 late** and
+    **Delivering 7 · 6 late**, against SQL's `IN_WAREHOUSE 2, DELIVERING 6`.
+    Zero seeded orders carry no expected date, so that half is untested here.
+  - **The expansion sums to its parent, measured rather than eyeballed.**
+    MR.KING 1.5L — Lemon: parent `3 · 1 · 4 · 3 · 3 · 3 · 14`, its **14**
+    sub-rows summing to exactly `3 · 1 · 4 · 3 · 3 · 3 · 14`, and the sub-row
+    count equal to the Orders figure. Rows read `Sunway Packaging / PO number
+    PO-2026-0023 / Expected 17 Sep 2026 · 6 days late / Delivering`, worst
+    first, with `· due in 1 day` on the one that is not late.
+  - **The hatch renders**, 25 segments across three stages — including QC
+    passed on two early bars, which is the historical rule working: an order
+    late at QC in September is not late at QC today.
+  - **The filter narrows every figure together.** `?stage_show=overdue` reads
+    **8 overdue of 27 in hand**, legend `2 + 6 = 8`, table heading *Overdue
+    today · 8 orders*, 10 product rows.
+  - **Pinning follows.** 20 Sep reads *27 orders · 5 overdue* with the legend
+    `9 · 8 · 2 (1 late) · 4 (2 late) · 4 (2 late)` — summing to 27 and 5.
+  - **90 days does not defeat the hatch.** `ChartScroller` keeps bars at
+    **23px** rather than compressing them, and the hatched band measures
+    **7.6px** at its thinnest, still reading as a hatch.
+  - **Phone.** 390/390 at rest, expanded and filtered; 1440/1440 on the
+    desktop. The row's caret is **44×44**. The only sub-44px elements are the
+    legend links (18px) and product-name links (17px), both the accepted
+    text-link class.
+  - **Two counterfactuals watched failing**, then restored: counting an order
+    late on its expected day itself (`<=`) turns **3** tests red, and letting
+    the filter reach the bars but not the table turns the narrowing test red —
+    the lesson-1 defect, caught by construction.
+  - 1479/1479 tests across 116 files (17 new), `tsc`, lint (the same 2
+    pre-existing `username` warnings) and `npm run build` clean, `/demand`
+    still dynamic.
+  **Not verified:** anything on production; a member's view; **an overdue
+  order at Order placed or In production on screen** — every seeded late order
+  is at In warehouse or Delivering today, so the hatch on the upper bands was
+  only ever drawn from history, never from the current day; an order carrying
+  no expected date, of which the seed has none; and a product whose expansion
+  is long enough to scroll, the widest being 14 sub-rows.
+  **A mistake worth recording:** to restore a counterfactual I ran
+  `git checkout -- src/lib/analytics/stage-products.ts` on a file whose real
+  changes were not yet committed, which threw all of them away. `cp` to a
+  backup is the only safe undo for an uncommitted file; `git checkout` restores
+  HEAD, not the last good state.
 - 2026-09-22: A product's stock opens as a record, not a form — on
   `main`. Asked for as: "For stock count / Show stock count trend for each
   product when clicked, a slide in modal showing the daily trend and activity
