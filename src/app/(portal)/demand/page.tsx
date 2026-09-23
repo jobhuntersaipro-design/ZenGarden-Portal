@@ -103,13 +103,17 @@ export default async function DemandPage({
     family: firstParam(params, "family") ?? "",
     productId: firstParam(params, "product") ?? "",
   };
-  // The stage board reads its own window, never this page's grain, span or
-  // filters: it answers where today's orders *stand*, where the board above
-  // it answers what is *coming*, and the two questions do not share a
-  // timeline — the demand board looks forward from today and this looks
-  // back. Its own `?stage_window=` keeps them from writing over each other,
-  // and a window the URL does not name falls back to 30 rather than drawing
-  // nothing.
+  // The stage board reads this page's **filters** and not its window.
+  //
+  // Search, family and product pick which orders a reader is asking about,
+  // and the toolbar that writes them now sits directly above this board — a
+  // control that governed the table two sections down and not the chart
+  // immediately beneath it would be broken on its face.
+  //
+  // The window is the opposite case: the committed board looks *forward*
+  // from today and this one looks *back*, so one span cannot mean both. This
+  // board keeps its own `?stage_window=`, and a window the URL does not name
+  // falls back to 30 rather than drawing nothing.
   const stageWindow = resolveStageWindow(firstParam(params, "stage_window"));
   const stageShow = resolveStageShow(firstParam(params, "stage_show"));
   const stageTo = new Date();
@@ -117,7 +121,7 @@ export default async function DemandPage({
 
   const [board, stages] = await Promise.all([
     loadDemandBoard({ grain, window, filters }),
-    loadPoStageBoard(stageFrom, stageTo, "day", stageShow),
+    loadPoStageBoard(stageFrom, stageTo, "day", stageShow, filters),
   ]);
 
   // A picked date owns the strip: no chip is selected beside it, the same as
@@ -156,6 +160,28 @@ export default async function DemandPage({
         />
       </div>
 
+      {/* Directly under the toolbar, because the toolbar governs it: the
+          same search, family and product narrow this board and the committed
+          table below it, so the control and what it changes are adjacent.
+          `data-print-hide` because the printed sheet is the committed board —
+          `PrintBoard` scales the page to *that* table's width, so a second
+          scroller would print cut off, and a stage chart is not what somebody
+          carries into a planning meeting. */}
+      <div className="mb-xl" data-print-hide>
+        <StageBoard
+          points={stages.points}
+          breakdown={stages.breakdown}
+          all={stages.all}
+          byBucket={stages.byBucket}
+          orders={stages.orders}
+          orderCount={stages.orderCount}
+          overdueCount={stages.overdueCount}
+          openCount={stages.openCount}
+          show={stages.show}
+          window={stageWindow}
+        />
+      </div>
+
       {/* The board's own missing half, said once and plainly rather than
           implied by a column of dashes. `counted` is how many products on the
           board carry a figure at all. */}
@@ -177,26 +203,6 @@ export default async function DemandPage({
 
       <DemandTable board={board} />
 
-      {/* Below the board, not above it: the master list is what this page is
-          opened for, and a chart before it would push thirty day columns
-          under the fold. `data-print-hide` because the printed sheet is the
-          committed board — `PrintBoard` scales the page to *that* table's
-          width, so a second scroller would print cut off, and a stage chart
-          is not what somebody carries into a planning meeting. */}
-      <div className="mt-xl" data-print-hide>
-        <StageBoard
-          points={stages.points}
-          breakdown={stages.breakdown}
-          all={stages.all}
-          byBucket={stages.byBucket}
-          orders={stages.orders}
-          orderCount={stages.orderCount}
-          overdueCount={stages.overdueCount}
-          openCount={stages.openCount}
-          show={stages.show}
-          window={stageWindow}
-        />
-      </div>
     </div>
   );
 }

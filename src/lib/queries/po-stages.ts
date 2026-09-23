@@ -4,6 +4,7 @@ import { formatDate, TIME_ZONE, type Aggregation } from "@/lib/dates";
 import { ORDER_IDENTITY_SELECT, orderIdentity, orderLabel } from "@/lib/order-identity";
 import { prisma } from "@/lib/prisma";
 import { makeBuckets } from "@/lib/analytics/buckets";
+import { boardHaystack } from "@/lib/planning/search";
 import {
   openAt,
   pointBreakdown,
@@ -49,7 +50,19 @@ const SELECT = {
   lineItems: {
     select: {
       productId: true,
-      product: { select: { name: true } },
+      // Wider than the board draws, and only the search reads the extra
+      // columns: the toolbar above this board is the committed table's too,
+      // so a search for a SKU, a variant, a market or a family has to find
+      // the same orders here that it finds there.
+      product: {
+        select: {
+          name: true,
+          sku: true,
+          variant: true,
+          market: true,
+          family: { select: { id: true, code: true, name: true } },
+        },
+      },
     },
   },
   stageEvents: {
@@ -82,6 +95,21 @@ export type StageOrderMeta = {
   deliveryIso: string | null;
 };
 
+/**
+ * The page's own filters, which this board reads because the toolbar that
+ * writes them now sits directly above it.
+ *
+ * Only the three that pick **which orders** — the search box, the family and
+ * the product. Grain and window are deliberately not among them: the
+ * committed board looks forward from today and this one looks back, so one
+ * window cannot mean both, and this board keeps its own `?stage_window=`.
+ */
+export type StageFilters = {
+  q?: string;
+  family?: string;
+  productId?: string;
+};
+
 export type PoStageBoard = {
   /** One bar per day, in the order the chart draws them. */
   points: StageSplitPoint[];
@@ -97,7 +125,11 @@ export type PoStageBoard = {
   orderCount: number;
   /** How many of those are past their expected delivery date. */
   overdueCount: number;
-  /** Open orders right now with the filter off — what "of N in hand" reads. */
+  /**
+   * Open orders right now whatever `show` says — what "of N in hand" reads.
+   * The page's own filters *do* narrow it, so "8 overdue of 27 in hand"
+   * counts 27 of the orders the search left, not of the whole board.
+   */
   openCount: number;
   show: StageShow;
 };
@@ -118,12 +150,18 @@ export type PoStageBoard = {
  * still open whenever it was confirmed, plus everything delivered since the
  * window opened. An order delivered before that is the only thing excluded,
  * and it could never appear on any bar.
+ *
+ * **The page's filters are applied in exactly one place** — here, while the
+ * rows become orders — so the bars, the legend, the table and every row's
+ * expansion all walk the same narrowed list. A chart counting 27 under a
+ * heading of 8 is then impossible by construction rather than by care.
  */
 export async function loadPoStageBoard(
   from: Date,
   to: Date,
   agg: Aggregation,
   show: StageShow = "all",
+  filters: StageFilters = {},
 ): Promise<PoStageBoard> {
   const buckets = makeBuckets(from, to, agg);
 
@@ -156,32 +194,73 @@ export async function loadPoStageBoard(
     select: SELECT,
   });
 
-  const orders: StageOrder[] = rows.map((row) => ({
-    id: row.id,
-    deliveryDate: row.deliveryDate ? iso(row.deliveryDate) : null,
-    stageEvents: row.stageEvents,
-    lineItems: row.lineItems.map((line) => ({
-      productId: line.productId,
-      productName: line.product?.name ?? null,
-    })),
-  }));
+  const query = filters.q?.trim().toLowerCase() ?? "";
+  // Whether anything is narrowing at all. Without it, an order carrying no
+  // line items would start dropping off a board it has always been on — the
+  // filter is allowed to empty a board, an absent one is not.
+  const narrowing = Boolean(query || filters.family || filters.productId);
 
+  const orders: StageOrder[] = [];
   const meta: Record<string, StageOrderMeta> = {};
+
   for (const row of rows) {
     const identity = orderIdentity(row);
+    const buyerName = row.buyer?.name ?? "Unknown buyer";
+    // The buyer's own number leads, because that is what a planner quotes
+    // when they chase a late order — the reverse of `orderLabel`'s
+    // preference, which serves surfaces with room for exactly one.
+    const label = identity.poNumber
+      ? `PO number ${identity.poNumber}`
+      : orderLabel(identity);
+    const orderIdLabel =
+      identity.orderId && identity.poNumber
+        ? `Order ID ${identity.orderId}`
+        : null;
+
+    // An order stays on the board while it carries a line the filter keeps,
+    // and keeps only those lines — so a search for one product leaves the
+    // bars counting the orders that carry it and the table showing that
+    // product alone, rather than the two disagreeing about the population.
+    const lineItems = row.lineItems
+      .filter((line) => {
+        if (filters.productId && line.productId !== filters.productId)
+          return false;
+        if (filters.family && line.product?.family?.id !== filters.family)
+          return false;
+        if (!query) return true;
+        // A line that matched no product carries none of the product half
+        // and is still findable by its buyer or either identifier, which is
+        // how the remainder row survives a search that names one.
+        return boardHaystack({
+          sku: line.product?.sku,
+          name: line.product?.name,
+          variant: line.product?.variant,
+          market: line.product?.market,
+          familyCode: line.product?.family?.code,
+          familyName: line.product?.family?.name,
+          buyerName,
+          label,
+          orderIdLabel,
+        }).includes(query);
+      })
+      .map((line) => ({
+        productId: line.productId,
+        productName: line.product?.name ?? null,
+      }));
+
+    if (narrowing && lineItems.length === 0) continue;
+
+    orders.push({
+      id: row.id,
+      deliveryDate: row.deliveryDate ? iso(row.deliveryDate) : null,
+      stageEvents: row.stageEvents,
+      lineItems,
+    });
     meta[row.id] = {
       purchaseOrderId: row.id,
-      buyerName: row.buyer?.name ?? "Unknown buyer",
-      // The buyer's own number leads, because that is what a planner quotes
-      // when they chase a late order — the reverse of `orderLabel`'s
-      // preference, which serves surfaces with room for exactly one.
-      label: identity.poNumber
-        ? `PO number ${identity.poNumber}`
-        : orderLabel(identity),
-      orderIdLabel:
-        identity.orderId && identity.poNumber
-          ? `Order ID ${identity.orderId}`
-          : null,
+      buyerName,
+      label,
+      orderIdLabel,
       deliveryDate: row.deliveryDate ? formatDate(row.deliveryDate) : null,
       deliveryIso: row.deliveryDate ? iso(row.deliveryDate) : null,
     };

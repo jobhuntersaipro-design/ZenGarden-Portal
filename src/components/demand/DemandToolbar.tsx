@@ -174,7 +174,7 @@ export function DemandToolbar({
             className="pointer-events-none absolute left-xs top-1/2 size-4 -translate-y-1/2 text-ink-tertiary"
           />
           <Input
-            aria-label="Search the board by product, SKU, family, market, buyer, PO number or Order ID"
+            aria-label="Search both boards by product, SKU, family, market, buyer, PO number or Order ID"
             // Six things are searched; the three a planner reaches for are
             // what fits. The rest are in the label, for anyone who asks.
             placeholder="Product, buyer, PO number…"

@@ -5,6 +5,7 @@ import { bucketKey, makeBuckets } from "@/lib/analytics/buckets";
 import { formatDate } from "@/lib/dates";
 import { ORDER_IDENTITY_SELECT, orderIdentity, orderLabel } from "@/lib/order-identity";
 import { DEMAND_CEILING, DEMAND_SPAN, type DemandGrain } from "@/lib/planning/grain";
+import { boardHaystack } from "@/lib/planning/search";
 
 export { DEMAND_CEILING, DEMAND_SPAN, type DemandGrain } from "@/lib/planning/grain";
 
@@ -239,7 +240,12 @@ function labelFor(key: string, grain: DemandGrain): DemandColumn {
  * "unknown": it is an extraction that never matched the catalogue, and it
  * belongs in the review queue, not in a production plan.
  */
-/** Every field the search box looks in, lower-cased once per line. */
+/**
+ * Every field the search box looks in, lower-cased once per line.
+ *
+ * The field list itself lives in `planning/search`, because the stage board
+ * under the same toolbar reads the same box and must find the same things.
+ */
 function haystack(
   product: { sku: string; name: string; variant: string | null; market: string | null },
   family: { code: string; name: string } | null,
@@ -247,20 +253,17 @@ function haystack(
   label: string,
   orderIdLabel: string | null,
 ): string {
-  return [
-    product.sku,
-    product.name,
-    product.variant,
-    product.market,
-    family?.code,
-    family?.name,
+  return boardHaystack({
+    sku: product.sku,
+    name: product.name,
+    variant: product.variant,
+    market: product.market,
+    familyCode: family?.code,
+    familyName: family?.name,
     buyerName,
     label,
     orderIdLabel,
-  ]
-    .filter(Boolean)
-    .join(" ")
-    .toLowerCase();
+  });
 }
 
 export async function loadDemandBoard({

@@ -3352,6 +3352,85 @@ file: generating a PDF remains Phase 19, still unbuilt.
   purchase-order file, is also unbuilt.
 
 ## History
+- 2026-09-23: Order stage moves above the table, and the toolbar governs both
+  boards — on `main`. Asked for as: "move the Order Stage section above the
+  table, then make sure the filter works for this page".
+  **The move is what makes the filter question unavoidable.** Below the table
+  the stage board was a second reading a scroll away, and ignoring the page's
+  search was defensible — recorded here on 2026-09-22 as "the two boards
+  answer opposite questions and share nothing". Directly under the toolbar it
+  is not: a control that narrows a table two sections down while leaving the
+  chart immediately beneath it whole is broken on its face. **Asked before
+  building**, with three scopes offered; the user chose search, family and
+  product.
+  **Three of the toolbar's controls narrow it, and two deliberately do not.**
+  Search, family and product pick *which orders* a reader is asking about, so
+  they compose with anything. Grain and window are the opposite case: the
+  committed board looks **forward** from today and the stage board looks
+  **back**, so one span cannot mean both — the stage board keeps its own
+  `?stage_window=`, and the two write past each other rather than over each
+  other.
+  **Applied in exactly one place** — while the rows become `StageOrder`s,
+  before anything reads them. An order stays on the board while it carries a
+  line the filter keeps, and keeps only those lines, so the bars, the legend,
+  the table and every row's expansion walk the same narrowed list. Lesson 1's
+  defect is then impossible by construction rather than by care.
+  **One search box, one field list.** `boardHaystack` moved into
+  `src/lib/planning/search.ts` and both queries read it, because a search that
+  found a buyer on one board and not the other would be one control meaning
+  two things. The stage select widened by four columns to feed it — SKU,
+  variant, market and the family — and nothing draws them. The label says so
+  now: *Search both boards by…*.
+  **A line that matched no product keeps its buyer and its numbers**, so the
+  `*none` remainder row survives a search naming one, and a family or product
+  filter correctly drops it.
+  **An absent filter is not an empty one.** The drop is conditional on
+  something actually narrowing, so an order carrying no line items at all
+  stays on a board it has always been on.
+  Driven in a real browser against a seeded local Postgres, as the super
+  admin, with three markets and two families written onto the seeded
+  catalogue for the drive and the cluster deleted afterwards.
+  - **The defect and its fix, on the same screen.** Searching `Meridian`, the
+    committed summary reads *2 open orders · 88 cartons* — and the stage board
+    above it read **27 orders in hand · 8 overdue** before, **2 orders in
+    hand · 1 overdue** after. At 390 as well as 1440.
+  - **Every figure narrows together, reconciled against each other rather
+    than eyeballed.** `?q=Meridian`: legend `0 · 0 · 0 · 1 · 1` = 2, heading
+    2, table *In hand today · 2 orders · 1 overdue*, 8 product rows (two
+    orders carrying eight products between them). `?q=Vietnam` — a **market**,
+    which only the widened select can see — reads `2 · 6 · 3 · 4 · 6` = 21
+    orders over 4 product rows, exactly the four products in that market.
+    `?family=fam_test_a` reads 26 orders over 6 rows.
+  - **`show` composes with it, and says which is which.** `?q=Meridian&
+    stage_show=overdue` reads *1 overdue of 2 in hand* — the "of 2" being the
+    searched population, not the whole board.
+  - **A filter nothing matches empties the board rather than half of it:**
+    bars 0, legend 0, table 0 rows, *Nothing open right now*.
+  - **The controls keep each other's state.** Clicking the stage board's
+    90 days from `?q=Meridian` lands on `?q=Meridian&stage_window=90` with the
+    search box still reading "Meridian" and the stage board still reading 2.
+  - **The move, measured:** the stage board's top sits at **277px** and the
+    committed table's at **1,438px**; before, the table led.
+  - **Phone.** 390/390 and 1440/1440, no page overflow. No new control; the
+    only sub-44px elements are the accepted classes — the skip link, the
+    legend's text links (18px) and the product-name links (17–21px).
+  - **The counterfactual watched failing**, then restored: filtering the table
+    while leaving the bars counting everything — lesson 1's exact defect —
+    turns **8 of the 10 new tests red**, `expected [ 3, 3, 3 ] to deeply equal
+    [ 1, 1, 1 ]`.
+  - 1489/1489 tests across 117 files (10 new), `tsc`, lint (the same 2
+    pre-existing `username` warnings) and `npm run build` clean, `/demand`
+    still dynamic.
+  **Not verified:** anything on production; a member's view. **The seeded
+  catalogue carries no market and no family of its own**, so three markets and
+  two families were written onto its 12 products for the drive — production's
+  lists are the customer's own and longer.
+  **Flagged rather than fixed:** the committed board's summary line still sits
+  above the toolbar, so *"27 open orders · 3,816 cartons"* now reads a
+  paragraph away from a chart heading that says *"27 orders in hand"* — two
+  populations, similarly worded, newly adjacent. They agree on the seed and
+  need not in general. Moving that line down to sit with the table it
+  describes is the fix, and was left for the user to call.
 - 2026-09-23: A click outside the bars puts the stage board back to today — on
   `main`. Asked for as: "If click outside the bar chart, it should reset
   everything to default, right now it still show the previous selected day".
