@@ -29,8 +29,38 @@ export type Column<Row> = {
    * scanning many rows at once are better dropped than stacked.
    */
   mobileHidden?: boolean;
+  /**
+   * Leave this column out of the desktop table until the card itself is at
+   * least this wide (`--container-table-md/wide/lg/xl`: 48 / 56 / 64 / 90rem).
+   * That is the card, not the viewport — the sidebar takes 240px, so a
+   * 1280px window is a ~960px card. `@md` is not this: it is Tailwind's
+   * 28rem container scale.
+   */
+  showAt?: "md" | "wide" | "lg" | "xl";
   cell: (row: Row) => ReactNode;
 };
+
+/**
+ * Hide a column while the card is narrower than `showAt`. `@max-table-md`
+ * reads `--container-table-md` (the card), not Tailwind's `--container-md`
+ * (28rem) and not the viewport.
+ */
+export function columnShowClass(showAt: Column<never>["showAt"]): string {
+  if (showAt === "md") return "@max-table-md:hidden";
+  if (showAt === "wide") return "@max-table-wide:hidden";
+  if (showAt === "lg") return "@max-table-lg:hidden";
+  if (showAt === "xl") return "@max-table-xl:hidden";
+  return "";
+}
+
+/**
+ * The first column stays put while the rest scrolls, so a row never loses
+ * the thing that identifies it (brief G5).
+ */
+export function stickyColumnClass(index: number, section: "head" | "body"): string {
+  if (index !== 0) return "";
+  return section === "head" ? "sticky left-0 z-20" : "sticky left-0 z-10";
+}
 
 /**
  * The one table in the app. Sorting is server-side on the underlying column,
@@ -150,7 +180,7 @@ export function DataTable<Row extends { id: string }>({
   const sortable = columns.filter((column) => column.sortable !== false);
 
   return (
-    <div>
+    <div className="min-w-0">
       {/* Cards, below `md`. */}
       <div className="md:hidden">
         {rows.length > 0 && sortable.length > 0 ? (
@@ -260,12 +290,16 @@ export function DataTable<Row extends { id: string }>({
         )}
       </div>
 
-      {/* Table, from `md` up. */}
-      <div className="relative hidden md:block">
+      {/* Table, from `md` up.
+          `@container` is inline-size containment: the card's width comes from
+          the page, never from the table, so a wide row scrolls here instead
+          of widening the page. Columns opt in with `showAt` against this
+          same width. */}
+      <div className="relative hidden min-w-0 @container md:block">
         <div
           ref={scroller}
           onScroll={measure}
-          className="overflow-x-auto rounded-lg border border-hairline bg-canvas"
+          className="max-w-full min-w-0 overflow-x-auto rounded-lg border border-hairline bg-canvas"
         >
           {/* `border-separate` rather than `border-collapse`: a collapsed table
               merges its borders onto the row, and a sticky cell painted over
@@ -295,11 +329,7 @@ export function DataTable<Row extends { id: string }>({
                       }
                       className={`border-b border-hairline bg-canvas px-md py-sm font-mono text-[length:var(--text-eyebrow)] font-normal whitespace-nowrap ${
                         column.align === "right" ? "text-right" : "text-left"
-                      } ${active ? "text-ink" : "text-ink-tertiary"} ${
-                        // The first column stays put while the rest scrolls, so a
-                        // row never loses the thing that identifies it (brief G5).
-                        index === 0 ? "sticky left-0 z-20" : ""
-                      }`}
+                      } ${active ? "text-ink" : "text-ink-tertiary"} ${stickyColumnClass(index, "head")} ${columnShowClass(column.showAt)}`}
                     >
                       {isSortable ? (
                         <button
@@ -369,7 +399,7 @@ export function DataTable<Row extends { id: string }>({
                             column.align === "right"
                               ? "text-right tabular-nums"
                               : "text-left"
-                          } ${index === 0 ? "sticky left-0 z-10" : ""}`}
+                          } ${stickyColumnClass(index, "body")} ${columnShowClass(column.showAt)}`}
                         >
                           {href && index === 0 ? (
                             <Link
@@ -393,7 +423,9 @@ export function DataTable<Row extends { id: string }>({
 
         {/* Fades, not scrollbars: a scrollbar on a trackpad is invisible until
             you already know to scroll. Each one only appears while there is
-            something on that side to reach. */}
+            something on that side to reach. The right fade is surface-soft,
+            not canvas: canvas is white, and a white wash on a white cell
+            does not read as an edge. */}
         {clipped.left ? (
           <div
             aria-hidden
@@ -403,7 +435,7 @@ export function DataTable<Row extends { id: string }>({
         {clipped.right ? (
           <div
             aria-hidden
-            className="pointer-events-none absolute inset-y-px right-px w-xl rounded-r-lg bg-linear-to-l from-canvas to-transparent"
+            className="pointer-events-none absolute inset-y-px right-px z-30 w-xl rounded-r-lg bg-linear-to-l from-surface-soft from-40% to-transparent"
           />
         ) : null}
       </div>

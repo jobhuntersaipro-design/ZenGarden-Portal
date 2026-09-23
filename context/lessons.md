@@ -131,3 +131,22 @@ waits a short grace, cancelled when the skeleton mounts.
 left `data-route-progress="off"` for the whole soft-nav. The same build's
 shop header links raised the bar during the click. The portal node was
 mounted the entire time; it never flipped to on.
+
+---
+
+## 7. A column that does not fit is dropped, not cut
+
+**Rule.** A nowrap table is as wide as its columns. When that is wider than
+the card, drop the columns that do not identify the row until the card can
+hold the rest. What is still off-screen scrolls *inside* the card, the
+identifier stays pinned, and the edge that has more fades. A fade painted
+`from-canvas` on a white cell is invisible — use a token that is not the
+cell's own background. A header cut at the card edge is not a column. The
+width that matters is the card's, not the viewport's: `@md` in this project
+is Tailwind's 28rem container scale, not a 768px screen.
+
+**The case (2026-09-23).** Purchase orders filtered to Failed, at 1280 with
+the sidebar. Twelve columns measured 1159px in a 958px card. Source was the
+column under the edge and Uploaded by, Confirmed by and the row action sat
+past a horizontal scrollbar. An uncapped file name in Order ID makes that
+worse by the length of the name.

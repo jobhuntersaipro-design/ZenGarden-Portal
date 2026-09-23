@@ -200,7 +200,7 @@ export function poColumns({
       key: "orderId",
       header: "Order ID",
       cell: (row) => (
-        <span className="flex items-center gap-xs">
+        <span className="flex min-w-0 items-center gap-xs">
           <span className="shrink-0 rounded-xxs bg-surface-soft px-xxs font-mono text-[length:var(--text-caption)] text-ink-tertiary">
             {FILE_LABEL[row.fileType] ?? "FILE"}
           </span>
@@ -212,9 +212,12 @@ export function poColumns({
             // An upload not yet confirmed has no Order ID, and often no PO
             // number read yet either (a failed extraction). Its file name,
             // beside the file badge, is what tells two of them apart — shown
-            // as the file it is, never in the PO number column.
+            // as the file it is, never in the PO number column. Capped, or
+            // the filename becomes the column width and pushes Status off
+            // the card. `max-w-40` (10rem) still shows test-scan-c5atgf.pdf
+            // in full; `max-w-48` left 19px of overflow at 1280.
             <span
-              className="truncate text-ink-secondary"
+              className="block min-w-0 max-w-40 truncate text-ink-secondary"
               title={`Uploaded file ${row.fileName} — no Order ID`}
             >
               {row.fileName}
@@ -268,6 +271,9 @@ export function poColumns({
     {
       key: "poDate",
       header: "PO date",
+      // Date and items fit once the card clears 48rem. Below that they
+      // push Status past the edge (the 1024 window's card is ~700px).
+      showAt: "md",
       defaultDir: "desc",
       cell: (row) =>
         row.poDate ? (
@@ -279,6 +285,10 @@ export function poColumns({
     {
       key: "deliveryDate",
       header: "Expected delivery",
+      // On the 1280 failed list the card is ~960px and this header sits
+      // fully inside it. Below 56rem (a ~1100px window, card ~780px) the
+      // same header pushes Status past the edge, so it waits.
+      showAt: "wide",
       // Soonest first: the order about to leave is the one to look at.
       defaultDir: "asc",
       cell: (row) =>
@@ -292,6 +302,7 @@ export function poColumns({
       key: "itemCount",
       header: "Items",
       align: "right",
+      showAt: "md",
       defaultDir: "desc",
       cell: (row) => row.itemCount,
     },
@@ -316,6 +327,10 @@ export function poColumns({
     {
       key: "source",
       header: "Source",
+      // The first column cut off at 1280: with the file badge in Order ID,
+      // Source starts under the card edge. It returns once the card clears
+      // 64rem (a ~1440px window).
+      showAt: "lg",
       // Deliberately not mobileHidden. Card mode drops the two avatar columns
       // as noise, but where an order came from is the one thing this column
       // exists to say.
@@ -339,8 +354,12 @@ export function poColumns({
       key: "uploadedBy",
       header: "Uploaded by",
       // Two avatars per card is noise when you are scanning for a PO; both
-      // are still on the detail page and in the desktop table.
+      // are still on the detail page. The desktop table shows them only once
+      // the card is `xl` — wider than `--container-page` (1160px), so on this
+      // layout they stay on the detail page rather than forcing a scrollbar
+      // on every screen. Twelve columns measured 1342px; the page holds 1160.
       mobileHidden: true,
+      showAt: "xl",
       cell: (row) =>
         // Asked of `source`, not inferred from a missing uploader. Since
         // Phase 37 a confirmed shop order *has* an uploader — the buyer's own
@@ -359,9 +378,12 @@ export function poColumns({
     {
       key: "confirmedBy",
       header: "Confirmed by",
-      // Two avatars per card is noise when you are scanning for a PO; both
-      // are still on the detail page and in the desktop table.
+      // Same trade as Uploaded by: the backlog is still sortable from the
+      // phone's Sort control, and the name is on the order. The column
+      // itself does not fit beside the identifier at any width this page
+      // actually reaches.
       mobileHidden: true,
+      showAt: "xl",
       // Visible from the list and sortable to the top: the backlog is the point.
       cell: (row) =>
         row.confirmedByName ? (

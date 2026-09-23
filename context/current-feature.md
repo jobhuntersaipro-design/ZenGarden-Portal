@@ -1,3 +1,23 @@
+# Fix: Failed purchase-order table stays inside its card (z8v9xngduu)
+
+On `/purchase-orders?status=failed` the desktop table was wider than the
+card. At 1280 with the sidebar the card is 958px and the twelve columns
+measured 1159px, so Source sat under the edge and Uploaded by, Confirmed
+by and the row action were past a horizontal scrollbar. A failed scan's
+file name in Order ID has no cap, so a long one pushed Status off as well.
+
+The card contains the scroll (`min-w-0` and `@container` on `DataTable`).
+Order ID stays sticky. A file name truncates at `max-w-40` with the full
+name on `title`. Columns drop until the card can hold them: PO date and
+items from 48rem, expected delivery from 56rem (it is fully on screen at
+1280, and it clips Status on a ~780px card), source from 64rem, the two
+avatar columns from 90rem — past `--container-page`, so they stay on the
+order. When anything is still past the edge, the right side fades with
+`from-surface-soft` (a canvas fade is white on white). Below `md` the
+list is still the card.
+
+The review screen (`/review/[id]`, including Try again) is untouched.
+
 # Current Feature: Order stage — a daily snapshot on the Demand Board
 
 ## Status

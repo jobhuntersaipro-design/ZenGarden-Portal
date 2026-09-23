@@ -277,6 +277,20 @@
 
   /* Layout */
   --container-page: 1160px;
+  /*
+   * Width of a table card, for `@table-md:` and its siblings. Not the
+   * viewport: the sidebar is 240px and the page column tops out at
+   * `--container-page`, so a 1280px window is a ~960px card.
+   *
+   * These are not `--container-md`. That name is Tailwind's own 28rem
+   * container scale, and `@md:` grids on the review screen already use it.
+   * `table-xl` sits past `--container-page`, so a column that needs it
+   * stays off this list rather than forcing a scrollbar on every screen.
+   */
+  --container-table-md: 48rem; /* 768px card — PO date and items */
+  --container-table-wide: 56rem; /* 896px card — expected delivery still leaves Status inside */
+  --container-table-lg: 64rem; /* 1024px card — source */
+  --container-table-xl: 90rem; /* 1440px card — wider than the page column */
   /* The auth card — sign in, access requested, forgot, reset, change password. */
   --container-auth-card: 480px;
 
