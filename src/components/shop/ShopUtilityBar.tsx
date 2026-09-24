@@ -11,7 +11,7 @@ export function ShopUtilityBar() {
         <div className="flex items-center gap-lg">
           <span>All prices in MYR</span>
           <span>Sold by the carton</span>
-          <span>Sign in only when you order</span>
+          <span>Our team confirms every order</span>
         </div>
       </div>
     </div>

@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { BrandBadge } from "@/components/portal/Wordmark";
+import { FooterSignOut } from "@/components/shop/FooterSignOut";
 import { shopHref } from "@/lib/shop-routes";
 
 const FOOTER_LINK =
@@ -12,6 +13,11 @@ const FOOTER_LINK =
  * `OrgSettings` supplier fields. That whole record is gone — we are the
  * supplier, so there was nobody for it to describe — and the footer is three
  * columns.
+ *
+ * Every shop page needs a sign-in since 2026-09-23, so whoever reads this
+ * footer is signed in. Its account column is the account menu's three rows —
+ * My orders, Change password, Sign out — rather than the Sign in and "Request
+ * an account" links it carried while the shop was public (2026-09-24).
  */
 export function ShopFooter({ categories }: { categories: string[] }) {
   const shopCategories = categories.slice(0, 3);
@@ -40,17 +46,15 @@ export function ShopFooter({ categories }: { categories: string[] }) {
 
         <div className="flex flex-col gap-xs">
           <p className="text-[length:var(--text-caption)] font-semibold text-ink">Your account</p>
-          <Link href={shopHref.signIn()} className={FOOTER_LINK}>
-            Sign in
-          </Link>
           <Link href={shopHref.orders()} className={FOOTER_LINK}>
             My orders
           </Link>
-          {/* Phase 18 points this at /checkout; this phase it is the same
-              sign-in the account column already offers. */}
-          <Link href={shopHref.signIn()} className={FOOTER_LINK}>
-            Request an account
+          {/* A literal, as in the header menu: `/account/password` is shared
+              between the two hosts and never rewritten under /shop. */}
+          <Link href="/account/password" className={FOOTER_LINK}>
+            Change password
           </Link>
+          <FooterSignOut className={FOOTER_LINK} />
         </div>
       </div>
 

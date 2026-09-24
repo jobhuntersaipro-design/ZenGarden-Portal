@@ -53,8 +53,28 @@ export function BuyerOrdersTable({
   const onSortChange = useTableSort();
 
   const columns: Column<BuyerOrderRow>[] = [
-    // Our Order ID and the buyer's PO number, each in its own column and
-    // neither ever standing in for the other (2026-09-17).
+    // The buyer's own PO number leads (2026-09-24): it is the number they
+    // file the order under, and `DataTable`'s card mode titles each card with
+    // the first column — with Order ID first, every scanned order's card on a
+    // phone was headed "—". An order with no PO number falls back to its Order
+    // ID, so no card is ever titled by a dash. The two still never stand in
+    // for each other in their own columns (2026-09-17).
+    {
+      key: "buyerReference",
+      header: "Your PO number",
+      cell: (row) =>
+        row.buyerReference ? (
+          <span className="truncate font-mono" title={`Your PO number ${row.buyerReference}`}>
+            {row.buyerReference}
+          </span>
+        ) : row.orderId ? (
+          <span className="truncate font-medium" title={`No PO number · Order ID ${row.orderId}`}>
+            {row.orderId}
+          </span>
+        ) : (
+          <span className="text-ink-tertiary">—</span>
+        ),
+    },
     {
       key: "orderId",
       header: "Order ID",
@@ -67,18 +87,6 @@ export function BuyerOrdersTable({
           <span className="text-ink-tertiary" title="Sent to us as a document, so it has no Order ID">
             —
           </span>
-        ),
-    },
-    {
-      key: "buyerReference",
-      header: "Your PO number",
-      cell: (row) =>
-        row.buyerReference ? (
-          <span className="truncate font-mono" title={`Your PO number ${row.buyerReference}`}>
-            {row.buyerReference}
-          </span>
-        ) : (
-          <span className="text-ink-tertiary">—</span>
         ),
     },
     {

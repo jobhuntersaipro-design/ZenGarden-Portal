@@ -53,15 +53,22 @@ function GalleryImage({
  * and says which of the two problems this is. A product with no photo and a
  * product whose photo is missing from the bucket are different things, and
  * only the second is worth telling a super admin about (brief §8).
+ *
+ * `audience` is required, not defaulted (2026-09-24): the shop renders this
+ * gallery too, and a buyer was being told to "ask a super admin" — a person
+ * they have never heard of, for a fix they cannot ask for. A buyer reads the
+ * same sentence for both empty states, since neither is theirs to act on.
  */
 export function ProductGallery({
   images,
   productName,
   canEdit,
+  audience,
 }: {
   images: { id: string; url: string | null; position: number }[];
   productName: string;
   canEdit: boolean;
+  audience: "staff" | "buyer";
 }) {
   const [broken, setBroken] = useState<Set<string>>(new Set());
   const usable = images.filter((image) => image.url && !broken.has(image.id));
@@ -87,22 +94,30 @@ export function ProductGallery({
           strokeWidth={1.5}
           aria-hidden
         />
-        <p className="text-[length:var(--text-body-sm)] text-ink-secondary">
-          {unavailable
-            ? "Image unavailable"
-            : canEdit
-              ? "Add images"
-              : "No images yet"}
-        </p>
-        <p className="text-[length:var(--text-caption)] text-ink-tertiary">
-          {unavailable
-            ? canEdit
-              ? "The file could not be loaded — replace it from Edit product"
-              : "The file could not be loaded — ask a super admin"
-            : canEdit
-              ? "PNG, JPG or WebP up to 5 MB"
-              : "Ask a super admin to add one"}
-        </p>
+        {audience === "buyer" ? (
+          <p className="text-[length:var(--text-body-sm)] text-ink-secondary">
+            Photo coming soon
+          </p>
+        ) : (
+          <>
+            <p className="text-[length:var(--text-body-sm)] text-ink-secondary">
+              {unavailable
+                ? "Image unavailable"
+                : canEdit
+                  ? "Add images"
+                  : "No images yet"}
+            </p>
+            <p className="text-[length:var(--text-caption)] text-ink-tertiary">
+              {unavailable
+                ? canEdit
+                  ? "The file could not be loaded — replace it from Edit product"
+                  : "The file could not be loaded — ask a super admin"
+                : canEdit
+                  ? "PNG, JPG or WebP up to 5 MB"
+                  : "Ask a super admin to add one"}
+            </p>
+          </>
+        )}
       </section>
     );
   }

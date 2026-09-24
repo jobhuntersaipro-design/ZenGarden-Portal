@@ -192,3 +192,55 @@ D2.
   it this pass takes.
 - Anything in the portal, except the `audience` prop F3 adds to a shared
   component.
+
+---
+
+## 7. Built, and what it measured — 2026-09-24
+
+Built on `claude/modest-mayer-bixr87` with every decision taken as
+recommended: **D1a** (form first on a phone, the document folded under it),
+**D2a** (the cart bar hidden on the cart and checkout), **D3a** ("Our team
+confirms every order"), **D4** as worded in F2, with the magnifier icon
+swapped for a price tag.
+
+Driven in a production build against a local Postgres 16 and the project's
+seed, the same rig as §1, restored and dropped afterwards.
+
+| Measured at 390 unless stated | Before | After |
+|---|---|---|
+| Order cards on `/orders` headed "—" | 60 | **0** — each card leads with `PO-2026-0072` |
+| Top of **Your own PO number** on `/checkout/review` | y=1,077 | **y=636** (inside 844) |
+| Same at 1440 | y=1,454 | y=1,454 — desktop unchanged |
+| Cart bar on `/cart` and `/checkout/review` | shown | **hidden**; still on home and `/orders` |
+| Stale strings in the shop's text, signed in | 4 on home, "super admin" on a product, "and a delivery date" on the cart | **0** |
+| Horizontal overflow, every page touched, 390 and 1440 | none | none |
+
+- **The phone preview works both ways.** "Preview your purchase order" starts
+  `aria-expanded="false"`; a tap unfolds the document at Fit (350×308), and
+  typing `UX-56` into the PO field puts it on the document; Hide removes it.
+- **The PO gate is untouched.** Confirm with the field empty sent **0 POST
+  requests**, printed "Enter your PO number." and put focus on the field.
+- **The footer's account column** reads My orders · Change password · Sign
+  out, the password link is `/account/password`, and Sign out signs out.
+- **Tests watched failing against the old code:** the column-order test
+  (`expected ['Order ID', 'Your PO number'] to deeply equal ['Your PO number',
+  'Order ID']`) and both buyer gallery cases (`… to contain 'Photo coming
+  soon'`). The Order-ID fallback test passes either way, because the old
+  first column already showed the Order ID. 17 new tests; **1652/1652 across
+  130 files**, `tsc` and `npm run build` clean, lint unchanged (the same 4
+  `ShopHeader` errors and 3 warnings). The 131st file is `catalog-import`, the
+  `xlsx` stand-in, as before.
+
+**Found while driving, not fixed — pre-existing:** Sign out on the shop host
+lands on the **portal** host's sign-in (`localhost:3000/signin?next=%2F`).
+The header menu's Sign out does exactly the same, before and after this
+change: `signOut({ callbackUrl: "/" })` is resolved against Auth.js's base
+URL, the trap recorded on 2026-09-14 for the reset form. On production that
+sends a buyer who signs out to `www.lovinghandsportal.com/signin`. Signing in
+there still routes a client back to the shop, so nobody is stranded, but it
+is the wrong host. A fix for both menus is small and belongs in its own
+change.
+
+**Not verified:** anything on production; a guest or an unassigned buyer
+(neither reaches these pages since 2026-09-23); the portal's product page
+with the new `audience="staff"` is covered by the unit test, not reopened.

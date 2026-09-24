@@ -1,6 +1,15 @@
-# Current feature: the shop review — three specs, nothing built
+# Current feature: the shop review — Phase 56 built, 57 and 58 specced
 
 ## Status
+
+**Phase 56 built and driven in a browser on `claude/modest-mayer-bixr87`**
+(2026-09-24), not yet merged: asked for as "Start with spec56, then show me
+before and after before merge". What was measured is §7 of
+`docs/specs/56-shop-trust-and-checkout.md`: order cards headed "—" 60 → 0,
+the PO field at 390 y=1,077 → 636, the cart bar gone from cart and checkout,
+no stale public-shop copy and no "super admin" left in the shop, 1652/1652
+tests. Found and recorded, not fixed: Sign out on the shop host lands on the
+portal's sign-in, from the header menu as much as the new footer link.
 
 **Specs written on `claude/modest-mayer-bixr87`** (2026-09-24). Asked for as:
 "scan through the shop how can I improve the UI/UX and user journey? Please

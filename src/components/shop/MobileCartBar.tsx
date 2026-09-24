@@ -1,11 +1,12 @@
 "use client";
 
 import Link from "next/link";
+import { usePathname } from "next/navigation";
 import { useCartSummary, useGuestCart } from "@/components/shop/GuestCartProvider";
 import { useShopViewer } from "@/components/shop/ShopViewer";
 import { guestCartonCount } from "@/lib/guest-cart";
 import { formatMYR } from "@/lib/money";
-import { shopHref } from "@/lib/shop-routes";
+import { SHOP_ROUTE_PREFIX, shopHref } from "@/lib/shop-routes";
 
 /**
  * Fixed to the bottom below `md`, shown only once the viewer's cart actually
@@ -24,7 +25,25 @@ import { shopHref } from "@/lib/shop-routes";
  * the lower and larger of the two. One ink pill per screen, and it belongs to
  * the page: this is navigation back to the cart, not the action being taken.
  */
+/**
+ * The pages this bar has nothing to add to (2026-09-24). On the cart it said
+ * "View cart" to someone already reading it and covered the order summary,
+ * with Review and send underneath; on checkout it covered the purchase order.
+ * Both pages carry their own next step, so the bar steps aside rather than
+ * becoming a second primary action.
+ *
+ * The path is the browser's: `/cart` on the shop host, `/shop/cart` when one
+ * host serves everything (`SHOP_HOST` unset), so the prefix is stripped.
+ */
+export function hidesCartBar(pathname: string): boolean {
+  const path = pathname.startsWith(`${SHOP_ROUTE_PREFIX}/`)
+    ? pathname.slice(SHOP_ROUTE_PREFIX.length)
+    : pathname;
+  return path === "/cart" || path === "/checkout" || path.startsWith("/checkout/");
+}
+
 export function MobileCartBar() {
+  const pathname = usePathname();
   const viewer = useShopViewer();
   const guest = useGuestCart();
   const summary = useCartSummary();
@@ -33,7 +52,7 @@ export function MobileCartBar() {
   const productCount = isClient ? (summary?.count ?? 0) : guest.cart.lines.length;
   const visible = isClient ? productCount > 0 : guest.hydrated && productCount > 0;
 
-  if (!visible) return null;
+  if (!visible || hidesCartBar(pathname)) return null;
 
   const cartonCount = isClient ? (summary?.cartonCount ?? 0) : guestCartonCount(guest.cart);
   const totalLabel = isClient

@@ -212,6 +212,7 @@ export default async function ProductPage({
             images={data.images}
             productName={data.product.name}
             canEdit={isSuperAdmin}
+            audience="staff"
           />
           {isSuperAdmin ? (
             <ProductImageManager

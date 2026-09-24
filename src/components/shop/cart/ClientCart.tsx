@@ -103,8 +103,8 @@ function ReviewCta({ hasUnavailable }: { hasUnavailable: boolean }) {
         Review and send
       </Link>
       <p className="mt-sm text-[length:var(--text-caption)] text-ink-tertiary">
-        You&rsquo;ll add your own PO number and a delivery date next, and see
-        everything before it is sent.
+        You&rsquo;ll add your own PO number next, and see everything before it
+        is sent.
       </p>
     </div>
   );

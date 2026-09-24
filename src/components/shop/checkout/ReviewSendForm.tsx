@@ -3,7 +3,7 @@
 import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { beginRouteProgress } from "@/lib/route-progress";
-import { Send } from "lucide-react";
+import { ChevronDown, Send } from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import {
@@ -63,6 +63,8 @@ export function ReviewSendForm({
   const [pending, startTransition] = useTransition();
   const [buyerReference, setBuyerReference] = useState("");
   const [notes, setNotes] = useState("");
+  // Phone only: whether the purchase order is unfolded below the form.
+  const [previewOpen, setPreviewOpen] = useState(false);
   /**
    * Set by the first Confirm pressed with the PO number empty (2026-09-20).
    * Until then nothing is red: an untouched form is not a mistake yet. The
@@ -127,14 +129,28 @@ export function ReviewSendForm({
     });
   };
 
+  const preview = documentIsSound ? (
+    <PurchaseOrderPreview document={document} />
+  ) : (
+    <p className="rounded-lg border border-accent-red p-md text-[length:var(--text-body-sm)] text-accent-red">
+      We couldn&rsquo;t draw your purchase order. Go back to the cart and
+      try again.
+    </p>
+  );
+
   return (
     <div className="mt-lg flex flex-col gap-xl">
-      {/* First (2026-09-17): the document is what this screen is for, so it
-          leads, full width and fitted to it; the fields that fill it in follow.
+      {/* First from `md` (2026-09-17): the document is what this screen is
+          for, so it leads, full width and fitted to it; the fields that fill
+          it in follow. Below `md` it moves under the form (2026-09-24): at
+          390 it fits at 29%, too small to read, and it pushed the one field
+          the buyer must fill below the first screen (y=1,077). It is rendered
+          in each place rather than reordered with CSS `order`, so keyboard and
+          screen-reader order always match what is on screen.
           `min-w-0`: the sheet is laid out at 1070px and would otherwise stretch
           this column to its own width and push the *page* sideways (measured
           856 against 390 when it was A4). */}
-      <section className="min-w-0">
+      <section className="hidden min-w-0 md:block">
         <h2 className="text-[length:var(--text-heading-sm)] font-[650] text-ink">
           Your purchase order
         </h2>
@@ -142,16 +158,7 @@ export function ReviewSendForm({
           This is the document we file against your order. It updates as you
           fill in the fields below.
         </p>
-        <div className="mt-md">
-          {documentIsSound ? (
-            <PurchaseOrderPreview document={document} />
-          ) : (
-            <p className="rounded-lg border border-accent-red p-md text-[length:var(--text-body-sm)] text-accent-red">
-              We couldn&rsquo;t draw your purchase order. Go back to the cart and
-              try again.
-            </p>
-          )}
-        </div>
+        <div className="mt-md">{preview}</div>
       </section>
 
       {/* The two short cards pair up from `md`; with no buyer on the session
@@ -228,6 +235,45 @@ export function ReviewSendForm({
           Appears on your purchase order and reaches our team with the order.
         </p>
       </Card>
+
+      {/* The phone's copy of the document, after the fields that fill it
+          in and before Confirm. Folded by default; a document that could not
+          be drawn says so without being opened. */}
+      <section className="min-w-0 md:hidden">
+        {documentIsSound ? (
+          <>
+            <button
+              type="button"
+              aria-expanded={previewOpen}
+              aria-controls="po-preview-phone"
+              onClick={() => setPreviewOpen((open) => !open)}
+              className="flex min-h-control-lg w-full items-center justify-between gap-sm rounded-lg border border-hairline bg-canvas px-md py-sm text-left focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-focus"
+            >
+              <span>
+                <span className="block text-[length:var(--text-body-md)] font-semibold text-ink">
+                  {previewOpen ? "Hide your purchase order" : "Preview your purchase order"}
+                </span>
+                <span className="mt-xxs block text-[length:var(--text-caption)] text-ink-tertiary">
+                  The document we file against your order, with your PO number on it.
+                </span>
+              </span>
+              <ChevronDown
+                aria-hidden
+                className={`size-4 shrink-0 text-ink-tertiary transition-transform duration-200 motion-reduce:transition-none ${
+                  previewOpen ? "rotate-180" : ""
+                }`}
+              />
+            </button>
+            {previewOpen ? (
+              <div id="po-preview-phone" className="mt-md">
+                {preview}
+              </div>
+            ) : null}
+          </>
+        ) : (
+          preview
+        )}
+      </section>
 
       {/* Last, because it is the last thing you do: the buyer reads the
           document at the top, then confirms the figures down here. */}

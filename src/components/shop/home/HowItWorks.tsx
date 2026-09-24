@@ -1,10 +1,10 @@
-import { Package, Search, Truck, type LucideIcon } from "lucide-react";
+import { Package, Tag, Truck, type LucideIcon } from "lucide-react";
 
 const STEPS: { icon: LucideIcon; title: string; body: string }[] = [
   {
-    icon: Search,
-    title: "Browse without an account",
-    body: "Every price is on the page. Nothing is hidden behind a login.",
+    icon: Tag,
+    title: "Prices for your market",
+    body: "Every price here is the one you pay, set for your market.",
   },
   {
     icon: Package,

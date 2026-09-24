@@ -89,6 +89,7 @@ export default async function ShopProductPage({
             }))}
             productName={product.name}
             canEdit={false}
+            audience="buyer"
           />
         </div>
 
