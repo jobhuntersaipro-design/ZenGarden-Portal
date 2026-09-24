@@ -16,6 +16,16 @@ const Toaster = ({ ...props }: ToasterProps) => {
       // toast keeps rendering in the neutral `--normal-*` popover colours
       // whatever type it is, which was the whole defect.
       richColors
+      // Every toast carries an ✕ (2026-09-24). A toast still times out on its
+      // own; the ✕ is for the reader who has finished with it and wants the
+      // screen back — and it is the only thing that can dismiss one at all
+      // where a caller sets `duration: Infinity`.
+      //
+      // Sonner draws it at **20×20**, under this project's 44px touch floor,
+      // so `globals.css` grows its hit area with the same `::after` negative
+      // inset the `Checkbox` and `Switch` primitives use, rather than
+      // inflating the circle itself into the toast's own corner.
+      closeButton
       // Each icon gets its own accent directly, rather than inheriting the
       // toast root's `color` the way sonner's title/description do (both are
       // `color: inherit` in its own stylesheet) — because the root's colour

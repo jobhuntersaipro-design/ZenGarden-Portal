@@ -64,7 +64,7 @@ export function SignInForm({
 
   return (
     <div className="mt-xl flex flex-col gap-md">
-      {error ? <Notice>{error}</Notice> : null}
+      {error ? <Notice onDismiss={() => setError(null)}>{error}</Notice> : null}
 
       <form onSubmit={onSubmit} className="flex flex-col gap-sm" noValidate>
         <p className="font-mono text-[length:var(--text-eyebrow)] text-ink-tertiary">

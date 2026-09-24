@@ -107,7 +107,7 @@ export function ProductStockDrawer({
 
   return (
     <Sheet open={product !== null} onOpenChange={(open) => (open ? null : close())}>
-      <SheetContent className="w-full overflow-y-auto sm:max-w-panel-lg">
+      <SheetContent className="w-full sm:max-w-panel-lg">
         <SheetHeader>
           <SheetTitle>{product ? product.name : "Stock"}</SheetTitle>
           <SheetDescription>

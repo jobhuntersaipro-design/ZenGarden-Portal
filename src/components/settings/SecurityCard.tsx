@@ -58,7 +58,7 @@ export function SecurityCard({
         {/* max-w-panel-sm, never max-w-sm: Tailwind v4 resolves max-w-<name>
             against --spacing-<name> first, and this system names a spacing step
             `sm`, so max-w-sm compiles to 12px. */}
-        <SheetContent className="w-full overflow-y-auto sm:max-w-panel-sm">
+        <SheetContent className="w-full sm:max-w-panel-sm">
           <SheetHeader>
             <SheetTitle>Change your password</SheetTitle>
           </SheetHeader>

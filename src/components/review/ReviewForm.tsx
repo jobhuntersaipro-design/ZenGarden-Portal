@@ -41,6 +41,7 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { formatDate } from "@/lib/dates";
 import {
   Dialog,
+  DialogClose,
   DialogContent,
   DialogDescription,
   DialogFooter,
@@ -495,6 +496,14 @@ export function ReviewForm({
                   </DialogDescription>
                 </DialogHeader>
                 <DialogFooter>
+                  {/* Every other confirm in the app pairs Cancel with the
+                      destructive action; this one offered Discard alone, so
+                      the only ways back were the ✕ and Escape. */}
+                  <DialogClose asChild>
+                    <Button variant="secondary" disabled={discarding}>
+                      Cancel
+                    </Button>
+                  </DialogClose>
                   <Button
                     pending={discarding}
                     onClick={async () => {

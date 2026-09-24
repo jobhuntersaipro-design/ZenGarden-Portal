@@ -151,7 +151,7 @@ export function ProductSheet({
       }}
     >
       <SheetTrigger asChild>{trigger}</SheetTrigger>
-      <SheetContent className="w-full overflow-y-auto sm:max-w-panel-lg">
+      <SheetContent className="w-full sm:max-w-panel-lg">
         <SheetHeader>
           <SheetTitle>Edit product</SheetTitle>
           <SheetDescription>

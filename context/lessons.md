@@ -251,6 +251,17 @@ prop so the question cannot be answered two ways again — then make the
 single-series path the one-series case of the general rule, so the charts that
 never had the problem cannot drift away from the charts that did.
 
+**It recurred the same day, in a primitive rather than a prop (2026-09-24).**
+`SheetContent` never set `overflow-y`, and a side sheet is `h-full`, so content
+taller than the viewport hangs off the bottom with nothing to scroll. Four of
+the six callers passed `overflow-y-auto` in their own `className` and two did
+not — and on one of those, at 390, the drawer's **Save details** sat at y=948
+in an 844px viewport, unreachable, so a buyer's details could not be saved on a
+phone at all. Same shape, no boolean involved: **a class every caller has to
+remember is a prop with extra steps.** When you find yourself copying the same
+utility into the fourth call site, that is the signal — put it on the base
+class and delete the copies.
+
 ---
 
 ## 10. A form seeded with the stored value must send back the editable one
@@ -289,3 +300,38 @@ test: the schema is right, the component is right at rest, and only *opening
 the sheet on a real row and pressing Save* fails. The guard that does catch it
 is a test asserting the **stored wording is refused** — so if a form ever
 sends it again, something is red.
+
+---
+
+## 11. A message with no way out is a defect, not a style
+
+**Rule.** Anything that appears over or above the content — a toast, an inline
+strip, a dialog, a drawer, a popover — needs a way out the reader can find:
+a ✕, a Cancel, Escape, or a timeout. Count them per surface; "Escape works"
+is not an answer for a touch screen, and "it times out" is not an answer for
+something that does not. And the control must remove the **cause**, not the
+view: a strip hidden while the `?error=` that produced it stays in the URL
+comes straight back on a reload, and a `dismissed` flag beside a live error
+swallows the *next* message instead. Prefer a dismissal that unmounts.
+
+**Smell.** A banner or strip whose only prop is its text. A `duration:
+Infinity` toast. A destructive confirm whose footer holds one button. A local
+`const [dismissed, setDismissed]` next to a value that can change.
+
+**The case (2026-09-24, reported by the user).** `/signin`'s "Wrong email or
+password." and "Password updated. Sign in." had no close control of any kind,
+and neither did any of the 119 toast call sites. The audit that followed found
+two more: a "Discard this file?" confirm whose footer offered Discard alone,
+and the sheet in §9 above.
+
+**What it is easy to get wrong.** The first instinct is a `dismissed` boolean.
+On the sign-in form that ships a worse defect than the one being fixed — the
+second wrong password shows nothing. Test it by failing **twice** with a
+dismissal in between.
+
+**And the exception worth keeping.** One dialog here refuses to close: the
+shop's "Send this order?" while the order is actually in flight, because
+closing it would leave the buyer on a spinning page with nothing to say whether
+the order went. That is legitimate exactly when it is transient and cannot
+strand anyone — its `pending` comes from `useTransition`, so it always
+resolves. An indefinite one is the defect this rule is about.

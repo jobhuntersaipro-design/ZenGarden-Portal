@@ -5,6 +5,7 @@ import { getSessionUser } from "@/lib/auth-guards";
 import { AuthCard } from "@/components/auth/AuthCard";
 import { Notice } from "@/components/auth/Notice";
 import { SignInForm } from "@/components/auth/SignInForm";
+import { withoutParam } from "@/lib/queries/pagination";
 
 export const metadata: Metadata = { title: "Sign in · Zen Garden Portal" };
 
@@ -62,14 +63,22 @@ export default async function SignInPage({
           : "Purchase-order intake for the ops team."
       }
     >
+      {/* Both strips are dismissible, and the ✕ drops the parameter that
+          produced them rather than only hiding the words: left in the URL,
+          a reload would bring a message the visitor has closed straight
+          back. `next` and anything else in the URL is carried through. */}
       {message ? (
         <div className="mt-lg">
-          <Notice>{message}</Notice>
+          <Notice dismissHref={withoutParam("/signin", params, "error")}>
+            {message}
+          </Notice>
         </div>
       ) : null}
       {first("reset") === "1" ? (
         <div className="mt-lg">
-          <Notice tone="success">Password updated. Sign in.</Notice>
+          <Notice tone="success" dismissHref={withoutParam("/signin", params, "reset")}>
+            Password updated. Sign in.
+          </Notice>
         </div>
       ) : null}
       <SignInForm next={next} showGoogle={!isShop} />

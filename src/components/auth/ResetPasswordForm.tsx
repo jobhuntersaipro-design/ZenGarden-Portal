@@ -45,7 +45,7 @@ export function ResetPasswordForm({ token }: { token: string }) {
         window.location.assign("/signin?reset=1");
       }}
     >
-      {error ? <Notice>{error}</Notice> : null}
+      {error ? <Notice onDismiss={() => setError(null)}>{error}</Notice> : null}
 
       <PasswordField
         id="password"

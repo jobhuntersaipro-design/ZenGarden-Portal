@@ -383,6 +383,29 @@
 }
 
 @layer base {
+  /* A toast's ✕ is 20x20 in sonner's own stylesheet, under this project's
+     44px touch floor. The circle stays 20px — it sits on the toast's corner
+     and a 44px one would cover the words — and the *target* grows around it,
+     the same `::after` negative inset the `Checkbox` and `Switch` primitives
+     already use for controls that are small on purpose. -12px a side on 20px
+     is exactly 44. Above `sm` a pointer needs no help, so it drops away.
+     Nothing here fights sonner for a property it already sets, which matters:
+     its stylesheet is injected unlayered, and unlayered rules outrank every
+     layered one, so a `position` or `width` written here would be inert. The
+     button is already `position: absolute`, hence a containing block, so the
+     inset resolves against it without being told to. */
+  [data-sonner-toast] [data-close-button]::after {
+    content: "";
+    position: absolute;
+    inset: -12px;
+  }
+
+  @media (min-width: 40rem) {
+    [data-sonner-toast] [data-close-button]::after {
+      inset: 0;
+    }
+  }
+
   body {
     background-color: var(--color-canvas);
     color: var(--color-ink);

@@ -56,7 +56,7 @@ export function ChangePasswordForm({ forced }: { forced: boolean }) {
         }
       }}
     >
-      {error ? <Notice>{error}</Notice> : null}
+      {error ? <Notice onDismiss={() => setError(null)}>{error}</Notice> : null}
 
       {forced ? null : (
         <PasswordField

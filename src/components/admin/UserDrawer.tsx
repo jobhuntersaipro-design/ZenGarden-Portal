@@ -75,7 +75,7 @@ export function UserDrawer({
 
   return (
     <Sheet open={open} onOpenChange={(next) => !next && onClose()}>
-      <SheetContent className="w-full overflow-y-auto sm:max-w-panel-md">
+      <SheetContent className="w-full sm:max-w-panel-md">
         <SheetHeader>
           <SheetTitle>{isNew ? "New user" : "Edit user"}</SheetTitle>
           <SheetDescription>

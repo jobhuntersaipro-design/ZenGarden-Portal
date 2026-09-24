@@ -4,6 +4,7 @@ import {
   pageRange,
   parsePagination,
   parseSort,
+  withoutParam,
 } from "@/lib/queries/pagination";
 
 describe("parsePagination", () => {
@@ -81,5 +82,40 @@ describe("pageRange", () => {
 
   it("reads 0 of 0 for an empty set, and still one page", () => {
     expect(pageRange(1, 10, 0)).toEqual({ from: 0, to: 0, pages: 1 });
+  });
+});
+
+describe("withoutParam", () => {
+  it("drops the named parameter and keeps the rest", () => {
+    // The case that matters on /signin: dismissing the error must not also
+    // forget where the visitor was going.
+    expect(withoutParam("/signin", { error: "CredentialsSignin", next: "/buyers" }, "error")).toBe(
+      "/signin?next=%2Fbuyers",
+    );
+  });
+
+  it("returns the bare path when the dropped parameter was the only one", () => {
+    // Not "/signin?" — a trailing question mark is a URL nobody wrote.
+    expect(withoutParam("/signin", { reset: "1" }, "reset")).toBe("/signin");
+  });
+
+  it("keeps repeats of the parameters it is not dropping", () => {
+    expect(withoutParam("/signin", { error: "x", a: ["1", "2"] }, "error")).toBe(
+      "/signin?a=1&a=2",
+    );
+  });
+
+  it("drops every repeat of the one it is", () => {
+    expect(withoutParam("/signin", { error: ["a", "b"], next: "/" }, "error")).toBe(
+      "/signin?next=%2F",
+    );
+  });
+
+  it("is a no-op for a parameter that is not there", () => {
+    expect(withoutParam("/signin", { next: "/" }, "error")).toBe("/signin?next=%2F");
+  });
+
+  it("skips an undefined value rather than writing it as a string", () => {
+    expect(withoutParam("/signin", { error: "x", next: undefined }, "error")).toBe("/signin");
   });
 });

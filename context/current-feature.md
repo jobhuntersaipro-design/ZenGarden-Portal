@@ -1,4 +1,167 @@
-# Current feature: a card cannot push the page sideways
+# Current feature: every message has a way out
+
+## Status
+
+**Built and driven in a browser on `main`** (2026-09-24). Asked for as: "clean
+up the toast for wrong password, password change and etc. allow user to click x
+to close it. Make sure all popup can be closed by user", against screenshots of
+`/signin` showing "Password updated. Sign in." and "Wrong email or password."
+
+**The two things in the screenshots are not toasts and that mattered to the
+fix.** They are `Notice`, the inline strip above an auth form, and they had no
+close control of any kind — no ✕, no timeout, nothing. The Sonner toasts are
+the other half of the request and had no ✕ either, only a 4s timeout. Both now
+have one, and the audit the second sentence asked for turned up **two further
+places with no way out**, one of them serious.
+
+**The ✕ removes the cause, not the view, and that is what makes it stick.** An
+auth strip is rendered from one of two things: a form's own `error` state, or a
+search parameter. Hiding the words and leaving either in place is a dismissal
+that comes back — a reload brings `?error=CredentialsSignin` straight back, and
+a `dismissed` flag beside a live `error` swallows the *next* failure. So the
+strip takes `onDismiss` (the form clears its own state) or `dismissHref` (the
+page drops the parameter), and in both cases the strip **unmounts**. It cannot
+hold a stale flag, by construction rather than by care.
+
+**Measured, because that second failure is the trap:** dismiss "Wrong email or
+password.", submit wrong credentials again, and the strip **returns**. A local
+`dismissed` boolean would have shipped a sign-in screen that goes silent on
+every failure after the first.
+
+**Dismissing keeps `next`.** `withoutParam` carries every other parameter
+through, so closing the error on `/signin?error=…&next=%2Fbuyers` lands on
+`/signin?next=%2Fbuyers` — measured. A `replace`, so Back cannot bring a
+dismissed message back either.
+
+**Dismissible only where there is something to dismiss *to*.** The
+forgot-password screen's success strip *is* the screen's answer to what the
+reader just did; closing it would leave the page saying nothing about whether
+the email went. It passes neither prop and has no ✕. That is the rule rather
+than an omission: a notice that carries the outcome stays.
+
+**The words are `ink` now, not the accent — a measured deviation from design
+reference §3.1**, which specifies `bg-surface-soft` with `text-accent-red`. On
+that background `accent-red` measures **3.32:1** and `accent-green`
+**3.61:1**, both under the 4.5:1 floor for normal text; `ink` is **11.59:1**.
+It is the identical trade the toasts already made for the identical reason (the
+`--success-text` note in `sonner.tsx`): the tone moves to a coloured **icon**,
+which has only 3:1 to clear and does, and to the border. The background the
+reference names is kept, and the icons are the same four the toasts use, so a
+message about the same thing is marked the same way on either surface.
+
+**The toast ✕ is 20px in sonner's own stylesheet and the target is grown to
+44.** The circle sits on the toast's corner, so inflating it would cover the
+words; `globals.css` grows the hit area with the same `::after` negative inset
+the `Checkbox` and `Switch` primitives already use for controls that are small
+on purpose. **Measured at 390: circle 20×20, target 44×44, and a tap 8px
+outside the circle dismissed the toast** — so the area is live, not just
+present in the CSS. Above `sm` it drops away.
+
+**Two claims were checked rather than written from memory.** Sonner 2.0.8 does
+*not* hover-gate the close button (an earlier draft of the comment said it
+did, and was corrected against the package's own CSS), and nothing in this app
+sets `duration: Infinity`, so the ✕ is a convenience rather than the only exit
+— stated that way rather than overclaimed.
+
+### What the audit found
+
+**The "Discard this file?" confirm had no Cancel.** Its footer offered
+**Discard** alone, where every other confirm in the app pairs Cancel with the
+destructive action — so the only ways back were the ✕ and Escape. It has a
+Cancel now.
+
+**And the serious one: a drawer whose Save could not be reached on a phone.**
+`SheetContent` never set `overflow-y`, and a left or right sheet is `h-full`,
+so content taller than the viewport simply hung off the bottom with nothing to
+scroll. **Measured at 390 on the buyer edit sheet: 1020px of content in an
+844px sheet, `overflow-y: visible`, and Save details at y=948–1000 — off a
+844px screen, unreachable.** A buyer's details, the market included, could not
+be saved on a phone at all.
+
+**Four of the six callers passed `overflow-y-auto` themselves and two did
+not**, which is `context/lessons.md` §9 exactly: a fix every caller has to
+remember, with the default on the side of the defect. It is on the base class
+now and the four local copies are deleted, so no caller can forget it. The PO
+edit sheet — the other one that never passed it — happens to fit today at
+844px, which is why nobody had seen it.
+
+## Verified, with the figures
+
+**Driven in a real browser against a real database** — local Postgres 16 as the
+`postgres` user, the project's own seed, `src/lib/prisma.ts` and
+`prisma/seed.ts` pointed at a `PrismaPg` adapter for the drive and **restored
+afterwards**; the cluster was stopped and deleted, `.env.local` deleted, and
+`package.json` / `package-lock.json` are untouched. Every figure is from a
+production build (`npm start`).
+
+- **The strip in the screenshot, after.** `/signin?error=CredentialsSignin&next=%2Fbuyers`
+  reads *Wrong email or password.* with text `rgb(41, 45, 52)` (ink), border
+  `rgb(240, 56, 45)` and background `rgb(233, 235, 240)` — ink words, accent
+  border, the reference's own `surface-soft`.
+- **The ✕ drops the parameter and keeps the rest.** Clicking it lands on
+  `/signin?next=%2Fbuyers` with the strip gone, and a **reload of that URL does
+  not bring it back**. The success strip's ✕ takes `?reset=1` to `/signin`.
+- **A form error dismissed comes back on the next failure** — 1 strip, then 0
+  after the ✕, then 1 again after a second wrong password. The whole point.
+- **Phone.** The strip's ✕ measures **44×44** at 390 (`size-11`, dropping to
+  `sm:size-7` — measured **28×28** at 1440), and a real tap dismissed it. No
+  page overflow: 390/390 and 1440/1440.
+- **The toast, both widths.** 1440: ✕ present, circle 20×20, target 20×20,
+  click dismisses. 390: circle 20×20, **target 44×44**, `opacity: 1`, and a tap
+  **outside the circle but inside the target** left 0 toasts.
+- **The discard confirm has three exits, each proven rather than assumed:**
+  footer reads `Cancel · Discard · Close`, and Cancel, Escape and the ✕ each
+  took the dialog count to 0.
+- **The sheet, before and after, on the same screen.** Before: `overflow-y:
+  visible`, Save details bottom at **1000** in an 844px viewport,
+  `reachable: false`. After: `overflow-y: auto`, `scrollHeight 1020 >
+  clientHeight 844`, and scrolled to the end Save sits at **824**,
+  `reachable: true`. The PO edit sheet reads `844 = 844` — it fits either way.
+- **Every other popup already had a way out**, checked rather than assumed: all
+  eleven `DialogContent` and all six `SheetContent` call sites carry the
+  default ✕ and a wired `onOpenChange` (Escape and overlay click), and ten of
+  the eleven dialogs also carry a Cancel. The Radix popovers (`Combobox`, the
+  shop filter bar, the trend picker, the Advance popover) close on Escape, on
+  an outside click and on the trigger again.
+- **One deliberate exception, left as it is:** the shop's "Send this order?"
+  dialog cannot be dismissed *while the order is in flight* — documented in
+  place, and `pending` comes from `useTransition`, so it always resolves and
+  cannot strand anyone.
+- **The guards were watched failing.** Against the shipped `Notice`, **5 of 7
+  new tests go red** — `expected '<p role="alert" class="rounded-sm bg-…' to
+  contain 'aria-label="Dismiss this message"'`, `… to contain 'text-ink'`,
+  `… 'border-accent-red'`, `… 'size-11'`. The two that pass either way are the
+  absence assertions (no ✕ where nothing would be dismissed; the alert/status
+  split), which is what they are for.
+- **1635/1635 tests across 127 files** (13 new), `tsc`, `npm run build` clean,
+  and **lint identical to the untouched tree** (the same 4 pre-existing
+  `ShopHeader` ref errors and 3 warnings).
+
+## Not verified
+
+- **Anything on production.** Not deployed, and no production row was read or
+  written.
+- **The dismissal itself in a unit test.** A static render only ever shows the
+  at-rest state (`context/lessons.md` §3), so the tests pin *that a way out
+  exists* and the browser drive above is the whole evidence that it works. The
+  pure half that could be tested — which URL the ✕ points at — is
+  `withoutParam`, with six tests of its own.
+- **The four other auth screens' strips on screen.** Forgot-password, reset,
+  the forced change and the pending page all render the same component and were
+  covered by the drive of the sign-in screen and by unit tests, not reopened.
+- **A toast at the moment a second one stacks.** One toast at a time was
+  measured; sonner offsets the stack and each keeps its own ✕, unexercised.
+- **Whether the buyer sheet crossed 844px only yesterday.** The missing
+  `overflow-y` is untouched since `sheet.tsx` was installed and the PO edit
+  sheet has the same gap in a form this change never touched, so the *class* is
+  clearly pre-existing; the exact commit at which that one sheet outgrew a
+  phone was not bisected.
+- **`npm run build` without a stand-in for `xlsx`**, which is why the 128th
+  test file still fails here.
+
+## Previous phase
+
+# A card cannot push the page sideways
 
 ## Status
 

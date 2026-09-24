@@ -23,6 +23,29 @@ export function firstParam(
 }
 
 /**
+ * The same path with one parameter dropped — what the ✕ on a message built
+ * from the URL links to (`Notice`'s `dismissHref`).
+ *
+ * Every other parameter is carried through, repeats included: on `/signin` the
+ * one being kept is `?next=`, and dismissing "Wrong email or password." must
+ * not also forget where the visitor was going. Returns the bare path when
+ * nothing is left, rather than a trailing `?`.
+ */
+export function withoutParam(
+  path: string,
+  params: SearchParams,
+  drop: string,
+): string {
+  const search = new URLSearchParams();
+  for (const [key, value] of Object.entries(params)) {
+    if (key === drop || value === undefined) continue;
+    for (const one of Array.isArray(value) ? value : [value]) search.append(key, one);
+  }
+  const query = search.toString();
+  return query ? `${path}?${query}` : path;
+}
+
+/**
  * Page and size out of the URL, clamped to something the database can serve.
  * A hand-edited `?size=100000` must not become an unbounded query.
  */

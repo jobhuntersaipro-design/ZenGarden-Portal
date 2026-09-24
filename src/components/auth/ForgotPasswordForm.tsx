@@ -45,7 +45,7 @@ export function ForgotPasswordForm() {
         else setError(result.error);
       }}
     >
-      {error ? <Notice>{error}</Notice> : null}
+      {error ? <Notice onDismiss={() => setError(null)}>{error}</Notice> : null}
 
       <div className="flex flex-col gap-xxs">
         <FieldLabel htmlFor="email">Email</FieldLabel>
