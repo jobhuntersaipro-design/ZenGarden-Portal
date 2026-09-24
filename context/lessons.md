@@ -58,6 +58,37 @@ widened that column past the card, so "Test Hand Wash 500ML — Lavender" and
 "Hair & body care" was cut at the screen edge with only a thin scrollbar to
 say so.
 
+**The same rule, the way it usually arrives (2026-09-24, reported by the
+user).** `grid gap-lg lg:grid-cols-2` looks safe and is not. Below `lg` there
+is no explicit template, so the single column is *implicit* and sized `auto`,
+whose minimum is the widest card's min-content — and the page grows to fit it.
+`/buyers/[id]` measured **451 against 390** and `/products/[id]` **428**;
+`/admin/buyers/[id]` was **395** from the flex variant of the same thing.
+Three rules fall out, and the second is the one that costs time:
+
+- **`grid-cols-1` is not a no-op beside `lg:grid-cols-2`.** It is
+  `repeat(1, minmax(0, 1fr))`, a track with a zero minimum, and it is what
+  lets the card shrink. Write it on every card grid whose base column is
+  otherwise implicit, and say why, or someone deletes it as redundant.
+- **`min-w-0` on a flex item does not zero its min-content contribution.** It
+  lowers the item's floor; under *intrinsic* sizing the contribution is still
+  the content's own min-content, and for a child under `truncate`
+  (`white-space: nowrap`) that is the entire unwrapped string. A row that
+  already carries `min-w-0` and `truncate` and still will not shrink is this,
+  not a missing `min-w-0`.
+- **`flex-1` with `flex-wrap` can hand a column a sliver instead of wrapping
+  it.** `flex-basis: 0%` always fits on the current line, so the item takes
+  whatever is left — 5px on the admin timeline, which set a PO link one word
+  per line off the right edge. `basis-full` below `sm`, then `sm:flex-1
+  sm:basis-0`, gives it its own line on a phone and its old place above.
+
+**Finding it.** A script that lists every element past the right edge names
+the chart, the table and everything else legitimately scrolled inside an
+`overflow-x-auto` — the 2026-09-24 report blamed a `ResponsiveContainer` that
+was innocent. Drop any element with a clipping ancestor and what is left is
+the culprit. The arithmetic gives it away too: the page overflowed by 61px
+while the chart stuck out by 280.
+
 ---
 
 ## 2. A link must be able to express what it counts

@@ -266,7 +266,16 @@ export default async function BuyerPage({
         <WhatTheyBuy slices={data.mix} measure={measure} hrefBase="/products" />
       </div>
 
-      <div className="mt-lg grid gap-lg lg:grid-cols-2">
+      {/* `grid-cols-1`, which looks like a no-op below `lg` and is not: without
+          it the single column is implicit and sized `auto`, whose minimum is
+          the widest card's *min-content*. A truncating row does not shrink a
+          track — `min-w-0` on a flex item lowers its floor but its min-content
+          contribution is still the whole unwrapped string — so at 390 the
+          card measured 431 in a 350 grid and pushed the page to 451.
+          `grid-cols-1` is `repeat(1, minmax(0, 1fr))`, and a track with a zero
+          minimum is what lets the card shrink and the row truncate as designed
+          (context/lessons.md §4). */}
+      <div className="mt-lg grid grid-cols-1 gap-lg lg:grid-cols-2">
         <ReorderSignalsCard buyerId={id} reorder={data.reorder} />
         <BuyerDetailsCard
           buyer={data.buyer}

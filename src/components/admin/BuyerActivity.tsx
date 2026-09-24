@@ -99,7 +99,14 @@ export function BuyerActivity({
                   role={entry.actor.role}
                 />
               ) : null}
-              <span className="min-w-0 flex-1 text-[length:var(--text-body-sm)] text-ink">
+              {/* `basis-full` below `sm`, the legend's own rule in
+                  `WhatTheyBuy`: with `flex-1` the sentence is whatever the
+                  timestamp and the person chip leave on the line, and at 390
+                  that measured **5px** — so the PO link overflowed its own
+                  column and pushed the page to 395. A sliver is not a column;
+                  the sentence takes its own line under the two chips instead,
+                  and goes back beside them above `sm`. */}
+              <span className="min-w-0 basis-full text-[length:var(--text-body-sm)] text-ink sm:flex-1 sm:basis-0">
                 {entry.href ? (
                   <Link
                     href={entry.href}

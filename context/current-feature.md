@@ -1,4 +1,172 @@
-# Current feature: a buyer's market is set, alerted and required
+# Current feature: a card cannot push the page sideways
+
+## Status
+
+**Built and driven in a browser on `claude/beautiful-mayer-01b2s0`**
+(2026-09-24). Asked for as: "`/buyers/[id]` overflows horizontally at 390px",
+against a measurement of **451 against 390** and a reading that pointed at the
+product trend chart.
+
+**The chart was innocent, and proving that was the work.** The report's script
+listed the trend's `ResponsiveContainer`, `recharts-wrapper` and
+`recharts-surface` — all 610px wide, right edge 670 — because it asked which
+elements sit past the right edge. Every one of them does, and every one of
+them is *supposed to*: they are the scrolled content inside `ChartScroller`'s
+`overflow-x-auto`, which clips them and contributes nothing to the document's
+own `scrollWidth`. **Measured on the fixed page:** the trend's scroller is a
+270px viewport over 610px of content, `scrollable=true`, with the right edge
+fade showing — and the card's right edge at **370** inside a 390 viewport.
+The arithmetic said so too and was the clue worth following: the page
+overflowed by **61px**, not by the chart's 280.
+
+**A probe that ignores anything a scrolling ancestor already contains is what
+found the real one.** Walk every element past the right edge, then drop it if
+any ancestor clips. What survives is `ReorderSignalsCard`, inside
+`/buyers/[id]`'s `grid gap-lg lg:grid-cols-2`: **min-content 431 in a 350px
+grid**, 20px of page padding to its left, 20 + 431 = **451**.
+
+**`min-w-0` was already on the flex item, and that is the part worth not
+re-deriving.** The reorder row is `li.flex` holding a `min-w-0 flex-1` text
+span and a `shrink-0` badge, with the product name under `truncate`. That
+looks like the textbook fix and it is not one, because `min-width: 0` lowers a
+flex item's *floor* — it does not zero its **min-content contribution**, which
+is still the whole unwrapped string. So the li's min-content is the full
+product name plus the gap plus the badge: **321 + 12 + 48 = 381**, and the
+card's `p-lg` makes 431. `ZEN D'LUX 2.9KG LIQUID DETERGENT — Gold` and
+`500ML FINE FRAGRANCE SHOWER GEL — Style` are the two names that do it.
+
+**The track is what had to change, not the card.** Below `lg` that grid has no
+explicit template, so its single column is *implicit* and sized `auto`, whose
+minimum is the widest item's min-content — and a grid item's automatic minimum
+size only applies at all when its track's min sizing function is `auto`.
+`grid-cols-1` is `repeat(1, minmax(0, 1fr))`, which gives the track a zero
+minimum, and the card then shrinks and the row truncates the way it was
+already written to. It reads like a no-op beside `lg:grid-cols-2` and is not,
+which is why both sites carry a comment saying so with their own figures.
+
+**Both candidates were watched working before either was written.** In the
+live page, `minmax(0, 1fr)` on the track and `min-width: 0` on the two
+children each took the page **451 → 390**, and restoring each put it back. The
+track fix was taken because it holds for every child the grid will ever have,
+where the item fix has to be remembered card by card — `context/lessons.md` §4
+names the track.
+
+**The sweep found a second instance the report did not mention.**
+`/products/[id]` at 390 read **428 against 390**, the same shape one grid over:
+`WhatTheyBuy`'s legend rows carry a `w-36` money figure and a `w-14` share
+beside a truncating buyer name, so the *Who buys it* card's min-content is 408.
+Same one-token fix. Fixing only the page that was reported would have left an
+identical defect two clicks away.
+
+**And a third, in the admin room, that is a different defect entirely.**
+`/admin/buyers/[id]` read **395 against 390**. Not a grid: the activity
+timeline's row is `li.flex.flex-wrap` and its sentence is `min-w-0 flex-1`, so
+with `flex-basis: 0%` it always fits on the timestamp-and-chip line and then
+grows into whatever is left — which at 390 is **5px**. A 5px column is not a
+column: the screenshot shows `PO number PO-2026-0071 → In production` set one
+word per line, running off the right edge in purple. It takes `basis-full`
+below `sm` now and goes back beside the chips above it, which is
+`WhatTheyBuy`'s own rule from 2026-09-13 applied to the same failure.
+**Reproduced identically at `HEAD`** (395, 5px) before anything was changed, so
+it predates this work.
+
+**Nothing else moved.** `ChartScroller`, `SeriesTrend` and every card
+component are untouched; the whole change is three class strings and their
+comments.
+
+## Verified, with the figures
+
+**Driven in a real browser against a real database** — local Postgres 16, the
+project's own seed (423 purchase orders, 1,685 line items, 12 products, 11
+buyers), with `src/lib/prisma.ts` and `prisma/seed.ts` pointed at a `PrismaPg`
+adapter for the drive and **restored afterwards**; the database was dropped,
+the cluster stopped, `.env.local` deleted, and `package.json` /
+`package-lock.json` are untouched (`git diff` on both is empty).
+
+- **The three defects, before and after.** `/buyers/[id]` **451 → 390**,
+  `/products/[id]` **428 → 390**, `/admin/buyers/[id]` **395 → 390**, all at
+  390 wide.
+- **54 of 54 combinations clean** — 18 routes × 390 / 768 / 1440, measured as
+  `document.documentElement.scrollWidth === window.innerWidth`: dashboard,
+  purchase orders and one PO, buyers and one buyer, products and one product
+  and `/products/new`, demand, stock and the stock drawer, upload, settings,
+  and the five admin screens (read as a super admin, the seeded member
+  promoted for the pass and the database dropped straight after).
+- **Every `ChartScroller` still contains its own scroll, with its fades.** At
+  390: order trend and product trend **270px viewport over 610**, price trend
+  270/610, stock trend 300/392, dashboard sales and trend 270/848, the demand
+  board's stage chart 302/816 — all `scrollable=true`, all showing the right
+  edge fade, every card's right edge at **370**. At 1440 all of them are
+  1040/1040, not scrollable, no fade — the no-op wrapper the component
+  documents.
+- **The fades still track the scroll**, driven rather than argued: at rest
+  `[right]`, at `scrollLeft: 170` **`[left, right]`**, at the end `[left]` —
+  with the page reading 390 at every step.
+- **Desktop is pixel-identical.** The 1440 screenshots of both changed cards
+  compare byte-for-byte equal before and after (`cmp`), which is what
+  `lg:grid-cols-2` winning means in practice.
+- **The touch floor did not move on the two portal pages:** `/buyers/[id]` **1**
+  sub-44px control before and after, `/products/[id]` **27** before and after —
+  the pre-existing text-link class.
+- **Re-driven after rebasing onto `main`**, which had meanwhile landed "a
+  buyer's market is set, alerted and required" — and that commit rewrites
+  `BuyerDetailsCard`, one of the two cards in the very grid this fixes, and
+  adds `NoMarketAlert` to both buyer rosters. So the sweep was run again
+  rather than assumed: **51 of 51 combinations clean** over 17 routes, and all
+  three counterfactuals still reproduce on the merged tree — the buyer grid's
+  track back to `auto` reads **451**, the product grid's **428**, and the
+  admin timeline's sentence back to `flex-basis: 0%` reads **395**. That last
+  one is now a **0px** column rather than 5px, because the new details card
+  changed what shares the row: the fix matters more after the merge than
+  before it.
+- **1622/1622 tests across 126 files** on the rebased tree (1610 before it),
+  `tsc --noEmit` clean, `npm run build` clean, and **lint identical to the
+  untouched tree** (the same 4 pre-existing `ShopHeader` ref errors and 3
+  warnings, confirmed by stashing and re-running).
+
+## Not verified
+
+- **Anything on production.** Not deployed, and no production row was read or
+  written. Every figure above is the project's own seed.
+- **No unit test covers any of this**, and that is stated rather than papered
+  over: all three are layout under a real stylesheet at a real width, which is
+  exactly what `context/lessons.md` §3 says a static render cannot see, and
+  there is no pure half worth extracting from three class strings. The browser
+  drive is the whole evidence, and the two counterfactuals above — each fix
+  applied and removed live, 451 ⇄ 390 — are what stand in for a watched-failing
+  guard.
+- **A cost the admin fix carries, recorded rather than smoothed over.**
+  `/admin/buyers/[id]` at 390 now reports **20** controls under 44px against 2
+  before. All 18 new ones are the timeline's own PO links at ~222×38: they
+  were never 44px tall by design, only *taller* than 44 while they were broken
+  across one word per line. They are inline links inside a sentence, the class
+  accepted since 2026-09-11, and the same shape the purchase-order detail
+  feed already ships.
+- **The narrower bars on `/products/[id]`.** With the card finally inside the
+  viewport, *Who buys it*'s bar track is about 78px at 390 — the 302px card
+  less the `w-36` money figure, the `w-14` share and two gaps. The bars are
+  widths of the largest row, so they still rank; nobody has said whether 78px
+  is enough, and the alternative is letting the money figure shrink, which is
+  a different decision.
+- **The storefront.** Nothing under `src/app/(storefront)` was touched or
+  measured: the shop needs a `CLIENT` with a market since 2026-09-23, and no
+  such row exists in the seed.
+- **Every other grid of this shape is latent, not fixed.** The dashboard's
+  three `grid gap-lg lg:grid-cols-2`, `/admin/catalogue`, `/web-orders/[id]`
+  and the `loading.tsx` skeletons all have the same implicit `auto` column and
+  all **measure clean today** — they simply hold cards that happen to shrink.
+  They were left alone rather than swept, and the rule is written into
+  `context/lessons.md` §4 instead, which is this project's mechanism for a
+  shape rather than an instance.
+- **`npm run build` without a stand-in for `xlsx`**, which is why the 127th
+  test file still fails here. The stand-in's `.d.ts` was widened this pass
+  (`decode_col`, a permissive `WorkSheet` index signature) so `tsc` is clean
+  against it; the real package still cannot be fetched, since cdn.sheetjs.com
+  answers 403.
+
+## Previous phase
+
+# A buyer's market is set, alerted and required
 
 ## Status
 
