@@ -27,6 +27,15 @@ frame (centre 357,387, radii 189×124, measured from the pixels). Files:
 `src/app/{favicon.ico,icon.png,apple-icon.png}`. A real vector from the
 designer would replace all of them.
 
+**The browser tab icon is its own cut, not the oval shrunk** (reworked the
+same day, after the user asked about it). The oval is wide and short, so at
+16px it was a thin smudge with "zen" barely legible. The favicon, `icon.png`
+and `apple-icon.png` are now a square green tile with the white "zen" lifted
+out of the logo on its own — keyed on brightness inside the oval, small
+fragments of the oval's light rim dropped — on a gradient sampled from the
+oval's own green, with a margin so the rounded corners never clip a letter.
+Apple's icon is the unrounded square, since iOS rounds it itself.
+
 **The PDF and the emails carry the logo as bytes in code**
 (`src/lib/brand-logo.ts`, 14 KB PNG), not a path or URL. A server renderer
 reading `public/` depends on the build tracing it — the 2026-09-08 sharp
