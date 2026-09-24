@@ -2,14 +2,16 @@
 
 import Link from "next/link";
 import { useLayoutEffect } from "react";
-import { KeyRound, List, LogOut, ShoppingCart, User } from "lucide-react";
+import { KeyRound, List, LogOut, RotateCcw, ShoppingCart, User } from "lucide-react";
 import { signOut } from "next-auth/react";
+import { reorderLast } from "@/actions/reorder";
 import { Wordmark } from "@/components/portal/Wordmark";
 import { CartBadge } from "@/components/shop/CartBadge";
 import { CategoryStrip } from "@/components/shop/CategoryStrip";
 import { ShopAccountMenu, type ShopAccountMenuRow } from "@/components/shop/ShopAccountMenu";
 import { ShopSearch } from "@/components/shop/ShopSearch";
 import { useShopViewer } from "@/components/shop/ShopViewer";
+import { useReorder } from "@/components/shop/useReorder";
 import type { CartSummary } from "@/lib/queries/cart";
 import { useEdgeFades } from "@/hooks/useEdgeFades";
 import { shopHref } from "@/lib/shop-routes";
@@ -53,7 +55,22 @@ export function ShopHeader({
   summary: CartSummary | null;
 }) {
   const viewer = useShopViewer();
-  const rows = viewer.kind === "client" ? ACCOUNT_ROWS : [];
+  const reorder = useReorder();
+  // Phase 20's boxed lead row, built at last in Phase 57: the newest order on
+  // My orders, back into the cart in one tap.
+  const rows: ShopAccountMenuRow[] =
+    viewer.kind === "client"
+      ? [
+          {
+            key: "reorder-last",
+            label: "Reorder your last order",
+            icon: RotateCcw,
+            boxed: true,
+            onSelect: () => reorder.run(reorderLast),
+          },
+          ...ACCOUNT_ROWS,
+        ]
+      : [];
   const chips = useEdgeFades<HTMLDivElement>();
   // The hook measures in an effect, after paint. Measure in layout so the
   // first frame already fades the side that is clipped.

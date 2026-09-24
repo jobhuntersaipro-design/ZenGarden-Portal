@@ -303,6 +303,7 @@ export default async function PurchaseOrderPage({
 
         <StageStepper
           current={current}
+          showActor
           events={po.stageEvents
             .filter((event) => event.kind === "STAGE")
             .map((event) => ({

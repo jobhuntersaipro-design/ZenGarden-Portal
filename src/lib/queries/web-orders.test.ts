@@ -402,3 +402,66 @@ describe("openWebOrderCount", () => {
     });
   });
 });
+
+/**
+ * Phase 57 J5: My orders narrows by a chip and a search. Filtered before the
+ * count and the slice, so the total under the table is the narrowed list's.
+ */
+describe("listBuyerOrders narrowing", () => {
+  const po = (n: number, stage: string, ref: string) => ({
+    id: `po${n}`,
+    poNumber: ref,
+    poDate: new Date(2026, 0, n),
+    stage,
+    stageChangedAt: new Date(2026, 0, n),
+    deliveryDate: null,
+    total: { toFixed: () => "1.00" },
+    buyerReference: null,
+    webOrder: null,
+    _count: { lineItems: 1 },
+  });
+  const sort = { key: "date" as const, dir: "desc" as const };
+
+  beforeEach(() => {
+    poFindMany.mockResolvedValue([
+      po(1, "DELIVERED", "ACME-771"),
+      po(2, "IN_PRODUCTION", "ACME-772"),
+      po(3, "DELIVERED", "ACME-900"),
+    ]);
+    webFindMany.mockResolvedValue([
+      {
+        id: "w1",
+        reference: "W-2609-00014",
+        submittedAt: new Date(2026, 0, 4),
+        subtotal: { toFixed: () => "1.00" },
+        status: "DECLINED",
+        declinedReason: null,
+        buyerReference: "ACME-773",
+        _count: { lines: 1 },
+      },
+    ]);
+  });
+
+  it("counts only the delivered orders under Delivered", async () => {
+    const { orders, total } = await listBuyerOrders("b1", 1, 20, sort, { filter: "delivered", q: "" });
+    expect(total).toBe(2);
+    expect(orders.map((o) => o.id)).toEqual(["po3", "po1"]);
+  });
+
+  it("leaves a declined order out of In progress", async () => {
+    const { orders } = await listBuyerOrders("b1", 1, 20, sort, { filter: "open", q: "" });
+    expect(orders.map((o) => o.id)).toEqual(["po2"]);
+  });
+
+  it("finds an order by its PO number or its Order ID, ignoring case", async () => {
+    const byPo = await listBuyerOrders("b1", 1, 20, sort, { filter: "all", q: "acme-772" });
+    expect(byPo.orders.map((o) => o.id)).toEqual(["po2"]);
+    const byOrderId = await listBuyerOrders("b1", 1, 20, sort, { filter: "all", q: "w-2609-00014" });
+    expect(byOrderId.orders.map((o) => o.id)).toEqual(["w1"]);
+  });
+
+  it("combines the chip and the search", async () => {
+    const { total } = await listBuyerOrders("b1", 1, 20, sort, { filter: "delivered", q: "772" });
+    expect(total).toBe(0);
+  });
+});

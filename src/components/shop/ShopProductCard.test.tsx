@@ -104,3 +104,23 @@ describe("ShopProductCard quantity", () => {
     expect(button).toContain("disabled");
   });
 });
+
+/**
+ * Phase 57 J4: a product with no photo used to draw `ProductThumb`'s initials
+ * — "ZD", "M1" — which identify nothing (context/lessons.md §8). The card now
+ * draws its category's mark instead.
+ */
+describe("ShopProductCard without a photo", () => {
+  const html = renderToStaticMarkup(
+    <ShopProductCard group={group([variant({ id: "carrot", imageUrl: null })])} />,
+  );
+
+  it("draws the category's mark", () => {
+    expect(html).toContain('viewBox="0 0 34 46"');
+  });
+
+  it("prints no two-letter initials tile", () => {
+    expect(html).not.toContain("text-ink-disabled");
+    expect(html).not.toMatch(/>ZG</);
+  });
+});

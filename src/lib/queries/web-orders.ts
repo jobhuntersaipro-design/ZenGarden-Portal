@@ -1,4 +1,5 @@
 import { PoEventKind, WebOrderStatus } from "@/generated/prisma/enums";
+import { matchesBuyerOrder, type BuyerOrderFilter } from "@/lib/buyer-order-filter";
 import { orderIdentity } from "@/lib/order-identity";
 import { prisma } from "@/lib/prisma";
 import type { PoStage } from "@/generated/prisma/enums";
@@ -165,6 +166,7 @@ export async function listBuyerOrders(
     key: "date",
     dir: "desc",
   },
+  narrow: { filter: BuyerOrderFilter; q: string } = { filter: "all", q: "" },
 ): Promise<{ orders: ClientOrder[]; total: number }> {
   const [confirmed, web] = await Promise.all([
     prisma.purchaseOrder.findMany({
@@ -264,7 +266,10 @@ export async function listBuyerOrders(
   // sorting by "Your PO no." wants the orders that have one, not a screenful of
   // em dashes at the top.
   const direction = sort.dir === "asc" ? 1 : -1;
+  // Filtered before the count as well as the slice, so "12 orders" and the
+  // pages under it describe the same narrowed list.
   const sorted = rows
+    .filter((order) => matchesBuyerOrder(order, narrow.filter, narrow.q))
     .sort((a, b) => (b.date?.getTime() ?? 0) - (a.date?.getTime() ?? 0))
     .sort((a, b) => {
       const aBlank = isBlank(a, sort.key);

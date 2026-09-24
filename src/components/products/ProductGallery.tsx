@@ -88,7 +88,15 @@ export function ProductGallery({
       // `self-start`: stretched to the details card's height, the aspect
       // ratio would set this panel's width from that height and push the card
       // off the screen once the card grew past 4/3 of the column (2026-09-09).
-      <section className="flex aspect-4/3 flex-col items-center justify-center gap-xs self-start rounded-lg border border-dashed border-hairline-strong bg-surface p-lg text-center">
+      //
+      // A buyer's tile is a short strip on a phone (2026-09-24): a 262px panel
+      // saying "Photo coming soon" pushed the price and Add to cart below the
+      // first screen. The portal keeps its 4/3 panel at every width.
+      <section
+        className={`flex flex-col items-center justify-center gap-xs self-start rounded-lg border border-dashed border-hairline-strong bg-surface p-lg text-center ${
+          audience === "buyer" ? "h-32 sm:h-auto sm:aspect-4/3" : "aspect-4/3"
+        }`}
+      >
         <ImageOff
           className="size-8 text-ink-disabled"
           strokeWidth={1.5}

@@ -70,9 +70,17 @@ function stageState(done: boolean, isCurrent: boolean): StageBadgeState {
 export function StageStepper({
   current,
   events,
+  showActor,
 }: {
   current: PoStage | null;
   events: StageEvent[];
+  /**
+   * Required (2026-09-24), so no caller can forget it. The buyer's query nulls
+   * every actor on purpose — no staff name reaches the shop — and a null
+   * actor printed as "System", telling a buyer that "System" moved their
+   * order into production. The shop passes `false` and reads dates alone.
+   */
+  showActor: boolean;
 }) {
   const currentIndex = current === null ? -1 : stageIndex(current);
   // The first time each stage was reached is what the caption names.
@@ -93,9 +101,11 @@ export function StageStepper({
   }));
 
   const caption = (event: StageEvent) =>
-    `${formatDate(event.changedAt)}${
-      event.changedByName ? ` · ${event.changedByName}` : " · System"
-    }`;
+    showActor
+      ? `${formatDate(event.changedAt)}${
+          event.changedByName ? ` · ${event.changedByName}` : " · System"
+        }`
+      : formatDate(event.changedAt);
 
   return (
     <div className="mt-lg">

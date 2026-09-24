@@ -1,9 +1,12 @@
+import type { Metadata } from "next";
 import { ClientCart } from "@/components/shop/cart/ClientCart";
 import { GuestCart } from "@/components/shop/cart/GuestCart";
 import { loadCart } from "@/lib/queries/cart";
 import { loadShopViewer } from "@/lib/shop-viewer";
 
 export const dynamic = "force-dynamic";
+
+export const metadata: Metadata = { title: "Your cart · Zen Garden" };
 
 /**
  * Both viewers land on this page; only the data source differs (§5.5). A

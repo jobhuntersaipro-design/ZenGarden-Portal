@@ -5,6 +5,7 @@ import Link from "next/link";
 import { AddToCart } from "@/components/shop/AddToCart";
 import { CartonStepper } from "@/components/shop/CartonStepper";
 import { ProductThumb } from "@/components/products/ProductThumb";
+import { CategoryMark } from "@/components/shop/home/CategoryMark";
 import { unitLabel } from "@/lib/cartons";
 import { formatMYR } from "@/lib/money";
 import { variantLabels } from "@/lib/product-groups";
@@ -65,7 +66,18 @@ export function ShopProductCard({
         className="rounded-md focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-focus"
       >
         <div className="relative aspect-square overflow-hidden rounded-md bg-surface-soft">
-          <ProductThumb name={selected.name} url={selected.imageUrl} />
+          {/* Without a photo the card draws its category's bottle, not two
+              letters of its name: "ZD" and "M1" identify nothing
+              (context/lessons.md §8). */}
+          <ProductThumb
+            name={selected.name}
+            url={selected.imageUrl}
+            fallback={
+              <span className="flex size-full items-center justify-center bg-canvas">
+                <CategoryMark name={selected.category} />
+              </span>
+            }
+          />
           {badge ? (
             <span className="absolute top-xs left-xs rounded-pill bg-ink px-xs py-xxs text-[length:var(--text-caption)] font-semibold text-canvas">
               {badge}

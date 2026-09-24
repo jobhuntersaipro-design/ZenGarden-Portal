@@ -47,7 +47,7 @@ export function BuyBox({
   const pieces = packSize === null ? null : cartons * packSize;
 
   return (
-    <section className="rounded-lg border border-hairline p-lg">
+    <section className="rounded-lg border border-hairline p-md sm:p-lg">
       <div className="flex items-baseline gap-xs">
         <span className="font-display text-[length:var(--text-display-md)] font-[650] tabular-nums text-ink">
           {formatMYR(listPrice)}
@@ -67,7 +67,7 @@ export function BuyBox({
           page's own either way. */}
       {variants.length <= 1 ? (
         <>
-          <div className="mt-lg flex flex-wrap items-center gap-md">
+          <div className="mt-md flex flex-wrap items-center gap-md sm:mt-lg">
             <CartonStepper
               size="lg"
               value={cartons}
@@ -96,7 +96,7 @@ export function BuyBox({
             </div>
           </div>
 
-          <div className="mt-lg flex gap-sm">
+          <div className="mt-md flex gap-sm sm:mt-lg">
             <div className="flex-1">
               <AddToCart
                 productId={productId}

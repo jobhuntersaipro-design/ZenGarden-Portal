@@ -1,45 +1,25 @@
-# Current feature: the shop review — Phase 56 built, 57 and 58 specced
+# Current feature: the shop review — Phase 57 built, 58 to go
 
 ## Status
 
-**Phase 56 built and driven in a browser on `claude/modest-mayer-bixr87`**
-(2026-09-24), not yet merged: asked for as "Start with spec56, then show me
-before and after before merge". What was measured is §7 of
-`docs/specs/56-shop-trust-and-checkout.md`: order cards headed "—" 60 → 0,
-the PO field at 390 y=1,077 → 636, the cart bar gone from cart and checkout,
-no stale public-shop copy and no "super admin" left in the shop, 1652/1652
-tests. Found and recorded, not fixed: Sign out on the shop host lands on the
-portal's sign-in, from the header menu as much as the new footer link.
+**Phase 56 merged to `main`** (`b586cdb`). **Phase 57 built and driven on
+`claude/modest-mayer-bixr87`** (2026-09-24), asked for as "merge, then start
+phase 57", every decision as recommended. What it measured is
+`docs/specs/57-shop-journey.md` §6: order again from an order's page and the
+account menu (market-checked through the cart's own rule, now shared from
+`src/lib/cart-writes.ts`); one delivery tracker with no "System"; the product
+page's price and Add to cart inside a phone's first screen (**838 against
+844**, with an empty cart; the cart bar covers the button once the cart has
+something in it); category marks on product cards; filter chips and a search
+on My orders; tab titles.
 
-**Specs written on `claude/modest-mayer-bixr87`** (2026-09-24). Asked for as:
-"scan through the shop how can I improve the UI/UX and user journey? Please
-list down the priority", then "write priority 1, 2, 3 to each spec first".
+**Still open:** Phase 58 (`docs/specs/58-shop-polish.md`), plus three
+things found while driving — initials on cart lines, the order page's Lines
+card wrapping word-by-word at 390, and Sign out on the shop host landing on
+the portal host.
 
-The shop was driven as a signed-in buyer at 390 and 1440 against the local
-seed, production build (method in `docs/specs/56-shop-trust-and-checkout.md`
-§1), and the findings split three ways:
-
-- **`docs/specs/56-shop-trust-and-checkout.md` — priority 1**, what is wrong
-  on screen: every order card on a phone headed "—"; four strings left from
-  the public shop ("Sign in only when you order", "Browse without an
-  account", the footer's Sign in / Request an account, the cart's "and a
-  delivery date"); a buyer told to "ask a super admin"; checkout on a phone
-  burying the PO number under a 29% preview; the sticky cart bar pointing at
-  the page it is on.
-- **`docs/specs/57-shop-journey.md` — priority 2**, what is missing: order
-  again (Phase 20 §5, never built), one tracker instead of two with no
-  "System" actor, price and Add to cart above the fold on a phone, category
-  marks instead of initials on cards, filter and search on My orders, tab
-  titles.
-- **`docs/specs/58-shop-polish.md` — priority 3**: empty-search wording, the
-  cart's pieces printed twice, empty spec rows.
-
-**Each spec ends with the decisions it needs.** The one worth flagging:
-Phase 56's D1 would put the checkout form above the document **on phones
-only**, which reverses the 2026-09-17 "the document leads" decision there.
-
-**Nothing verified yet** beyond the drive the findings came from; the local
-cluster was dropped and `src/lib/prisma.ts` / `prisma/seed.ts` restored.
+**Specs:** `56-shop-trust-and-checkout.md` (built), `57-shop-journey.md`
+(built), `58-shop-polish.md` (not built).
 
 ## Previous phase
 

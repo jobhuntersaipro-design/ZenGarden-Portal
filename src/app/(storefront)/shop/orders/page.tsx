@@ -3,7 +3,9 @@ import {
   BuyerOrdersTable,
   type BuyerOrderRow,
 } from "@/components/shop/orders/BuyerOrdersTable";
+import { BuyerOrdersToolbar } from "@/components/shop/orders/BuyerOrdersToolbar";
 import { requireClient } from "@/lib/auth-guards";
+import { parseBuyerOrderFilter } from "@/lib/buyer-order-filter";
 import { buyerOrderStatus } from "@/lib/buyer-order-status";
 import { formatDate } from "@/lib/dates";
 import { parseSort } from "@/lib/queries/pagination";
@@ -32,11 +34,18 @@ export default async function OrdersPage({
     dir: "desc",
   });
 
+  const one = (value: string | string[] | undefined) =>
+    Array.isArray(value) ? value[0] : value;
+  const filter = parseBuyerOrderFilter(one(query.filter));
+  const q = (one(query.q) ?? "").trim();
+  const narrowed = filter !== "all" || q !== "";
+
   const { orders, total } = await listBuyerOrders(
     buyerId,
     page,
     PER_PAGE,
     sort,
+    { filter, q },
   );
 
   // Crossed to strings here, in the server component: a client component may
@@ -63,10 +72,16 @@ export default async function OrdersPage({
         to read its purchase order.
       </p>
 
+      {/* No controls on an empty history: there is nothing to narrow. */}
+      {total > 0 || narrowed ? <BuyerOrdersToolbar filter={filter} q={q} /> : null}
+
       {total === 0 ? (
         <p className="rounded-lg border border-hairline bg-canvas p-lg text-[length:var(--text-body-md)] text-ink-secondary">
-          Nothing yet. Orders you send, and orders the team keys in for you,
-          both appear here.
+          {narrowed
+            ? q
+              ? `No order matches "${q}". Check the number, or clear the search.`
+              : "No orders here yet."
+            : "Nothing yet. Orders you send, and orders the team keys in for you, both appear here."}
         </p>
       ) : (
         <BuyerOrdersTable

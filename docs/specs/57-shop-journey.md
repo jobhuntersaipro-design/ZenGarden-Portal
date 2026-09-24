@@ -183,3 +183,62 @@ portal host.
 - Phase 20's history analytics (D3).
 - Saving a cart as a named template, or scheduled repeat orders. Nobody asked,
   and "order again" answers the same need first.
+
+---
+
+## 6. Built, and what it measured — 2026-09-24
+
+Built on `claude/modest-mayer-bixr87` with every decision taken as
+recommended: **D1a** (Order these again on each order's page, and Reorder
+your last order in the account menu), **D2a** (to the cart afterwards),
+**D3a** (the rest of Phase 20 left out). Driven in a production build against
+a local Postgres 16 and the project's seed, the rig of Phase 56 §1, dropped
+afterwards.
+
+| Measured | Before | After |
+|---|---|---|
+| "System" on a confirmed order's page (PO-2026-0072), 390 and 1440 | 2 | **0**, one tracker headed *Delivery progress* |
+| Two-letter initials tiles on the shop home | 4 | **0**, each card draws its category's mark |
+| Product page at 390, longest name in the seed: price top / Add to cart bottom | 868 / 1,161 | **553 / 838** (inside 844) |
+| Same at 1440 | 451 / 679 | 451 / 679, unchanged |
+| Tab titles: product, cart, shop sign-in | "Zen Garden" ×3 | "500ML FINE FRAGRANCE SHOWER GEL — Style · Zen Garden", "Your cart · Zen Garden", "Sign in · Zen Garden" |
+| Order these again on PO-2026-0070 (3 lines of 6, 8, 10), pressed twice | — | cart lines **6,8,10**, then **12,16,20**, still 3 lines |
+| Same with one product moved to another market | — | 2 lines added; toast *"2 lines added to your cart — 1 no longer available: ZEN 1L — Royal Jelly"* |
+| Reorder your last order (menu) | — | the newest order, PO-2026-0072: 4 lines, 29/45/40/48 |
+| My orders, page 2, then **Delivered** | 21–40 of 72 | `?filter=delivered`, **1–20 of 66**, SQL's own 66 delivered |
+| In progress, then search `po-2026-0070` | — | 1–6 of 6, then **1–1 of 1**, that order |
+| Horizontal overflow, every page touched | none | none, 390 and 1440 |
+
+- **J1.** `isOrderable`, `openCart` and `upsertLine` moved out of the
+  `"use server"` cart action into `src/lib/cart-writes.ts`, which both
+  actions import — a server-action module may export only async actions, so
+  the move is what makes one rule rather than a copy. `reorderOrder` takes
+  the order id alone and looks it up the way the order page does (purchase
+  order first, then an unconfirmed shop order), both scoped by `buyerId` in
+  the `where`. A line with no product or a part-carton quantity is skipped
+  and named, like one out of market. Watched failing: with the market check
+  removed, 2 of 10 action tests go red.
+- **J3** is met with the cart **empty**. With something in the cart, the
+  phone's fixed cart bar (top y=775) covers Add to cart (bottom 838): the
+  price is on screen and the button is under the bar. Recorded rather than
+  fixed — the spec ruled out a second sticky bar, and the other options
+  (hiding the bar on product pages, or a smaller buy box) are the user's call.
+- **J4** watched failing: with the fallback removed, both card tests go red.
+- **J5** filters in memory in the same pass that sorts, before the count and
+  the slice, so the count and the pages describe the narrowed list.
+- **Found while driving and fixed here:** the header's catalogue search read
+  `?q=` on every page, so searching My orders echoed the order number into
+  the product search box. It reads `q` only on the catalogue now.
+- 22 new tests; **1674/1674 across 134 files**, `tsc` and `npm run build`
+  clean, lint unchanged (the same 4 `ShopHeader` errors and 3 warnings).
+
+**Found while driving, not fixed:**
+
+- The **cart's lines** still print initials (`5F`, `ZH`): the cart query
+  selects no category, and widening it was outside J4.
+- The order page's **Lines card at 390** sets each product name one word per
+  line ("ZEN / 2.1L / — / Lavender") — pre-existing, belongs with Phase 58.
+- Sign out on the shop host still lands on the portal host (Phase 56 §7).
+
+**Not verified:** anything on production; a buyer with no market pressing
+Order these again (unit-tested: it is refused and writes nothing).

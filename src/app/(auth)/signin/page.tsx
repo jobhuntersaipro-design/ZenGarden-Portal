@@ -7,7 +7,20 @@ import { Notice } from "@/components/auth/Notice";
 import { SignInForm } from "@/components/auth/SignInForm";
 import { withoutParam } from "@/lib/queries/pagination";
 
-export const metadata: Metadata = { title: "Sign in · Zen Garden Portal" };
+/** Whether this request arrived on the shop's own host. */
+async function onShopHost(): Promise<boolean> {
+  const host = (await headers()).get("host")?.split(":")[0].toLowerCase();
+  return Boolean(process.env.SHOP_HOST) &&
+    host === process.env.SHOP_HOST?.trim().toLowerCase();
+}
+
+/**
+ * The tab names the product the reader is signing in to (2026-09-24): a buyer
+ * on the shop host was reading "Zen Garden Portal", the staff product's name.
+ */
+export async function generateMetadata(): Promise<Metadata> {
+  return { title: (await onShopHost()) ? "Sign in · Zen Garden" : "Sign in · Zen Garden Portal" };
+}
 
 /**
  * `?next=` is attacker-controlled, so only a same-origin path is honoured.
@@ -50,9 +63,7 @@ export default async function SignInPage({
   // One card, two audiences. The route is shared because sign-in, reset and
   // the forced password change are the same flows on both hosts; only the
   // wording and the Google block differ.
-  const host = (await headers()).get("host")?.split(":")[0].toLowerCase();
-  const isShop = Boolean(process.env.SHOP_HOST) &&
-    host === process.env.SHOP_HOST?.trim().toLowerCase();
+  const isShop = await onShopHost();
 
   return (
     <AuthCard

@@ -1,3 +1,4 @@
+import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 import Link from "next/link";
 import { Prisma } from "@/generated/prisma/browser";
@@ -18,6 +19,23 @@ import { shopHref } from "@/lib/shop-routes";
 import { loadShopAudience } from "@/lib/shop-viewer";
 
 export const dynamic = "force-dynamic";
+
+/**
+ * The product's own name in the tab (2026-09-24), resolved through the same
+ * audience and market predicate as the page: a product outside the buyer's
+ * market, or a buyer with none, titles the tab "Product" and says nothing
+ * about whether the id exists.
+ */
+export async function generateMetadata({
+  params,
+}: {
+  params: Promise<{ id: string }>;
+}): Promise<Metadata> {
+  const { id } = await params;
+  const audience = await loadShopAudience();
+  const product = audience.kind === "scoped" ? await loadShopProduct(id, audience.market) : null;
+  return { title: `${product?.name ?? "Product"} · Zen Garden` };
+}
 
 export default async function ShopProductPage({
   params,
@@ -60,7 +78,7 @@ export default async function ShopProductPage({
     <div className="pt-lg">
       <nav
         aria-label="Breadcrumb"
-        className="flex items-center gap-xs text-[length:var(--text-caption)] text-ink-tertiary"
+        className="flex min-w-0 items-center gap-xs text-[length:var(--text-caption)] text-ink-tertiary"
       >
         <Link
           href={shopHref.home()}
@@ -76,10 +94,14 @@ export default async function ShopProductPage({
           {product.category}
         </Link>
         <span aria-hidden>/</span>
-        <span className="text-ink">{product.name}</span>
+        {/* One line: the title below prints the name in full, so a second
+            full copy up here only pushes the price down a phone's screen. */}
+        <span className="min-w-0 truncate text-ink" title={product.name}>
+          {product.name}
+        </span>
       </nav>
 
-      <div className="mt-md grid gap-xl lg:grid-cols-[5fr_7fr]">
+      <div className="mt-md grid gap-sm sm:gap-xl lg:grid-cols-[5fr_7fr]">
         <div className="self-start">
           <ProductGallery
             images={product.imageUrls.map((url, index) => ({
@@ -100,7 +122,7 @@ export default async function ShopProductPage({
             </p>
           ) : null}
           <h1
-            className={`font-display text-[length:var(--text-display-md)] font-[650] text-ink ${product.brand ? "mt-xs" : ""}`}
+            className={`font-display text-[length:var(--text-heading-md)] font-[650] text-ink sm:text-[length:var(--text-display-md)] ${product.brand ? "mt-xs" : ""}`}
           >
             {product.name}
           </h1>
@@ -117,12 +139,14 @@ export default async function ShopProductPage({
           </div>
 
           {variants.length > 1 ? (
-            <div className="mt-lg">
+            <div className="mt-md sm:mt-lg">
               <VariantPicker variants={variants} selectedId={product.id} />
             </div>
           ) : null}
 
-          <div className="mt-lg">
+          {/* Tighter below `sm` so the price and Add to cart land on a phone's
+              first screen (Phase 57 J3). */}
+          <div className="mt-md sm:mt-lg">
             <BuyBox
               productId={product.id}
               name={product.name}

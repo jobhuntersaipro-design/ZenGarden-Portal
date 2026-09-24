@@ -4,6 +4,7 @@ import Link from "next/link";
 import { ArrowLeft, Download } from "lucide-react";
 import { CheckoutSteps } from "@/components/shop/checkout/CheckoutSteps";
 import { PurchaseOrderPreview } from "@/components/shop/checkout/PurchaseOrderPreview";
+import { ReorderButton } from "@/components/shop/orders/ReorderButton";
 import { StageStepper } from "@/components/purchase-orders/StageStepper";
 import { requireClient } from "@/lib/auth-guards";
 import { buyerOrderStatus } from "@/lib/buyer-order-status";
@@ -153,24 +154,31 @@ export default async function OrderDetailPage({
             </p>
           )}
         </div>
+        {/* Under the document it repeats (Phase 57 J1): the buyer has just
+            read what they ordered, and this is how they order it again. */}
+        <div className="mt-md flex justify-end" data-print-hide>
+          <ReorderButton orderId={order.id} />
+        </div>
       </section>
       {order.kind === "confirmed" && order.stage ? (
         <section className="mt-lg rounded-lg border border-hairline bg-canvas p-lg">
           <p className="mb-sm font-mono text-[length:var(--text-eyebrow)] text-ink-tertiary">
-            Progress
+            Delivery progress
           </p>
-          {/* All four checkout steps are behind a confirmed order, so the bar
-              is complete and the fulfilment stages below carry the story on
-              (Phase 33). */}
-          <CheckoutSteps current={4} state="confirmed" />
+          {/* One tracker (2026-09-24). The four checkout steps used to sit
+              above this, all ticked — true, and nothing the buyer did not
+              know once the order is confirmed. The delivery stages are the
+              story from here, so they are the only one told. */}
           {order.deliveryDate ? (
-            <p className="mt-sm text-[length:var(--text-body-md)] text-ink">
+            <p className="text-[length:var(--text-body-md)] text-ink">
               {`Confirmed by our team. Expected delivery ${formatDate(order.deliveryDate)}.`}
             </p>
-          ) : null}
-          <div className="mt-lg border-t border-hairline pt-lg">
-            <StageStepper current={order.stage} events={order.events} />
-          </div>
+          ) : (
+            <p className="text-[length:var(--text-body-md)] text-ink">
+              Confirmed by our team.
+            </p>
+          )}
+          <StageStepper current={order.stage} events={order.events} showActor={false} />
         </section>
       ) : (
         <section className="mt-lg rounded-lg border border-hairline bg-canvas p-lg">

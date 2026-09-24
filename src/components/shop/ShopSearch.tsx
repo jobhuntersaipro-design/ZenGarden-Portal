@@ -2,7 +2,7 @@
 
 import { Suspense, useId } from "react";
 import { Search } from "lucide-react";
-import { useRouter, useSearchParams } from "next/navigation";
+import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { cn } from "cn";
 import { beginRouteProgress, requestSoftNavigation } from "@/lib/route-progress";
 
@@ -15,6 +15,10 @@ import { beginRouteProgress, requestSoftNavigation } from "@/lib/route-progress"
 function ShopSearchField({ className }: { className?: string }) {
   const searchParams = useSearchParams();
   const router = useRouter();
+  // `?q=` is the catalogue's search only on the catalogue. My orders has its
+  // own `?q=` (Phase 57), and the header must not echo an order number back
+  // as a product search.
+  const onCatalogue = /^(\/shop)?\/products$/.test(usePathname());
   // The desktop and mobile headers both render this field at once (only
   // `display` differs, so both are in the DOM), so a fixed id would collide
   // and the mobile label would resolve to the hidden desktop input.
@@ -47,7 +51,7 @@ function ShopSearchField({ className }: { className?: string }) {
         id={id}
         type="text"
         name="q"
-        defaultValue={searchParams.get("q") ?? ""}
+        defaultValue={onCatalogue ? (searchParams.get("q") ?? "") : ""}
         placeholder={`Search the catalogue — try "lavender" or "2.1L"`}
         className="min-w-0 flex-1 border-0 bg-transparent text-[length:var(--text-body-sm)] text-ink outline-none placeholder:text-ink-tertiary"
       />
