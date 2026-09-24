@@ -1,4 +1,122 @@
-# Current feature: the multi-series trend chart prints its figures
+# Current feature: the trend legend is the chart's own switch
+
+## Status
+
+**Built and driven in a browser on `main`** (2026-09-24). Asked for as: "The
+legend are not selecteable, make it more user friendly".
+
+**The legend was a key printed beside the chart, and the only way to drop a
+series was the picker popover above it.** `toggle(id)` already existed and
+already wrote the URL — the legend simply never called it. So this is wiring
+plus one design decision that took the work.
+
+**The decision: what happens to a chip you switch off.** If the legend lists
+only what is drawn, clicking Vietnam makes the Vietnam chip **vanish**, and
+the control that would undo it is gone with it — a switch with no way back,
+which is the defect this project keeps fixing ("a filter you cannot see or
+clear"). So the legend carries the series it is drawing **and** the ones it
+could draw next: switched off, a chip stays exactly where it was and goes
+hollow. **Measured: the chip list is character-for-character identical before
+and after six toggles.**
+
+**The order is the options' own, not selected-first**, so a toggle changes a
+chip in place rather than moving it across the row under the reader's finger.
+**Watched failing:** selected-first ordering reports `expected ['s2','s4',
+'s1','s3'] to deeply equal ['s1','s2','s3','s4']`.
+
+**Everything drawn is in the legend whatever its rank.** `options` can be
+long — every product sold in the range — so the chips are the drawn series
+plus the highest-ranked of the rest up to ten, and the picker stays the whole
+list. Taking the top ten instead is the plausible wrong implementation and
+would drop a selected low-ranked series off the legend while its line was
+still on the chart. **Watched failing:** `expected [ 's1' … 's5' ] to include
+'s28'`.
+
+**The last line cannot be switched off, and that is a guard rather than a
+preference.** An empty `?series=` reads as "no choice made", so the page hands
+back its default — switching the last one off would have looked like switching
+them *all on*. Found by driving it: clicking all four markets off read back
+**4 of 4 markets** with the param gone. The last chip is now `disabled` with
+`cursor: not-allowed` and the reason in its `title` ("Vietnam is the last
+one — the chart keeps it").
+
+**A click past the cap says so instead of doing nothing.** The cap warning was
+only ever rendered inside the popover, so from the legend a sixth-plus click
+was silent. It now prints under the chips as a `role="alert"` amber line —
+**measured:** "Up to 6 products at a time — deselect one first".
+
+**A phone gets the drawn series plus two spares, not ten chips.** A long
+product name takes a whole row at 390, so ten chips measured a **512px block
+under a 288px chart** — more legend than chart. Truncating them to fit two per
+row was the other way out and is worse: an undrawn chip exists to be *chosen*,
+and "500ML FINE FRA…" cannot be. The spares beyond two are `max-sm:hidden` and
+the picker holds the rest, which on a phone is the better control for choosing
+among twelve anyway — a scrollable list carrying each option's ranked figure.
+**Measured: 512px → 252px**, with every chip still 44px.
+
+**Colour still is not identity.** Each chip carries its name; a truncated one
+keeps the full value in its `title` ("Hide 500ML FINE FRAGRANCE SHOWER GEL —
+Style"), which is 00-master §4's truncation-recovery rule.
+
+## Verified, with the figures
+
+**Driven in a real browser against a real database** — local Postgres 16 as
+the `postgres` user, the project's own seed (423 purchase orders, 1,685 line
+items, 12 products), four markets written onto the twelve products, and
+`src/lib/prisma.ts` / `prisma/seed.ts` pointed at a `PrismaPg` adapter for the
+drive and **restored afterwards**; the cluster was stopped and deleted,
+`.env.local` deleted, and `package.json` / `package-lock.json` are untouched.
+
+- **A legend click draws and undraws a line, at both widths.** Markets: **4
+  lines → 3 → 4**, the heading following (*4 of 4* → *3 of 4* → *4 of 4*), and
+  the URL writing `Indonesia,Mydin,,Testland` — the blank slot kept, so
+  Testland holds its magenta (`rgb(164,60,180)` unchanged) and Vietnam returns
+  to its own orange rather than every line repainting.
+- **The chip holds its place.** `positionsHeld: true` at 1440 and 390, and the
+  ten product chips read in the same order before, at the cap and past it.
+- **A real tap works on a touch device**: 3 lines → 2 → 3 at 390.
+- **Twelve options, ten chips:** 3 on / 7 off at rest, filling to **6 on / 4
+  off** with 6 lines drawn; the eleventh click prints the amber cap line.
+- **Phone:** 5 visible chips, legend **252px**, every chip **44px**, `cursor:
+  pointer` on all of them.
+- **Keyboard and screen reader, for the first time on this control.** The
+  chips are real `<button>`s with `aria-pressed`, inside a
+  `<ul aria-label="Series on this chart">` — so the legend is tabbable and its
+  state is announced, where a `<span>` was neither.
+- **No page overflow** — 1440/1440 and 390/390 on the dashboard.
+- **Three counterfactuals watched failing**, then restored: the top-N-options
+  rule (2 red), selected-first ordering (2 red), and — from the drive rather
+  than a test — switching the last series off, which read back as all four on.
+- **1610/1610 tests across 126 files** (8 new, on `legendChips`), `tsc`,
+  `npm run build` clean, and **lint identical to the untouched tree** (the same
+  4 pre-existing `ShopHeader` ref errors and 3 warnings).
+
+## Not verified
+
+- **Anything on production.** Not deployed, and no production row was read or
+  written.
+- **A pre-existing defect found while driving, not fixed.** `/buyers/[id]`
+  **overflows horizontally at 390 — 451 against 390** — from the product
+  trend's chart escaping its `ChartScroller`, not from the legend.
+  **Reproduced identically on `HEAD` before this change**, so it predates it;
+  it breaks this project's own "no horizontal page overflow at 390 / 768 /
+  1440" floor and wants its own fix.
+- **Isolating a series** — click one chip to show only that line, the other
+  common legend gesture — is not built. Every chip is an independent on/off.
+- **Six chips at once on a phone**, where the two spares would sit under six
+  drawn rows; the widest phone case driven was 3 drawn + 2 spares.
+- **A `?series=` naming something the range does not carry.** `legendChips`
+  only ever offers ids from `options`, so a stale id cannot become a chip, but
+  no URL was driven for it.
+- **The buyer page's own picker popover after the change.** It was driven once
+  to prove the page's write path works (deselecting a row took 3 lines to 2),
+  not re-read for layout.
+- **`npm run build` without a stand-in for `xlsx`**, which is why the 127th
+  test file still fails here.
+
+## Previous phase
+
+# The multi-series trend chart prints its figures
 
 ## Status
 

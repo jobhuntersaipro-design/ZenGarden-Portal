@@ -38,6 +38,66 @@ import { usePendingChoice } from "@/hooks/usePendingChoice";
  */
 export const MAX_SERIES = 6;
 
+/**
+ * How many chips the legend offers at once.
+ *
+ * The legend carries the series it is drawing *and* the ones it could draw
+ * next, because a switch that removes its own way back is not a switch: click
+ * Vietnam off and, if the legend listed only what is drawn, the chip would
+ * vanish and the reader would have to find the picker to undo it.
+ *
+ * `options` can be long, though — every product sold in the range — so the
+ * legend takes the drawn series plus the highest-ranked of the rest up to
+ * this, and the picker above stays the whole list. The heading already reads
+ * "6 of 12 products", so the reader is told what the legend is a slice of.
+ */
+const LEGEND_CHIPS = 10;
+
+/**
+ * How many *undrawn* chips a phone offers.
+ *
+ * A long product name takes a whole row at 390, so ten chips measured a 512px
+ * block under a 288px chart — more legend than chart. Truncating them to fit
+ * two per row was the other way out and is worse: an undrawn chip is there to
+ * be *chosen*, and "500ML FINE FRA…" cannot be. So the phone keeps every
+ * drawn series — switching one off must stay undoable where it happened —
+ * plus a couple of spares, and the picker holds the rest. On a phone that
+ * picker is the better control for choosing among twelve anyway: it is a
+ * scrollable list carrying each option's ranked figure.
+ */
+const PHONE_SPARES = 2;
+
+/**
+ * Which series the legend offers, given everything available and what is
+ * drawn.
+ *
+ * Two properties are the whole rule, and both are guarded:
+ *
+ * - **Everything drawn is included**, whatever its rank. Taking the top ten
+ *   options instead would drop a selected-but-low-ranked series off the
+ *   legend while the chart was still drawing its line.
+ * - **The order is the options' own**, not selected-first, so switching a
+ *   chip changes it in place rather than moving it across the row under the
+ *   reader's finger.
+ */
+export function legendChips<T extends { id: string }>(
+  options: readonly T[],
+  selected: readonly string[],
+  cap = LEGEND_CHIPS,
+): T[] {
+  const drawn = new Set(selected);
+  const room = Math.max(0, cap - drawn.size);
+  const alsoOffered = new Set(
+    options
+      .filter((option) => !drawn.has(option.id))
+      .slice(0, room)
+      .map((option) => option.id),
+  );
+  return options.filter(
+    (option) => drawn.has(option.id) || alsoOffered.has(option.id),
+  );
+}
+
 export type SeriesOption = { id: string; name: string; value: number };
 
 const colorFor = (index: number) =>
@@ -132,6 +192,15 @@ export function SeriesTrend({
         values: points.map((point) => Number(point[id] ?? 0)),
       })),
     labels.step,
+  );
+
+  const chips = legendChips(options, selected);
+  /** The spares a phone leaves to the picker — see `PHONE_SPARES`. */
+  const phoneHidden = new Set(
+    chips
+      .filter((option) => !slots.includes(option.id))
+      .slice(PHONE_SPARES)
+      .map((option) => option.id),
   );
 
   const write = (next: string[], id: string) => {
@@ -359,24 +428,89 @@ export function SeriesTrend({
         )}
       </div>
 
-      {/* Identity is never colour alone. */}
-      {selected.length > 0 ? (
-        <ul className="mt-md flex flex-wrap gap-md">
-          {slots.map((id, index) =>
-            id === "" ? null : (
-              <li key={id} className="flex items-center gap-xxs">
-                <span
-                  aria-hidden
-                  className="size-2.5 rounded-xxs"
-                  style={{ backgroundColor: colorFor(index) }}
-                />
-                <span className="text-[length:var(--text-caption)] text-ink-secondary">
-                  {options.find((option) => option.id === id)?.name ?? id}
-                </span>
-              </li>
-            ),
-          )}
-        </ul>
+      {/*
+        The legend is the chart's own switch, not a key printed beside it.
+        Every chip toggles its line, so the reader adds and drops series where
+        they are reading them rather than reopening the picker above — which
+        stays, because it ranks the options by value and holds the long tail.
+
+        Identity is never colour alone: each chip carries its name, and a
+        dropped one keeps its place in the row so the way back is where the
+        chip was.
+      */}
+      {chips.length > 0 ? (
+        <div className="mt-md">
+          <ul
+            aria-label="Series on this chart"
+            className="flex flex-wrap gap-xs"
+          >
+            {chips.map((option) => {
+              const slot = slots.indexOf(option.id);
+              const on = slot >= 0;
+              // At the cap an unselected chip still answers — with the warning
+              // below rather than silence — so it is dimmed, never disabled.
+              const full = !on && selected.length >= MAX_SERIES;
+              /**
+               * The last line on the chart cannot be switched off, and that is
+               * a guard rather than a preference: an empty `?series=` reads as
+               * "no choice made", so the page hands back its default and all
+               * of them reappear. Switching the last one off would look like
+               * switching them all on.
+               */
+              const onlyOne = on && selected.length === 1;
+              const busy = picks.isPending(option.id);
+              return (
+                <li
+                  key={option.id}
+                  className={phoneHidden.has(option.id) ? "max-sm:hidden" : undefined}
+                >
+                  <button
+                    type="button"
+                    aria-pressed={on}
+                    disabled={onlyOne}
+                    onClick={() => toggle(option.id)}
+                    title={
+                      onlyOne
+                        ? `${option.name} is the last one — the chart keeps it`
+                        : on
+                          ? `Hide ${option.name}`
+                          : full
+                            ? capWarningText
+                            : `Show ${option.name}`
+                    }
+                    className={`flex min-h-11 items-center gap-xxs rounded-pill border px-sm text-[length:var(--text-caption)] transition-colors focus-visible:outline-2 focus-visible:outline-focus sm:min-h-0 sm:py-xxs ${
+                      on
+                        ? "border-transparent bg-surface-soft text-ink"
+                        : full
+                          ? "border-hairline bg-canvas text-ink-disabled"
+                          : "border-hairline-strong bg-canvas text-ink-tertiary hover:text-ink-secondary"
+                    } ${picks.pending && !busy ? "opacity-60" : ""}`}
+                  >
+                    <span
+                      aria-hidden
+                      className={`size-2.5 shrink-0 rounded-xxs ${on ? "" : "border border-current"}`}
+                      style={
+                        on ? { backgroundColor: colorFor(slot) } : undefined
+                      }
+                    />
+                    <span className="max-w-64 truncate">{option.name}</span>
+                    {busy ? (
+                      <Spinner className="size-3 shrink-0 text-ink-tertiary" />
+                    ) : null}
+                  </button>
+                </li>
+              );
+            })}
+          </ul>
+          {capWarning ? (
+            <p
+              role="alert"
+              className="mt-xs text-[length:var(--text-caption)] text-brand-amber"
+            >
+              {capWarningText}
+            </p>
+          ) : null}
+        </div>
       ) : null}
     </section>
   );
