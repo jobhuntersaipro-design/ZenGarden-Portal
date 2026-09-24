@@ -240,10 +240,10 @@
      shared by CartLines, GuestCart's loading rows and the cart loading.tsx
      skeleton, so the three cannot drift. */
   --spacing-cart-thumb: 88px;
-  /* The Zen Garden logo (2026-09-24). The oval is the green "zen GARDEN"
-     mark alone, for bars and headers — the full badge's flowers turn to blur
-     below about 100px, so it only goes where it has room. */
-  --spacing-logo-oval: 40px;
+  /* The Zen Garden logo (2026-09-24): the full flower badge everywhere, at a
+     height per place. The mark size fits the 60px top bars and the shop
+     header; the badge sizes are for where there is room to read the flowers. */
+  --spacing-logo-mark: 52px;
   --spacing-logo-badge-sm: 88px;
   --spacing-logo-badge: 112px;
   --spacing-logo-badge-lg: 160px;

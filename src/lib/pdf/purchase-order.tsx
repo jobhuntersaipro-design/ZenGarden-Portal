@@ -81,11 +81,11 @@ const styles = StyleSheet.create({
     paddingBottom: 12,
   },
   brand: { flexDirection: "row", alignItems: "center" },
-  // The logo oval, 36pt tall, beside the legal name (2026-09-24). Its bytes
+  // The flower badge, 56pt tall, beside the legal name (2026-09-24). Its bytes
   // live in code (`brand-logo.ts`) so the renderer never reads `public/`.
   logo: {
-    height: 36,
-    width: (36 * BRAND_LOGO_WIDTH) / BRAND_LOGO_HEIGHT,
+    height: 56,
+    width: (56 * BRAND_LOGO_WIDTH) / BRAND_LOGO_HEIGHT,
     marginRight: 10,
   },
   company: { fontFamily: "Helvetica-Bold", fontSize: 14, color: COLORS.ink },

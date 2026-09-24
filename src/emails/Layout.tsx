@@ -60,7 +60,7 @@ export function Layout({ children }: { children: ReactNode }) {
                     <tr>
                       {/* Padding on the cell: Outlook ignores it on a table. */}
                       <td style={{ padding: 32 }}>
-                        {/* The logo oval, attached inline by `sendEmail`. A
+                        {/* The flower badge, attached inline by `sendEmail`. A
                             client that blocks images still reads the alt. */}
                         {/* eslint-disable-next-line @next/next/no-img-element -- an email, not a page */}
                         <img

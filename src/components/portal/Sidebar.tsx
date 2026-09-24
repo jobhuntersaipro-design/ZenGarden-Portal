@@ -55,7 +55,7 @@ export function Sidebar({
         aria-label="Zen Garden — go to the dashboard"
         className="block rounded-xxs px-xs transition-opacity duration-[0.25s] hover:opacity-80 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-focus"
       >
-        <Wordmark />
+        <Wordmark className="h-logo-badge-sm" />
       </Link>
 
       <nav

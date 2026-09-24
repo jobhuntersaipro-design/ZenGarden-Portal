@@ -15,7 +15,7 @@ export default function NotFound() {
         aria-label="Zen Garden — go to the dashboard"
         className="rounded-xxs transition-opacity duration-[0.25s] hover:opacity-80 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-focus"
       >
-        <Wordmark />
+        <Wordmark className="h-logo-badge" />
       </Link>
       <h1 className="text-[length:var(--text-display-md)] font-display font-[650] tracking-[-1.36px] text-ink">
         Page not found

@@ -8,22 +8,30 @@ portal? I'm not sure where should I include it, can u suggest ne", against the
 customer's 728px watercolour badge JPG. Seven places were suggested and the
 answer was "All".
 
-**One file, two cuts.** The badge's flowers and its "Luxury From Nature" line
-turn to blur below about 100px, so it goes only where it has room — the auth
-card (112px, both hosts, one component), the shop's opening band (160px, 88px
-on a phone) and the shop footer (88px). Everywhere small takes the green oval
-alone: the portal sidebar, the phone top bar, the admin bar, the 404, the shop
-header, the browser tab, the PDF masthead, the on-screen purchase order and
-every email. **The oval replaced the purple text logo rather than sitting
-beside it** — purple text next to a green-and-pink badge reads as two brands.
-`Wordmark` keeps its name and now renders the oval, so all six existing
-callers changed at once; `BrandBadge` is the full badge.
+**The flower badge everywhere, the same day.** The first cut put the badge
+only where it had room and the bare green oval everywhere small. The user then
+asked for "the flower one" in every place the oval stood, so the oval is gone:
+`Wordmark` renders `BrandBadge` at 52px (`--spacing-logo-mark`, fitting the
+60px phone and admin bars and the shop header), the sidebar and the shop footer
+at 88px, the auth card and the 404 at 112px, the shop hero at 160px (88px on a
+phone). The PDF masthead draws it at 56pt and every email at 100×98, both from
+`brand-logo.ts`, regenerated from the badge. **The browser tab keeps the "zen"
+tile** — at 16px the flowers are noise — and that is the one deliberate
+exception. `public/brand/zen-garden-oval.png` and `--spacing-logo-oval` were
+removed with it. **The oval replaced the purple text logo rather than sitting
+beside it** — purple text next to a green-and-pink badge reads as two brands,
+and that holds for the badge too.
+
+**Measured after the change** (production build, local Postgres, restored and
+dropped afterwards): no page overflow at 1440 and 390 on sign-in (both hosts),
+dashboard, `/admin` and the shop home; the shop's first product at 390 sits at
+y=560; the email measures 600/600 and 390/390; 1635/1635 tests, `tsc`,
+`npm run build` clean, lint unchanged (4 `ShopHeader` errors, 3 warnings).
 
 **Both are transparent PNGs cut from the JPG**, since no transparent original
 was supplied: the white background is flooded in from the border and un-mixed
-from the anti-aliased rim, and the oval is an ellipse fitted against its cream
-frame (centre 357,387, radii 189×124, measured from the pixels). Files:
-`public/brand/zen-garden-{badge,oval}.png` (63 KB, 41 KB),
+from the anti-aliased rim, and the oval (cut first, since removed) was an ellipse fitted against its cream
+frame (centre 357,387, radii 189×124). Files: `public/brand/zen-garden-badge.png` (63 KB),
 `src/app/{favicon.ico,icon.png,apple-icon.png}`. A real vector from the
 designer would replace all of them.
 
@@ -37,7 +45,7 @@ oval's own green, with a margin so the rounded corners never clip a letter.
 Apple's icon is the unrounded square, since iOS rounds it itself.
 
 **The PDF and the emails carry the logo as bytes in code**
-(`src/lib/brand-logo.ts`, 14 KB PNG), not a path or URL. A server renderer
+(`src/lib/brand-logo.ts`, 20 KB PNG), not a path or URL. A server renderer
 reading `public/` depends on the build tracing it — the 2026-09-08 sharp
 failure, which a laptop build cannot catch — and an email `<img>` pointing at
 the site breaks behind Vercel's deployment protection or with `APP_URL` unset.
