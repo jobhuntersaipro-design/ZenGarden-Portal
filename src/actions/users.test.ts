@@ -5,6 +5,7 @@ const userUpdate = vi.fn();
 const userCreate = vi.fn();
 const userCount = vi.fn();
 const tokenDeleteMany = vi.fn();
+const tokenCreate = vi.fn();
 const requestFindUnique = vi.fn();
 const requestUpdate = vi.fn();
 const sendEmail = vi.fn();
@@ -23,7 +24,7 @@ vi.mock("@/lib/prisma", () => ({
       count: userCount,
     },
     accessRequest: { findUnique: requestFindUnique, update: requestUpdate },
-    passwordResetToken: { deleteMany: tokenDeleteMany },
+    passwordResetToken: { deleteMany: tokenDeleteMany, create: tokenCreate },
     $transaction: (arg: unknown) =>
       typeof arg === "function"
         ? (arg as (client: typeof tx) => unknown)(tx)
@@ -78,6 +79,7 @@ beforeEach(() => {
   userUpdate.mockResolvedValue({});
   userCreate.mockResolvedValue({ id: "new", name: base.name, email: base.email });
   tokenDeleteMany.mockResolvedValue({ count: 0 });
+  tokenCreate.mockResolvedValue({ id: "t1" });
   sendEmail.mockResolvedValue({ sent: true });
   // Another active super admin exists unless a test says otherwise.
   userCount.mockResolvedValue(1);
@@ -98,7 +100,7 @@ describe("permissions", () => {
   });
 
   it("refuses every user action to a non-super-admin", async () => {
-    expect(await createUser({ ...base, mustChangePassword: true })).toEqual(refused);
+    expect(await createUser(base)).toEqual(refused);
     expect(await updateUser("u1", base)).toEqual(refused);
     expect(await setPassword("u1", "Password12")).toEqual(refused);
     expect(await deleteUser("u1", base.email)).toEqual(refused);
@@ -215,6 +217,37 @@ describe("setPassword", () => {
   });
 });
 
+describe("createUser", () => {
+  it("writes no password: the invitation carries a link to choose one", async () => {
+    await createUser(base);
+    const data = userCreate.mock.calls[0][0].data;
+    expect(data).toEqual({ name: base.name, email: base.email, role: base.role });
+  });
+
+  it("emails an invitation with a week-long set-password link", async () => {
+    const before = Date.now();
+    const result = await createUser(base);
+    expect(result).toEqual({
+      success: true,
+      data: { id: "new", invited: true, email: base.email },
+    });
+    const token = tokenCreate.mock.calls[0][0].data;
+    expect(token.userId).toBe("new");
+    expect(token.expiresAt.getTime() - before).toBeGreaterThan(6 * 24 * 60 * 60_000);
+    expect(sendEmail).toHaveBeenCalledTimes(1);
+    expect(sendEmail.mock.calls[0][0].to).toBe(base.email);
+  });
+
+  it("says so when the invitation did not send, rather than reporting success", async () => {
+    sendEmail.mockResolvedValue({ sent: false, error: "domain not verified" });
+    const result = await createUser(base);
+    expect(result).toEqual({
+      success: true,
+      data: { id: "new", invited: false, email: base.email },
+    });
+  });
+});
+
 describe("deleteUser", () => {
   it("refuses without an exact email match", async () => {
     // A near miss must not get through.
@@ -249,7 +282,8 @@ describe("deleteUser", () => {
     expect(data.name).toBe("Deleted user");
     expect(data.passwordHash).toBeNull();
     expect(data.disabledAt).toBeInstanceOf(Date);
-    expect(data.email).toMatch(/^deleted\+[0-9a-f]{12}@/);
+    // The domain is what takes the row off the user list (listUsers).
+    expect(data.email).toMatch(/^deleted\+[0-9a-f]{12}@lovinghandsportal\.invalid$/);
     expect(data.sessionVersion).toEqual({ increment: 1 });
   });
 });

@@ -12,6 +12,7 @@ import { sendEmail } from "@/lib/email";
 import { env } from "@/lib/env";
 import { RESET_TOKEN_TTL_MS, hashToken } from "@/lib/password-reset";
 import { prisma } from "@/lib/prisma";
+import { sendInvitation } from "@/lib/user-invite";
 
 export type ActionResult<T = undefined> =
   | { success: true; data: T }
@@ -70,17 +71,32 @@ export async function sendPasswordResetLink(
         buyerId: true,
         passwordHash: true,
         disabledAt: true,
+        _count: { select: { accounts: true } },
       },
     });
     if (!user) return { success: false, error: "That account is gone." };
+    if (user.disabledAt) {
+      return { success: false, error: "Restore their access first." };
+    }
+    // Invited and never signed in: no password and no Google account yet, so
+    // there is nothing to reset — they get their invitation again instead, a
+    // fresh week-long link to choose their first password.
+    if (!user.passwordHash && user._count.accounts === 0) {
+      await audit(prisma, {
+        action: "RESET_LINK_SENT",
+        actorId: admin.id,
+        buyerId: user.buyerId,
+        subjectUserId: user.id,
+        detail: { name: user.name, invitation: true },
+      });
+      const sent = await sendInvitation(user);
+      return { success: true, data: { sent, email: user.email } };
+    }
     if (!user.passwordHash) {
       return {
         success: false,
         error: "They sign in with Google, so there is no password to reset.",
       };
-    }
-    if (user.disabledAt) {
-      return { success: false, error: "Restore their access first." };
     }
 
     const token = randomBytes(32).toString("base64url");

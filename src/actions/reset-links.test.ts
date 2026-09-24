@@ -22,7 +22,12 @@ const transaction = vi.fn(async (fn: (tx: unknown) => unknown) =>
 );
 
 vi.mock("@/lib/prisma", () => ({
-  prisma: { $transaction: transaction, user: { findUnique: userFindUnique } },
+  prisma: {
+    $transaction: transaction,
+    user: { findUnique: userFindUnique },
+    passwordResetToken: { create: tokenCreate },
+    auditEvent: { create: auditCreate },
+  },
 }));
 vi.mock("@/lib/auth-guards", () => ({
   UnauthorizedError: class UnauthorizedError extends Error {},
@@ -65,6 +70,7 @@ const client = {
   buyerId: "buyer-1",
   passwordHash: "$2a$12$hash",
   disabledAt: null,
+  _count: { accounts: 0 },
 };
 const member = {
   ...client,
@@ -107,7 +113,11 @@ describe("sendPasswordResetLink", () => {
   });
 
   it("refuses a Google-only user and says why", async () => {
-    userFindUnique.mockResolvedValue({ ...member, passwordHash: null });
+    userFindUnique.mockResolvedValue({
+      ...member,
+      passwordHash: null,
+      _count: { accounts: 1 },
+    });
     const result = await sendPasswordResetLink("u1");
     expect(result).toEqual({
       success: false,
@@ -115,6 +125,18 @@ describe("sendPasswordResetLink", () => {
     });
     expect(tokenCreate).not.toHaveBeenCalled();
     expect(sendEmail).not.toHaveBeenCalled();
+  });
+
+  it("resends the invitation to someone invited who has never signed in", async () => {
+    userFindUnique.mockResolvedValue({ ...member, passwordHash: null });
+    const before = Date.now();
+    const result = await sendPasswordResetLink("u1");
+    expect(result).toEqual({ success: true, data: { sent: true, email: member.email } });
+    // A week-long set-password link, not the 30-minute reset one.
+    const { expiresAt } = tokenCreate.mock.calls[0][0].data;
+    expect(expiresAt.getTime() - before).toBeGreaterThan(6 * 24 * 60 * 60_000);
+    expect(sendEmail.mock.calls[0][0].subject).toMatch(/invited/i);
+    expect(templateArgs).toHaveLength(0);
   });
 
   it("refuses a disabled account", async () => {

@@ -4,7 +4,7 @@ import { useState } from "react";
 import { roleLabel } from "@/lib/permissions/roles";
 import { usePathname, useSearchParams } from "next/navigation";
 import { toast } from "sonner";
-import { KeyRound } from "lucide-react";
+import { KeyRound, Mail } from "lucide-react";
 import { sendPasswordResetLink } from "@/actions/reset-links";
 import { UserStatusBadge } from "@/components/admin/RingBadge";
 import { UserDrawer } from "@/components/admin/UserDrawer";
@@ -125,7 +125,19 @@ export function UsersTable({
       // as caption-sized text a reader could miss (docs/specs/26 §2).
       cell: (row) => (
         <span className="flex items-center justify-end gap-xxs">
-          {row.status === "Disabled" ? null : (
+          {row.status === "Disabled" ? null : row.status === "Invited" ? (
+            // Never signed in and no password yet: a reset has nothing to
+            // reset, so the row offers their invitation again.
+            <Button
+              variant="secondary"
+              className={ACTION_PILL}
+              aria-label={`Resend ${row.name}'s invitation`}
+              onClick={() => setResetting(row)}
+            >
+              <Mail aria-hidden className="size-3.5" />
+              Resend invite
+            </Button>
+          ) : (
             <Button
               variant="secondary"
               className={ACTION_PILL}
@@ -150,6 +162,8 @@ export function UsersTable({
       ),
     },
   ];
+
+  const inviting = resetting?.status === "Invited";
 
   const openUser =
     openUserId === "new"
@@ -219,10 +233,14 @@ export function UsersTable({
       >
         <DialogContent>
           <DialogHeader>
-            <DialogTitle>Email a reset link to {resetting?.email}?</DialogTitle>
+            <DialogTitle>
+              {inviting ? "Resend the invitation to" : "Email a reset link to"}{" "}
+              {resetting?.email}?
+            </DialogTitle>
             <DialogDescription>
-              The link lasts 30 minutes and works once. Their current password keeps
-              working until they use it.
+              {inviting
+                ? "A new link to set their password, lasting 7 days. Any earlier link keeps working until it expires."
+                : "The link lasts 30 minutes and works once. Their current password keeps working until they use it."}
             </DialogDescription>
           </DialogHeader>
           <DialogFooter>
@@ -246,7 +264,7 @@ export function UsersTable({
                   // toast can say whether the email actually left.
                   toast[result.data.sent ? "success" : "warning"](
                     result.data.sent
-                      ? `Reset link sent to ${target.email}`
+                      ? `${target.status === "Invited" ? "Invitation" : "Reset link"} sent to ${target.email}`
                       : "The email didn't send. Try again.",
                   );
                 } catch {
@@ -256,7 +274,7 @@ export function UsersTable({
                 }
               }}
             >
-              Send link
+              {inviting ? "Resend invite" : "Send link"}
             </Button>
           </DialogFooter>
         </DialogContent>

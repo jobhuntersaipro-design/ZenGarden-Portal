@@ -3,6 +3,13 @@ import { OPS_ROLES } from "@/lib/permissions/roles";
 import { emailSchema, passwordSchema } from "@/lib/validation/auth";
 
 /**
+ * A deleted user's address is rewritten into this domain (`deleteUser`), and
+ * `listUsers` leaves every row in it out. `.invalid` is reserved (RFC 2606),
+ * so no real address can ever land here by accident.
+ */
+export const DELETED_USER_EMAIL_DOMAIN = "lovinghandsportal.invalid";
+
+/**
  * Portal roles only. CLIENT is deliberately absent: the admin drawer must not
  * be able to mint a customer contact or promote one to staff, and a client is
  * created from the buyer's page with a buyer attached (Phase 15).
@@ -18,9 +25,6 @@ export const createUserSchema = z.object({
   name: z.string().min(1, "A name is required").max(120),
   email: emailSchema,
   role: userRoleSchema,
-  /** Optional: without one, the user signs in with Google. */
-  password: passwordSchema.optional(),
-  mustChangePassword: z.boolean().default(true),
 });
 
 export const updateUserSchema = z.object({

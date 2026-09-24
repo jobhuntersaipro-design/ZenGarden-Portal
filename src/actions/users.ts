@@ -13,16 +13,14 @@ import {
   AccessDeclined,
   accessDeclinedSubject,
 } from "@/emails/AccessDeclined";
-import {
-  TemporaryPassword,
-  temporaryPasswordSubject,
-} from "@/emails/TemporaryPassword";
 import { UnauthorizedError } from "@/lib/auth-guards";
 import { requirePermission } from "@/lib/permissions/require";
 import { sendEmail } from "@/lib/email";
 import { env } from "@/lib/env";
 import { prisma } from "@/lib/prisma";
+import { sendInvitation } from "@/lib/user-invite";
 import {
+  DELETED_USER_EMAIL_DOMAIN,
   createUserSchema,
   setPasswordSchema,
   updateUserSchema,
@@ -68,9 +66,15 @@ async function isLastSuperAdmin(userId: string): Promise<boolean> {
   return others === 0;
 }
 
+/**
+ * Creates a portal user and emails them an invitation (2026-09-24). No
+ * password is typed here: the email carries a one-time link to choose one,
+ * and a Google account on the same address signs in as well. Until that link
+ * is used the row reads Invited, and "Resend invite" issues a fresh one.
+ */
 export async function createUser(
   input: CreateUserInput,
-): Promise<ActionResult<{ id: string; password?: string }>> {
+): Promise<ActionResult<{ id: string; invited: boolean; email: string }>> {
   const { user, error } = await guard();
   if (!user) return { success: false, error: error! };
 
@@ -85,42 +89,18 @@ export async function createUser(
 
   try {
     const created = await prisma.user.create({
-      data: {
-        name: data.name,
-        email: data.email,
-        role: data.role,
-        passwordHash: data.password
-          ? await hash(data.password, BCRYPT_COST)
-          : null,
-        // Set only where a hash is actually written; a Google-only row has
-        // never had a password, so "never changed" is the truth for it.
-        passwordChangedAt: data.password ? new Date() : null,
-        // Only meaningful with a password; a Google user never sees the form.
-        mustChangePassword: Boolean(data.password) && data.mustChangePassword,
-      },
+      data: { name: data.name, email: data.email, role: data.role },
       select: { id: true, name: true, email: true },
     });
 
-    if (data.password) {
-      await sendEmail({
-        to: created.email,
-        subject: temporaryPasswordSubject(),
-        react: TemporaryPassword({
-          name: created.name,
-          password: data.password,
-          // The ops host. A client is invited through inviteBuyerContact,
-          // which passes SHOP_URL — a portal link would land them on a
-          // screen that immediately redirects them away.
-          signInUrl: `${env.APP_URL}/signin`,
-        }),
-      });
-    }
+    // Awaited, and reported: the row exists either way, and the admin is told
+    // whether the email actually went rather than assuming it did.
+    const invited = await sendInvitation(created);
 
     revalidate();
-    // Returned once so the drawer can show it; it is never stored in the clear.
     return {
       success: true,
-      data: { id: created.id, password: data.password },
+      data: { id: created.id, invited, email: created.email },
     };
   } catch (cause) {
     if (
@@ -245,7 +225,9 @@ export async function setPassword(
 /**
  * Soft delete. The row stays so every upload, confirmation and stage event
  * keeps its attribution — a hard delete would leave the audit trail pointing
- * at nobody. Real row deletion is not offered.
+ * at nobody. The address is rewritten into `DELETED_USER_EMAIL_DOMAIN`, which
+ * is what takes the row off the user list (`listUsers`): until 2026-09-24 it
+ * stayed there as "Deleted user · Disabled", and a delete read as not working.
  */
 export async function deleteUser(
   userId: string,
@@ -285,7 +267,7 @@ export async function deleteUser(
         mustChangePassword: false,
         sessionVersion: { increment: 1 },
         // The address is freed for reuse and cannot identify them any more.
-        email: `deleted+${randomBytes(6).toString("hex")}@lovinghandsportal.invalid`,
+        email: `deleted+${randomBytes(6).toString("hex")}@${DELETED_USER_EMAIL_DOMAIN}`,
       },
     });
 

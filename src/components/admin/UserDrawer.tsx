@@ -53,7 +53,6 @@ export function UserDrawer({
     active: user ? user.status !== "Disabled" : true,
   });
   const [password, setPasswordValue] = useState("");
-  const [createdPassword, setCreatedPassword] = useState<string | null>(null);
   const [pending, setPending] = useState(false);
   const [confirmDelete, setConfirmDelete] = useState(false);
   const [typedEmail, setTypedEmail] = useState("");
@@ -80,23 +79,12 @@ export function UserDrawer({
           <SheetTitle>{isNew ? "New user" : "Edit user"}</SheetTitle>
           <SheetDescription>
             {isNew
-              ? "Leave the password blank and they sign in with Google."
+              ? "We email them a link to set their password. A Google account on the same address works too."
               : "Changes take effect at their next session refresh."}
           </SheetDescription>
         </SheetHeader>
 
         <div className="flex flex-col gap-md p-md">
-          {createdPassword ? (
-            <div className="rounded-sm bg-surface-soft p-sm">
-              <p className="text-[length:var(--text-caption)] text-ink-secondary">
-                Shown once. It has also been emailed to them.
-              </p>
-              <p className="font-mono text-[length:var(--text-body-md)] text-ink">
-                {createdPassword}
-              </p>
-            </div>
-          ) : null}
-
           <div className="flex flex-col gap-xxs">
             <label htmlFor="user-name" className={label}>
               Name
@@ -138,23 +126,26 @@ export function UserDrawer({
             </select>
           </div>
 
-          <div className="flex flex-col gap-xxs">
-            <label htmlFor="user-password" className={label}>
-              {isNew ? "Password (optional)" : "Set a new password"}
-            </label>
-            <Input
-              id="user-password"
-              type="password"
-              autoComplete="new-password"
-              value={password}
-              onChange={(event) => setPasswordValue(event.target.value)}
-            />
-            <p className="text-[length:var(--text-caption)] text-ink-tertiary">
-              {isNew
-                ? "At least 10 characters, with a letter and a digit. Leave blank for Google-only."
-                : "Setting one signs them out of every session immediately."}
-            </p>
-          </div>
+          {/* An admin never chooses a new user's password (2026-09-24): the
+              invitation carries a link for them to choose it. Setting one is
+              still offered on an existing user, for someone locked out. */}
+          {isNew ? null : (
+            <div className="flex flex-col gap-xxs">
+              <label htmlFor="user-password" className={label}>
+                Set a new password
+              </label>
+              <Input
+                id="user-password"
+                type="password"
+                autoComplete="new-password"
+                value={password}
+                onChange={(event) => setPasswordValue(event.target.value)}
+              />
+              <p className="text-[length:var(--text-caption)] text-ink-tertiary">
+                Setting one signs them out of every session immediately.
+              </p>
+            </div>
+          )}
 
           {isNew ? null : (
             <label className="flex items-center gap-xs text-[length:var(--text-body-sm)] text-ink">
@@ -176,21 +167,23 @@ export function UserDrawer({
                     name: form.name,
                     email: form.email,
                     role: form.role,
-                    ...(password ? { password } : {}),
-                    mustChangePassword: true,
                   });
                   setPending(false);
                   if (!result.success) {
                     toast.error(result.error);
                     return;
                   }
-                  if (result.data.password) {
-                    setCreatedPassword(result.data.password);
-                    toast.success("User created — the password is shown once");
+                  if (!result.data.invited) {
+                    // The user exists; only the email failed. Say so, and
+                    // where the way to try again is, rather than a success.
+                    toast.error(
+                      `User created, but the invitation to ${result.data.email} didn't send. Use Resend invite on their row.`,
+                    );
                     void refresh();
+                    onClose();
                     return;
                   }
-                  done("They can sign in with Google now");
+                  done(`Invitation sent to ${result.data.email}`);
                   return;
                 }
 

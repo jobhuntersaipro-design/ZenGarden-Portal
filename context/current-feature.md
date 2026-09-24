@@ -1,4 +1,60 @@
-# Current feature: the shop review — Phases 56 to 58 built
+# Current feature: users are invited, and a deleted user leaves the list
+
+## Status
+
+**Built and driven in a browser on `claude/modest-mayer-bixr87`**
+(2026-09-24). Asked for as: "user deletion is not working / when creating new
+users, remove the password field / the new invited users didn't get the
+invitation email".
+
+**The invitation was never sent, by construction.** `createUser` emailed only
+when the admin typed a password; left blank, the row was created, the toast
+said "They can sign in with Google now" and nothing left the building. Norbie
+Testing is exactly that row. The password field is gone from the create
+drawer, and every new user is now emailed an **invitation**
+(`src/emails/Invitation.tsx`) carrying a one-time **7-day** set-password link
+— the reset-token table and `/reset-password/[token]` page, so no new route.
+The send is awaited and reported: a failure toasts "User created, but the
+invitation to … didn't send. Use Resend invite on their row."
+
+**An Invited row offers "Resend invite"** where it offered a disabled "Send
+reset link" (a passwordless user had nothing to reset). `sendPasswordResetLink`
+sends the invitation again for a user with no password and no Google account;
+a Google-only user who has signed in is still refused.
+
+**Deletion always worked; the list kept showing it.** A delete is a soft
+delete — the row stays for attribution, renamed "Deleted user" and disabled —
+and `listUsers` never left it out. It now excludes the
+`DELETED_USER_EMAIL_DOMAIN` (`lovinghandsportal.invalid`) the delete writes, so
+the two production rows in the screenshot disappear on deploy with no
+migration.
+
+## Verified, with the figures
+
+Local Postgres, production build, restored and dropped afterwards.
+- **Before (old build):** 2 "Deleted user" rows, Norbie's button "Send reset
+  link" **disabled**, password field present. **After:** 0 deleted rows,
+  "Resend invite" enabled (36px, 44px at 390), no password field.
+- **Create → delete, driven:** the new row appeared; Delete toasted "User
+  deleted" and the row was **gone** from the list after reload.
+- **The invite token is real:** 1 token row, expiring past 6 days.
+- **An invited user can use the link:** set a password through
+  `/reset-password/<token>` → `/signin?reset=1` → signed in to `/`.
+- **The email** rendered at 600 and 390 with no overflow.
+- No page overflow at 1440/390; 1689/1689 tests (5 new) pass, `tsc` clean, lint
+  unchanged (4 `ShopHeader` errors, 3 warnings), `npm run build` clean.
+
+## Not verified
+
+- **A real send.** This rig has no Resend key, so the toast honestly read
+  "didn't send". Production sends from kim-brothers.com; the first invite there
+  is the proof.
+- **Norbie on production** still has no password: press **Resend invite**
+  once this deploys.
+
+## Previous phase
+
+# The shop review — Phases 56 to 58 built
 
 ## Status
 

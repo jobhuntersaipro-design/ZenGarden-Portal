@@ -1,5 +1,5 @@
 import { prisma } from "@/lib/prisma";
-import { deriveUserStatus } from "@/lib/validation/users";
+import { DELETED_USER_EMAIL_DOMAIN, deriveUserStatus } from "@/lib/validation/users";
 import { OPS_ROLES } from "@/lib/permissions/roles";
 import type { StaffRole } from "@/lib/validation/users";
 
@@ -34,7 +34,12 @@ export async function listUsers(): Promise<AdminUserRow[]> {
     // that buyer's page — listing them here would offer the drawer a role it
     // cannot represent, and invite someone to promote a customer to staff.
     // Phase 48: the list is `OPS_ROLES`, so a new role cannot be invisible here.
-    where: { role: { in: [...OPS_ROLES] } },
+    // A deleted user keeps their row for attribution, but is not a user any
+    // more — listing them read as a delete that had not worked.
+    where: {
+      role: { in: [...OPS_ROLES] },
+      NOT: { email: { endsWith: `@${DELETED_USER_EMAIL_DOMAIN}` } },
+    },
     select: {
       id: true,
       name: true,
