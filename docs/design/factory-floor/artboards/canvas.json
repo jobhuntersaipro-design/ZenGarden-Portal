@@ -1,0 +1,82 @@
+{
+ "v": 3,
+ "createdOnFiles": {
+  "v": 1,
+  "at": "2026-09-24T09:00:00Z"
+ },
+ "title": "Factory Floor 3D",
+ "launch": {
+  "view": "canvas"
+ },
+ "pages": [],
+ "boards": {
+  "Main.dc.html": {
+   "x": 0,
+   "y": 0,
+   "w": 1440,
+   "h": 960,
+   "title": "1 \u00b7 Overview \u2014 every step tracked"
+  },
+  "LineFocus.dc.html": {
+   "x": 1520,
+   "y": 0,
+   "w": 1440,
+   "h": 960,
+   "title": "2 \u00b7 Clicked into Line 4"
+  },
+  "TodaysData.dc.html": {
+   "x": 0,
+   "y": 1080,
+   "w": 1440,
+   "h": 960,
+   "title": "3 \u00b7 With the data the portal has today"
+  },
+  "Phone.dc.html": {
+   "x": 1520,
+   "y": 1080,
+   "w": 390,
+   "h": 844,
+   "title": "4 \u00b7 Phone"
+  },
+  "OptionControlRoom.dc.html": {
+   "x": 0,
+   "y": 2500,
+   "w": 1920,
+   "h": 1080,
+   "title": "Option A \u00b7 Control room TV"
+  },
+  "OptionTowers.dc.html": {
+   "x": 2000,
+   "y": 2500,
+   "w": 1440,
+   "h": 960,
+   "title": "Option B \u00b7 Where orders pile up"
+  },
+  "OptionFollow.dc.html": {
+   "x": 3520,
+   "y": 2500,
+   "w": 1440,
+   "h": 960,
+   "title": "Option C \u00b7 Follow one order"
+  }
+ },
+ "order": [
+  "Main.dc.html",
+  "LineFocus.dc.html",
+  "TodaysData.dc.html",
+  "Phone.dc.html",
+  "OptionControlRoom.dc.html",
+  "OptionTowers.dc.html",
+  "OptionFollow.dc.html"
+ ],
+ "notes": {
+  "optionsTitle": {
+   "x": 0,
+   "y": 2220,
+   "text": "Three more directions",
+   "kind": "title1",
+   "maxW": 4960
+  }
+ },
+ "designSystems": []
+}
