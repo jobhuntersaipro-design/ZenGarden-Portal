@@ -1,4 +1,40 @@
-# Current feature: the Zen Garden logo, on both hosts
+# Current feature: the shop review — three specs, nothing built
+
+## Status
+
+**Specs written on `claude/modest-mayer-bixr87`** (2026-09-24). Asked for as:
+"scan through the shop how can I improve the UI/UX and user journey? Please
+list down the priority", then "write priority 1, 2, 3 to each spec first".
+
+The shop was driven as a signed-in buyer at 390 and 1440 against the local
+seed, production build (method in `docs/specs/56-shop-trust-and-checkout.md`
+§1), and the findings split three ways:
+
+- **`docs/specs/56-shop-trust-and-checkout.md` — priority 1**, what is wrong
+  on screen: every order card on a phone headed "—"; four strings left from
+  the public shop ("Sign in only when you order", "Browse without an
+  account", the footer's Sign in / Request an account, the cart's "and a
+  delivery date"); a buyer told to "ask a super admin"; checkout on a phone
+  burying the PO number under a 29% preview; the sticky cart bar pointing at
+  the page it is on.
+- **`docs/specs/57-shop-journey.md` — priority 2**, what is missing: order
+  again (Phase 20 §5, never built), one tracker instead of two with no
+  "System" actor, price and Add to cart above the fold on a phone, category
+  marks instead of initials on cards, filter and search on My orders, tab
+  titles.
+- **`docs/specs/58-shop-polish.md` — priority 3**: empty-search wording, the
+  cart's pieces printed twice, empty spec rows.
+
+**Each spec ends with the decisions it needs.** The one worth flagging:
+Phase 56's D1 would put the checkout form above the document **on phones
+only**, which reverses the 2026-09-17 "the document leads" decision there.
+
+**Nothing verified yet** beyond the drive the findings came from; the local
+cluster was dropped and `src/lib/prisma.ts` / `prisma/seed.ts` restored.
+
+## Previous phase
+
+# The Zen Garden logo, on both hosts
 
 ## Status
 
