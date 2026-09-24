@@ -217,7 +217,10 @@ export default async function OrderDetailPage({
               key={index}
               className="flex flex-wrap items-baseline justify-between gap-sm border-b border-hairline pb-xs last:border-0 last:pb-0"
             >
-              <span className="min-w-0 flex-1 text-[length:var(--text-body-sm)] text-ink">
+              {/* Its own line below `sm`: as `flex-1` (basis 0%) it always fit
+                  beside the figures and got the sliver they left — "ZEN / 2.1L
+                  / — / Lavender" at 390 (context/lessons.md §4). */}
+              <span className="min-w-0 basis-full text-[length:var(--text-body-sm)] text-ink sm:flex-1 sm:basis-0">
                 {line.description}
               </span>
               <span className="text-[length:var(--text-caption)] tabular-nums text-ink-tertiary">

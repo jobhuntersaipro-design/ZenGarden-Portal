@@ -1,25 +1,19 @@
-# Current feature: the shop review — Phase 57 built, 58 to go
+# Current feature: the shop review — Phases 56 to 58 built
 
 ## Status
 
-**Phase 56 merged to `main`** (`b586cdb`). **Phase 57 built and driven on
-`claude/modest-mayer-bixr87`** (2026-09-24), asked for as "merge, then start
-phase 57", every decision as recommended. What it measured is
-`docs/specs/57-shop-journey.md` §6: order again from an order's page and the
-account menu (market-checked through the cart's own rule, now shared from
-`src/lib/cart-writes.ts`); one delivery tracker with no "System"; the product
-page's price and Add to cart inside a phone's first screen (**838 against
-844**, with an empty cart; the cart bar covers the button once the cart has
-something in it); category marks on product cards; filter chips and a search
-on My orders; tab titles.
+**Phases 56 and 57 merged to `main`** (`000e573`). **Phase 58 built and
+driven on `claude/modest-mayer-bixr87`** (2026-09-24), asked for as "merge to
+main and then start spec 58", D1 taken as recommended. What it measured is
+`docs/specs/58-shop-polish.md` §4: a search that finds nothing names itself
+("Results for "zzzz" · No products match") and offers the categories; a cart
+line prints its pieces once; empty spec rows are hidden; and the order page's
+Lines card no longer sets a product name one word per line at 390 (31px →
+300px wide).
 
-**Still open:** Phase 58 (`docs/specs/58-shop-polish.md`), plus three
-things found while driving — initials on cart lines, the order page's Lines
-card wrapping word-by-word at 390, and Sign out on the shop host landing on
-the portal host.
-
-**Specs:** `56-shop-trust-and-checkout.md` (built), `57-shop-journey.md`
-(built), `58-shop-polish.md` (not built).
+**Still open from the review:** initials on cart lines (the cart query
+selects no category), Sign out on the shop host landing on the portal host,
+and the phone cart bar covering Add to cart when the cart is not empty.
 
 ## Previous phase
 

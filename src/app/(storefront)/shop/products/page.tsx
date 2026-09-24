@@ -5,7 +5,8 @@ import { FilterBar } from "@/components/shop/catalogue/FilterBar";
 import { ShopProductCard } from "@/components/shop/ShopProductCard";
 import { TablePagination } from "@/components/portal/TablePagination";
 import { pageRange, type SearchParams } from "@/lib/queries/pagination";
-import { listShopProducts } from "@/lib/queries/shop-catalogue";
+import { listShopCategories, listShopProducts } from "@/lib/queries/shop-catalogue";
+import { catalogueHeading, isNarrowed, resultLabel } from "@/lib/shop-catalogue-labels";
 import { SHOP_PER_PAGE, parseShopQuery, shopQueryHref } from "@/lib/shop-filters";
 import { shopHref } from "@/lib/shop-routes";
 import { NoMarketPanel } from "@/components/shop/NoMarketPanel";
@@ -13,15 +14,6 @@ import { loadShopAudience } from "@/lib/shop-viewer";
 
 export const metadata: Metadata = { title: "Products · Zen Garden" };
 export const dynamic = "force-dynamic";
-
-/** "48 products · showing 1–24" / "1 product" / "Nothing yet" (§5.3).
- * Phase 31: the figure counts cards, so a product sold in eight flavours is
- * one product here, which is what the reader is looking at. */
-function resultLabel(total: number, from: number, to: number): string {
-  if (total === 0) return "Nothing yet";
-  if (total === 1) return "1 product";
-  return `${total} products · showing ${from}–${to}`;
-}
 
 export default async function ShopCataloguePage({
   searchParams,
@@ -40,9 +32,15 @@ export default async function ShopCataloguePage({
     );
   }
 
-  const catalogue = await listShopProducts(query, audience.market);
+  const [catalogue, categories] = await Promise.all([
+    listShopProducts(query, audience.market),
+    listShopCategories(audience.market),
+  ]);
   const { from, to } = pageRange(query.page, SHOP_PER_PAGE, catalogue.total);
-  const heading = query.category ?? "All products";
+  // The breadcrumb names where the reader is; the heading names what the
+  // grid is showing, which under a search is the search.
+  const crumb = query.category ?? "All products";
+  const heading = catalogueHeading(query);
 
   // The href *Clear all* and the empty state's "Clear the filters" both go
   // to — every filter dropped, `category` kept. That came from the category
@@ -67,7 +65,7 @@ export default async function ShopCataloguePage({
           Home
         </Link>
         <span aria-hidden>/</span>
-        <span className="text-ink">{heading}</span>
+        <span className="text-ink">{crumb}</span>
       </div>
 
       <div className="mt-sm flex flex-wrap items-baseline gap-sm">
@@ -75,7 +73,7 @@ export default async function ShopCataloguePage({
           {heading}
         </h1>
         <span className="tabular-nums text-[length:var(--text-body-sm)] text-ink-tertiary">
-          {resultLabel(catalogue.total, from, to)}
+          {resultLabel(catalogue.total, from, to, isNarrowed(query))}
         </span>
       </div>
 
@@ -96,6 +94,26 @@ export default async function ShopCataloguePage({
             >
               Clear the filters
             </Link>
+            {/* Somewhere to go next without retyping (Phase 58). */}
+            {categories.length > 0 ? (
+              <nav aria-label="Browse a category" className="mt-lg">
+                <p className="text-[length:var(--text-caption)] text-ink-tertiary">
+                  Or browse a category
+                </p>
+                <ul className="mt-xs flex flex-wrap justify-center gap-xs">
+                  {categories.map((category) => (
+                    <li key={category}>
+                      <Link
+                        href={shopHref.catalogue({ category })}
+                        className="flex h-control-md items-center rounded-pill border border-hairline-strong px-md text-[length:var(--text-body-sm)] text-ink hover:border-ink focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-focus sm:h-control-sm"
+                      >
+                        {category}
+                      </Link>
+                    </li>
+                  ))}
+                </ul>
+              </nav>
+            ) : null}
           </div>
         ) : (
           <ul className="grid grid-cols-2 gap-md md:grid-cols-3 lg:grid-cols-4">

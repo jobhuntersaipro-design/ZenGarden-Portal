@@ -58,3 +58,35 @@ To a buyer a dash is a question with no answer. See D1.
 3. Under D1a, a product with no pallet figure shows no Cartons per pallet
    row; a product with one shows it.
 4. No horizontal overflow at 390 and 1440; before and after screenshots.
+
+---
+
+## 4. Built, and what it measured — 2026-09-24
+
+Built on `claude/modest-mayer-bixr87` with **D1a** (hide a row with no
+value). One finding from the Phase 57 drive was folded in, as offered: the
+order page's Lines card at 390.
+
+Driven in a production build against a local Postgres 16 and the project's
+seed (the rig of Phase 56 §1, dropped afterwards), before on `main` at
+`000e573` and after on this change, signed in as a Vietnam buyer.
+
+| Measured | Before | After |
+|---|---|---|
+| `/products?q=zzzz` heading · count | All products · Nothing yet | **Results for "zzzz" · No products match** |
+| Categories offered in the empty card | 0 | **7** (every category in the buyer's market), 44px at 390 |
+| "24 pieces" in one cart line | 2 | **1**, under the stepper |
+| Spec rows on a product with no pallet figure or variant, at 390 and 1440 | 7, two of them "—" | **6**, no Cartons per pallet row; Variant shows because this product has one |
+| Order page Lines card at 390: description width × height | **31 × 84px**, one word per line, "H/WASH" printed over its quantity | **300 × 21px**, one line |
+| Horizontal overflow, every page touched, 390 and 1440 | none | none |
+
+- **The Lines card was lessons §4's flex shape**: a `flex-1` item's basis is
+  0%, so it always fitted beside the figures and got the 31px they left. It
+  takes `basis-full` below `sm` now, and its old place above.
+- **Watched failing:** the cart-line test against the old line reported
+  `expected [ '48 pieces', '48 pieces' ] to have a length of 1 but got 2`.
+- 10 new tests; **1684/1684 across 137 files**, `tsc` and `npm run build`
+  clean, lint unchanged (the same 4 `ShopHeader` errors and 3 warnings).
+
+**Not verified:** anything on production; an unfiltered catalogue with no
+products at all (the "Nothing yet" wording is kept for it and unit-tested).

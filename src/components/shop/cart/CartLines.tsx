@@ -90,10 +90,10 @@ function CartRow({
           </span>
         ) : (
           <p className="mt-xxs text-[length:var(--text-caption)] tabular-nums text-ink-tertiary">
+            {/* The pieces live under the stepper, where they move with the
+                count; a second copy here was the same figure a line apart
+                (Phase 58). */}
             {`${formatMYR(line.unitPrice)} per ${line.unit}`}
-            {line.pieces !== null
-              ? ` · ${line.pieces} piece${line.pieces === 1 ? "" : "s"}`
-              : ""}
           </p>
         )}
       </div>
