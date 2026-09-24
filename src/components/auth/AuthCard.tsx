@@ -1,5 +1,5 @@
 import type { ReactNode } from "react";
-import { Wordmark } from "@/components/portal/Wordmark";
+import { BrandBadge } from "@/components/portal/Wordmark";
 
 /**
  * The card every auth screen sits in (design reference §3.1): 480px,
@@ -8,7 +8,7 @@ import { Wordmark } from "@/components/portal/Wordmark";
  *
  * It arrives rather than appearing: the card fades and rises as one object
  * (`animate-auth-card`), and its parts slide into place behind it in reading
- * order — wordmark, heading, subtitle, then whatever form the screen carries
+ * order — logo, heading, subtitle, then whatever form the screen carries
  * — one `stagger-N` step (30ms) apart, everything settled by about 460ms.
  *
  * The contents slide but never fade, and `globals.css` has the measurement
@@ -30,7 +30,7 @@ export function AuthCard({
 }) {
   return (
     <div className="w-full max-w-auth-card animate-auth-card rounded-xxl border border-hairline bg-canvas p-xxl shadow-md">
-      <Wordmark className="animate-auth-settle stagger-1" />
+      <BrandBadge className="animate-auth-settle stagger-1 h-logo-badge" />
       {eyebrow ? (
         <p className="animate-auth-settle stagger-2 mt-lg font-mono text-[length:var(--text-eyebrow)] text-ink-tertiary">
           {eyebrow}

@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { Wordmark } from "@/components/portal/Wordmark";
+import { BrandBadge } from "@/components/portal/Wordmark";
 import { shopHref } from "@/lib/shop-routes";
 
 const FOOTER_LINK =
@@ -20,7 +20,7 @@ export function ShopFooter({ categories }: { categories: string[] }) {
     <footer className="mt-xxl border-t border-hairline bg-surface">
       <div className="mx-auto grid max-w-page grid-cols-1 gap-lg px-md py-xl sm:grid-cols-2 sm:px-lg md:grid-cols-3">
         <div>
-          <Wordmark />
+          <BrandBadge className="h-logo-badge-sm" loading="lazy" />
           <p className="mt-sm text-[length:var(--text-caption)] text-ink-tertiary">
             Personal care goods, sold by the carton to businesses across Malaysia.
           </p>

@@ -1,5 +1,6 @@
 import type { ReactElement } from "react";
 import { Resend } from "resend";
+import { BRAND_LOGO_CID, brandLogoPng } from "@/lib/brand-logo";
 import { env } from "@/lib/env";
 
 export const resend = new Resend(env.RESEND_API_KEY);
@@ -37,6 +38,17 @@ export type SendEmailArgs = {
 };
 
 /**
+ * The logo every email's header draws as `cid:zen-garden-logo` (`Layout.tsx`),
+ * attached inline here so no template has to remember it.
+ */
+const LOGO_ATTACHMENT: EmailAttachment = {
+  filename: "zen-garden.png",
+  content: brandLogoPng(),
+  contentType: "image/png",
+  contentId: BRAND_LOGO_CID,
+};
+
+/**
  * Never throws. A failed notification must not roll back the action that
  * triggered it — callers get `{ sent }` and carry on.
  */
@@ -60,7 +72,9 @@ export async function sendEmail({
       to,
       subject,
       react,
-      ...(attachments?.length ? { attachments } : {}),
+      // The files the caller passed, then the header logo. Always present,
+      // so the array is never the empty one Resend rejects.
+      attachments: [...(attachments ?? []), LOGO_ATTACHMENT],
     });
     if (error) {
       console.error(`[email] ${subject} → ${String(to)}: ${error.message}`);

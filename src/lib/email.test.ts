@@ -33,20 +33,32 @@ describe("sendEmail attachments", () => {
     expect(result).toEqual({ sent: true });
     expect(send.mock.calls[0][0].attachments).toEqual([
       { filename: "W-2609-00015 purchase order.pdf", content },
+      expect.objectContaining({ contentId: "zen-garden-logo" }),
     ]);
   });
 
   /**
-   * Resend rejects an empty `attachments` array, and every caller predating
-   * Phase 37 passes none at all — so the key is omitted rather than sent as
-   * `undefined` or `[]`.
+   * Every email's header draws the logo as `cid:zen-garden-logo`, so it rides
+   * inline on every send, including the callers that attach nothing, whose
+   * header would otherwise show a broken image. It also means the array is
+   * never the empty one Resend rejects.
    */
-  it("omits the key entirely when there is nothing to attach", async () => {
+  it("attaches the header logo inline on every email", async () => {
     await sendEmail({ to: "buyer@acme.test", subject: "Hello", react });
-    expect("attachments" in send.mock.calls[0][0]).toBe(false);
-
     await sendEmail({ to: "buyer@acme.test", subject: "Hello", react, attachments: [] });
-    expect("attachments" in send.mock.calls[1][0]).toBe(false);
+
+    for (const [call] of send.mock.calls) {
+      expect(call.attachments).toEqual([
+        {
+          filename: "zen-garden.png",
+          content: expect.any(Buffer),
+          contentType: "image/png",
+          contentId: "zen-garden-logo",
+        },
+      ]);
+      // A real PNG, not an empty buffer: the signature bytes.
+      expect(call.attachments[0].content.subarray(0, 4).toString("hex")).toBe("89504e47");
+    }
   });
 
   it("never throws when Resend refuses the attachment", async () => {

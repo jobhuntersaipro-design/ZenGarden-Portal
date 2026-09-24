@@ -1,4 +1,86 @@
-# Current feature: every message has a way out
+# Current feature: the Zen Garden logo, on both hosts
+
+## Status
+
+**Built and driven in a browser on `claude/modest-mayer-bixr87`**
+(2026-09-24). Asked for as: "Can you include this logo in both shop and
+portal? I'm not sure where should I include it, can u suggest ne", against the
+customer's 728px watercolour badge JPG. Seven places were suggested and the
+answer was "All".
+
+**One file, two cuts.** The badge's flowers and its "Luxury From Nature" line
+turn to blur below about 100px, so it goes only where it has room — the auth
+card (112px, both hosts, one component), the shop's opening band (160px, 88px
+on a phone) and the shop footer (88px). Everywhere small takes the green oval
+alone: the portal sidebar, the phone top bar, the admin bar, the 404, the shop
+header, the browser tab, the PDF masthead, the on-screen purchase order and
+every email. **The oval replaced the purple text logo rather than sitting
+beside it** — purple text next to a green-and-pink badge reads as two brands.
+`Wordmark` keeps its name and now renders the oval, so all six existing
+callers changed at once; `BrandBadge` is the full badge.
+
+**Both are transparent PNGs cut from the JPG**, since no transparent original
+was supplied: the white background is flooded in from the border and un-mixed
+from the anti-aliased rim, and the oval is an ellipse fitted against its cream
+frame (centre 357,387, radii 189×124, measured from the pixels). Files:
+`public/brand/zen-garden-{badge,oval}.png` (63 KB, 41 KB),
+`src/app/{favicon.ico,icon.png,apple-icon.png}`. A real vector from the
+designer would replace all of them.
+
+**The PDF and the emails carry the logo as bytes in code**
+(`src/lib/brand-logo.ts`, 14 KB PNG), not a path or URL. A server renderer
+reading `public/` depends on the build tracing it — the 2026-09-08 sharp
+failure, which a laptop build cannot catch — and an email `<img>` pointing at
+the site breaks behind Vercel's deployment protection or with `APP_URL` unset.
+`sendEmail` attaches it inline (`cid:zen-garden-logo`) on every send, so no
+template has to remember it; `Layout.tsx` draws it with `fetchPriority="low"`,
+the React 19 preload-hoist trap recorded on 2026-09-18.
+
+**The header logos load eagerly.** In the production build the first drive
+showed an empty header on every page at 390: `next/image` defaults to lazy,
+and the oval came back after the page had painted. The footer badge stays
+lazy.
+
+## Verified, with the figures
+
+Local Postgres 16 and the project's seed, `src/lib/prisma.ts` and
+`prisma/seed.ts` pointed at a `PrismaPg` adapter for the drive and
+**restored afterwards**; the cluster was dropped and `.env.local` deleted.
+Screenshots from a production build (`npm start`).
+
+- **Before and after on every surface**: portal and shop sign-in, sidebar,
+  phone top bar, admin bar, 404, shop header and hero at 1440 and 390, shop
+  footer, the checkout document's masthead, a rendered PDF page 1 and the
+  receipt email at 600 and 390.
+- **No page overflow** — 12 of 12 combinations at 1440 and 390.
+- **The shop's first product stays on the first screen at 390**: y=528 →
+  **552** (the badge wraps the brand line once).
+- **Every logo and icon file answers 200 on both hosts, signed out** — the
+  proxy matcher already skips `.png`/`.ico`.
+- **1635/1635 tests across 127 files** (the email test rewritten: the logo
+  rides on every send), `tsc` and `npm run build` clean, lint identical to the
+  untouched tree (the same 4 `ShopHeader` errors and 3 warnings).
+
+## Not verified
+
+- **Anything on production**, and **a real email in a real client** — the
+  inline logo was rendered to HTML and opened in a browser with its bytes
+  swapped in, not sent.
+- **The favicon in a real browser tab**; the files and `<link>` tags were
+  read, not seen.
+- **Dark surfaces.** Every surface the logo sits on today is light.
+- **A cleaner cut.** The badge edge was un-mixed from white automatically; it
+  reads cleanly on `surface` and `canvas` at the sizes used, and was not
+  checked on a coloured ground.
+- **A trap worth not re-deriving:** `kill` on the `npx next dev` wrapper's PID
+  leaves `next-server` holding port 3000, so `next start` fails to bind and
+  every "production" check silently hits the dev server. Kill `next-server`
+  too and read `start.log` for `Ready` before measuring.
+- **`npm run build` without a stand-in for `xlsx`**, as before.
+
+## Previous phase
+
+# Every message has a way out
 
 ## Status
 

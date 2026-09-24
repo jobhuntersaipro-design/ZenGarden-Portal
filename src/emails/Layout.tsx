@@ -1,4 +1,9 @@
 import type { ReactNode } from "react";
+import {
+  BRAND_LOGO_CID,
+  BRAND_LOGO_HEIGHT,
+  BRAND_LOGO_WIDTH,
+} from "@/lib/brand-logo";
 
 /**
  * Shell for every transactional email. Inline styles only — mail clients do
@@ -55,18 +60,28 @@ export function Layout({ children }: { children: ReactNode }) {
                     <tr>
                       {/* Padding on the cell: Outlook ignores it on a table. */}
                       <td style={{ padding: 32 }}>
-                        <div
+                        {/* The logo oval, attached inline by `sendEmail`. A
+                            client that blocks images still reads the alt. */}
+                        {/* eslint-disable-next-line @next/next/no-img-element -- an email, not a page */}
+                        <img
+                          src={`cid:${BRAND_LOGO_CID}`}
+                          width={Math.round(BRAND_LOGO_WIDTH / 2)}
+                          height={Math.round(BRAND_LOGO_HEIGHT / 2)}
+                          alt="Zen Garden"
+                          // React's server renderer hoists a <link rel="preload">
+                          // into <head> for any <img> it sees; "low" stops it,
+                          // as on the purchase-order preview (po-parts.tsx).
+                          fetchPriority="low"
                           style={{
+                            display: "block",
+                            border: 0,
                             fontFamily:
                               "'Plus Jakarta Sans', Helvetica, Arial, sans-serif",
                             fontSize: 22,
                             fontWeight: 700,
-                            letterSpacing: "-0.88px",
                             color: "#292d34",
                           }}
-                        >
-                          <span style={{ color: "#7612fa" }}>Zen</span> Garden
-                        </div>
+                        />
                         <div
                           style={{
                             height: 1,

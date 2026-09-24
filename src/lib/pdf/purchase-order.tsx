@@ -1,12 +1,18 @@
 import "server-only";
 import {
   Document,
+  Image,
   Page,
   StyleSheet,
   Text,
   View,
   renderToBuffer,
 } from "@react-pdf/renderer";
+import {
+  BRAND_LOGO_HEIGHT,
+  BRAND_LOGO_WIDTH,
+  brandLogoPng,
+} from "@/lib/brand-logo";
 import { formatGrouped } from "@/lib/money";
 import {
   AWAITING_CONFIRMATION_NOTE,
@@ -73,6 +79,14 @@ const styles = StyleSheet.create({
     borderBottomWidth: 2,
     borderBottomColor: COLORS.ink,
     paddingBottom: 12,
+  },
+  brand: { flexDirection: "row", alignItems: "center" },
+  // The logo oval, 36pt tall, beside the legal name (2026-09-24). Its bytes
+  // live in code (`brand-logo.ts`) so the renderer never reads `public/`.
+  logo: {
+    height: 36,
+    width: (36 * BRAND_LOGO_WIDTH) / BRAND_LOGO_HEIGHT,
+    marginRight: 10,
   },
   company: { fontFamily: "Helvetica-Bold", fontSize: 14, color: COLORS.ink },
   title: { fontFamily: "Helvetica-Bold", fontSize: 14, textAlign: "right" },
@@ -191,7 +205,11 @@ export function PurchaseOrderPdf({
     >
       <Page size="A4" orientation="landscape" style={styles.page}>
         <View style={styles.masthead}>
-          <Text style={styles.company}>{DOCUMENT_COMPANY_NAME}</Text>
+          <View style={styles.brand}>
+            {/* eslint-disable-next-line jsx-a11y/alt-text -- react-pdf's Image takes no alt */}
+            <Image style={styles.logo} src={{ data: brandLogoPng(), format: "png" }} />
+            <Text style={styles.company}>{DOCUMENT_COMPANY_NAME}</Text>
+          </View>
           <View>
             <Text style={styles.title}>PURCHASE ORDER</Text>
             {/* Our Order ID, named — never the buyer's PO (2026-09-17). */}

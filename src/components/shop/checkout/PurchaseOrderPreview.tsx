@@ -1,4 +1,5 @@
 import { DocumentFit } from "@/components/shop/checkout/DocumentFit";
+import { Wordmark } from "@/components/portal/Wordmark";
 import { formatGrouped } from "@/lib/money";
 import {
   AWAITING_CONFIRMATION_NOTE,
@@ -54,9 +55,13 @@ export function PurchaseOrderPreview({
         className="mx-auto flex w-po-page flex-col bg-canvas p-xl text-ink shadow-sm"
       >
         <header className="flex items-start justify-between border-b-2 border-ink pb-md">
-          <p className="font-display text-[length:var(--text-heading-sm)] font-[650] text-ink">
-            {DOCUMENT_COMPANY_NAME}
-          </p>
+          {/* The logo beside the legal name, as the PDF draws it. */}
+          <div className="flex items-center gap-sm">
+            <Wordmark />
+            <p className="font-display text-[length:var(--text-heading-sm)] font-[650] text-ink">
+              {DOCUMENT_COMPANY_NAME}
+            </p>
+          </div>
           <div className="text-right">
             <p className="font-display text-[length:var(--text-heading-md)] font-[650] text-ink">
               PURCHASE ORDER

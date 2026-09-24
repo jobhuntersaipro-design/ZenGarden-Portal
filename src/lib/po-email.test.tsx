@@ -223,10 +223,10 @@ describe("purchase-order emails", () => {
     expect(html).not.toContain("rel=\"preload\"");
   });
 
-  it("draws no image at all when the preview failed", () => {
+  it("draws no preview image when the preview failed", () => {
     const html = receipt({ preview: false });
-    expect(html).not.toContain("<img");
-    expect(html).not.toContain("cid:");
+    // The header logo is always there; the preview is what must be absent.
+    expect(html).not.toContain("cid:po-preview");
     expect(html).toContain("attached as a PDF");
     expect(html).toContain("264,600.00");
   });
@@ -246,6 +246,7 @@ describe("purchase-order emails", () => {
     expect(html).toContain("What you sent");
     expect(html).toContain("264,600.00");
     expect(html).not.toContain("We&#x27;ll confirm");
-    expect(html).not.toContain("<img");
+    // The header logo is always there; the preview is what must be absent.
+    expect(html).not.toContain("cid:po-preview");
   });
 });

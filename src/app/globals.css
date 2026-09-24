@@ -240,6 +240,13 @@
      shared by CartLines, GuestCart's loading rows and the cart loading.tsx
      skeleton, so the three cannot drift. */
   --spacing-cart-thumb: 88px;
+  /* The Zen Garden logo (2026-09-24). The oval is the green "zen GARDEN"
+     mark alone, for bars and headers — the full badge's flowers turn to blur
+     below about 100px, so it only goes where it has room. */
+  --spacing-logo-oval: 40px;
+  --spacing-logo-badge-sm: 88px;
+  --spacing-logo-badge: 112px;
+  --spacing-logo-badge-lg: 160px;
 
   /* Share palette — the donuts' six categorical hues, in rank order.
      Deliberately NOT named `--color-chart-*` or reusing `--color-primary`:
