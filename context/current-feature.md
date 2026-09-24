@@ -1,4 +1,41 @@
-# Current feature: users are invited, and a deleted user leaves the list
+# Current feature: a welcome card on sign-in
+
+## Status
+
+**Built and driven in a browser on `claude/modest-mayer-bixr87`, shown to the
+user, not yet merged** (2026-09-24). Asked for as: "show a warm welcome
+message when user login to portal. can be closed after by user. keep them
+motivated at work. the message should be randomized not repeated frequently.
+Show me first."
+
+`WelcomeCard` sits at the top of the portal layout: a greeting by the Kuala
+Lumpur hour and the first name, then one of 30 lines (`src/lib/welcome.ts`).
+It is keyed to the **sign-in**, not the page — `token.signedInAt`, stamped in
+the `jwt` callback on a fresh sign-in — so it holds the same line across
+navigation, stays closed once closed, and returns with a new line on the next
+sign-in. A line is never drawn again within the last 10 shown (a third of the
+list), held in `localStorage`.
+
+**Found while driving:** the first cut stored the line as `login:index` and
+split on `:`, but the login id carries its own colon, so every page drew a new
+line. Stored as JSON now.
+
+## Verified
+
+Local Postgres, production build: shown on sign-in at 1440 and 390; the same
+line after a navigation and a reload; closed stays closed; 13 consecutive
+sign-ins gave 13 distinct lines; ✕ 32px at 1440 and 44px at 390; no overflow.
+A naive random draw turns 2 of the 8 new tests red. 1697/1697 tests, `tsc`,
+lint unchanged, `npm run build` clean.
+
+## Not verified
+
+Production; a session signed in before deploy (keys on "earlier", so it shows
+once). The no-repeat history is per browser.
+
+## Previous phase
+
+# Users are invited, and a deleted user leaves the list
 
 ## Status
 

@@ -21,6 +21,7 @@ export const authConfig = {
         session.user.role = token.role as Role;
         session.user.mustChangePassword = token.mustChangePassword ?? false;
         session.user.buyerId = token.buyerId ?? null;
+        session.user.signedInAt = token.signedInAt ?? null;
       }
       return session;
     },

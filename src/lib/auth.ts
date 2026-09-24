@@ -146,6 +146,9 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
       if (user?.id) {
         token.id = user.id;
         token.refreshedAt = 0; // force the read below on this first pass
+        // Which sign-in this is. The welcome card keys on it, so it shows
+        // once per sign-in rather than once per page or once ever.
+        token.signedInAt = Date.now();
       }
 
       const userId = token.id ?? (token.sub as string | undefined);

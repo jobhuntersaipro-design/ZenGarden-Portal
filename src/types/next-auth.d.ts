@@ -14,6 +14,8 @@ declare module "next-auth" {
       mustChangePassword: boolean;
       /** Set iff role is CLIENT. Rides in the JWT so the proxy can route on it. */
       buyerId?: string | null;
+      /** Epoch ms this session signed in; null on a token from before it was carried. */
+      signedInAt?: number | null;
     } & DefaultSession["user"];
   }
 
@@ -45,5 +47,7 @@ declare module "@auth/core/jwt" {
     refreshedAt?: number;
     /** Epoch ms of the last `lastActiveAt` write, for the 10-minute throttle. */
     activeAt?: number;
+    /** Epoch ms of the sign-in that minted this token. */
+    signedInAt?: number;
   }
 }

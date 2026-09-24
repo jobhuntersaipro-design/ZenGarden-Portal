@@ -22,6 +22,8 @@ export type SessionUser = {
   mustChangePassword: boolean;
   /** Set if and only if `role` is CLIENT — a database CHECK enforces it. */
   buyerId: string | null;
+  /** When this session signed in (epoch ms), or null on an older token. */
+  signedInAt?: number | null;
 };
 
 /** Ops staff. A CLIENT is signed in but is not a user of the portal. */
@@ -44,6 +46,7 @@ export async function getSessionUser(): Promise<SessionUser | null> {
     role: user.role,
     mustChangePassword: user.mustChangePassword,
     buyerId: user.buyerId ?? null,
+    signedInAt: user.signedInAt ?? null,
   };
 }
 
