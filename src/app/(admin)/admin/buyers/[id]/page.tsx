@@ -6,6 +6,10 @@ import { BuyerActivity } from "@/components/admin/BuyerActivity";
 import { DeleteBuyer } from "@/components/admin/DeleteBuyer";
 import { BuyerContactsCard } from "@/components/buyers/BuyerContactsCard";
 import { BuyerDetailsCard } from "@/components/buyers/BuyerDetailsCard";
+import { BuyerDocumentsCard } from "@/components/buyers/BuyerDocumentsCard";
+import { BuyerLogo } from "@/components/buyers/BuyerLogo";
+import { listBuyerDocuments, listDocumentFolders } from "@/lib/queries/buyer-documents";
+import { buyerLogoUrl } from "@/lib/validation/buyer-files";
 import { LinkSpinner } from "@/components/portal/LinkSpinner";
 import { Rise } from "@/components/portal/Rise";
 import { PersonAvatar } from "@/components/ui/person";
@@ -32,6 +36,7 @@ async function loadBuyer(id: string) {
       paymentTerms: true,
       market: true,
       remark: true,
+      logoKey: true,
       createdAt: true,
       // A cart is a `WebOrder` too — `openCart` creates one at DRAFT the
       // moment a signed-in client adds their first item — so this must agree
@@ -83,14 +88,17 @@ export default async function AdminBuyerPage({
   const kind = ACTIVITY_KINDS.includes(kindParam) ? kindParam : "all";
   const { page } = parsePagination(query);
 
-  const [buyer, contacts, markets] = await Promise.all([
+  const [buyer, contacts, markets, documents, knownFolders] = await Promise.all([
     loadBuyer(id),
     listBuyerContacts(id),
     // The MARKET vocabulary for the edit sheet's picker — the same list
     // `Product.market` is chosen from, so the two sides can be matched.
     listLabels("market"),
+    listBuyerDocuments(id),
+    listDocumentFolders(),
   ]);
   if (!buyer) notFound();
+  const logoUrl = buyerLogoUrl(buyer.id, buyer.logoKey);
 
   const activity = await loadBuyerActivity(id, { page, kind });
   const orders = buyer._count.purchaseOrders + buyer._count.webOrders;
@@ -115,8 +123,15 @@ export default async function AdminBuyerPage({
             name a column a few letters wide and it broke one character per
             line (measured at 390px). */}
         <section className="mb-lg flex flex-col items-start gap-md rounded-lg border border-hairline bg-canvas p-lg sm:flex-row sm:items-center">
-          <PersonAvatar name={buyer.name} size="lg" />
+          {/* The company's own logo, above its name, where there is one
+              (2026-09-24); the monogram the table uses where there is not. */}
+          {logoUrl ? null : <PersonAvatar name={buyer.name} size="lg" />}
           <div className="w-full min-w-0 sm:w-auto sm:flex-1">
+            {logoUrl ? (
+              <div className="mb-sm">
+                <BuyerLogo url={logoUrl} name={buyer.name} />
+              </div>
+            ) : null}
             <p className="font-mono text-[length:var(--text-eyebrow)] text-ink-tertiary">Buyer</p>
             <h1 className="font-display text-[length:var(--text-display-md)] font-[650] tracking-[-1.36px] text-ink break-words">
               {buyer.name}
@@ -158,6 +173,7 @@ export default async function AdminBuyerPage({
               market: buyer.market,
               remark: buyer.remark,
               since: buyer.purchaseOrders[0]?.poDate.toISOString() ?? null,
+              logoUrl,
             }}
             markets={markets}
             // This route is super-admin-only twice over: the layout redirects
@@ -171,6 +187,16 @@ export default async function AdminBuyerPage({
       </div>
 
       <Rise index={3} className="mt-lg">
+        <BuyerDocumentsCard
+          buyerId={buyer.id}
+          folders={documents}
+          knownFolders={knownFolders}
+          // Super-admin-only route: whoever reads this holds buyer.manage.
+          canManage
+        />
+      </Rise>
+
+      <Rise index={4} className="mt-lg">
         <BuyerActivity
           entries={activity.entries}
           total={activity.total}
@@ -180,7 +206,7 @@ export default async function AdminBuyerPage({
         />
       </Rise>
 
-      <Rise index={4} className="mt-lg">
+      <Rise index={5} className="mt-lg">
         <DeleteBuyer
           buyerId={buyer.id}
           name={buyer.name}

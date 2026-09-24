@@ -231,6 +231,7 @@ export async function confirmWebOrder(
           orderUrl: `${env.SHOP_URL ?? env.APP_URL}/orders/${confirmed.poId}`,
           attached: po.attached,
           document: po.document,
+          buyerLogo: po.buyerLogo,
           preview: po.preview,
         }),
       });
@@ -337,6 +338,7 @@ export async function declineWebOrder(
             reason: parsed.data.reason,
             orderUrl: `${env.SHOP_URL ?? env.APP_URL}/orders/${webOrderId}`,
             document: po.document,
+            buyerLogo: po.buyerLogo,
             preview: po.preview,
             attached: po.attached,
           }),

@@ -13,6 +13,7 @@ import {
   SheetTitle,
   SheetTrigger,
 } from "@/components/ui/sheet";
+import { BuyerLogoField } from "@/components/buyers/BuyerLogoField";
 import { GrowingListPicker } from "@/components/products/GrowingListPicker";
 import { Textarea } from "@/components/ui/textarea";
 import { formatDate } from "@/lib/dates";
@@ -30,6 +31,8 @@ export type BuyerDetails = {
   market: string | null;
   remark: string | null;
   since: string | null;
+  /** The versioned logo route, or null when they have none (2026-09-24). */
+  logoUrl?: string | null;
 };
 
 const CONTACT_FIELDS: { key: keyof BuyerPatch; label: string }[] = [
@@ -49,9 +52,12 @@ export function BuyerDetailsCard({
   buyer,
   canRename,
   markets,
+  canEditLogo = true,
 }: {
   buyer: BuyerDetails;
   canRename: boolean;
+  /** Whether the sheet offers the logo: `buyer.manage`, which the route checks too. */
+  canEditLogo?: boolean;
   /** The MARKET vocabulary, the same list `Product.market` is chosen from. */
   markets: string[];
 }) {
@@ -93,6 +99,10 @@ export function BuyerDetailsCard({
           <SheetTitle>Edit buyer details</SheetTitle>
         </SheetHeader>
         <div className="flex flex-col gap-md p-md">
+          {canEditLogo ? (
+            <BuyerLogoField buyerId={buyer.id} name={buyer.name} logoUrl={buyer.logoUrl ?? null} />
+          ) : null}
+
           {canRename ? (
             <div className="flex flex-col gap-xxs">
               <label

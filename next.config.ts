@@ -19,6 +19,8 @@ const SHARP_ROUTES = [
   // laptop whether or not the include matched. The only proof is a request to
   // the deployed route.
   "/api/products/**",
+  // 2026-09-24: a buyer's logo is fitted with sharp.
+  "/api/buyers/**",
 ];
 
 /**

@@ -1,4 +1,71 @@
-# Current feature: a welcome card on sign-in
+# Current feature: a buyer's logo, and the documents kept against a buyer
+
+## Status
+
+**Built and driven in a browser on `claude/modest-mayer-bixr87`, not yet
+merged** (2026-09-24). Asked for as: "add a section for company logo … show
+in buyer detail page above their name … shown in the email beside zen garden
+logo so we know who is placing the order" and "add a section for documents …
+upload relevant documents to the buyer … organized properly and show preview
+and allow users to download it". Four choices asked first: **free folders**,
+**PDF, images, Word and Excel**, **staff only**, **every order email**.
+
+**Logo.** `Buyer.logoKey/logoWidth/logoHeight` (one additive migration,
+`20260927090000_buyer_logo_and_documents`). Uploaded from the edit sheet's new
+Company logo section, saved on choice rather than on the sheet's Save; fitted
+*inside* 512×512 with sharp and stored as PNG (Outlook draws no WebP) at
+`buyers/{id}/logo-{hash}.png`, served by `/api/buyers/[id]/logo?v={hash}`
+(`buyer.view` to read, `buyer.manage` to change). Shown above the name on
+`/admin/buyers/[id]` (replacing the monogram) and `/buyers/[id]`. Every order
+email — team notification, receipt, confirmed, declined, delivery moved —
+carries it beside our badge: `preparePoEmail` reads it and attaches it inline
+as `cid:buyer-logo`, sized into a 160×44 box from the stored dimensions; a logo
+that cannot be read costs the header its second picture, never the email.
+`/api/buyers/**` joined `SHARP_ROUTES`.
+
+**Documents.** `BuyerDocument` (folder, key, name, type, size, uploader).
+Browser → presign → R2 → complete, like the PO intake, because a 25 MB file
+does not fit a function body; `complete` re-checks the key is one minted for
+that buyer and extension, and that R2's size matches. Grouped by folder A–Z,
+newest first; the folder picker offers every folder already used, matched
+case-insensitively so "contracts" files under "Contracts". PDF and images open
+in a wide drawer (the PO previewer, given its own endpoint); Word and Excel
+download. Move and Delete behind a ⋯ menu. On both buyer pages; staff only —
+no shop route reads the table. Deleting a buyer now deletes its logo and
+documents from R2 after the rows go.
+
+## Verified, with the figures
+
+Local Postgres and a local S3 stand-in (moto) for R2, `src/lib/prisma.ts`,
+`prisma/seed.ts` and `src/lib/r2.ts` patched for the drive and **restored**;
+cluster dropped, `.env.local` deleted. Production build.
+- Logo: a 900×300 upload stored as **512×171** PNG, drawn 64px tall above the
+  name; the edit sheet shows it with Replace and Remove.
+- Documents: 5 files in two batches; **archive.zip refused** by name;
+  "Choose files" with no folder says "Choose a folder first"; folders read
+  **Contracts 2 · SSM 2**; the PDF rendered in the drawer, the image too;
+  download answered **302** with `attachment; filename="Price list Q4.xlsx"`
+  and the PDF downloaded **28,088 bytes**, identical; Move → **Contracts 1 ·
+  SSM 2**; Delete removed the row **and the object** from storage.
+- The email header rendered with both logos at 600 and 390, no overflow.
+- **Found while driving:** at 390 the three row actions pushed the last button
+  past the card's edge. Below `sm` Preview and Download are icon-only (named for
+  screen readers) — 0 controls past the edge after.
+- No page overflow at 1440/390 on both buyer pages and the preview drawer.
+- 1712/1712 tests (22 new), `tsc` clean, lint unchanged (4 `ShopHeader`
+  errors, 3 warnings), `npm run build` clean.
+
+## Not verified
+
+Production (the migration runs on deploy); real R2 (CORS on the bucket must
+already allow the portal's origin for PUT, as the PO intake needs); a real
+email in a mail client; a member without `buyer.manage` on `/buyers/[id]`
+(unit-level only); a Word/Excel file opened after download (test files were
+stand-ins).
+
+## Previous phase
+
+# A welcome card on sign-in
 
 ## Status
 

@@ -1,10 +1,12 @@
-import { Layout } from "@/emails/Layout";
+import { Layout, type PartnerLogo } from "@/emails/Layout";
 import { ButtonLink, Heading, Paragraph } from "@/emails/parts";
 import { PoFooter, PoMetaLine, PoPreview, PoSummary } from "@/emails/po-parts";
 import { emailOrderName } from "@/lib/order-identity";
 import type { PoDocumentData } from "@/lib/purchase-order-document";
 
 export type WebOrderConfirmedProps = {
+  /** The buyer's logo beside ours in the header; null when they have none. */
+  buyerLogo?: PartnerLogo | null;
   /** Our Order ID, `W-2609-00014`. */
   reference: string;
   /**
@@ -49,6 +51,7 @@ export type WebOrderConfirmedProps = {
  * anything.
  */
 export function WebOrderConfirmed({
+  buyerLogo,
   reference,
   poNumber = null,
   expectedDelivery,
@@ -61,7 +64,7 @@ export function WebOrderConfirmed({
 }: WebOrderConfirmedProps) {
   const name = emailOrderName(poNumber, reference);
   return (
-    <Layout>
+    <Layout partnerLogo={buyerLogo}>
       <Heading>
         {updated
           ? `Delivery of order ${name} has moved to ${expectedDelivery}`

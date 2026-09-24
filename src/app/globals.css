@@ -330,6 +330,7 @@
   --container-panel-sm: 24rem; /* Tailwind max-w-sm — dialogs, default sheet */
   --container-panel-md: 28rem; /* Tailwind max-w-md — the user drawer */
   --container-panel-lg: 32rem; /* Tailwind max-w-lg — the record drawers */
+  --container-panel-xl: 56rem; /* a document preview drawer — a page wants the width */
 
   --animate-fade-in-up: fade-in-up 1s ease-out both;
   /* Rows and cards arriving (Phase 26): a short fade and an 8px rise.

@@ -55,6 +55,7 @@ model User {
   auditActions       AuditEvent[]         @relation("auditActor")
   auditSubjects      AuditEvent[]         @relation("auditSubject")
   permissionEdits    PermissionGrant[]    @relation("permissionEdits")
+  buyerDocuments     BuyerDocument[]      @relation("buyerDocumentsUploaded")
   buyer              Buyer?               @relation(fields: [buyerId], references: [id])
 
   @@index([buyerId])
@@ -163,6 +164,15 @@ model Buyer {
   market         String?
   /// Internal note about this customer. Ops only — no shop query may select it.
   remark         String?
+  /**
+   * The company's logo (2026-09-24): a PNG we wrote, fitted inside 512×512,
+   * at `buyers/{id}/logo-{hash}.png` — the hash in the key is what lets it be
+   * cached forever. Width and height are stored so an email can size it
+   * without opening the image (Outlook needs both attributes).
+   */
+  logoKey        String?
+  logoWidth      Int?
+  logoHeight     Int?
   createdAt      DateTime        @default(now())
   updatedAt      DateTime        @updatedAt
   /**
@@ -172,8 +182,31 @@ model Buyer {
   purchaseOrders PurchaseOrder[]
   webOrders      WebOrder[]
   auditEvents    AuditEvent[]
+  documents      BuyerDocument[]
 
   @@index([market])
+}
+
+/**
+ * A file kept against a buyer by staff (2026-09-24) — a contract, an SSM
+ * certificate, a price list. Staff only: no shop query may read this table.
+ * `folder` is free text chosen at upload; the upload form offers the folders
+ * already in use so the list does not fork on spelling.
+ */
+model BuyerDocument {
+  id           String   @id @default(cuid())
+  buyerId      String
+  buyer        Buyer    @relation(fields: [buyerId], references: [id], onDelete: Cascade)
+  folder       String
+  r2Key        String   @unique // buyers/{buyerId}/documents/{uuid}.{ext}
+  originalName String
+  mimeType     String
+  sizeBytes    Int
+  uploadedById String
+  uploadedBy   User     @relation("buyerDocumentsUploaded", fields: [uploadedById], references: [id])
+  uploadedAt   DateTime @default(now())
+
+  @@index([buyerId, folder])
 }
 
 model Document {

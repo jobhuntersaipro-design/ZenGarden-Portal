@@ -14,7 +14,21 @@ import {
  * 536px — the width a purchase order's preview image is drawn at
  * (`po-parts.tsx`) — and narrower on a phone.
  */
-export function Layout({ children }: { children: ReactNode }) {
+/**
+ * A second logo beside ours (2026-09-24): the buyer's, on every email about
+ * their order, so a reader knows at a glance whose order it is. Attached
+ * inline by `preparePoEmail` under `cid`; sized there from the stored width
+ * and height, since Outlook needs both attributes.
+ */
+export type PartnerLogo = { cid: string; width: number; height: number; alt: string };
+
+export function Layout({
+  children,
+  partnerLogo,
+}: {
+  children: ReactNode;
+  partnerLogo?: PartnerLogo | null;
+}) {
   return (
     <html lang="en">
       {/* eslint-disable-next-line @next/next/no-head-element -- an email, not a page */}
@@ -60,6 +74,13 @@ export function Layout({ children }: { children: ReactNode }) {
                     <tr>
                       {/* Padding on the cell: Outlook ignores it on a table. */}
                       <td style={{ padding: 32 }}>
+                        {/* Our badge and, on an order email, the buyer's
+                            logo beside it. A table, not flex: mail clients
+                            do not lay out flex. */}
+                        <table role="presentation" cellPadding={0} cellSpacing={0}>
+                          <tbody>
+                            <tr>
+                              <td style={{ verticalAlign: "middle" }}>
                         {/* The flower badge, attached inline by `sendEmail`. A
                             client that blocks images still reads the alt. */}
                         {/* eslint-disable-next-line @next/next/no-img-element -- an email, not a page */}
@@ -82,6 +103,46 @@ export function Layout({ children }: { children: ReactNode }) {
                             color: "#292d34",
                           }}
                         />
+                              </td>
+                              {partnerLogo ? (
+                                <>
+                                  <td
+                                    style={{
+                                      verticalAlign: "middle",
+                                      padding: "0 16px",
+                                    }}
+                                  >
+                                    <div
+                                      style={{
+                                        width: 1,
+                                        height: 40,
+                                        backgroundColor: "#e8e8e8",
+                                      }}
+                                    />
+                                  </td>
+                                  <td style={{ verticalAlign: "middle" }}>
+                                    {/* eslint-disable-next-line @next/next/no-img-element -- an email, not a page */}
+                                    <img
+                                      src={`cid:${partnerLogo.cid}`}
+                                      width={partnerLogo.width}
+                                      height={partnerLogo.height}
+                                      alt={partnerLogo.alt}
+                                      fetchPriority="low"
+                                      style={{
+                                        display: "block",
+                                        border: 0,
+                                        fontFamily: "Inter, Helvetica, Arial, sans-serif",
+                                        fontSize: 16,
+                                        fontWeight: 600,
+                                        color: "#292d34",
+                                      }}
+                                    />
+                                  </td>
+                                </>
+                              ) : null}
+                            </tr>
+                          </tbody>
+                        </table>
                         <div
                           style={{
                             height: 1,

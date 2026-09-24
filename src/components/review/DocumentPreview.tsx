@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useState, type ReactNode } from "react";
 import { Document, Page, pdfjs } from "react-pdf";
 import "react-pdf/dist/Page/AnnotationLayer.css";
 import "react-pdf/dist/Page/TextLayer.css";
@@ -27,9 +27,18 @@ pdfjs.GlobalWorkerOptions.workerSrc = new URL(
 export function DocumentPreview({
   documentId,
   originalName,
+  urlEndpoint,
+  download,
 }: {
   documentId: string;
   originalName: string;
+  /**
+   * Where to ask for the file's link, answering `{ url, mimeType }`. A buyer
+   * document (2026-09-24) has its own route; a purchase order's is the default.
+   */
+  urlEndpoint?: string;
+  /** Replaces the purchase-order download and its sentence in the error state. */
+  download?: ReactNode;
 }) {
   const [source, setSource] = useState<DocumentUrlResponse | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -79,7 +88,7 @@ export function DocumentPreview({
     let cancelled = false;
     void (async () => {
       try {
-        const response = await fetch(`/api/documents/${documentId}/url`);
+        const response = await fetch(urlEndpoint ?? `/api/documents/${documentId}/url`);
         if (!response.ok) throw new Error("no url");
         const body = (await response.json()) as DocumentUrlResponse;
         if (!cancelled) setSource(body);
@@ -90,7 +99,7 @@ export function DocumentPreview({
     return () => {
       cancelled = true;
     };
-  }, [documentId, attempt]);
+  }, [documentId, urlEndpoint, attempt]);
 
   if (error) {
     return (
@@ -100,10 +109,11 @@ export function DocumentPreview({
       // now sit with the thing that failed.
       <div className="flex flex-col items-start gap-sm rounded-lg border border-hairline bg-surface p-lg">
         <p className="text-[length:var(--text-body-sm)] text-ink-secondary">
-          {error} The extracted data is still shown beside it.
+          {error}
+          {download ? "" : " The extracted data is still shown beside it."}
         </p>
         <div className="flex flex-wrap items-center gap-sm">
-          <DownloadOriginal documentId={documentId} />
+          {download ?? <DownloadOriginal documentId={documentId} />}
           <button
             type="button"
             onClick={() => {

@@ -1,7 +1,10 @@
 import "server-only";
 import path from "node:path";
+import type { PartnerLogo } from "@/emails/Layout";
 import { PO_PREVIEW_CONTENT_ID } from "@/emails/po-parts";
 import type { EmailAttachment } from "@/lib/email";
+import { prisma } from "@/lib/prisma";
+import { getObjectBytes } from "@/lib/r2";
 import type { PoDocumentData } from "@/lib/purchase-order-document";
 import {
   loadWebOrderDocumentData,
@@ -121,6 +124,57 @@ export function poEmailAttachments({
   return attachments;
 }
 
+/** Referenced as `cid:`; the buyer's logo is attached under this id. */
+export const BUYER_LOGO_CONTENT_ID = "buyer-logo";
+
+/** The box the buyer's logo is drawn in beside ours — our badge is 50px tall. */
+const BUYER_LOGO_MAX_HEIGHT = 44;
+const BUYER_LOGO_MAX_WIDTH = 160;
+
+/**
+ * The display size for a stored logo: fitted inside the header box, never
+ * enlarged, rounded to whole pixels because the attributes are integers.
+ */
+export function buyerLogoDisplaySize(width: number, height: number) {
+  const scale = Math.min(1, BUYER_LOGO_MAX_HEIGHT / height, BUYER_LOGO_MAX_WIDTH / width);
+  return {
+    width: Math.max(1, Math.round(width * scale)),
+    height: Math.max(1, Math.round(height * scale)),
+  };
+}
+
+/**
+ * The buyer's logo for an order email, or nothing. Never throws: a logo that
+ * cannot be read costs the header its second picture, not the email.
+ */
+export async function loadBuyerEmailLogo(buyer: {
+  name: string;
+  logoKey: string | null;
+  logoWidth: number | null;
+  logoHeight: number | null;
+}): Promise<{ logo: PartnerLogo; attachment: EmailAttachment } | null> {
+  if (!buyer.logoKey || !buyer.logoWidth || !buyer.logoHeight) return null;
+  try {
+    const bytes = await getObjectBytes(buyer.logoKey);
+    return {
+      logo: {
+        cid: BUYER_LOGO_CONTENT_ID,
+        alt: buyer.name,
+        ...buyerLogoDisplaySize(buyer.logoWidth, buyer.logoHeight),
+      },
+      attachment: {
+        filename: "buyer-logo.png",
+        content: Buffer.from(bytes),
+        contentType: "image/png",
+        contentId: BUYER_LOGO_CONTENT_ID,
+      },
+    };
+  } catch (cause) {
+    console.error("[po-email] buyer logo", cause);
+    return null;
+  }
+}
+
 export type PoEmailContent = {
   /** The document as data, for the facts and the line table. */
   document: PoDocumentData | null;
@@ -129,6 +183,8 @@ export type PoEmailContent = {
   /** Whether the PDF is on the email. */
   attached: boolean;
   attachments: EmailAttachment[] | undefined;
+  /** The buyer's logo for the header, when they have one and it could be read. */
+  buyerLogo: PartnerLogo | null;
 };
 
 /**
@@ -145,16 +201,32 @@ export async function preparePoEmail(
   reference: string,
   file: WebOrderDocument | null,
 ): Promise<PoEmailContent> {
-  const [document, previewPng] = await Promise.all([
+  const [document, previewPng, logo] = await Promise.all([
     loadWebOrderDocumentData(webOrderId),
     file ? renderPoPreviewPng(file.bytes) : Promise.resolve(null),
+    prisma.webOrder
+      .findUnique({
+        where: { id: webOrderId },
+        select: {
+          buyer: {
+            select: { name: true, logoKey: true, logoWidth: true, logoHeight: true },
+          },
+        },
+      })
+      .then((order) => (order ? loadBuyerEmailLogo(order.buyer) : null))
+      .catch(() => null),
   ]);
+  const attachments = [
+    ...(file
+      ? poEmailAttachments({ poNumber: reference, pdfBytes: file.bytes, previewPng })
+      : []),
+    ...(logo ? [logo.attachment] : []),
+  ];
   return {
     document,
     preview: Boolean(file && previewPng),
     attached: Boolean(file),
-    attachments: file
-      ? poEmailAttachments({ poNumber: reference, pdfBytes: file.bytes, previewPng })
-      : undefined,
+    attachments: attachments.length > 0 ? attachments : undefined,
+    buyerLogo: logo?.logo ?? null,
   };
 }

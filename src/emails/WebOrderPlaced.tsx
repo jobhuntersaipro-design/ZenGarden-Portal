@@ -1,10 +1,12 @@
-import { Layout } from "@/emails/Layout";
+import { Layout, type PartnerLogo } from "@/emails/Layout";
 import { ButtonLink, Heading, Paragraph } from "@/emails/parts";
 import { PoFooter, PoMetaLine, PoPreview, PoSummary } from "@/emails/po-parts";
 import { emailOrderName } from "@/lib/order-identity";
 import type { PoDocumentData } from "@/lib/purchase-order-document";
 
 export type WebOrderPlacedProps = {
+  /** The buyer's logo beside ours in the header; null when they have none. */
+  buyerLogo?: PartnerLogo | null;
   reference: string;
   /**
    * The buyer's own PO number (2026-09-20). Names the order in the subject and
@@ -25,6 +27,7 @@ export type WebOrderPlacedProps = {
 
 /** The team's copy of a shop order: short, with the same document the buyer gets. */
 export function WebOrderPlaced({
+  buyerLogo,
   reference,
   poNumber = null,
   buyerName,
@@ -35,7 +38,7 @@ export function WebOrderPlaced({
   attached = false,
 }: WebOrderPlacedProps) {
   return (
-    <Layout>
+    <Layout partnerLogo={buyerLogo}>
       <Heading>
         {`New order ${emailOrderName(poNumber, reference)} from ${buyerName}`}
       </Heading>

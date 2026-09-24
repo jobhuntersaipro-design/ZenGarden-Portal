@@ -53,6 +53,8 @@ vi.mock("@/lib/env", () => ({
   env: { APP_URL: "https://www.example.com", SHOP_URL: "https://shop.example.com" },
 }));
 vi.mock("next/cache", () => ({ revalidatePath: vi.fn() }));
+const deleteObject = vi.fn<(key: string) => Promise<object>>(() => Promise.resolve({}));
+vi.mock("@/lib/r2", () => ({ deleteObject: (key: string) => deleteObject(key) }));
 
 const templateArgs: { signInUrl: string; password: string; name: string }[] = [];
 vi.mock("@/emails/TemporaryPassword", () => ({
@@ -333,6 +335,8 @@ describe("deleteBuyer", () => {
   const clean = {
     id: "buyer-1",
     name: "Kim's Mart",
+    logoKey: null,
+    documents: [],
     _count: { purchaseOrders: 0, webOrders: 0, contacts: 2 },
   };
 
@@ -355,6 +359,21 @@ describe("deleteBuyer", () => {
       error: "That name doesn't match. Type the buyer's name exactly to delete it.",
     });
     expect(transaction).not.toHaveBeenCalled();
+  });
+
+  it("deletes the buyer's logo and documents from storage after the rows", async () => {
+    buyerFindUnique.mockResolvedValue({
+      ...clean,
+      logoKey: "buyers/buyer-1/logo-abc.png",
+      documents: [{ r2Key: "buyers/buyer-1/documents/a.pdf" }],
+    });
+    deleteObject.mockClear();
+    const result = await deleteBuyer("buyer-1", "Kim's Mart");
+    expect(result.success).toBe(true);
+    expect(deleteObject.mock.calls.map((call) => call[0]).sort()).toEqual([
+      "buyers/buyer-1/documents/a.pdf",
+      "buyers/buyer-1/logo-abc.png",
+    ]);
   });
 
   it("accepts the name with different case and stray spaces", async () => {
@@ -396,6 +415,8 @@ describe("deleteBuyer", () => {
       select: {
         id: true,
         name: true,
+        logoKey: true,
+        documents: { select: { r2Key: true } },
         _count: {
           select: {
             purchaseOrders: true,

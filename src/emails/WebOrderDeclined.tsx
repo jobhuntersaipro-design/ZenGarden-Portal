@@ -1,10 +1,12 @@
-import { Layout } from "@/emails/Layout";
+import { Layout, type PartnerLogo } from "@/emails/Layout";
 import { ButtonLink, Heading, Paragraph } from "@/emails/parts";
 import { PoFooter, PoMetaLine, PoPreview, PoSummary } from "@/emails/po-parts";
 import { emailOrderName } from "@/lib/order-identity";
 import type { PoDocumentData } from "@/lib/purchase-order-document";
 
 export type WebOrderDeclinedProps = {
+  /** The buyer's logo beside ours in the header; null when they have none. */
+  buyerLogo?: PartnerLogo | null;
   reference: string;
   /**
    * The buyer's own PO number (2026-09-20). Names the order in the subject and
@@ -38,6 +40,7 @@ export type WebOrderDeclinedProps = {
  * an inbox should open this, not file it.
  */
 export function WebOrderDeclined({
+  buyerLogo,
   reference,
   poNumber = null,
   reason,
@@ -47,7 +50,7 @@ export function WebOrderDeclined({
   attached = false,
 }: WebOrderDeclinedProps) {
   return (
-    <Layout>
+    <Layout partnerLogo={buyerLogo}>
       <Heading>{`About your order ${emailOrderName(poNumber, reference)}`}</Heading>
       <PoMetaLine poNumber={poNumber} />
       <Paragraph>

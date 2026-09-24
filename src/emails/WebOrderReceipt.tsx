@@ -1,10 +1,12 @@
-import { Layout } from "@/emails/Layout";
+import { Layout, type PartnerLogo } from "@/emails/Layout";
 import { ButtonLink, Heading, Paragraph } from "@/emails/parts";
 import { PoFooter, PoMetaLine, PoPreview, PoSummary } from "@/emails/po-parts";
 import { emailOrderName } from "@/lib/order-identity";
 import type { PoDocumentData } from "@/lib/purchase-order-document";
 
 export type WebOrderReceiptProps = {
+  /** The buyer's logo beside ours in the header; null when they have none. */
+  buyerLogo?: PartnerLogo | null;
   reference: string;
   /**
    * The buyer's own PO number (2026-09-20). Names the order in the subject and
@@ -34,6 +36,7 @@ export type WebOrderReceiptProps = {
  * the price and the delivery date are both still ours to confirm.
  */
 export function WebOrderReceipt({
+  buyerLogo,
   reference,
   poNumber = null,
   orderUrl,
@@ -42,7 +45,7 @@ export function WebOrderReceipt({
   preview = false,
 }: WebOrderReceiptProps) {
   return (
-    <Layout>
+    <Layout partnerLogo={buyerLogo}>
       <Heading>{`We have your order ${emailOrderName(poNumber, reference)}`}</Heading>
       <PoMetaLine poNumber={poNumber} />
       {attached ? (

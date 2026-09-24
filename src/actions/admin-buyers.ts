@@ -16,6 +16,7 @@ import {
 import { blockedMessage } from "@/lib/buyer-delete-message";
 import { registerLabels } from "@/lib/catalog-label-registry";
 import { prisma } from "@/lib/prisma";
+import { deleteObject } from "@/lib/r2";
 import { usernameBase, usernameFromEmail } from "@/lib/username";
 import { createBuyerSchema, type CreateBuyerInput } from "@/lib/validation/clients";
 
@@ -190,6 +191,10 @@ export async function deleteBuyer(
       select: {
         id: true,
         name: true,
+        // Read before the delete: the rows cascade away with the buyer, and
+        // these are the only record of which R2 objects were theirs.
+        logoKey: true,
+        documents: { select: { r2Key: true } },
         _count: {
           select: {
             purchaseOrders: true,
@@ -234,6 +239,19 @@ export async function deleteBuyer(
       await tx.user.deleteMany({ where: { buyerId: buyer.id, role: Role.CLIENT } });
       await tx.buyer.delete({ where: { id: buyer.id } });
     });
+
+    // After the commit, and best-effort: a leftover object costs storage, a
+    // failed delete reported as a failed buyer delete would be untrue.
+    const keys = [buyer.logoKey, ...buyer.documents.map((document) => document.r2Key)];
+    await Promise.all(
+      keys
+        .filter((key): key is string => Boolean(key))
+        .map((key) =>
+          deleteObject(key).catch((cause) =>
+            console.error("[admin-buyers] could not delete a stored file", cause),
+          ),
+        ),
+    );
 
     revalidatePath("/buyers");
     revalidatePath("/admin/buyers");

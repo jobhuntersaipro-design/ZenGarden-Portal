@@ -9,6 +9,7 @@ import { salesSeries, type SalesSeries } from "@/lib/analytics/sales";
 import type { ShareSlice } from "@/lib/analytics/share";
 import type { AnalyticsOrder } from "@/lib/analytics/types";
 import type { IntakeCounts } from "@/lib/queries/dashboard";
+import { buyerLogoUrl } from "@/lib/validation/buyer-files";
 
 const LATEST_ONLY = { supersededBy: { is: null } } as const;
 
@@ -25,6 +26,8 @@ export type BuyerDetail = {
     market: string | null;
     remark: string | null;
     since: string | null;
+    /** The versioned logo route, or null (2026-09-24). */
+    logoUrl: string | null;
   };
   rank: number;
   kpis: {
@@ -72,6 +75,7 @@ export async function loadBuyer(
       paymentTerms: true,
       market: true,
       remark: true,
+      logoKey: true,
     },
   });
   if (!buyer) return null;
@@ -197,8 +201,17 @@ export async function loadBuyer(
 
   return {
     buyer: {
-      ...buyer,
+      id: buyer.id,
+      name: buyer.name,
+      contactName: buyer.contactName,
+      email: buyer.email,
+      phone: buyer.phone,
+      address: buyer.address,
+      paymentTerms: buyer.paymentTerms,
+      market: buyer.market,
+      remark: buyer.remark,
       since: orders[0]?.poDate.toISOString() ?? null,
+      logoUrl: buyerLogoUrl(buyer.id, buyer.logoKey),
     },
     rank: 0,
     kpis: {

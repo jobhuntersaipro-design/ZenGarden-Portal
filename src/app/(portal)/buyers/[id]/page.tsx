@@ -10,6 +10,9 @@ import { KpiMoney, KpiNumber, KpiTile } from "@/components/dashboard/KpiTile";
 import { SalesLineChart } from "@/components/dashboard/SalesLineChart";
 import { BuyerContactsCard } from "@/components/buyers/BuyerContactsCard";
 import { BuyerDetailsCard } from "@/components/buyers/BuyerDetailsCard";
+import { BuyerDocumentsCard } from "@/components/buyers/BuyerDocumentsCard";
+import { BuyerLogo } from "@/components/buyers/BuyerLogo";
+import { listBuyerDocuments, listDocumentFolders } from "@/lib/queries/buyer-documents";
 import { BuyerRangeChips } from "@/components/buyers/BuyerRangeChips";
 import { ProductTrend } from "@/components/buyers/ProductTrend";
 import { ReorderSignalsCard } from "@/components/buyers/ReorderSignalsCard";
@@ -84,7 +87,7 @@ export default async function BuyerPage({
   const productSlots = firstParam(query, "products")?.split(",") ?? [];
   const selectedProducts = productSlots.filter(Boolean);
 
-  const [data, user, contacts, markets] = await Promise.all([
+  const [data, user, contacts, markets, documents, knownFolders, canManage] = await Promise.all([
     loadBuyer(id, range, previous, agg, measure, selectedProducts),
     getSessionUser(),
     listBuyerContacts(id),
@@ -92,6 +95,9 @@ export default async function BuyerPage({
     // the rest rather than inside the card, so the sheet is never drawn with
     // an empty list under a buyer who already has a market.
     listLabels("market"),
+    listBuyerDocuments(id),
+    listDocumentFolders(),
+    can("buyer.manage"),
   ]);
   if (!data) notFound();
 
@@ -137,6 +143,12 @@ export default async function BuyerPage({
         </span>
       </nav>
 
+      {/* Above the name, where a reader looks first (2026-09-24). */}
+      {data.buyer.logoUrl ? (
+        <div className="mb-sm">
+          <BuyerLogo url={data.buyer.logoUrl} name={data.buyer.name} />
+        </div>
+      ) : null}
       <PageHeader
         eyebrow="Buyer"
         title={data.buyer.name}
@@ -281,6 +293,16 @@ export default async function BuyerPage({
           buyer={data.buyer}
           canRename={user?.role === Role.SUPER_ADMIN}
           markets={markets}
+          canEditLogo={canManage}
+        />
+      </div>
+
+      <div className="mt-lg">
+        <BuyerDocumentsCard
+          buyerId={id}
+          folders={documents}
+          knownFolders={knownFolders}
+          canManage={canManage}
         />
       </div>
 

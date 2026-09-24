@@ -415,6 +415,7 @@ export async function updatePurchaseOrder(
             updated: true,
             attached: mail.attached,
             document: mail.document,
+            buyerLogo: mail.buyerLogo,
             preview: mail.preview,
           }),
         });

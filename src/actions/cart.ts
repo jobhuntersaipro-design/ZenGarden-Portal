@@ -489,6 +489,7 @@ async function notify(
           placedByName: order.placedBy.name,
           reviewUrl: `${env.APP_URL}/web-orders/${order.id}`,
           document: po.document,
+          buyerLogo: po.buyerLogo,
           preview: po.preview,
           attached: po.attached,
         }),
@@ -509,6 +510,7 @@ async function notify(
         // is not on it.
         attached: po.attached,
         document: po.document,
+        buyerLogo: po.buyerLogo,
         preview: po.preview,
       }),
     });

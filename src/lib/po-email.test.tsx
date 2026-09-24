@@ -4,10 +4,15 @@ import type { PoDocumentData } from "@/lib/purchase-order-document";
 
 const loadWebOrderDocumentData = vi.fn();
 vi.mock("@/lib/web-order-document", () => ({ loadWebOrderDocumentData }));
+const webOrderFindUnique = vi.fn();
+vi.mock("@/lib/prisma", () => ({ prisma: { webOrder: { findUnique: webOrderFindUnique } } }));
+const getObjectBytes = vi.fn();
+vi.mock("@/lib/r2", () => ({ getObjectBytes }));
 
-const { poEmailAttachments, preparePoEmail, renderPoPreviewPng } = await import(
-  "@/lib/po-email"
-);
+const noLogo = { buyer: { name: "Acme", logoKey: null, logoWidth: null, logoHeight: null } };
+
+const { buyerLogoDisplaySize, poEmailAttachments, preparePoEmail, renderPoPreviewPng } =
+  await import("@/lib/po-email");
 const { renderPurchaseOrderPdf } = await import("@/lib/pdf/purchase-order");
 const { WebOrderReceipt, webOrderReceiptSubject } = await import(
   "@/emails/WebOrderReceipt"
@@ -57,6 +62,7 @@ const PNG_SIGNATURE = Buffer.from([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0
 beforeEach(() => {
   vi.resetAllMocks();
   loadWebOrderDocumentData.mockResolvedValue(document);
+  webOrderFindUnique.mockResolvedValue(noLogo);
 });
 
 /**
@@ -126,7 +132,80 @@ describe("preparePoEmail", () => {
 
   it("still loads the facts when there is no file at all", async () => {
     const mail = await preparePoEmail("wo1", "W-2609-00015", null);
-    expect(mail).toEqual({ document, preview: false, attached: false, attachments: undefined });
+    expect(mail).toEqual({
+      document,
+      preview: false,
+      attached: false,
+      attachments: undefined,
+      buyerLogo: null,
+    });
+  });
+
+  it("attaches the buyer's logo inline and names it for the header", async () => {
+    webOrderFindUnique.mockResolvedValue({
+      buyer: { name: "Acme", logoKey: "buyers/b1/logo-abc.png", logoWidth: 512, logoHeight: 128 },
+    });
+    getObjectBytes.mockResolvedValue(new Uint8Array([1, 2, 3]));
+    const mail = await preparePoEmail("wo1", "W-2609-00015", null);
+    // 512×128 fitted inside 160×44 — width is the bound.
+    expect(mail.buyerLogo).toEqual({ cid: "buyer-logo", alt: "Acme", width: 160, height: 40 });
+    expect(mail.attachments).toEqual([
+      {
+        filename: "buyer-logo.png",
+        content: Buffer.from([1, 2, 3]),
+        contentType: "image/png",
+        contentId: "buyer-logo",
+      },
+    ]);
+  });
+
+  it("sends without the logo when it cannot be read", async () => {
+    vi.spyOn(console, "error").mockImplementation(() => {});
+    webOrderFindUnique.mockResolvedValue({
+      buyer: { name: "Acme", logoKey: "buyers/b1/logo-abc.png", logoWidth: 100, logoHeight: 100 },
+    });
+    getObjectBytes.mockRejectedValue(new Error("NoSuchKey"));
+    const mail = await preparePoEmail("wo1", "W-2609-00015", null);
+    expect(mail.buyerLogo).toBeNull();
+    expect(mail.attachments).toBeUndefined();
+  });
+});
+
+describe("buyerLogoDisplaySize", () => {
+  it("fits inside the header box and never enlarges", () => {
+    expect(buyerLogoDisplaySize(512, 512)).toEqual({ width: 44, height: 44 });
+    expect(buyerLogoDisplaySize(40, 20)).toEqual({ width: 40, height: 20 });
+    expect(buyerLogoDisplaySize(1000, 100)).toEqual({ width: 160, height: 16 });
+  });
+});
+
+describe("the email header", () => {
+  it("draws the buyer's logo beside ours when there is one, and not otherwise", () => {
+    const withLogo = renderToStaticMarkup(
+      WebOrderReceipt({
+        reference: "W-2609-00015",
+        poNumber: "ACME-PO-771",
+        orderUrl: "https://shop.example.com/orders/wo1",
+        document,
+        preview: false,
+        attached: false,
+        buyerLogo: { cid: "buyer-logo", alt: "Acme Industrial", width: 120, height: 40 },
+      }),
+    );
+    expect(withLogo).toContain('src="cid:buyer-logo"');
+    expect(withLogo).toContain('alt="Acme Industrial"');
+    expect(withLogo).toContain('src="cid:zen-garden-logo"');
+    const without = renderToStaticMarkup(
+      WebOrderReceipt({
+        reference: "W-2609-00015",
+        poNumber: "ACME-PO-771",
+        orderUrl: "https://shop.example.com/orders/wo1",
+        document,
+        preview: false,
+        attached: false,
+      }),
+    );
+    expect(without).not.toContain("cid:buyer-logo");
   });
 });
 
