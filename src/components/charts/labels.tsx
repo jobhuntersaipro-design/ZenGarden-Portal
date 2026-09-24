@@ -53,23 +53,91 @@ export function useLabelStep(bucketCount: number, longestLabel: number) {
 }
 
 /**
- * Which buckets get a label: the ones with a value, at least `step` apart.
- * Walking the data rather than sampling every nth index means a run of empty
- * days never swallows the labels of the busy ones beside it.
+ * Which buckets each series labels, when several are drawn on one chart.
+ *
+ * `step` is the spacing one series needs so its own labels do not overlap.
+ * With several series that is not enough: two lines labelling the *same*
+ * bucket print at the same x, and a browser drive caught exactly that at
+ * three markets over thirty daily buckets — `RM 5,206` printed over
+ * `RM 5,183`. Turning the labels off (what the dashboard did) answered it by
+ * giving up the figures.
+ *
+ * So the buckets are shared out rather than each series claiming them all:
+ * one walk over the buckets, `step` apart, handing each label slot to the
+ * next series in turn. Two consequences fall out of that and they are the
+ * whole design.
+ *
+ * - **At most one label per bucket**, so no two can share an x and the
+ *   vertical distance between lines never matters — no y scale is needed to
+ *   place a label safely.
+ * - **Any two labels on the chart are `step` apart**, whichever series they
+ *   belong to, which is the spacing `useLabelStep` measured the width for.
+ *
+ * Whoever's turn it is passes when they have nothing to print in that bucket,
+ * so a series resting at zero does not spend a slot its neighbour could use;
+ * a bucket where *every* series is empty is skipped without spending the
+ * spacing at all, which is what keeps a run of quiet days from swallowing the
+ * labels of the busy ones beside it.
+ *
+ * The cost, stated rather than hidden: a reader gets one figure per bucket,
+ * not one per line. Four series over thirty buckets is 120 figures and a
+ * 288px-tall plot holds about 18 rows of 12px text, so printing them all was
+ * never available — the tooltip is still what answers a specific point.
+ *
+ * Order matters and is the caller's: series are offered slots in the order
+ * they are passed, which is slot order in `SeriesTrend`, so the assignment is
+ * stable across renders rather than following whatever the data did.
+ */
+export function rotateSeriesLabels(
+  series: readonly {
+    key: string;
+    values: readonly (number | null | undefined)[];
+  }[],
+  step: number,
+): Map<string, Set<number>> {
+  const picked = new Map<string, Set<number>>(
+    series.map((one) => [one.key, new Set<number>()]),
+  );
+  if (step === 0 || series.length === 0) return picked;
+
+  const bucketCount = series.reduce(
+    (max, one) => Math.max(max, one.values.length),
+    0,
+  );
+  let last = -Infinity;
+  let turn = 0;
+
+  for (let index = 0; index < bucketCount; index += 1) {
+    if (index - last < step) continue;
+    for (let offset = 0; offset < series.length; offset += 1) {
+      const candidate = (turn + offset) % series.length;
+      const value = series[candidate].values[index];
+      // A zero is not a label — the gridline already says zero, and a "0"
+      // over every quiet day is noise. Pass the slot on instead of burning it.
+      if (!value) continue;
+      picked.get(series[candidate].key)!.add(index);
+      last = index;
+      turn = (candidate + 1) % series.length;
+      break;
+    }
+  }
+
+  return picked;
+}
+
+/**
+ * Which buckets get a label on a chart drawing one series: the ones with a
+ * value, at least `step` apart.
+ *
+ * The one-series case of `rotateSeriesLabels` rather than a second copy of
+ * the walk, so the four charts that draw a single line and the two that draw
+ * several cannot drift apart on what "far enough apart" means.
  */
 export function labelledIndices(
   values: readonly (number | null | undefined)[],
   step: number,
 ): Set<number> {
-  const picked = new Set<number>();
-  if (step === 0) return picked;
-  let last = -Infinity;
-  values.forEach((value, index) => {
-    if (!value || index - last < step) return;
-    picked.add(index);
-    last = index;
-  });
-  return picked;
+  return rotateSeriesLabels([{ key: "only", values }], step).get("only")!;
 }
 
 /**

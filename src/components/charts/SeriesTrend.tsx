@@ -17,7 +17,7 @@ import {
   axisInterval,
   CHART_ANIMATION,
   LABEL_FONT_SIZE,
-  labelledIndices,
+  rotateSeriesLabels,
   useLabelStep,
   valueLabel,
 } from "@/components/charts/labels";
@@ -75,7 +75,6 @@ export function SeriesTrend({
   formatOption,
   yAxisWidth = 40,
   yTickFormatter,
-  labelPoints = true,
   header,
 }: {
   points: TrendPoint[];
@@ -101,14 +100,6 @@ export function SeriesTrend({
   formatOption: (value: number) => string;
   yAxisWidth?: number;
   yTickFormatter?: (value: number) => string;
-  /**
-   * Whether to print the figure beside each point. `useLabelStep` spaces
-   * labels along *one* series; with several drawn they collide across series
-   * instead, which a browser drive caught at three markets over thirty daily
-   * buckets (RM 5,206 printed over RM 5,183). A caller drawing more than one
-   * line turns them off and leaves the tooltip to answer the value.
-   */
-  labelPoints?: boolean;
   /** An extra control in the header — the dashboard's subject switch. */
   header?: React.ReactNode;
 }) {
@@ -128,6 +119,20 @@ export function SeriesTrend({
     0,
   );
   const labels = useLabelStep(points.length, longest);
+  /**
+   * The label slots, shared out across the drawn series in slot order — so a
+   * bucket carries at most one figure and any two figures are `step` apart,
+   * whichever line they belong to. See `rotateSeriesLabels`.
+   */
+  const labelled = rotateSeriesLabels(
+    slots
+      .filter(Boolean)
+      .map((id) => ({
+        key: id,
+        values: points.map((point) => Number(point[id] ?? 0)),
+      })),
+    labels.step,
+  );
 
   const write = (next: string[], id: string) => {
     // Trailing holes carry no assignment, so they are dropped.
@@ -271,7 +276,10 @@ export function SeriesTrend({
           >
             <div className="h-72 w-full">
               <ResponsiveContainer onResize={labels.onResize}>
-                <LineChart data={points} margin={{ top: 16, right: 16 }}>
+                {/* The end points sit off the plot edges so their figures
+                do not run into the y axis or the card. `top` is the label's
+                own room above the highest point: 12px of text, 10px up. */}
+                <LineChart data={points} margin={{ top: 24, right: 16 }}>
                   <CartesianGrid
                     vertical={false}
                     stroke="var(--color-hairline)"
@@ -280,7 +288,7 @@ export function SeriesTrend({
                     dataKey="label"
                     tickLine={false}
                     axisLine={false}
-                    padding={{ left: 24, right: 24 }}
+                    padding={{ left: 40, right: 24 }}
                     interval={axisInterval(points.length)}
                     tick={{
                       fill: "var(--color-ink-tertiary)",
@@ -288,7 +296,11 @@ export function SeriesTrend({
                     }}
                   />
                   {/* One axis, never two: the caller picks the measure and
-                  every series is drawn against it. */}
+                  every series is drawn against it. No explicit domain either
+                  — `auto` picks round ticks, and the chart's top margin is
+                  what keeps the highest figure inside the plot. Pinning the
+                  domain to the data plus headroom prints the headroom itself
+                  as the top tick: RM 52,595 where `auto` reads RM 60,000. */}
                   <YAxis
                     allowDecimals={false}
                     tickLine={false}
@@ -329,19 +341,14 @@ export function SeriesTrend({
                           stroke: "var(--color-surface)",
                         }}
                       >
-                        {labelPoints ? (
                         <LabelList
                           dataKey={id}
                           content={valueLabel(
                             formatLabelValue,
-                            labelledIndices(
-                              points.map((point) => Number(point[id] ?? 0)),
-                              labels.step,
-                            ),
+                            labelled.get(id) ?? new Set<number>(),
                             10,
                           )}
                         />
-                        ) : null}
                       </Line>
                     ),
                   )}

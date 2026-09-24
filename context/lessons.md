@@ -185,3 +185,37 @@ image, the full name. Where a derived mark is genuinely wanted, pin it with a
 test that asserts `new Set(list.map(derive)).size === list.length` over the
 real list, and watch it fail against the old rule — the guard that replaced
 this one reports `expected 'HA' not to be 'HA'`.
+
+---
+
+## 9. An escape hatch is not a fix — it leaves the defect in every caller that does not use it
+
+**Rule.** When a component misbehaves in one configuration and the answer is a
+prop that turns the behaviour off, the defect is still there: it is now
+conditional on a caller remembering to pass the prop. Before shipping a
+`disableX` / `showY={false}` switch, list every caller and check what the
+**default** does to each one. If the default is the broken configuration, you
+have moved the defect, not removed it. Prefer a rule that is correct in all
+configurations, so no caller has to know.
+
+**Smell.** A boolean prop whose doc comment explains a defect (`"…they
+collide, so a caller drawing more than one turns them off"`), and a default
+value on the side of the defect. Also: one caller passing it and another not.
+
+**The case (2026-09-24, reported by the user).** `SeriesTrend`'s value labels
+overlapped across series, so `labelPoints` was added and the dashboard passed
+`selected === 1`. The buyer page's `ProductTrend` never passed it, so it kept
+the `true` default and shipped the collision: **28 figures over 18 x positions
+with 9 overlapping pairs** on `/buyers/[id]`, live, for two days. The
+dashboard meanwhile printed no figures at all — which is what the user
+reported, and the only reason anyone looked.
+
+**What makes it worse.** Both symptoms were the same missing rule, so the
+report ("show the labels") and the hidden defect ("the labels are unreadable")
+had one fix. Reading the switch as a *setting* rather than as *evidence of an
+unsolved problem* is what kept it open.
+
+**The fix shape.** Solve it once, where both callers read it, and delete the
+prop so the question cannot be answered two ways again — then make the
+single-series path the one-series case of the general rule, so the charts that
+never had the problem cannot drift away from the charts that did.

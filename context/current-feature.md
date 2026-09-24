@@ -1,4 +1,152 @@
-# Current feature: a buyer sees only their own market
+# Current feature: the multi-series trend chart prints its figures
+
+## Status
+
+**Built and driven in a browser on `main`** (2026-09-24). Asked for as:
+"Show label in this chart, no decimal point", against a screenshot of the
+dashboard's market trend drawing four lines and not one figure.
+
+**The figures were not missing, they were switched off** — and the switch is
+the whole story. `SeriesTrend` took a `labelPoints` prop, and `TrendCard`
+passed `selected === 1`: one line printed its figures, two or more printed
+none. That was put in on 2026-09-22 because `useLabelStep` spaces labels
+along **one** series and cannot see the others, so several lines labelling the
+same bucket printed on top of each other — `RM 5,206` over `RM 5,183`.
+
+**The escape hatch left the defect live, one screen over.** `ProductTrend` on
+`/buyers/[id]` never passed `labelPoints`, so it defaulted to `true` and has
+been drawing the collision in production ever since. **Measured on the
+untouched tree:** 28 figures over 18 distinct x positions with **9 overlapping
+pairs** — `"12"` over `"12"`, `"35"` over `"32"`, `"164"` over `"139"`. So
+this is not a new feature with a known cost; it is the same defect fixed
+properly in the one place both screens read.
+
+**The buckets are shared out rather than each line claiming them all.**
+`rotateSeriesLabels` walks the buckets once, `step` apart, handing each label
+slot to the next line in turn. Two properties fall out of that and they are
+the design:
+
+- **at most one figure per bucket**, so no two can share an x and the vertical
+  distance between lines never matters — which is why this needs **no y
+  scale** at all, and why it cannot be fooled by two lines crossing;
+- **any two figures on the chart are `step` apart**, whichever line they
+  belong to, which is exactly the spacing `useLabelStep` measured the width
+  for.
+
+**A line resting at zero passes its turn** rather than spending a slot on a
+bucket that would print nothing, and a bucket where *every* line is quiet is
+skipped without spending the spacing at all — which is what keeps a run of
+quiet days from swallowing the figures of the busy ones beside it.
+
+**`labelledIndices` is now the one-series case of that walk, not a second copy
+of it.** The four single-line charts (sales over time, the stage chart, the
+price trend, a one-market trend) go through the same code, so "far enough
+apart" cannot come to mean two things. The cost is that a mistake in the
+rotation reaches those four charts too, which is why the counterfactuals below
+matter more than usual — and the file had **no test at all** before this.
+
+**The figures were already decimal-free and that was checked rather than
+assumed:** `formatLabelValue` is `formatMYR(value, 0)` for money and
+`formatUnits` for cartons. Nothing had to change for the second half of the
+request; the y axis carries no decimals either.
+
+**Colour was considered for identity and refused on contrast.** A figure
+coloured like its line would say which line it belongs to — but four of the
+six `--color-share-*` hues fail the 4.5:1 floor for 12px text on
+`--color-surface`: **blue 3.07:1, orange 2.87:1, slate 3.94:1, green
+4.08:1** against `ink-secondary`'s 5.61:1. Identity comes from position
+instead: one figure per bucket, sitting on its own point.
+
+**The explicit y-axis headroom was built, measured, and taken back out.** The
+first version pinned `domain={[0, dataMax * 1.12]}` so the top figure could
+not clip, the way `SalesLineChart` does — and it printed the headroom as the
+top tick: **RM 52,595 where `auto` reads RM 60,000**. The chart's top margin
+(24px, for 12px of text sitting 10px above its point) is what actually keeps
+the figure inside the plot, so the domain went and the round ticks stayed.
+**Measured: 0 figures clipped at the top or left** at either width.
+
+## Verified, with the figures
+
+**Driven in a real browser against a real database.** This container has no
+Neon endpoint, so a local Postgres 16 was stood up as the `postgres` user, the
+project's own seed run against it (423 purchase orders, 1,685 line items, 12
+products), and `src/lib/prisma.ts` and `prisma/seed.ts` pointed at a
+`PrismaPg` adapter for the drive and **restored afterwards**; the cluster was
+stopped and deleted, `.env.local` deleted, and `package.json` /
+`package-lock.json` are untouched. Four markets were written onto the twelve
+seeded products, three each, to reproduce the reported four-line chart.
+
+- **The reported screenshot, reproduced before anything was changed.** The
+  dashboard's market trend with all four markets selected drew **0 value
+  labels** against 15 axis ticks, at 1440 **and** at 390.
+- **Eight figures, none touching.** After: **8 figures, 8 distinct x
+  positions, 0 overlapping pairs**, minimum horizontal gap **92px** at 1440
+  and **72px** at 390 — measured as bounding-box intersections, not eyeballed.
+- **Every line carries figures, attributed by geometry rather than by
+  argument.** Each figure was matched to the nearest vertex of each line's own
+  SVG path: **1 · 1 · 2 · 4** across the four markets, each figure **0–15px**
+  from its own point (the offset is 10px plus half the glyph height).
+- **The live defect on `/buyers/[id]`, both ways on the same chart.** Before:
+  **28 figures, 18 distinct x, 9 overlaps**. After: **11 figures, 11 distinct
+  x, 0 overlaps**. Screenshots of both.
+- **The single-series path did not move, proved by equality rather than by
+  reasoning.** *Sales over time* is untouched by this change but now runs
+  through the rewritten walk, and it printed the **same eight figures before
+  and after** — `RM 94,612 · RM 17,373 · RM 38,895 · RM 100,915 · RM 28,634 ·
+  RM 14,481 · RM 14,079 · RM 36,206`. The trend card with one market selected
+  reads 8 figures, 0 overlaps.
+- **No decimals anywhere on the chart**, read off the rendered SVG: 0 value
+  labels and 0 y-axis ticks matching `\.\d`, on every chart measured.
+- **Phone.** 390/390 and 1440/1440, no page overflow, at rest and with the
+  card scrolled. No control was added or removed, so the 44px floor is
+  untouched.
+- **Three counterfactuals watched failing**, then restored:
+  - each line labelling its own buckets independently — the shipped defect —
+    gives **18 label placements over 6 distinct buckets** and turns 5 tests
+    red, `expected 6 to be 18` and `expected 0 to be greater than or equal
+    to 3` (two figures at zero horizontal distance);
+  - one figure per bucket but **no rotation**, so whoever is first in slot
+    order takes every slot: 1 red, `expected [0,2,4,6,8,10] to deeply equal
+    [0,6]` — the first line taking all six and the other two left blank;
+  - the obvious **modulo phase** per line (`index % (step * n) === s * step`),
+    which gets spacing and fairness right and stops walking the data: 2 red,
+    `expected [] to deeply equal [1,4,7]` — a sparse single series losing
+    **every** figure, which is the 2026-09-06 "sampled every nth index" defect
+    returning through four other charts.
+- **1602/1602 tests across 125 files** (12 new, in a file that had none),
+  `tsc`, `npm run build` clean, and **lint identical to the untouched tree**
+  (the same 4 pre-existing `ShopHeader` ref errors and 3 warnings).
+
+## Not verified
+
+- **Anything on production.** Not deployed, and no production row was read or
+  written. Every figure above is the project's own seed with four markets
+  written onto it by hand.
+- **The tooltip still prints two decimals** — `RM 5,265.38` — and was left
+  alone deliberately: it is the precise answer for one point, where a figure
+  beside a line is a scan value, and it read that way before this change.
+  Whether "no decimal point" was meant to cover it too is the user's call, and
+  it is one formatter.
+- **Five and six lines.** Four markets and three products were drawn. The
+  rotation is uniform in the number of series and unit-tested at four, but six
+  lines over a narrow phone plot will print very few figures each, and nobody
+  has seen how sparse that reads.
+- **A figure the line runs through.** Several do — `RM 9,536`, `RM 20,114` —
+  and the surface-coloured halo `valueLabel` has always carried is what keeps
+  them legible. It was read at 2× on a desktop screenshot, not tested against
+  a line crossing a glyph at the worst angle.
+- **Dark mode.** The halo is `--color-surface` and the text `ink-secondary`,
+  both tokens, so it follows the theme by construction rather than by
+  measurement.
+- **Keyboard and screen reader.** A value label is `pointer-events-none`
+  decoration on an SVG and is not in the accessibility tree; the tooltip
+  remains the only way to read a specific point, as before.
+- **`npm run build` without a stand-in for `xlsx`**, which is why the 126th
+  test file still fails here.
+
+## Previous phase
+
+# A buyer sees only their own market
 
 ## Status
 
