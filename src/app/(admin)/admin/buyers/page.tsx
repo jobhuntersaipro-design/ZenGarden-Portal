@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { BuyersTable } from "@/components/admin/BuyersTable";
+import { NoMarketAlert } from "@/components/buyers/NoMarketAlert";
 import { LinkSpinner } from "@/components/portal/LinkSpinner";
 import { Rise } from "@/components/portal/Rise";
 import { Button } from "@/components/ui/button";
@@ -83,17 +84,30 @@ export default async function AdminBuyersPage({
           </p>
         </Rise>
       ) : (
-        <Rise index={1}>
-          <BuyersTable
-            buyers={rows}
-            sort={sort}
-            access={access}
-            counts={counts}
-            market={market}
-            markets={marketOptions.markets}
-            hasNoMarket={marketOptions.hasNoMarket}
-          />
-        </Rise>
+        <>
+          {/* Above the table rather than inside it: the per-row chip only
+              reaches a reader already looking at that row, and the roster
+              pages. Counted over every buyer, not the page. */}
+          <Rise index={1}>
+            <NoMarketAlert
+              count={marketOptions.noMarket}
+              total={buyers.length}
+              market={market}
+              basePath="/admin/buyers"
+            />
+          </Rise>
+          <Rise index={2}>
+            <BuyersTable
+              buyers={rows}
+              sort={sort}
+              access={access}
+              counts={counts}
+              market={market}
+              markets={marketOptions.markets}
+              noMarket={marketOptions.noMarket}
+            />
+          </Rise>
+        </>
       )}
     </>
   );

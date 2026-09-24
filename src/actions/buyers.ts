@@ -5,6 +5,7 @@ import { z } from "zod";
 import { Prisma } from "@/generated/prisma/client";
 import { audit, changedFields } from "@/lib/audit";
 import { UnauthorizedError } from "@/lib/auth-guards";
+import { registerLabels } from "@/lib/catalog-label-registry";
 import { requirePermission } from "@/lib/permissions/require";
 import { optionalPaymentTermsSchema } from "@/lib/payment-terms";
 import { prisma } from "@/lib/prisma";
@@ -91,6 +92,10 @@ export async function updateBuyer(
 
     await prisma.$transaction(async (tx) => {
       await tx.buyer.update({ where: { id: buyerId }, data });
+      // A market typed here joins the vocabulary too, for the reason
+      // `createBuyer` states: otherwise it lives on this row alone and the
+      // picker that offered it cannot offer it again.
+      if (data.market) await registerLabels(tx, { market: data.market });
       // A save that changed nothing is not an edit. Recording it would fill
       // the timeline with "edited" entries naming no field.
       if (fields.length > 0) {

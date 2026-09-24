@@ -74,6 +74,8 @@ describe("createBuyerSchema", () => {
   const input = {
     name: "Acme Industrial Sdn Bhd",
     contact: { name: "Siti", email: "Siti@Acme.com", phone: " +60 12-345 6789 " },
+    // Required since 2026-09-24 — see the schema's own note.
+    market: "Mydin",
   };
 
   it("accepts a company and a contact with nothing folded away", () => {
@@ -106,5 +108,28 @@ describe("createBuyerSchema", () => {
     const parsed = createBuyerSchema.parse({ ...input, address: "  ", remark: "" });
     expect(parsed.address).toBeNull();
     expect(parsed.remark).toBeNull();
+  });
+
+  it("requires a market, because a buyer without one can order nothing", () => {
+    // Not the same call the patch schema makes: there a blank is allowed, so
+    // the buyers already on record can have their other fields saved.
+    const missing = createBuyerSchema.safeParse({ ...input, market: undefined });
+    expect(missing.success).toBe(false);
+    expect(missing.error?.issues[0]?.message).toBe(
+      "Choose the market this buyer buys in",
+    );
+    expect(createBuyerSchema.safeParse({ ...input, market: null }).success).toBe(false);
+  });
+
+  it("refuses a market of spaces rather than storing one nothing matches", () => {
+    const blank = createBuyerSchema.safeParse({ ...input, market: "   " });
+    expect(blank.success).toBe(false);
+    expect(blank.error?.issues[0]?.message).toBe("Choose the market this buyer buys in");
+  });
+
+  it("trims the market, so it matches the same value on a product exactly", () => {
+    expect(createBuyerSchema.parse({ ...input, market: " Vietnam " }).market).toBe(
+      "Vietnam",
+    );
   });
 });

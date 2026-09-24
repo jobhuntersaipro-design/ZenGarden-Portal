@@ -106,7 +106,7 @@ export type BuyerRoster = {
    * removes the other markets from the control that would take you back —
    * the rule the demand board's family and product pickers already follow.
    */
-  markets: { markets: string[]; hasNoMarket: boolean };
+  markets: { markets: string[]; noMarket: number };
   /**
    * The filter actually applied. A `?market=` naming something no buyer is
    * in any more is **dropped** here rather than honoured, and the toolbar

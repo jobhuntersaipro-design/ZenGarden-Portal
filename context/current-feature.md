@@ -1,4 +1,183 @@
-# Current feature: the trend legend is the chart's own switch
+# Current feature: a buyer's market is set, alerted and required
+
+## Status
+
+**Built and driven in a browser on `main`** (2026-09-24). Asked for as: "let
+admin to set Market for each buyer under buyer management. It must also alert
+admin that if buyer do not have market. Also, when creating a new buyer, it
+must have Market filled up. the market options are reading from
+/admin/catalogue".
+
+**Three of the four parts existed and one of them did not work**, which is
+almost certainly why they were asked for again. The edit sheet has had a
+Market picker since 2026-09-23, fed by `listLabels("market")` — the
+`/admin/catalogue` MARKET vocabulary — and **every save through it was
+refused.** The sheet seeded its patch with the *stored* payment terms,
+`"30 days"`, and `optionalPaymentTermsSchema` takes a number of days and
+refuses anything else. So picking a market and pressing Save answered
+**"Payment terms are a whole number of days, 0 or more."** and wrote nothing.
+Not just the market: **no field on that row could be saved at all**, on every
+buyer whose terms are stored that way, which is all eleven of them on the seed
+and every buyer entered through the create form since it started writing
+`"30 days"`. Recorded on 2026-09-23 as a pre-existing defect found while
+driving and not fixed; it is the whole of "let admin set Market".
+
+**Reproduced before it was fixed, on the same screen.** With the component
+back at `HEAD`: the field opens reading `"14 days"`, the Market picker takes
+Vietnam, Save toasts the payment-terms refusal, the sheet stays open and the
+row reads `market NULL`. After: the field opens reading **`14`**, labelled
+**Payment terms (days)** and typed `number`, Save toasts **Details saved**,
+and the card's Market row goes from the amber *"Not set — their shop is empty
+until it is"* to **Vietnam**.
+
+**The audit row is the second thing the fix buys.** A save that only sets the
+market records `detail.fields = ["market"]` — `"30 days"` → `30` → `"30 days"`
+round-trips to the same stored value, so `changedFields` sees one field
+change, not two. Under any fix that stored the raw days it would have read as
+a payment-terms edit nobody made.
+
+**The three purchase-order forms have read that field through
+`paymentTermsDaysInput` since 2026-09-22 and this one was missed** — a fourth
+caller of a rule, which is how one goes out of step. It is now out of the
+card's field loop entirely: it is the one field there that is not free text,
+so a loop that treats it as one is the shape the defect had.
+
+**Market is required on the create form, and deliberately not on the edit
+path.** A buyer entered without one is an account that looks set up and can
+order nothing, and the person filling the form in is the one person who knows
+which market it is. The edit path stays nullable because production holds
+eleven buyers with no market: refusing a blank there would mean **no other
+field on those rows could be saved** until somebody also settled the market —
+the same fail-closed trap in the opposite direction, and the one just fixed.
+
+**The refusal is a gate, not a red field after the fact.** Submitting with no
+market sends **0 requests**, keeps the URL, prints the reason as a
+`role="alert"` line, sets `aria-invalid` on the picker with
+`aria-describedby` pointing at that line, and moves focus to it — the same
+shape as the checkout's "Enter your PO number." `Combobox` and
+`GrowingListPicker` gained `invalid` and `describedBy` for it, so the control
+takes the destructive border the `Input` and `Select` primitives already give
+a bad field rather than a red message under a control that still looks fine.
+
+**The "No market" row is gone from the create picker**, because an option the
+schema refuses is a control that looks like it does something and does
+nothing — `GrowingListPicker`'s own argument for why Category carries no blank
+row. The edit picker keeps it, so an existing market can still be cleared.
+
+**A market typed into a buyer form now joins the vocabulary.** `createBuyer`
+and `updateBuyer` call `registerLabels(tx, { market })` inside their own
+transaction, the same call `createProduct` makes. Without it a typed market
+lived on that one row: the next buyer form would not offer it and no product
+could be put in the same market — the disappearing act `CatalogLabel` exists
+to end. **Measured:** "Brunei" typed on the buyer form appears on
+`/admin/catalogue` as **Brunei · No products**, which is the reciprocal state
+that table is built to show.
+
+**The alert counts buyers, not rows, and says what it costs.** The per-row
+amber **Not set** chip has been there since 2026-09-23, and a chip is only
+read by somebody already looking at that row — on a roster sorted by revenue,
+a buyer whose shop is empty is invisible. `NoMarketAlert` sits above both
+rosters, renders nothing at zero (like `WorkQueue` — an alert that is always
+on screen saying there is no problem makes the next real one read as
+furniture), and words the consequence rather than the gap: they can sign in
+and see no products and place no orders.
+
+**It links only while the link answers its own sentence.**
+`?market=*none` lists exactly the buyers it counts — but under that filter the
+table below *is* that list, so the link would lead where the reader already
+stands. It prints plain text then, which is `context/lessons.md` §2.
+
+**`buyerMarketOptions` returns a count where it returned a flag.** One number
+answers both questions the roster asks: whether to offer the "No market"
+option at all, and what the alert prints. A boolean beside the count would be
+a second way to say the same thing, and two of those drift.
+
+## Verified, with the figures
+
+**Driven in a real browser against a real database** — local Postgres 16 as
+the `postgres` user, the project's own seed (423 purchase orders, 1,685 line
+items, 12 products, 11 buyers, **0 of them with a market**, which is
+production's own state), `src/lib/prisma.ts` and `prisma/seed.ts` pointed at a
+`PrismaPg` adapter for the drive and **restored afterwards**; the cluster was
+stopped and deleted, `.env.local` deleted, and `package.json` /
+`package-lock.json` are untouched. Every figure below is from a production
+build (`npm start`), not the dev server.
+
+- **The blocked save, both ways, on the same buyer.** Before: field `"14
+  days"`, market picked, toast **"Payment terms are a whole number of days, 0
+  or more."**, sheet open, `market NULL`. After: field **`14`**, toast
+  **Details saved**, `market Vietnam` read back from the database, and the
+  audit row **`{"fields": ["market"]}`** — one field, not two. Screenshots of
+  both.
+- **The alert, at production's own state and at a partial one.** With every
+  buyer unassigned it reads **"No buyer has a market yet — all 11 of them."**;
+  with one assigned, **"11 buyers have no market."** — identical wording on
+  `/admin/buyers` and `/buyers`.
+- **The link lands on exactly what it counted.** `?market=*none` drew **11
+  rows** on the management roster and, on the analytics roster, *11 buyers · no
+  market set* over **1–10 of 11** — the alert's figure and the table's own
+  total agreeing, the table merely paging at ten.
+- **Under that filter the alert loses its link** and keeps its sentence: 0
+  anchors, the market select reading `*none`.
+- **The create gate sends nothing.** **0 POST requests** with the market
+  empty, the URL still `/admin/buyers/new`, the message *"Choose the market
+  this buyer buys in — without one their shop is empty and they can order
+  nothing."*, `aria-invalid="true"` on the picker, `aria-describedby` equal to
+  that message's own id, focus on the picker, and its border computed
+  **`rgb(240, 56, 45)`**. Filled in: **1 POST**, landing on the new buyer's
+  page.
+- **On `HEAD` the same journey created the buyer** — 1 POST, a buyer with
+  `market NULL` — which is the defect the requirement removes.
+- **The create picker offers the vocabulary and nothing else:**
+  `["Malaysia","Mydin","Vietnam"]`, placeholder **"Choose a market"**, and no
+  "No market" row (before: `["No market","Malaysia","Mydin","Vietnam"]` with
+  the trigger reading *No market*). The edit picker still offers **No
+  market**.
+- **A typed market round-trips to the catalogue.** `+ Add "Brunei"` on the
+  buyer form → `Buyer.market = 'Brunei'` → `CatalogLabel(MARKET,'Brunei')` →
+  `/admin/catalogue` reading **Markets · 4 values · Brunei · No products**.
+- **Phone.** `/admin/buyers`, `/buyers` and `/admin/buyers/new` all
+  **390/390**, and 1440/1440 on the desktop, at rest and with the gate
+  showing. The picker measures **260×44**.
+- **Three counterfactuals watched failing**, then restored: market optional on
+  create again (**4 red**, `expected { success: true … } to deeply equal
+  { success: false … }` among them); `registerLabels` dropped from
+  `createBuyer` (1 red); and `buyerMarketOptions` counting one instead of
+  counting (`expected 1 to be 3`). The payment-terms defect was watched
+  failing in the **browser** rather than in a test, above.
+- **1622/1622 tests across 126 files** (12 new), `tsc`, `npm run build` clean,
+  and **lint identical to the untouched tree** (the same 4 pre-existing
+  `ShopHeader` ref errors and 3 warnings).
+
+## Not verified
+
+- **Anything on production.** Not deployed, and no production row was read or
+  written. **On deploy, `/admin/buyers` and `/buyers` will both carry this
+  alert reading 11 of 11** until ops assigns markets, which is the worklist it
+  exists to name — and until they do, every one of those buyers' shops is
+  still empty, exactly as it is today.
+- **A buyer created before today, edited by a member rather than a super
+  admin.** Driven as the super admin; `updateBuyer` is `buyer.manage`, so a
+  member with that grant takes the same path, unexercised here.
+- **A market renamed in the vocabulary after a buyer is in it.** Still the
+  gap recorded on 2026-09-23: `renameLabel` rewrites `Product.market` and not
+  `Buyer.market`, so renaming a market silently empties the shops of every
+  buyer in it. This change makes that more likely to matter, because a market
+  typed on a buyer form now exists in the vocabulary to be renamed. Recorded
+  rather than fixed — it is a change to the catalogue-vocabulary action.
+- **The create form's own payment-terms field**, which was already a number
+  input and is untouched; only the edit sheet's was wrong.
+- **A sub-44px control the alert adds**, recorded rather than waved through:
+  the *"Show those 11 buyers →"* link measures **161×21** at 390. It is a text
+  link inside a callout, the same shape as the demand board's "Enter stock
+  counts →" and the listing line's family link, which is the accepted class —
+  but it is new, so it is named here.
+- **`npm run build` without a stand-in for `xlsx`**, which is why the 127th
+  test file still fails here.
+
+## Previous phase
+
+# The trend legend is the chart's own switch
 
 ## Status
 

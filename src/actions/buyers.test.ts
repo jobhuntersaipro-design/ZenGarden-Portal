@@ -3,6 +3,8 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 const buyerUpdate = vi.fn();
 const buyerFindUnique = vi.fn();
 const auditCreate = vi.fn();
+const labelFindFirst = vi.fn();
+const labelCreate = vi.fn();
 // The bare (non-transactional) client's own `auditEvent.create` — kept as a
 // distinct spy from the one handed into `$transaction` below, so a future
 // `audit(prisma, …)` in place of `audit(tx, …)` shows up here instead of
@@ -50,8 +52,14 @@ beforeEach(() => {
   buyerUpdate.mockResolvedValue({});
   auditCreate.mockResolvedValue({ id: "evt-1" });
   transaction.mockImplementation(async (fn: (tx: unknown) => unknown) =>
-    fn({ buyer: { update: buyerUpdate }, auditEvent: { create: auditCreate } }),
+    fn({
+      buyer: { update: buyerUpdate },
+      auditEvent: { create: auditCreate },
+      catalogLabel: { findFirst: labelFindFirst, create: labelCreate },
+    }),
   );
+  labelFindFirst.mockResolvedValue(null);
+  labelCreate.mockResolvedValue({ id: "label-1" });
   // Every pre-existing test in this file calls updateBuyer, which now reads
   // the row first — without this they all fail on "That buyer is gone."
   buyerFindUnique.mockResolvedValue({
@@ -61,11 +69,72 @@ beforeEach(() => {
     phone: null,
     address: null,
     paymentTerms: null,
+    market: null,
     remark: null,
   });
 });
 
 describe("updateBuyer", () => {
+  it("sets the market, which is the one field that decides what the shop shows", async () => {
+    const result = await updateBuyer("b1", { market: "Vietnam" });
+    expect(result.success).toBe(true);
+    expect(buyerUpdate.mock.calls[0][0].data.market).toBe("Vietnam");
+    expect(auditCreate.mock.calls[0][0].data.detail).toEqual({
+      fields: ["market"],
+    });
+  });
+
+  it("saves the market on a buyer whose stored payment terms are words", async () => {
+    // The defect this covers: the edit sheet used to send the stored "30 days"
+    // straight back, which `optionalPaymentTermsSchema` refuses — so on every
+    // buyer whose terms read that way, no field could be saved at all, the
+    // market included. The form sends the days now.
+    buyerFindUnique.mockResolvedValue({
+      name: "Acme",
+      contactName: null,
+      email: null,
+      phone: null,
+      address: null,
+      paymentTerms: "30 days",
+      market: null,
+      remark: null,
+    });
+    const result = await updateBuyer("b1", {
+      market: "Mydin",
+      paymentTerms: "30",
+    });
+    expect(result.success).toBe(true);
+    expect(buyerUpdate.mock.calls[0][0].data.market).toBe("Mydin");
+  });
+
+  it("refuses the stored wording, so a form that sends it back is not silently accepted", async () => {
+    const result = await updateBuyer("b1", {
+      market: "Mydin",
+      paymentTerms: "30 days",
+    });
+    expect(result).toEqual({
+      success: false,
+      error: "Payment terms are a whole number of days, 0 or more.",
+    });
+    expect(transaction).not.toHaveBeenCalled();
+  });
+
+  it("puts a market typed into the picker into the catalogue vocabulary", async () => {
+    await updateBuyer("b1", { market: "Brunei" });
+    expect(labelCreate).toHaveBeenCalledWith({
+      data: { kind: "MARKET", value: "Brunei" },
+    });
+  });
+
+  it("registers nothing when the market is cleared", async () => {
+    // Clearing is allowed on the edit path — the buyers already on record
+    // carry none, and refusing a blank here would lock every other field on
+    // those rows. There is nothing to add to the vocabulary either way.
+    await updateBuyer("b1", { market: "   " });
+    expect(buyerUpdate.mock.calls[0][0].data.market).toBeNull();
+    expect(labelCreate).not.toHaveBeenCalled();
+  });
+
   it("lets a member write a remark, trimmed", async () => {
     const result = await updateBuyer("b1", { remark: "  Chase on day 25.  " });
     expect(result.success).toBe(true);

@@ -42,7 +42,7 @@ export function BuyersTable({
   counts,
   market,
   markets,
-  hasNoMarket,
+  noMarket,
 }: {
   buyers: AdminBuyerRow[];
   sort: { key: string; dir: SortDirection };
@@ -51,7 +51,8 @@ export function BuyersTable({
   /** The *resolved* filter, never the raw parameter — see the page. */
   market: BuyerMarketFilter;
   markets: string[];
-  hasNoMarket: boolean;
+  /** Buyers carrying no market, over the whole roster — the count, not a flag. */
+  noMarket: number;
 }) {
   const onSortChange = useTableSort();
   const { replace } = useUrlNavigation();
@@ -179,7 +180,7 @@ export function BuyersTable({
             in. "Not set" is offered only while some buyer has none — which
             on the first deploy is every one of them, and is the worklist
             this feature creates. */}
-        {markets.length > 0 || hasNoMarket ? (
+        {markets.length > 0 || noMarket > 0 ? (
           <select
             aria-label="Market"
             value={market ?? ""}
@@ -194,7 +195,7 @@ export function BuyersTable({
                 {value}
               </option>
             ))}
-            {hasNoMarket ? <option value={NO_MARKET}>{NO_MARKET_LABEL}</option> : null}
+            {noMarket > 0 ? <option value={NO_MARKET}>{NO_MARKET_LABEL}</option> : null}
           </select>
         ) : null}
         <div

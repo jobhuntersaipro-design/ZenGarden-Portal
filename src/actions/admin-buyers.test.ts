@@ -10,6 +10,8 @@ const userFindMany = vi.fn();
 const userDeleteMany = vi.fn();
 const webOrderDeleteMany = vi.fn();
 const auditCreate = vi.fn();
+const labelFindFirst = vi.fn();
+const labelCreate = vi.fn();
 const sendEmail = vi.fn();
 const requireSuperAdmin = vi.fn();
 
@@ -67,6 +69,9 @@ const contact = { name: "Siti", email: "Siti@Acme.com", phone: "+60 12-345 6789"
 const input = {
   name: "Acme Industrial Sdn Bhd",
   contact,
+  // Required since 2026-09-24: a buyer with no market can sign in and see
+  // nothing, so the schema refuses one before the transaction opens.
+  market: "Mydin",
   address: "12 Jalan Satu",
   paymentTerms: "30",
   remark: "Pays late. Chase on day 25.",
@@ -82,9 +87,12 @@ beforeEach(() => {
       user: { create: userCreate, findMany: userFindMany, deleteMany: userDeleteMany },
       webOrder: { deleteMany: webOrderDeleteMany },
       auditEvent: { create: auditCreate },
+      catalogLabel: { findFirst: labelFindFirst, create: labelCreate },
     }),
   );
   buyerCreate.mockResolvedValue({ id: "buyer-1" });
+  labelFindFirst.mockResolvedValue(null);
+  labelCreate.mockResolvedValue({ id: "label-1" });
   userFindMany.mockResolvedValue([]);
   userCreate.mockResolvedValue({ id: "c1", name: "Siti", email: "siti@acme.com" });
   auditCreate.mockResolvedValue({ id: "evt-1" });
@@ -111,7 +119,7 @@ describe("createBuyer", () => {
       contactName: "Siti",
       email: "siti@acme.com",
       phone: "+60 12-345 6789",
-      market: null,
+      market: "Mydin",
     });
   });
 
@@ -120,21 +128,47 @@ describe("createBuyer", () => {
     expect(buyerCreate.mock.calls[0][0].data.market).toBe("Vietnam");
   });
 
-  it("stores no market rather than a blank one, so the shop fails closed", async () => {
-    // `optionalText` trims to null. A stored "" would scope the shop to
-    // products whose market is "" — an empty shop with no explanation — where
-    // null is the state every surface already words as "not set".
-    await createBuyer({ ...input, market: "   " });
-    expect(buyerCreate.mock.calls[0][0].data.market).toBeNull();
+  it("refuses a buyer with no market, and writes nothing", async () => {
+    // The whole point of requiring it: a buyer created without a market is an
+    // account that looks ready and can order nothing. Refused before the
+    // transaction opens, so there is no half-created buyer to tidy up.
+    const result = await createBuyer({ ...input, market: undefined as unknown as string });
+    expect(result).toEqual({
+      success: false,
+      error: "Choose the market this buyer buys in",
+    });
+    expect(transaction).not.toHaveBeenCalled();
+  });
+
+  it("refuses a blank market rather than storing one, so no shop scopes to \"\"", async () => {
+    // A stored "" would scope the shop to products whose market is "" — an
+    // empty shop with no explanation. Trimmed and refused instead.
+    const result = await createBuyer({ ...input, market: "   " });
+    expect(result.success).toBe(false);
+    expect(transaction).not.toHaveBeenCalled();
+  });
+
+  it("puts a market typed into the picker into the catalogue vocabulary", async () => {
+    // Otherwise it lives on this one row: the next buyer form would not offer
+    // it and no product could be put in the same market.
+    await createBuyer({ ...input, market: "Brunei" });
+    expect(labelCreate).toHaveBeenCalledWith({
+      data: { kind: "MARKET", value: "Brunei" },
+    });
+  });
+
+  it("registers nothing when the market is already on record", async () => {
+    labelFindFirst.mockResolvedValue({ id: "existing" });
+    await createBuyer(input);
+    expect(labelCreate).not.toHaveBeenCalled();
   });
 
   it("writes null for the folded fields when the disclosure was never opened", async () => {
-    await createBuyer({ name: input.name, contact });
+    await createBuyer({ name: input.name, contact, market: input.market });
     const data = buyerCreate.mock.calls[0][0].data;
     expect(data.address).toBeNull();
     expect(data.paymentTerms).toBeNull();
     expect(data.remark).toBeNull();
-    expect(data.market).toBeNull();
   });
 
   it("always creates the contact as a CLIENT of that buyer, with a handle from their email", async () => {
@@ -200,6 +234,7 @@ describe("createBuyer", () => {
         buyer: { create: buyerCreate },
         user: { create: userCreate, findMany: userFindMany },
         auditEvent: { create: auditCreate },
+        catalogLabel: { findFirst: labelFindFirst, create: labelCreate },
       });
       order.push("commit");
       return value;

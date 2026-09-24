@@ -40,7 +40,7 @@ export function BuyersTable({
   filter,
   market,
   markets,
-  hasNoMarket,
+  noMarket,
 }: {
   rows: BuyerRosterRow[];
   sort: { key: string; dir: SortDirection };
@@ -51,7 +51,8 @@ export function BuyersTable({
   /** The filter the query actually applied, never the raw parameter. */
   market: BuyerMarketFilter;
   markets: string[];
-  hasNoMarket: boolean;
+  /** Buyers carrying no market, over the whole roster — the count, not a flag. */
+  noMarket: number;
 }) {
   const onSortChange = useTableSort();
   const { replace } = useUrlNavigation();
@@ -202,7 +203,7 @@ export function BuyersTable({
         {/* Offered from the unfiltered roster, so narrowing to one market
             never removes the others from the control that would take you
             back. "No market" appears only while some buyer has none. */}
-        {markets.length > 0 || hasNoMarket ? (
+        {markets.length > 0 || noMarket > 0 ? (
           <select
             aria-label="Market"
             value={market ?? ""}
@@ -215,7 +216,7 @@ export function BuyersTable({
                 {value}
               </option>
             ))}
-            {hasNoMarket ? <option value={NO_MARKET}>{NO_MARKET_LABEL}</option> : null}
+            {noMarket > 0 ? <option value={NO_MARKET}>{NO_MARKET_LABEL}</option> : null}
           </select>
         ) : null}
 

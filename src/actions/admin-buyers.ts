@@ -14,6 +14,7 @@ import {
   uniqueMessage,
 } from "@/lib/client-invites";
 import { blockedMessage } from "@/lib/buyer-delete-message";
+import { registerLabels } from "@/lib/catalog-label-registry";
 import { prisma } from "@/lib/prisma";
 import { usernameBase, usernameFromEmail } from "@/lib/username";
 import { createBuyerSchema, type CreateBuyerInput } from "@/lib/validation/clients";
@@ -89,6 +90,13 @@ export async function createBuyer(
         },
         select: { id: true },
       });
+      // A market typed into the picker has to join the vocabulary, or it
+      // survives only on this one row: the next buyer form would not offer it
+      // and no product could be put in the same market, which is the
+      // disappearing act `CatalogLabel` exists to end. Inside the transaction,
+      // so the buyer and the market land together or not at all — the same
+      // call `createProduct` makes for brand, variant and market.
+      await registerLabels(tx, { market });
       // Derived, not asked for. Read inside the transaction so two admins
       // creating "siti@…" contacts at once cannot both be handed "siti" —
       // the unique index would still refuse the loser, and `uniqueMessage`

@@ -66,15 +66,28 @@ export const createBuyerSchema = z.object({
   }),
   /**
    * The one market this buyer buys in — what their shop is scoped by. Chosen
-   * from the MARKET vocabulary, but stored as free text like `Product.market`
-   * itself, so a market entered on the form and one entered on a product are
-   * the same value and match each other.
+   * from the MARKET vocabulary (`/admin/catalogue`), but stored as free text
+   * like `Product.market` itself, so a market entered here and one entered on
+   * a product are the same value and match each other.
    *
-   * Nullable and never required: a buyer can be created before anyone has
-   * decided, and the form says what that costs. It fails closed — no market
-   * means an empty shop, not the whole catalogue.
+   * **Required as of 2026-09-24, on creation only.** A buyer with no market
+   * can sign in and see nothing at all, so a new one entered without it is an
+   * account that looks set up and cannot order — and nobody finds out until
+   * the customer says so. It is asked for at the one moment somebody is
+   * already deciding everything else about them.
+   *
+   * The edit path (`buyerPatchSchema`) deliberately stays nullable: the
+   * buyers already on record carry no market, and refusing a blank there
+   * would mean no other field on those rows could be saved until somebody
+   * settled the market too — the same fail-closed trap in the opposite
+   * direction. Trimmed, so a picker that somehow sent whitespace is refused
+   * rather than stored as a market nothing matches.
    */
-  market: optionalText(56),
+  market: z
+    .string({ error: "Choose the market this buyer buys in" })
+    .trim()
+    .min(1, "Choose the market this buyer buys in")
+    .max(56),
   address: optionalText(500),
   paymentTerms: paymentTermsSchema,
   remark: optionalText(2000),

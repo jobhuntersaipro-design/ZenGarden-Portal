@@ -7,6 +7,7 @@ import { UploadPoButton } from "@/components/portal/UploadPoButton";
 import { Button } from "@/components/ui/button";
 import { AttentionStrip } from "@/components/buyers/AttentionStrip";
 import { BuyersTable } from "@/components/buyers/BuyersTable";
+import { NoMarketAlert } from "@/components/buyers/NoMarketAlert";
 import { BuyerRangeChips } from "@/components/buyers/BuyerRangeChips";
 import { KpiMoney, KpiNumber, KpiTile } from "@/components/dashboard/KpiTile";
 import {
@@ -144,6 +145,16 @@ export default async function BuyersPage({
 
       <AttentionStrip active={filter} counts={roster.attention} />
 
+      {/* Counted over every buyer on record, not the page of twenty being
+          drawn — a buyer with no market is a customer who cannot order, and
+          which page they sort onto has nothing to do with it. */}
+      <NoMarketAlert
+        count={roster.markets.noMarket}
+        total={roster.kpis.buyersOnRecord}
+        market={roster.market}
+        basePath="/buyers"
+      />
+
       <BuyersTable
         rows={roster.rows}
         sort={sort}
@@ -153,7 +164,7 @@ export default async function BuyersPage({
         filter={filter}
         market={roster.market}
         markets={roster.markets.markets}
-        hasNoMarket={roster.markets.hasNoMarket}
+        noMarket={roster.markets.noMarket}
       />
     </>
   );

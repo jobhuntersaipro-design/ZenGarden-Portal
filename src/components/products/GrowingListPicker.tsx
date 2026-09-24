@@ -29,6 +29,8 @@ export function GrowingListPicker({
   value,
   known,
   required = false,
+  invalid,
+  describedBy,
   onChange,
 }: {
   /** Sentence-case noun: "Brand", "Variant", "Market", "Category". */
@@ -42,6 +44,10 @@ export function GrowingListPicker({
    * does nothing.
    */
   required?: boolean;
+  /** Passed to the trigger: a required picker the form refused to submit. */
+  invalid?: boolean;
+  /** The id of the message saying why. */
+  describedBy?: string;
   onChange: (value: string | null) => void;
 }) {
   const options = value && !known.includes(value) ? [value, ...known] : known;
@@ -56,6 +62,8 @@ export function GrowingListPicker({
         ...(required ? [] : [{ id: NONE, label: none }]),
         ...options.map((entry) => ({ id: entry, label: entry })),
       ]}
+      invalid={invalid}
+      describedBy={describedBy}
       createLabel={(query) => `+ Add “${query}”`}
       onSelect={(option) => onChange(option.id === NONE ? null : option.id)}
       onCreate={(entry) => onChange(entry)}

@@ -38,22 +38,31 @@ describe("matchesMarket", () => {
 });
 
 describe("buyerMarketOptions", () => {
-  it("offers each market once, sorted, and says whether any buyer has none", () => {
+  it("offers each market once, sorted, and counts the buyers with none", () => {
     expect(buyerMarketOptions(rows)).toEqual({
       markets: ["Mydin", "Vietnam"],
-      hasNoMarket: true,
+      noMarket: 1,
     });
+  });
+
+  it("counts every unassigned buyer, not just that one exists", () => {
+    // The alert above the roster prints this number, so a roster with three
+    // unassigned buyers must not read as one.
+    expect(
+      buyerMarketOptions([{ market: null }, { market: "Mydin" }, { market: null }, { market: null }])
+        .noMarket,
+    ).toBe(3);
   });
 
   it("does not offer No market when every buyer has one", () => {
     expect(buyerMarketOptions([{ market: "Mydin" }])).toEqual({
       markets: ["Mydin"],
-      hasNoMarket: false,
+      noMarket: 0,
     });
   });
 
   it("offers nothing for an empty roster", () => {
-    expect(buyerMarketOptions([])).toEqual({ markets: [], hasNoMarket: false });
+    expect(buyerMarketOptions([])).toEqual({ markets: [], noMarket: 0 });
   });
 });
 

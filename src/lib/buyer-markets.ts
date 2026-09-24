@@ -52,17 +52,25 @@ export function matchesMarket(row: MarketBearing, filter: BuyerMarketFilter): bo
  */
 export function buyerMarketOptions(rows: MarketBearing[]): {
   markets: string[];
-  hasNoMarket: boolean;
+  /**
+   * How many buyers carry no market — not merely whether any does.
+   *
+   * One number answers both questions the roster asks of it: whether to offer
+   * the "No market" option at all, and what the alert above the table prints.
+   * A separate boolean beside it would be a second way to say the same thing,
+   * and two of those drift.
+   */
+  noMarket: number;
 } {
   const markets = new Set<string>();
-  let hasNoMarket = false;
+  let noMarket = 0;
   for (const row of rows) {
-    if (row.market === null) hasNoMarket = true;
+    if (row.market === null) noMarket += 1;
     else markets.add(row.market);
   }
   return {
     markets: [...markets].sort((a, b) => a.localeCompare(b)),
-    hasNoMarket,
+    noMarket,
   };
 }
 
@@ -81,7 +89,7 @@ export function resolveBuyerMarket(
   rows: MarketBearing[],
 ): BuyerMarketFilter {
   if (!raw) return null;
-  const { markets, hasNoMarket } = buyerMarketOptions(rows);
-  if (raw === NO_MARKET) return hasNoMarket ? NO_MARKET : null;
+  const { markets, noMarket } = buyerMarketOptions(rows);
+  if (raw === NO_MARKET) return noMarket > 0 ? NO_MARKET : null;
   return markets.includes(raw) ? raw : null;
 }

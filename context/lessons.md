@@ -219,3 +219,42 @@ unsolved problem* is what kept it open.
 prop so the question cannot be answered two ways again — then make the
 single-series path the one-series case of the general rule, so the charts that
 never had the problem cannot drift away from the charts that did.
+
+---
+
+## 10. A form seeded with the stored value must send back the editable one
+
+**Rule.** When a column stores one shape and the form edits another — `"30
+days"` stored against a number of days typed, a `@db.Date` against a
+`yyyy-mm-dd`, cents against ringgit — the form has to seed itself through the
+*same* helper the write path validates against. Seeding it with the raw stored
+value makes the form send that value straight back, and the schema refuses
+what the database already holds. Before shipping a form, open it on a **real
+row** and submit it **unchanged**: a save that changes nothing must succeed.
+
+**And the blast radius is the whole patch, not the field.** One schema issue
+fails `safeParse`, so a field nobody touched blocks every other field in the
+same form. The reported symptom is never "payment terms are broken" — it is
+"I can't set the market".
+
+**Smell.** A patch seeded straight off the row (`paymentTerms:
+buyer.paymentTerms`) while some *other* form seeds the same field through a
+helper (`paymentTermsDaysInput(...)`). Two callers of one rule, one of them
+raw. Also: a field inside a generic "render every text field" loop that is not
+actually free text.
+
+**The case (2026-09-24, reported twice).** `BuyerDetailsCard` seeded its patch
+with `buyer.paymentTerms`. `optionalPaymentTermsSchema` accepts `^\d+$`, so
+every save was refused with *"Payment terms are a whole number of days, 0 or
+more."* — on **every** buyer whose terms read `"30 days"`, which is all of
+them. The market picker beside it had worked since 2026-09-23 and could never
+be saved. The three purchase-order forms had read the field through
+`paymentTermsDaysInput` since 2026-09-22; this fourth caller was missed, and
+the defect was recorded as "pre-existing, not fixed" a day before the user
+asked for the feature it was blocking.
+
+**What makes it worse.** It cannot be caught by a static render or by a schema
+test: the schema is right, the component is right at rest, and only *opening
+the sheet on a real row and pressing Save* fails. The guard that does catch it
+is a test asserting the **stored wording is refused** — so if a form ever
+sends it again, something is red.

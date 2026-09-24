@@ -16,6 +16,7 @@ import {
 import { GrowingListPicker } from "@/components/products/GrowingListPicker";
 import { Textarea } from "@/components/ui/textarea";
 import { formatDate } from "@/lib/dates";
+import { paymentTermsDaysInput } from "@/lib/payment-terms";
 
 export type BuyerDetails = {
   id: string;
@@ -61,7 +62,15 @@ export function BuyerDetailsCard({
     email: buyer.email,
     phone: buyer.phone,
     address: buyer.address,
-    paymentTerms: buyer.paymentTerms,
+    // The **days**, not the stored wording. `optionalPaymentTermsSchema` takes
+    // a number of days and refuses anything else, so opening this sheet with
+    // the stored "30 days" in the field and saving it back was refused —
+    // "Payment terms are a whole number of days, 0 or more." — which blocked
+    // every other field on the row, the market included, on every buyer whose
+    // terms were written that way (the seed writes all of them that way). The
+    // three purchase-order forms have read the field through this helper since
+    // 2026-09-22; this one was missed.
+    paymentTerms: paymentTermsDaysInput(buyer.paymentTerms) || null,
     market: buyer.market,
     remark: buyer.remark,
     ...(canRename ? { name: buyer.name } : {}),
@@ -105,28 +114,50 @@ export function BuyerDetailsCard({
             </div>
           ) : null}
 
-          {[...CONTACT_FIELDS, { key: "paymentTerms" as const, label: "Payment terms" }].map(
-            (field) => (
-              <div key={field.key} className="flex flex-col gap-xxs">
-                <label
-                  htmlFor={`buyer-${field.key}`}
-                  className="font-mono text-[length:var(--text-eyebrow)] text-ink-tertiary"
-                >
-                  {field.label}
-                </label>
-                <Input
-                  id={`buyer-${field.key}`}
-                  value={(patch[field.key] as string | null) ?? ""}
-                  onChange={(event) =>
-                    setPatch((current) => ({
-                      ...current,
-                      [field.key]: event.target.value,
-                    }))
-                  }
-                />
-              </div>
-            ),
-          )}
+          {CONTACT_FIELDS.map((field) => (
+            <div key={field.key} className="flex flex-col gap-xxs">
+              <label
+                htmlFor={`buyer-${field.key}`}
+                className="font-mono text-[length:var(--text-eyebrow)] text-ink-tertiary"
+              >
+                {field.label}
+              </label>
+              <Input
+                id={`buyer-${field.key}`}
+                value={(patch[field.key] as string | null) ?? ""}
+                onChange={(event) =>
+                  setPatch((current) => ({
+                    ...current,
+                    [field.key]: event.target.value,
+                  }))
+                }
+              />
+            </div>
+          ))}
+
+          {/* Out of that loop and a number input, because it is the one field
+              here that is not free text: the column stores "30 days" and the
+              form edits the 30. The label says so, as the buyer form's own
+              does. */}
+          <div className="flex flex-col gap-xxs">
+            <label
+              htmlFor="buyer-paymentTerms"
+              className="font-mono text-[length:var(--text-eyebrow)] text-ink-tertiary"
+            >
+              Payment terms (days)
+            </label>
+            <Input
+              id="buyer-paymentTerms"
+              type="number"
+              min={0}
+              step={1}
+              placeholder="30"
+              value={patch.paymentTerms ?? ""}
+              onChange={(event) =>
+                setPatch((current) => ({ ...current, paymentTerms: event.target.value }))
+              }
+            />
+          </div>
 
           <div className="flex flex-col gap-xxs">
             <span className="font-mono text-[length:var(--text-eyebrow)] text-ink-tertiary">

@@ -25,6 +25,8 @@ export function Combobox({
   onCreate,
   ariaLabel,
   pinned,
+  invalid,
+  describedBy,
 }: {
   value: string | null;
   options: ComboboxOption[];
@@ -39,6 +41,15 @@ export function Combobox({
    * matches nothing, which is when the filtered list would have dropped it.
    */
   pinned?: ComboboxOption[];
+  /**
+   * The trigger carries `aria-invalid`, so a required picker left empty is
+   * announced as invalid and takes the destructive border the `Input` and
+   * `Select` primitives already give a bad field — a red message under a
+   * control that still looks fine is the half-done version of this.
+   */
+  invalid?: boolean;
+  /** The id of that message, so the control names its own reason. */
+  describedBy?: string;
 }) {
   const [open, setOpen] = useState(false);
   const [query, setQuery] = useState("");
@@ -58,7 +69,9 @@ export function Combobox({
     <Popover open={open} onOpenChange={setOpen}>
       <PopoverTrigger
         aria-label={ariaLabel}
-        className="flex h-control-md w-full items-center justify-between gap-xs rounded-sm border border-hairline-strong bg-transparent px-2.5 text-left text-[length:var(--text-body-sm)] focus-visible:border-focus focus-visible:outline-2 focus-visible:outline-focus"
+        aria-invalid={invalid || undefined}
+        aria-describedby={describedBy}
+        className="flex h-control-md w-full items-center justify-between gap-xs rounded-sm border border-hairline-strong bg-transparent px-2.5 text-left text-[length:var(--text-body-sm)] focus-visible:border-focus focus-visible:outline-2 focus-visible:outline-focus aria-invalid:border-destructive"
       >
         {/* The full value is always recoverable, even when the trigger clips it. */}
         <span
