@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import {
+  batchesOf,
   buyerDocumentKey,
   buyerLogoUrl,
   canonicalFolder,
@@ -9,6 +10,7 @@ import {
   logoRejectionReason,
   previewKind,
   resolveDocumentType,
+  withDraftFolders,
 } from "@/lib/validation/buyer-files";
 
 const UUID = "0f8fad5b-d9cb-469f-a165-70867728950e";
@@ -86,5 +88,41 @@ describe("logo", () => {
   it("versions the URL with the stored hash", () => {
     expect(buyerLogoUrl("b1", "buyers/b1/logo-abc123.png")).toBe("/api/buyers/b1/logo?v=abc123");
     expect(buyerLogoUrl("b1", null)).toBeNull();
+  });
+});
+
+describe("batchesOf", () => {
+  it("sends any number of files, ten to a request", () => {
+    const files = Array.from({ length: 23 }, (_, i) => i);
+    const batches = batchesOf(files);
+    expect(batches.map((batch) => batch.length)).toEqual([10, 10, 3]);
+    expect(batches.flat()).toEqual(files);
+  });
+
+  it("sends nothing for nothing", () => {
+    expect(batchesOf([])).toEqual([]);
+  });
+});
+
+describe("withDraftFolders", () => {
+  const empty = (name: string) => ({ name, documents: [] as number[] });
+
+  it("lists a new empty folder among the rest, A–Z", () => {
+    const folders = [
+      { name: "Contracts", documents: [1] },
+      { name: "SSM", documents: [2] },
+    ];
+    expect(withDraftFolders(folders, ["Invoices"], empty).map((f) => f.name)).toEqual([
+      "Contracts",
+      "Invoices",
+      "SSM",
+    ]);
+  });
+
+  it("drops a draft once files are filed under it, whatever its case", () => {
+    const folders = [{ name: "Invoices", documents: [1] }];
+    const out = withDraftFolders(folders, ["invoices"], empty);
+    expect(out).toHaveLength(1);
+    expect(out[0].documents).toEqual([1]);
   });
 });

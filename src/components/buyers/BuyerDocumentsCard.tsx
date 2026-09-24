@@ -1,19 +1,17 @@
 "use client";
 
 import { useMemo, useRef, useState } from "react";
-import {
-  Download,
-  Eye,
-  FileSpreadsheet,
-  FileText,
-  FolderOpen,
-  ImageIcon,
-  MoreHorizontal,
-  Upload,
-} from "lucide-react";
+import { Download, FolderPlus, Upload } from "lucide-react";
 import { toast } from "sonner";
 import { deleteBuyerDocument, moveBuyerDocument } from "@/actions/buyer-documents";
 import type { PresignBuyerDocumentsResponse } from "@/app/api/buyers/[id]/documents/presign/route";
+import {
+  ACTION,
+  DocumentFolderSection,
+  downloadHref,
+  kindOf,
+  useFileDrop,
+} from "@/components/buyers/DocumentFolderSection";
 import { GrowingListPicker } from "@/components/products/GrowingListPicker";
 import { DocumentPreview } from "@/components/review/DocumentPreview";
 import { Button } from "@/components/ui/button";
@@ -25,12 +23,6 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu";
 import { Input } from "@/components/ui/input";
 import {
   Sheet,
@@ -45,32 +37,35 @@ import { formatDate } from "@/lib/dates";
 import type { BuyerDocumentFolder, BuyerDocumentRow } from "@/lib/queries/buyer-documents";
 import {
   BUYER_DOCUMENT_ACCEPT,
-  MAX_BUYER_DOCUMENTS_PER_CALL,
+  batchesOf,
+  canonicalFolder,
   documentRejectionReason,
+  folderSchema,
+  withDraftFolders,
 } from "@/lib/validation/buyer-files";
 import { formatBytes } from "@/lib/validation/upload";
 
-const ACTION =
-  "h-control-md min-w-11 gap-xxs px-sm text-[length:var(--text-caption)] sm:h-control-sm sm:min-w-0";
 const label = "font-mono text-[length:var(--text-eyebrow)] text-ink-tertiary";
 
-/** What the row calls the file, from its type rather than its name. */
-function kindOf(mimeType: string): { name: string; Icon: typeof FileText } {
-  if (mimeType === "application/pdf") return { name: "PDF", Icon: FileText };
-  if (mimeType.startsWith("image/")) return { name: "Image", Icon: ImageIcon };
-  if (mimeType.includes("spreadsheet") || mimeType.includes("excel")) {
-    return { name: "Excel", Icon: FileSpreadsheet };
-  }
-  return { name: "Word", Icon: FileText };
-}
-
-type UploadRow = { name: string; status: "uploading" | "done" | "failed"; reason?: string };
-
-const downloadHref = (id: string) => `/api/buyer-documents/${id}/url?download=1`;
+type UploadRow = {
+  id: string;
+  name: string;
+  folder: string;
+  status: "uploading" | "done" | "failed";
+  reason?: string;
+};
 
 /**
  * The files staff keep against a buyer (2026-09-24): contracts, registration
- * certificates, price lists. Grouped by folder, A–Z, newest first inside each.
+ * certificates, price lists. Grouped by folder, A–Z, newest first inside each;
+ * every folder collapses and pages its files ten at a time.
+ *
+ * Any number of files go up in one choice or one drop — sent to the presign
+ * route in batches of ten, which is that route's limit per request and not the
+ * reader's problem. A folder is made with its own "New folder" button rather
+ * than by typing into a picker, and lives on this page until a file is filed
+ * into it: a folder is a label on a file, so an empty one has nowhere to be
+ * stored.
  *
  * PDFs and pictures open in a drawer beside the page; Word and Excel cannot be
  * drawn by a browser, so they download. Anyone who can read the buyer sees
@@ -91,11 +86,18 @@ export function BuyerDocumentsCard({
 }) {
   const refresh = useAwaitableRefresh();
   const fileInput = useRef<HTMLInputElement>(null);
+  /** Which folder the hidden file input is choosing for. */
+  const target = useRef<string | null>(null);
   const [uploadOpen, setUploadOpen] = useState(false);
   const [folder, setFolder] = useState<string | null>(null);
   const [folderMissing, setFolderMissing] = useState(false);
   const [uploads, setUploads] = useState<UploadRow[]>([]);
   const [uploading, setUploading] = useState(false);
+  const [drafts, setDrafts] = useState<string[]>([]);
+  const [collapsed, setCollapsed] = useState<Set<string>>(() => new Set());
+  const [creating, setCreating] = useState(false);
+  const [newName, setNewName] = useState("");
+  const [newNameError, setNewNameError] = useState<string | null>(null);
   const [query, setQuery] = useState("");
   const [previewing, setPreviewing] = useState<BuyerDocumentRow | null>(null);
   const [deleting, setDeleting] = useState<BuyerDocumentRow | null>(null);
@@ -104,11 +106,22 @@ export function BuyerDocumentsCard({
   );
   const [busy, setBusy] = useState(false);
 
+  const listed = useMemo(
+    () => withDraftFolders(folders, drafts, (name) => ({ name, documents: [] })),
+    [folders, drafts],
+  );
+  const pickable = useMemo(
+    () =>
+      [...new Set([...listed.map((entry) => entry.name), ...knownFolders])].sort((a, b) =>
+        a.localeCompare(b, undefined, { sensitivity: "base" }),
+      ),
+    [listed, knownFolders],
+  );
   const total = folders.reduce((sum, entry) => sum + entry.documents.length, 0);
+  const needle = query.trim().toLowerCase();
   const shown = useMemo(() => {
-    const needle = query.trim().toLowerCase();
-    if (!needle) return folders;
-    return folders
+    if (!needle) return listed;
+    return listed
       .map((entry) => ({
         ...entry,
         documents: entry.name.toLowerCase().includes(needle)
@@ -116,91 +129,119 @@ export function BuyerDocumentsCard({
           : entry.documents.filter((doc) => doc.name.toLowerCase().includes(needle)),
       }))
       .filter((entry) => entry.documents.length > 0);
-  }, [folders, query]);
+  }, [listed, needle]);
 
-  const setRow = (name: string, patch: Partial<UploadRow>) =>
-    setUploads((rows) => rows.map((row) => (row.name === name ? { ...row, ...patch } : row)));
+  const setRow = (id: string, patch: Partial<UploadRow>) =>
+    setUploads((rows) => rows.map((row) => (row.id === id ? { ...row, ...patch } : row)));
 
-  const upload = async (files: File[]) => {
-    if (!folder) {
+  const expand = (name: string) =>
+    setCollapsed((current) => {
+      if (!current.has(name)) return current;
+      const next = new Set(current);
+      next.delete(name);
+      return next;
+    });
+
+  /** One file: PUT to storage, then tell the server it arrived. */
+  const send = async (row: UploadRow, file: File, slot: PresignBuyerDocumentsResponse["files"][number]) => {
+    try {
+      const put = await fetch(slot.url, {
+        method: "PUT",
+        headers: { "Content-Type": slot.type },
+        body: file,
+      });
+      if (!put.ok) throw new Error(`Storage refused the file (${put.status})`);
+      const done = await fetch(`/api/buyers/${buyerId}/documents/complete`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          folder: row.folder,
+          key: slot.key,
+          name: file.name,
+          type: file.type,
+          size: file.size,
+        }),
+      });
+      if (!done.ok) {
+        const detail = (await done.json().catch(() => ({}))) as { error?: string };
+        throw new Error(detail.error ?? "We couldn't save that file");
+      }
+      setRow(row.id, { status: "done" });
+    } catch (cause) {
+      setRow(row.id, {
+        status: "failed",
+        reason:
+          cause instanceof TypeError
+            ? "The upload was interrupted — check your connection"
+            : cause instanceof Error
+              ? cause.message
+              : "We couldn't upload that file",
+      });
+    }
+  };
+
+  const upload = async (files: File[], into: string | null) => {
+    if (!into) {
+      setUploadOpen(true);
       setFolderMissing(true);
       return;
     }
-    if (files.length > MAX_BUYER_DOCUMENTS_PER_CALL) {
-      toast.error(`Up to ${MAX_BUYER_DOCUMENTS_PER_CALL} files at a time.`);
-      return;
-    }
+    expand(into);
+    const stamp = Date.now();
     // Refused in the browser first, with the same sentence the server uses,
     // so a wrong file never costs a round trip.
-    const rows: UploadRow[] = files.map((file) => {
+    const rows: UploadRow[] = files.map((file, index) => {
       const reason = documentRejectionReason(file);
-      return reason
-        ? { name: file.name, status: "failed", reason }
-        : { name: file.name, status: "uploading" };
+      return {
+        id: `${stamp}-${index}`,
+        name: file.name,
+        folder: into,
+        status: reason ? "failed" : "uploading",
+        reason: reason ?? undefined,
+      };
     });
     setUploads(rows);
-    const sendable = files.filter((_, index) => rows[index].status === "uploading");
+    const sendable = files
+      .map((file, index) => ({ file, row: rows[index] }))
+      .filter(({ row }) => row.status === "uploading");
     if (sendable.length === 0) return;
 
     setUploading(true);
     try {
-      const presign = await fetch(`/api/buyers/${buyerId}/documents/presign`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          folder,
-          files: sendable.map((file) => ({ name: file.name, type: file.type, size: file.size })),
-        }),
-      });
-      const body = (await presign.json()) as PresignBuyerDocumentsResponse & { error?: string };
-      if (!presign.ok) {
-        for (const file of sendable) {
-          setRow(file.name, { status: "failed", reason: body.error ?? "We couldn't start that upload" });
-        }
-        return;
-      }
-      for (const error of body.errors) setRow(error.name, { status: "failed", reason: error.reason });
-
-      await Promise.all(
-        body.files.map(async (slot) => {
-          const file = sendable.find((candidate) => candidate.name === slot.name);
-          if (!file) return;
-          try {
-            const put = await fetch(slot.url, {
-              method: "PUT",
-              headers: { "Content-Type": slot.type },
-              body: file,
-            });
-            if (!put.ok) throw new Error(`Storage refused the file (${put.status})`);
-            const done = await fetch(`/api/buyers/${buyerId}/documents/complete`, {
-              method: "POST",
-              headers: { "Content-Type": "application/json" },
-              body: JSON.stringify({
-                folder,
-                key: slot.key,
-                name: file.name,
-                type: file.type,
-                size: file.size,
-              }),
-            });
-            if (!done.ok) {
-              const detail = (await done.json().catch(() => ({}))) as { error?: string };
-              throw new Error(detail.error ?? "We couldn't save that file");
-            }
-            setRow(file.name, { status: "done" });
-          } catch (cause) {
-            setRow(file.name, {
-              status: "failed",
-              reason:
-                cause instanceof TypeError
-                  ? "The upload was interrupted — check your connection"
-                  : cause instanceof Error
-                    ? cause.message
-                    : "We couldn't upload that file",
-            });
+      for (const batch of batchesOf(sendable)) {
+        const presign = await fetch(`/api/buyers/${buyerId}/documents/presign`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            folder: into,
+            files: batch.map(({ file }) => ({ name: file.name, type: file.type, size: file.size })),
+          }),
+        });
+        const body = (await presign.json()) as PresignBuyerDocumentsResponse & { error?: string };
+        if (!presign.ok) {
+          for (const { row } of batch) {
+            setRow(row.id, { status: "failed", reason: body.error ?? "We couldn't start that upload" });
           }
-        }),
-      );
+          continue;
+        }
+        // The route answers by file name, and two files may share one, so
+        // each answer is handed to the first file of that name still waiting.
+        const waiting = [...batch];
+        const take = (name: string) => {
+          const index = waiting.findIndex(({ file }) => file.name === name);
+          return index === -1 ? null : waiting.splice(index, 1)[0];
+        };
+        for (const error of body.errors) {
+          const entry = take(error.name);
+          if (entry) setRow(entry.row.id, { status: "failed", reason: error.reason });
+        }
+        await Promise.all(
+          body.files.map((slot) => {
+            const entry = take(slot.name);
+            return entry ? send(entry.row, entry.file, slot) : undefined;
+          }),
+        );
+      }
       await refresh();
     } catch {
       toast.error("We couldn't reach the server. Try again.");
@@ -211,11 +252,40 @@ export function BuyerDocumentsCard({
       );
     } finally {
       setUploading(false);
-      if (fileInput.current) fileInput.current.value = "";
     }
   };
 
+  const chooseFiles = (into: string | null) => {
+    if (!into) {
+      setUploadOpen(true);
+      setFolderMissing(true);
+      return;
+    }
+    target.current = into;
+    fileInput.current?.click();
+  };
+
+  const createFolder = () => {
+    const parsed = folderSchema.safeParse(newName);
+    if (!parsed.success) {
+      setNewNameError(parsed.error.issues[0]?.message ?? "Name the folder.");
+      return;
+    }
+    const name = canonicalFolder(parsed.data, pickable);
+    const existing = listed.some((entry) => entry.name === name);
+    if (!existing) setDrafts((current) => [...current, name]);
+    expand(name);
+    setFolder(name);
+    setFolderMissing(false);
+    setCreating(false);
+    setNewName("");
+    setNewNameError(null);
+    toast.success(existing ? `${name} is already here` : `Folder ${name} created — add files to keep it`);
+  };
+
+  const panelDrop = useFileDrop((files) => void upload(files, folder), canManage && uploadOpen);
   const doneCount = uploads.filter((row) => row.status === "done").length;
+  const failedCount = uploads.filter((row) => row.status === "failed").length;
 
   return (
     <section
@@ -239,29 +309,39 @@ export function BuyerDocumentsCard({
           </p>
         </div>
         {canManage ? (
-          <Button
-            variant="secondary"
-            onClick={() => {
-              setUploadOpen((open) => !open);
-              setUploads([]);
-            }}
-            aria-expanded={uploadOpen}
-          >
-            <Upload aria-hidden className="size-4" />
-            Upload files
-          </Button>
+          <div className="flex flex-wrap gap-xs">
+            <Button
+              variant="secondary"
+              onClick={() => {
+                setNewName("");
+                setNewNameError(null);
+                setCreating(true);
+              }}
+            >
+              <FolderPlus aria-hidden className="size-4" />
+              New folder
+            </Button>
+            <Button
+              variant="secondary"
+              onClick={() => setUploadOpen((open) => !open)}
+              aria-expanded={uploadOpen}
+            >
+              <Upload aria-hidden className="size-4" />
+              Upload files
+            </Button>
+          </div>
         ) : null}
       </div>
 
       {canManage && uploadOpen ? (
         <div className="mt-md flex flex-col gap-sm rounded-md border border-hairline bg-surface p-md">
-          <div className="grid gap-sm sm:grid-cols-[minmax(0,1fr)_auto] sm:items-end">
-            <div className="flex min-w-0 flex-col gap-xxs">
-              <span className={label}>Folder</span>
+          <div className="flex min-w-0 flex-col gap-xxs">
+            <span className={label}>Folder</span>
+            <div className="grid gap-xs sm:grid-cols-[minmax(0,1fr)_auto]">
               <GrowingListPicker
                 label="Folder"
                 value={folder}
-                known={knownFolders}
+                known={pickable}
                 required
                 invalid={folderMissing}
                 describedBy={folderMissing ? "folder-missing" : undefined}
@@ -270,83 +350,126 @@ export function BuyerDocumentsCard({
                   setFolderMissing(false);
                 }}
               />
+              <Button
+                variant="secondary"
+                onClick={() => {
+                  setNewName("");
+                  setNewNameError(null);
+                  setCreating(true);
+                }}
+              >
+                <FolderPlus aria-hidden className="size-4" />
+                New folder
+              </Button>
             </div>
-            <Button
-              disabled={uploading}
-              pending={uploading}
-              onClick={() => {
-                if (!folder) {
-                  setFolderMissing(true);
-                  return;
-                }
-                fileInput.current?.click();
-              }}
-            >
+            {folderMissing ? (
+              <p
+                id="folder-missing"
+                role="alert"
+                className="text-[length:var(--text-caption)] text-accent-red"
+              >
+                Choose a folder first — or make a new one.
+              </p>
+            ) : null}
+          </div>
+          <div
+            {...panelDrop.handlers}
+            className={`flex flex-col items-center gap-xs rounded-md border-2 border-dashed p-md text-center transition-colors ${
+              panelDrop.over ? "border-focus bg-canvas" : "border-hairline-strong"
+            }`}
+          >
+            <Upload aria-hidden className="size-5 text-ink-secondary" />
+            <p className="text-[length:var(--text-body-sm)] text-ink">
+              <span className="max-sm:hidden">
+                {folder ? `Drop files here to add them to ${folder}` : "Drop files here"}
+              </span>
+              <span className="sm:hidden">
+                {folder ? `Add files to ${folder}` : "Add files"}
+              </span>
+            </p>
+            <Button disabled={uploading} pending={uploading} onClick={() => chooseFiles(folder)}>
               {uploading ? "Uploading…" : "Choose files"}
             </Button>
-          </div>
-          {folderMissing ? (
-            <p id="folder-missing" role="alert" className="text-[length:var(--text-caption)] text-accent-red">
-              Choose a folder first — or type a new one.
-            </p>
-          ) : (
             <p className="text-[length:var(--text-caption)] text-ink-tertiary">
-              PDF, images, Word or Excel, up to 25 MB each, {MAX_BUYER_DOCUMENTS_PER_CALL} at a time.
+              Select as many as you need — PDF, images, Word or Excel, up to 25 MB each.
             </p>
-          )}
-          <input
-            ref={fileInput}
-            type="file"
-            multiple
-            accept={BUYER_DOCUMENT_ACCEPT}
-            className="sr-only"
-            tabIndex={-1}
-            aria-label="Choose files to upload"
-            onChange={(event) => {
-              const files = Array.from(event.target.files ?? []);
-              if (files.length > 0) void upload(files);
-            }}
-          />
-          {uploads.length > 0 ? (
-            <ul aria-live="polite" className="flex flex-col gap-xxs">
-              {uploads.map((row) => (
-                <li
-                  key={row.name}
-                  className="flex min-w-0 items-start gap-xs text-[length:var(--text-body-sm)]"
-                >
-                  <span className="mt-0.5 grid size-4 shrink-0 place-items-center">
-                    {row.status === "uploading" ? (
-                      <Spinner />
-                    ) : (
-                      <span
-                        aria-hidden
-                        className={`size-2 rounded-full ${
-                          row.status === "done" ? "bg-accent-green" : "bg-accent-red"
-                        }`}
-                      />
-                    )}
-                  </span>
-                  <span className="min-w-0 flex-1">
-                    <span className="block truncate text-ink" title={row.name}>
-                      {row.name}
-                    </span>
-                    <span className="block text-[length:var(--text-caption)] text-ink-tertiary">
-                      {row.status === "uploading"
-                        ? "Uploading…"
-                        : row.status === "done"
-                          ? `Saved in ${folder}`
-                          : row.reason}
-                    </span>
-                  </span>
-                </li>
-              ))}
-            </ul>
-          ) : null}
-          {doneCount > 0 && !uploading ? (
+          </div>
+        </div>
+      ) : null}
+
+      {canManage ? (
+        <input
+          ref={fileInput}
+          type="file"
+          multiple
+          accept={BUYER_DOCUMENT_ACCEPT}
+          className="sr-only"
+          // Driven by the buttons that name a folder. Left in the tree it
+          // would be a second, unlabelled stop announcing "Choose File".
+          tabIndex={-1}
+          aria-hidden
+          onChange={(event) => {
+            const files = Array.from(event.target.files ?? []);
+            // Cleared so choosing the same files again still fires a change.
+            event.target.value = "";
+            if (files.length > 0) void upload(files, target.current);
+          }}
+        />
+      ) : null}
+
+      {uploads.length > 0 ? (
+        <div className="mt-md rounded-md border border-hairline p-sm">
+          <div className="flex items-center justify-between gap-sm">
             <p className="text-[length:var(--text-caption)] text-ink-secondary">
-              {doneCount} {doneCount === 1 ? "file" : "files"} saved.
+              {uploading
+                ? `Uploading ${uploads.length} ${uploads.length === 1 ? "file" : "files"} to ${uploads[0].folder}…`
+                : `${doneCount} of ${uploads.length} saved in ${uploads[0].folder}${
+                    failedCount > 0 ? ` · ${failedCount} not saved` : ""
+                  }`}
             </p>
-          ) : null}
+            {!uploading ? (
+              <button
+                type="button"
+                onClick={() => setUploads([])}
+                className="min-h-control-md rounded-sm px-xs text-[length:var(--text-caption)] text-ink-secondary hover:text-ink focus-visible:outline-2 focus-visible:outline-focus sm:min-h-0"
+              >
+                Clear
+              </button>
+            ) : null}
+          </div>
+          <ul aria-live="polite" className="mt-xs flex max-h-60 flex-col gap-xxs overflow-y-auto">
+            {uploads.map((row) => (
+              <li
+                key={row.id}
+                className="flex min-w-0 items-start gap-xs text-[length:var(--text-body-sm)]"
+              >
+                <span className="mt-0.5 grid size-4 shrink-0 place-items-center">
+                  {row.status === "uploading" ? (
+                    <Spinner />
+                  ) : (
+                    <span
+                      aria-hidden
+                      className={`size-2 rounded-full ${
+                        row.status === "done" ? "bg-accent-green" : "bg-accent-red"
+                      }`}
+                    />
+                  )}
+                </span>
+                <span className="min-w-0 flex-1">
+                  <span className="block truncate text-ink" title={row.name}>
+                    {row.name}
+                  </span>
+                  <span className="block text-[length:var(--text-caption)] text-ink-tertiary">
+                    {row.status === "uploading"
+                      ? "Uploading…"
+                      : row.status === "done"
+                        ? `Saved in ${row.folder}`
+                        : row.reason}
+                  </span>
+                </span>
+              </li>
+            ))}
+          </ul>
         </div>
       ) : null}
 
@@ -360,118 +483,101 @@ export function BuyerDocumentsCard({
         />
       ) : null}
 
-      {total === 0 ? (
+      {listed.length === 0 ? (
         <p className="mt-md rounded-md bg-surface p-md text-[length:var(--text-body-sm)] text-ink-secondary">
           No documents yet.
-          {canManage ? " Upload the first — choose a folder like “Contracts” to keep them tidy." : ""}
+          {canManage
+            ? " Make a folder like “Contracts” with New folder, then add files to it."
+            : ""}
         </p>
       ) : shown.length === 0 ? (
         <p className="mt-md text-[length:var(--text-body-sm)] text-ink-secondary">
           Nothing matches “{query.trim()}”.
         </p>
       ) : (
-        <div className="mt-md flex flex-col gap-md">
+        <div className="mt-md flex flex-col gap-xs">
           {shown.map((entry) => (
-            <div key={entry.name} className="min-w-0">
-              <h3 className="flex items-center gap-xs text-[length:var(--text-body-sm)] font-semibold text-ink">
-                <FolderOpen aria-hidden className="size-4 text-ink-tertiary" />
-                <span className="min-w-0 truncate" title={entry.name}>
-                  {entry.name}
-                </span>
-                <span className="font-normal text-ink-tertiary">{entry.documents.length}</span>
-              </h3>
-              <ul className="mt-xxs divide-y divide-hairline rounded-md border border-hairline">
-                {entry.documents.map((doc) => {
-                  const { name: kind, Icon } = kindOf(doc.mimeType);
-                  return (
-                    <li
-                      key={doc.id}
-                      className="flex flex-col gap-xs px-sm py-xs sm:flex-row sm:items-center"
-                    >
-                      <div className="flex min-w-0 flex-1 items-start gap-xs">
-                        <Icon aria-hidden className="mt-0.5 size-4 shrink-0 text-ink-tertiary" />
-                        <div className="min-w-0">
-                          {doc.preview ? (
-                            <button
-                              type="button"
-                              onClick={() => setPreviewing(doc)}
-                              title={doc.name}
-                              className="block max-w-full truncate text-left text-[length:var(--text-body-sm)] text-ink hover:underline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-focus"
-                            >
-                              {doc.name}
-                            </button>
-                          ) : (
-                            <a
-                              href={downloadHref(doc.id)}
-                              title={doc.name}
-                              className="block max-w-full truncate text-[length:var(--text-body-sm)] text-ink hover:underline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-focus"
-                            >
-                              {doc.name}
-                            </a>
-                          )}
-                          <p className="text-[length:var(--text-caption)] text-ink-tertiary">
-                            {kind} · {formatBytes(doc.sizeBytes)} · {formatDate(doc.uploadedAt)} ·{" "}
-                            {doc.uploadedBy}
-                          </p>
-                        </div>
-                      </div>
-                      {/* Icons alone below `sm`: three labelled buttons measured
-                          wider than the card at 390 and pushed the last one
-                          past its edge. Each keeps its name for a screen reader. */}
-                      <div className="flex shrink-0 flex-wrap items-center gap-xxs pl-md sm:pl-0">
-                        {doc.preview ? (
-                          <Button
-                            variant="secondary"
-                            className={ACTION}
-                            onClick={() => setPreviewing(doc)}
-                            aria-label={`Preview ${doc.name}`}
-                          >
-                            <Eye aria-hidden className="size-3.5" />
-                            <span className="max-sm:sr-only">Preview</span>
-                          </Button>
-                        ) : null}
-                        <Button variant="secondary" className={ACTION} asChild>
-                          <a href={downloadHref(doc.id)} aria-label={`Download ${doc.name}`}>
-                            <Download aria-hidden className="size-3.5" />
-                            <span className="max-sm:sr-only">Download</span>
-                          </a>
-                        </Button>
-                        {canManage ? (
-                          <DropdownMenu>
-                            <DropdownMenuTrigger asChild>
-                              <Button
-                                variant="secondary"
-                                className="size-11 p-0 sm:size-8"
-                                aria-label={`More for ${doc.name}`}
-                              >
-                                <MoreHorizontal aria-hidden className="size-4" />
-                              </Button>
-                            </DropdownMenuTrigger>
-                            <DropdownMenuContent align="end">
-                              <DropdownMenuItem
-                                className="min-h-control-md sm:min-h-0"
-                                onSelect={() => setMoving({ doc, folder: entry.name })}
-                              >
-                                Move to folder…
-                              </DropdownMenuItem>
-                              <DropdownMenuItem
-                                className="min-h-control-md text-accent-red sm:min-h-0"
-                                onSelect={() => setDeleting(doc)}
-                              >
-                                Delete…
-                              </DropdownMenuItem>
-                            </DropdownMenuContent>
-                          </DropdownMenu>
-                        ) : null}
-                      </div>
-                    </li>
-                  );
-                })}
-              </ul>
-            </div>
+            <DocumentFolderSection
+              // A new search starts every folder back on its first page.
+              key={`${entry.name}\u0000${needle}`}
+              name={entry.name}
+              documents={entry.documents}
+              // A search opens every folder it matched: a hit behind a
+              // collapsed header would read as "nothing found".
+              open={needle !== "" || !collapsed.has(entry.name)}
+              onToggle={() =>
+                setCollapsed((current) => {
+                  const next = new Set(current);
+                  if (next.has(entry.name)) next.delete(entry.name);
+                  else next.add(entry.name);
+                  return next;
+                })
+              }
+              canManage={canManage}
+              onAddFiles={() => {
+                setFolder(entry.name);
+                setFolderMissing(false);
+                chooseFiles(entry.name);
+              }}
+              onDropFiles={(files) => void upload(files, entry.name)}
+              onPreview={setPreviewing}
+              onMove={(doc) => setMoving({ doc, folder: entry.name })}
+              onDelete={setDeleting}
+            />
           ))}
         </div>
       )}
+
+      <Dialog open={creating} onOpenChange={setCreating}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>New folder</DialogTitle>
+            <DialogDescription>
+              Name it for what goes in it — Contracts, SSM, Price lists. It is kept once a file is
+              in it.
+            </DialogDescription>
+          </DialogHeader>
+          <form
+            id="new-folder"
+            onSubmit={(event) => {
+              event.preventDefault();
+              createFolder();
+            }}
+            className="flex flex-col gap-xxs"
+          >
+            <Input
+              autoFocus
+              aria-label="Folder name"
+              placeholder="Folder name"
+              value={newName}
+              aria-invalid={newNameError ? true : undefined}
+              aria-describedby={newNameError ? "new-folder-error" : undefined}
+              onChange={(event) => {
+                setNewName(event.target.value);
+                setNewNameError(null);
+              }}
+              className="h-control-md"
+            />
+            {newNameError ? (
+              <p
+                id="new-folder-error"
+                role="alert"
+                className="text-[length:var(--text-caption)] text-accent-red"
+              >
+                {newNameError}
+              </p>
+            ) : null}
+          </form>
+          <DialogFooter>
+            <Button variant="secondary" onClick={() => setCreating(false)}>
+              Cancel
+            </Button>
+            <Button type="submit" form="new-folder">
+              Create folder
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
 
       {/* The preview: a wide drawer, so a page reads at a useful size. */}
       <Sheet open={previewing !== null} onOpenChange={(open) => !open && setPreviewing(null)}>
@@ -561,7 +667,7 @@ export function BuyerDocumentsCard({
           <GrowingListPicker
             label="Folder"
             value={moving?.folder ?? null}
-            known={knownFolders}
+            known={pickable}
             required
             onChange={(value) => setMoving((current) => (current ? { ...current, folder: value } : current))}
           />

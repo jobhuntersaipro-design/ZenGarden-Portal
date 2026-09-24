@@ -182,3 +182,32 @@ export function buyerLogoUrl(buyerId: string, logoKey: string | null): string | 
   const hash = /logo-([0-9a-f]+)\.png$/.exec(logoKey)?.[1] ?? "0";
   return `/api/buyers/${buyerId}/logo?v=${hash}`;
 }
+
+/**
+ * A choice of any number of files, sent in the batches the presign route
+ * takes. The limit is per request, not per choice: someone dropping thirty
+ * scans should not be told to pick them ten at a time.
+ */
+export function batchesOf<T>(items: readonly T[], size = MAX_BUYER_DOCUMENTS_PER_CALL): T[][] {
+  const out: T[][] = [];
+  for (let i = 0; i < items.length; i += size) out.push(items.slice(i, i + size));
+  return out;
+}
+
+/**
+ * The folders the card lists: the ones holding files, plus the ones created on
+ * this page that nothing has been filed into yet. A folder exists because a
+ * file is in it, so an empty one lives only in the page until the first
+ * upload — and a draft whose name now has files is not listed twice.
+ */
+export function withDraftFolders<T extends { name: string }>(
+  folders: readonly T[],
+  drafts: readonly string[],
+  empty: (name: string) => T,
+): T[] {
+  const taken = new Set(folders.map((folder) => folder.name.toLowerCase()));
+  const pending = drafts.filter((name) => !taken.has(name.toLowerCase())).map(empty);
+  return [...folders, ...pending].sort((a, b) =>
+    a.name.localeCompare(b.name, undefined, { sensitivity: "base" }),
+  );
+}

@@ -1,3 +1,58 @@
+# Current feature: buyer documents — many files, folders made on purpose, collapsed and paged
+
+## Status
+
+**Built and driven in a browser on `claude/modest-mayer-bixr87`, not yet
+merged** (2026-09-24). Asked for as: "allow users to upload multiple files /
+make the create folder more obvious / collapseable folder / show pagination
+for files under folder".
+
+**Many files at once.** The input always took several, but a choice past ten
+was refused whole ("Up to 10 files at a time"), and a folder could only be
+picked inside a combobox's "+ Add" row. Now any number go up from one choice
+or one **drop** — onto the upload panel's drop zone or onto a folder itself —
+sent to presign in batches of ten (`batchesOf`), which is the route's limit
+per request and no longer the reader's. Progress rows are keyed per file, not
+by name, so two files sharing a name no longer overwrite each other's status.
+
+**New folder is a button**, in the card header and beside the folder picker.
+A folder is a label on a file, so a new one lives on the page
+(`withDraftFolders`) until the first file lands in it, and says so. Every
+folder header has its own **Add files**, so choosing folder and files is one
+act.
+
+**Folders collapse** (a header button with `aria-expanded`; a search opens
+every folder it matched) and **page ten files at a time** in the browser,
+like the PO activity feed, starting over on a new search.
+
+**Found while driving:** the hidden file input was in the accessibility tree
+as a second "Choose files" button; it is `aria-hidden` now, like `Dropzone`'s.
+
+## Verified, with the figures
+
+Local Postgres and moto for R2, patched and **restored**, cluster dropped,
+`.env.local` deleted. Production build.
+- A blank folder name refused ("Choose a folder for these files."); "Invoices"
+  created, shown empty with its caption; **23 files from one choice →
+  "23 of 23 saved in Invoices"**, 23 rows in the database.
+- Panel with no folder → "Choose a folder first — or make a new one."; 3 files
+  → 2 saved, `archive.zip` refused by name; **2 files dropped on the folder**
+  → both saved.
+- Paging **1–10 → 11–20 → 21–23 of 23**, Next disabled on the last page.
+  Collapsing Invoices left 4 rows (the other folder's); searching "Invoice 07"
+  reopened it with 1 row.
+- No page overflow at 1440 and 390 (panel open too, and `/buyers/[id]`). The
+  only sub-44px elements at 390 are file-name text links, the accepted class.
+
+## Not verified
+
+Production; real R2 at volume (23 small files locally); drag and drop from a
+real desktop (driven with a synthetic drop event); a member without
+`buyer.manage` (they get no New folder, Add files or drop target, by the same
+`canManage` as before).
+
+## Previous phase
+
 # Current feature: a buyer's logo, and the documents kept against a buyer
 
 ## Status
