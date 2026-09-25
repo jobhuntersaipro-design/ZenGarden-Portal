@@ -174,3 +174,11 @@ the feature in hand. `docs/specs/SETUP-CHECKLIST.md` covers the external service
   missing, `catalog-import.test.ts` fails to import and nothing else does.
 - `vercel.json` runs `prisma migrate deploy` **only when `VERCEL_ENV=production`** — a
   preview build used to migrate the production database.
+
+## Reply shape
+
+- First sentence = result.
+- No restating the task. No "I'll now…". No closing recap.
+- Between tools: one short status line only if direction changed.
+- After edits: files changed, behavior change, tests run, leftover risk.
+- If I ask for detail, then expand.
