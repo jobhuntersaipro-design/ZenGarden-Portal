@@ -13,6 +13,7 @@ import {
   MoreHorizontal,
   Upload,
 } from "lucide-react";
+import { Reveal } from "@/components/portal/Reveal";
 import { Button } from "@/components/ui/button";
 import {
   DropdownMenu,
@@ -20,6 +21,7 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
+import { usePresence } from "@/hooks/usePresence";
 import { formatDate } from "@/lib/dates";
 import { pageRange } from "@/lib/queries/pagination";
 import type { BuyerDocumentRow } from "@/lib/queries/buyer-documents";
@@ -100,9 +102,15 @@ export function DocumentFolderSection({
   onPreview,
   onMove,
   onDelete,
+  leaving,
+  fresh,
 }: {
   name: string;
   documents: BuyerDocumentRow[];
+  /** Rows folding away after a delete, before the refresh takes them. */
+  leaving: ReadonlySet<string>;
+  /** Rows that have just arrived or moved here, tinted for a moment. */
+  fresh: ReadonlySet<string>;
   open: boolean;
   onToggle: () => void;
   canManage: boolean;
@@ -123,6 +131,8 @@ export function DocumentFolderSection({
     current * DOCUMENTS_PAGE_SIZE,
   );
   const drop = useFileDrop(onDropFiles, canManage);
+  // Folds rather than cuts, so the folders below are walked, not thrown.
+  const { mounted, closing, appear } = usePresence(open);
   const FolderIcon = open ? FolderOpen : Folder;
 
   const step =
@@ -168,7 +178,8 @@ export function DocumentFolderSection({
         ) : null}
       </div>
 
-      {open ? (
+      {mounted ? (
+        <Reveal closing={closing} appear={appear}>
         <div id={bodyId} className="border-t border-hairline">
           {documents.length === 0 ? (
             <p className="px-sm py-md text-[length:var(--text-body-sm)] text-ink-secondary">
@@ -182,6 +193,8 @@ export function DocumentFolderSection({
                 <DocumentRow
                   key={doc.id}
                   doc={doc}
+                  leaving={leaving.has(doc.id)}
+                  fresh={fresh.has(doc.id)}
                   canManage={canManage}
                   onPreview={onPreview}
                   onMove={onMove}
@@ -219,6 +232,7 @@ export function DocumentFolderSection({
             </div>
           ) : null}
         </div>
+        </Reveal>
       ) : null}
     </div>
   );
@@ -226,12 +240,16 @@ export function DocumentFolderSection({
 
 function DocumentRow({
   doc,
+  leaving,
+  fresh,
   canManage,
   onPreview,
   onMove,
   onDelete,
 }: {
   doc: BuyerDocumentRow;
+  leaving: boolean;
+  fresh: boolean;
   canManage: boolean;
   onPreview: (doc: BuyerDocumentRow) => void;
   onMove: (doc: BuyerDocumentRow) => void;
@@ -241,7 +259,10 @@ function DocumentRow({
   const nameClass =
     "block max-w-full truncate text-left text-[length:var(--text-body-sm)] text-ink hover:underline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-focus";
   return (
-    <li className="flex flex-col gap-xs px-sm py-xs sm:flex-row sm:items-center">
+    // A deleted row folds away rather than vanishing, and a row that has just
+    // arrived is tinted for a moment, so the eye lands where the action went.
+    <li className={fresh ? "animate-just-changed" : undefined}>
+    <Reveal closing={leaving} appear={fresh} className="flex flex-col gap-xs px-sm py-xs sm:flex-row sm:items-center">
       <div className="flex min-w-0 flex-1 items-start gap-xs">
         <Icon aria-hidden className="mt-0.5 size-4 shrink-0 text-ink-tertiary" />
         <div className="min-w-0">
@@ -305,6 +326,7 @@ function DocumentRow({
           </DropdownMenu>
         ) : null}
       </div>
+    </Reveal>
     </li>
   );
 }

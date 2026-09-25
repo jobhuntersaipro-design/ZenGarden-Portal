@@ -1,3 +1,86 @@
+# Current feature: motion where the screen changed and said nothing
+
+## Status
+
+**Built and driven in a browser on `claude/modest-mayer-bixr87`, not yet
+merged** (2026-09-25). Asked for as "run scan, how can I improve the ui/ux by
+adding more animation or effect", then "test it as real users", then "build
+everything". The list came from driving both roles through the app with a
+simulated ~100ms each way to the server and measuring, per click, when the
+screen answered, when the result landed, and how far the page jumped.
+
+**One primitive does most of it.** `Reveal` (`animate-reveal` /
+`animate-conceal`, a grid track 0fr↔1fr) and `usePresence` (keeps content
+mounted through the fold; no delay under reduced motion). `appear={false}`
+for what was already open when the page loaded, so arriving never grows every
+row. Padding sits on the innermost box — on the clipping box it held a
+closing row open at its own padding.
+
+1. **Demand Board**: a product's orders (both tables) grow in and fold away.
+   Before: the rows below dropped 470px in one frame (layout-shift 0.32, the
+   only "poor" score in the drive). After: 12 orders (1,344px) spread over
+   ~14 frames; each cell's padding moved inside its growing box.
+2. **Stage advance**: the toast used to say "Moved to In warehouse" ~190ms
+   before the stepper moved. It now waits for the page's own `next` prop to
+   change — the action already revalidates the page, and awaiting a second
+   `router.refresh()` was measured sitting on its 8s give-up once. The track
+   slides (`track-fill`), and the stage just completed ticks in
+   (`StageTick`), only when it appears after load — a reload does not tick.
+3. **Add to cart**: the button reads "Added ✓" for 1.4s and the header badge
+   pops (`count-pop`) on every add, through `cart-events` — its number does
+   not change when the product was already in the cart. Variant rows too.
+4. **Cart remove**: the line folds out, then the removal is sent; the toast
+   offers **Undo** (re-adds the same cartons). Sonner's action button is 24px
+   tall; its target grows to 44 below `sm` like the ✕ already did.
+5. **Stock**: the drawer opens on the click with the product's name and a
+   loading body (`pending-product` store, `DataTable.onRowOpen`), and swaps
+   to the real body when the server answers. Before: 200ms of nothing.
+6. **Buyer documents**: per-file progress bars (XHR, the PO queue's
+   `ProgressBar`); new or moved rows tinted briefly (`animate-just-changed`);
+   a deleted row folds away; folders fold.
+7. **Send order**: measured again after the page arrives — **0** shifts. The
+   0.15 in the drive was the review page swapping for the sent page, not a
+   jump on the sent page. Nothing built.
+
+**Found while verifying:** the document delete still jumped after the fold
+was added — `deleteBuyerDocument` revalidates the page, and its answer removed
+the row before a fold started afterwards could play. The fold now starts as
+Delete is pressed and runs alongside the action (lessons §12).
+
+## Verified, with the figures
+
+Local Postgres + moto, production build, patches restored, cluster dropped,
+`.env.local` deleted.
+- Demand expand/collapse: the next product row moves over 13–14 frames
+  (was 1); row count 24 → 24 after a collapse. Reduced motion: instant both
+  ways, nothing left behind.
+- Advance ×3 in a row: toast and page at **604 / 286 / 294ms**, together;
+  track widths 0→178→357→535 over 17–26 frames; 0 ticks after a reload.
+- Add: button "Added" then "Add" after 1.6s; `count-pop` on the badge on the
+  first add **and** on a repeat add of the same line.
+- Cart remove on a phone: the line below moves over 12 frames, biggest step
+  36px; Undo restores the line (2 → 1 → 2); a tap 9px above Undo lands.
+- Stock: drawer on screen 94ms after the click incl. automation, loading body
+  first, real body after.
+- Documents: progress 0 → 6 → 11 → … → 46 → done on a 3 MB file; 3 rows
+  tinted on arrival, 0 after 2s; the row below a deleted row moves over 3
+  frames instead of 1.
+- No page overflow at 390 on the cart, `/demand` (open), `/stock` (drawer)
+  and the admin buyer page.
+- 1724/1724 tests (8 new; two watched failing against the naive Reveal),
+  `tsc` clean, lint unchanged (4 `ShopHeader` errors, 3 warnings), build
+  clean.
+
+## Not verified
+
+Production; a real phone; frame rate on a slow device (headless dropped
+frames on the 36-column board, so its biggest single step was still ~365px);
+the guest cart's Undo (the shop requires sign-in, so no guest reaches it).
+**Seen, not fixed:** on a phone the add-to-cart toast sits over the mobile
+cart bar — the open "phone cart bar" item from Phase 58's review.
+
+## Previous phase
+
 # Current feature: buyer documents — many files, folders made on purpose, collapsed and paged
 
 ## Status

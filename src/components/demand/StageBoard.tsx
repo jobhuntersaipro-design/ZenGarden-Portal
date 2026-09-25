@@ -6,9 +6,11 @@ import { usePathname, useSearchParams } from "next/navigation";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { StackedStageChart } from "@/components/dashboard/StackedStageChart";
 import { ChoiceButton } from "@/components/portal/ChoiceButton";
+import { Reveal } from "@/components/portal/Reveal";
 import { SegmentGroup } from "@/components/portal/SegmentGroup";
 import { StageBadge } from "@/components/portal/StatusBadge";
 import { usePendingChoice } from "@/hooks/usePendingChoice";
+import { usePresence } from "@/hooks/usePresence";
 import { useEdgeFades } from "@/hooks/useEdgeFades";
 import { PoStage } from "@/generated/prisma/enums";
 import { PO_STAGES, stageLabel } from "@/lib/po-stages";
@@ -473,6 +475,8 @@ function ProductRows({
   columns: number;
 }) {
   const named = row.productId === NO_PRODUCT ? null : row.productId;
+  // Mounted through the fold-away, so the rows below are walked back up.
+  const { mounted, closing } = usePresence(open);
   return (
     <>
       <tr className="border-b border-hairline">
@@ -523,7 +527,7 @@ function ProductRows({
           {num(row.total)}
         </td>
       </tr>
-      {open
+      {mounted
         ? row.orders.map((entry) => (
             <OrderRow
               key={entry.id}
@@ -531,6 +535,7 @@ function ProductRows({
               meta={orders[entry.id]}
               day={day}
               anyOverdue={anyOverdue}
+              closing={closing}
             />
           ))
         : null}
@@ -564,11 +569,14 @@ function OrderRow({
   meta,
   day,
   anyOverdue,
+  closing,
 }: {
   entry: StageProductOrder;
   meta: StageOrderMeta | undefined;
   day: string | null;
   anyOverdue: boolean;
+  /** Folding away; each cell's content shrinks, its padding inside with it. */
+  closing: boolean;
 }) {
   if (!meta) return null;
   const due =
@@ -576,7 +584,8 @@ function OrderRow({
 
   return (
     <tr className="border-b border-hairline bg-surface-soft/40">
-      <th scope="row" className="max-w-72 py-sm pr-sm text-left font-normal">
+      <th scope="row" className="max-w-72 py-0 pr-sm text-left font-normal">
+        <Reveal closing={closing} className="py-sm">
         <div className="flex flex-col gap-0 pl-[calc(var(--spacing-xxs)+var(--spacing-control-md))] sm:pl-xl">
           <span className="truncate text-ink" title={meta.buyerName}>
             {meta.buyerName}
@@ -613,19 +622,26 @@ function OrderRow({
             <StageBadge stage={entry.stage} state="done" compact />
           </span>
         </div>
+        </Reveal>
       </th>
       {anyOverdue ? (
-        <td className="py-sm pl-sm text-right font-medium tabular-nums text-accent-red">
-          {entry.overdue ? 1 : <span className="text-ink-disabled">—</span>}
+        <td className="py-0 pl-sm text-right font-medium tabular-nums text-accent-red">
+          <Reveal closing={closing} className="py-sm">
+            {entry.overdue ? 1 : <span className="text-ink-disabled">—</span>}
+          </Reveal>
         </td>
       ) : null}
       {OPEN_STAGES.map((stage) => (
-        <td key={stage} className="py-sm pl-sm text-right tabular-nums text-ink">
-          {entry.stage === stage ? 1 : <span className="text-ink-disabled">—</span>}
+        <td key={stage} className="py-0 pl-sm text-right tabular-nums text-ink">
+          <Reveal closing={closing} className="py-sm">
+            {entry.stage === stage ? 1 : <span className="text-ink-disabled">—</span>}
+          </Reveal>
         </td>
       ))}
-      <td className="py-sm pl-sm text-right font-medium tabular-nums text-ink">
-        1
+      <td className="py-0 pl-sm text-right font-medium tabular-nums text-ink">
+        <Reveal closing={closing} className="py-sm">
+          1
+        </Reveal>
       </td>
     </tr>
   );

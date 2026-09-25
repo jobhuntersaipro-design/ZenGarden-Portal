@@ -1,6 +1,8 @@
 "use client";
 
+import { useEffect, useState } from "react";
 import { cn } from "cn";
+import { onCartAdded } from "@/components/shop/cart-events";
 import { useCartSummary, useGuestCart } from "@/components/shop/GuestCartProvider";
 import { useShopViewer } from "@/components/shop/ShopViewer";
 import type { CartSummary } from "@/lib/queries/cart";
@@ -26,6 +28,11 @@ export function CartBadge({
   const guest = useGuestCart();
   const contextSummary = useCartSummary();
   const summary = summaryProp !== undefined ? summaryProp : contextSummary;
+  // Bumped on every add, so the badge pops even when its number is the same.
+  // Keyed on the element, which restarts the animation; zero on first paint,
+  // so a page load does not pop.
+  const [bumps, setBumps] = useState(0);
+  useEffect(() => onCartAdded(() => setBumps((n) => n + 1)), []);
 
   const count =
     viewer.kind === "client"
@@ -39,9 +46,11 @@ export function CartBadge({
   return (
     <>
       <span
+        key={bumps}
         aria-hidden
         className={cn(
           "flex h-5 min-w-5 items-center justify-center rounded-pill px-xxs text-[length:var(--text-caption)] font-semibold tabular-nums",
+          bumps > 0 && "animate-count-pop",
           variant === "mobile"
             ? "absolute top-xxs right-xxs bg-ink text-canvas"
             : "bg-canvas text-ink",

@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { toast } from "sonner";
 import { saveStockCounts } from "@/actions/stock";
 import { Button } from "@/components/ui/button";
@@ -12,7 +12,12 @@ import {
   SheetHeader,
   SheetTitle,
 } from "@/components/ui/sheet";
+import { Shimmer } from "@/components/portal/Skeletons";
 import { StockActivityFeed } from "@/components/stock/StockActivityFeed";
+import {
+  setPendingStockProduct,
+  usePendingStockProduct,
+} from "@/components/stock/pending-product";
 import { StockTrend } from "@/components/stock/StockTrend";
 import { Textarea } from "@/components/ui/textarea";
 import { useAwaitableRefresh } from "@/hooks/useAwaitableRefresh";
@@ -68,7 +73,18 @@ export function ProductStockDrawer({
   const [note, setNote] = useState("");
   const [saving, setSaving] = useState(false);
 
+  // Open at once on the row just clicked, and swap to the page's own product
+  // when the server answers; until then the body is a loading shape rather
+  // than an empty trend under a real product's name.
+  const pending = usePendingStockProduct();
+  const shown = product ?? pending;
+  const waiting = pending !== null && product?.id !== pending.id;
+  useEffect(() => {
+    if (pending && product?.id === pending.id) setPendingStockProduct(null);
+  }, [pending, product]);
+
   const close = () => {
+    setPendingStockProduct(null);
     setCartons("");
     setNote("");
     setCountedOn(today);
@@ -106,17 +122,30 @@ export function ProductStockDrawer({
   };
 
   return (
-    <Sheet open={product !== null} onOpenChange={(open) => (open ? null : close())}>
+    <Sheet open={shown !== null} onOpenChange={(open) => (open ? null : close())}>
       <SheetContent className="w-full sm:max-w-panel-lg">
         <SheetHeader>
-          <SheetTitle>{product ? product.name : "Stock"}</SheetTitle>
+          <SheetTitle>{shown ? shown.name : "Stock"}</SheetTitle>
           <SheetDescription>
-            {product
-              ? [product.sku, product.market].filter(Boolean).join(" · ")
-              : ""}
+            {shown ? [shown.sku, shown.market].filter(Boolean).join(" · ") : ""}
           </SheetDescription>
         </SheetHeader>
 
+        {waiting ? (
+          <div className="flex flex-col gap-lg p-md" aria-busy="true">
+            <span className="sr-only">Loading this product&rsquo;s counts</span>
+            <div className="flex flex-col gap-xs">
+              <Shimmer className="h-3 w-20" />
+              <Shimmer className="h-8 w-40" />
+              <Shimmer className="h-3 w-56" />
+            </div>
+            <Shimmer className="h-40 w-full" />
+            <div className="flex flex-col gap-sm">
+              <Shimmer className="h-10 w-full" />
+              <Shimmer className="h-10 w-full" />
+            </div>
+          </div>
+        ) : (
         <div className="flex flex-col gap-lg p-md">
           {/* What it reads now, which is the figure a counter is about to
               replace and which the form alone never showed. */}
@@ -210,6 +239,7 @@ export function ProductStockDrawer({
             </div>
           </div>
         </div>
+        )}
       </SheetContent>
     </Sheet>
   );

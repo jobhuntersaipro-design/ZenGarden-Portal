@@ -1,8 +1,8 @@
-import { Check } from "lucide-react";
 import type { PoStage } from "@/generated/prisma/enums";
 import { formatDate } from "@/lib/dates";
 import { StageBadge, type StageBadgeState } from "@/components/portal/StatusBadge";
 import { PO_STAGES, stageIndex } from "@/lib/po-stages";
+import { StageTick } from "@/components/purchase-orders/StageTick";
 
 export type StageEvent = {
   toStage: PoStage;
@@ -11,7 +11,16 @@ export type StageEvent = {
 };
 
 /** The dot, identical in both orientations. */
-function StageNode({ done, isCurrent }: { done: boolean; isCurrent: boolean }) {
+function StageNode({
+  done,
+  isCurrent,
+  latest = false,
+}: {
+  done: boolean;
+  isCurrent: boolean;
+  /** The stage a move has just completed: its tick pops in when it appears. */
+  latest?: boolean;
+}) {
   return (
     <span className="relative z-10 flex size-6 shrink-0 items-center justify-center">
       {isCurrent ? (
@@ -30,7 +39,7 @@ function StageNode({ done, isCurrent }: { done: boolean; isCurrent: boolean }) {
         }`}
       >
         {done ? (
-          <Check className="size-3.5" strokeWidth={2.5} aria-hidden />
+          <StageTick latest={latest} />
         ) : isCurrent ? (
           <span
             aria-hidden
@@ -97,6 +106,7 @@ export function StageStepper({
     index,
     done: currentIndex > index,
     isCurrent: currentIndex === index,
+    latest: currentIndex - 1 === index,
     event: reached.get(stage),
   }));
 
@@ -112,7 +122,7 @@ export function StageStepper({
       {/* Vertical, below `sm`. The connector runs from each node to the next,
           so the last row has none. */}
       <ol className="flex flex-col sm:hidden">
-        {stages.map(({ stage, index, done, isCurrent, event }) => (
+        {stages.map(({ stage, index, done, isCurrent, latest, event }) => (
           <li key={stage} className="relative flex gap-sm pb-md last:pb-0">
             {index < stages.length - 1 ? (
               <span
@@ -123,7 +133,7 @@ export function StageStepper({
                 }`}
               />
             ) : null}
-            <StageNode done={done} isCurrent={isCurrent} />
+            <StageNode done={done} isCurrent={isCurrent} latest={latest} />
             <div className="min-w-0 flex-1">
               <StageBadge stage={stage} state={stageState(done, isCurrent)} />
               {/* Upcoming nodes carry no caption — there is nothing to say yet. */}
@@ -147,14 +157,14 @@ export function StageStepper({
         />
         <div
           aria-hidden
-          className={`absolute top-3 left-[8.33%] h-0.5 -translate-y-1/2 bg-ink ${
+          className={`track-fill absolute top-3 left-[8.33%] h-0.5 -translate-y-1/2 bg-ink ${
             currentIndex >= 0 ? "animate-stage-track" : ""
           }`}
           style={{ width: `${filled * 0.8334}%` }}
         />
 
         <ol className="relative grid grid-cols-6 gap-xxs">
-          {stages.map(({ stage, done, isCurrent, event }) => (
+          {stages.map(({ stage, done, isCurrent, latest, event }) => (
             <li
               key={stage}
               // A grid item defaults to `min-width: auto`, so without this the
@@ -162,7 +172,7 @@ export function StageStepper({
               // card sideways at `sm`.
               className="flex min-w-0 flex-col items-center gap-xxs text-center"
             >
-              <StageNode done={done} isCurrent={isCurrent} />
+              <StageNode done={done} isCurrent={isCurrent} latest={latest} />
               <StageBadge
                 stage={stage}
                 state={stageState(done, isCurrent)}

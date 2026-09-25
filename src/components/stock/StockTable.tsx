@@ -4,6 +4,7 @@ import { DataTable, type Column } from "@/components/portal/DataTable";
 import { useTableSort } from "@/hooks/useTableSort";
 import { formatDate } from "@/lib/dates";
 import type { StockSheetRow } from "@/lib/queries/stock";
+import { setPendingStockProduct } from "@/components/stock/pending-product";
 import type { SortDirection } from "@/lib/queries/pagination";
 
 /**
@@ -92,6 +93,7 @@ export function StockTable({
       onSortChange={onSortChange}
       emptyText="No products match."
       rowHref={(row) => `/stock?product=${row.id}`}
+      onRowOpen={setPendingStockProduct}
     />
   );
 }

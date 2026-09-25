@@ -335,3 +335,24 @@ closing it would leave the buyer on a spinning page with nothing to say whether
 the order went. That is legitimate exactly when it is transient and cannot
 strand anyone — its `pending` comes from `useTransition`, so it always
 resolves. An indefinite one is the defect this rule is about.
+
+---
+
+## 12. An exit animation starts before the action that removes the thing
+
+**Rule.** A Server Action that calls `revalidatePath` answers with the
+re-rendered page, and that answer removes the deleted row the moment it
+lands. A fold, fade or slide started *after* awaiting the action never plays.
+Start the exit when the person presses the button, run the action alongside
+it, and put the row back if the action refuses. The same holds in the other
+direction: to say "done" when the page shows it, wait for the page's own
+props to change, not for a second `router.refresh()` — the action already
+refreshed, and the extra refresh can hang.
+
+**The case (2026-09-25).** A deleted buyer document still dropped the rows
+below it in one frame after its fold was built: `deleteBuyerDocument`
+revalidates, so the row was gone ~330ms after the click, before the
+`setLeaving` that followed the `await`. The cart's remove worked first time
+only because its fold ran *before* calling the action. The stage advance's
+toast, reordered to follow `await refresh()`, once waited on that hook's 8s
+give-up; it now waits for the `next` prop to change.

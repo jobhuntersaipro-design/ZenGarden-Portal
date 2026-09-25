@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useAwaitableRefresh } from "@/hooks/useAwaitableRefresh";
 import { toast } from "sonner";
 import { advanceStage, revertStage } from "@/actions/stages";
@@ -41,6 +41,31 @@ export function LifecycleActions({
   canMoveBack: boolean;
 }) {
   const refresh = useAwaitableRefresh();
+  // Resolves when the page shows the move: `next` is the stage after the one
+  // the page shows, so it changes exactly when a move has landed. The action
+  // revalidates this page itself, so waiting on a second refresh was both
+  // redundant and, measured 2026-09-25, able to sit on its 8s give-up. After
+  // 3s it resolves anyway and asks for a refresh, so nothing can strand.
+  const waiters = useRef<(() => void)[]>([]);
+  useEffect(() => {
+    const landed = waiters.current;
+    waiters.current = [];
+    for (const resolve of landed) resolve();
+  }, [next]);
+  const pageMoves = () =>
+    new Promise<void>((resolve) => {
+      let done = false;
+      const settle = () => {
+        if (done) return;
+        done = true;
+        resolve();
+      };
+      waiters.current.push(settle);
+      setTimeout(() => {
+        if (!done) void refresh();
+        settle();
+      }, 3000);
+    });
   const [note, setNote] = useState("");
   const [backNote, setBackNote] = useState("");
   const [backOpen, setBackOpen] = useState(false);
@@ -120,18 +145,23 @@ export function LifecycleActions({
                     pending={reverting}
                     onClick={async () => {
                       setReverting(true);
+                      const moved = pageMoves();
                       try {
                         const result = await revertStage(poId, backNote);
                         if (!result.success) {
                           toast.error(result.error);
                           return;
                         }
+                        // The page first, then the word: a toast saying
+                        // "moved" over a stepper still at the old stage is
+                        // two answers at once (measured 2026-09-25: ~190ms
+                        // locally, longer on production).
+                        await moved;
                         setBackOpen(false);
                         setBackNote("");
                         toast.success(
                           `Moved back to ${stageLabel(result.data.stage)}`,
                         );
-                        await refresh();
                       } catch {
                         // An action that throws — an unreachable server, a
                         // deploy mid-click — rejects the promise, and without
@@ -188,6 +218,7 @@ export function LifecycleActions({
                   pending={advancing}
                   onClick={async () => {
                     setAdvancing(true);
+                    const moved = pageMoves();
                     try {
                       const result = await advanceStage(poId, note);
                       if (!result.success) {
@@ -195,10 +226,13 @@ export function LifecycleActions({
                         toast.error(result.error);
                         return;
                       }
+                      // The stepper moves first and the toast agrees with
+                      // it, rather than announcing a stage the page does not
+                      // show yet. "Advancing…" holds until then.
+                      await moved;
                       setAdvanceOpen(false);
                       setNote("");
                       toast.success(`Moved to ${stageLabel(result.data.stage)}`);
-                      await refresh();
                     } catch {
                       toast.error("We couldn't reach the server. Try again.");
                     } finally {

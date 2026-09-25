@@ -1,11 +1,11 @@
 "use client";
 
-import { useState, useTransition } from "react";
+import { useState } from "react";
 import Link from "next/link";
 import { toast } from "sonner";
 import { CartScreen } from "@/components/shop/cart/CartScreen";
 import { cartCaptions } from "@/components/shop/cart/CartLines";
-import { removeFromCart, setCartons } from "@/actions/cart";
+import { addToCart, removeFromCart, setCartons } from "@/actions/cart";
 import { shopHref } from "@/lib/shop-routes";
 import type { Cart } from "@/lib/queries/cart";
 
@@ -30,8 +30,6 @@ import type { Cart } from "@/lib/queries/cart";
  * which by then says the same thing.
  */
 export function ClientCart({ cart }: { cart: Cart }) {
-  const [, startTransition] = useTransition();
-
   // Derived state, the React way: the prop wins whenever it changes.
   const [local, setLocal] = useState(cart);
   const [seen, setSeen] = useState(cart);
@@ -52,15 +50,34 @@ export function ClientCart({ cart }: { cart: Cart }) {
         if (result.success) setLocal(result.data);
         return result;
       }}
-      onRemove={(productId) => {
-        startTransition(async () => {
+      onRemove={async (productId) => {
+        const line = local.lines.find((entry) => entry.productId === productId);
+        try {
           const result = await removeFromCart(productId);
           if (!result.success) {
             toast.error(result.error);
             return;
           }
           setLocal(result.data);
-        });
+          // A bin tapped by mistake is one tap to undo, not a line rebuilt
+          // from the catalogue (2026-09-25).
+          if (line) {
+            toast.success(`Removed ${line.name}`, {
+              action: {
+                label: "Undo",
+                onClick: async () => {
+                  const back = await addToCart({
+                    productId,
+                    cartons: line.cartons,
+                  });
+                  if (!back.success) toast.error(back.error);
+                },
+              },
+            });
+          }
+        } catch {
+          toast.error("We couldn't reach the server. Try again.");
+        }
       }}
       cta={<ReviewCta hasUnavailable={hasUnavailable} />}
     />

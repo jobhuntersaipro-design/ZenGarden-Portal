@@ -33,6 +33,8 @@ import {
 } from "@/components/ui/sheet";
 import { Spinner } from "@/components/portal/Spinner";
 import { useAwaitableRefresh } from "@/hooks/useAwaitableRefresh";
+import { CONCEAL_MS } from "@/hooks/usePresence";
+import { ProgressBar } from "@/components/upload/UploadQueue";
 import { formatDate } from "@/lib/dates";
 import type { BuyerDocumentFolder, BuyerDocumentRow } from "@/lib/queries/buyer-documents";
 import {
@@ -53,6 +55,8 @@ type UploadRow = {
   folder: string;
   status: "uploading" | "done" | "failed";
   reason?: string;
+  /** 0–100 while the bytes go up; a 25 MB contract is not a spinner's job. */
+  progress?: number;
 };
 
 /**
@@ -105,6 +109,14 @@ export function BuyerDocumentsCard({
     null,
   );
   const [busy, setBusy] = useState(false);
+  /** Deleted rows folding away before the refresh removes them. */
+  const [leaving, setLeaving] = useState<ReadonlySet<string>>(() => new Set());
+  /**
+   * What the list held before an upload or a move, so the rows that arrived
+   * with it can be tinted for a moment afterwards. Null when nothing has.
+   */
+  const [before, setBefore] = useState<ReadonlySet<string> | null>(null);
+  const [moved, setMoved] = useState<string | null>(null);
 
   const listed = useMemo(
     () => withDraftFolders(folders, drafts, (name) => ({ name, documents: [] })),
@@ -131,6 +143,25 @@ export function BuyerDocumentsCard({
       .filter((entry) => entry.documents.length > 0);
   }, [listed, needle]);
 
+  const fresh = useMemo(() => {
+    const ids = new Set<string>();
+    if (before) {
+      for (const entry of folders) {
+        for (const doc of entry.documents) if (!before.has(doc.id)) ids.add(doc.id);
+      }
+    }
+    if (moved) ids.add(moved);
+    return ids;
+  }, [folders, before, moved]);
+  /** The tint has played by then; the rows are ordinary again. */
+  const settleFresh = () =>
+    setTimeout(() => {
+      setBefore(null);
+      setMoved(null);
+    }, 1800);
+  const currentIds = () =>
+    new Set(folders.flatMap((entry) => entry.documents.map((doc) => doc.id)));
+
   const setRow = (id: string, patch: Partial<UploadRow>) =>
     setUploads((rows) => rows.map((row) => (row.id === id ? { ...row, ...patch } : row)));
 
@@ -145,12 +176,23 @@ export function BuyerDocumentsCard({
   /** One file: PUT to storage, then tell the server it arrived. */
   const send = async (row: UploadRow, file: File, slot: PresignBuyerDocumentsResponse["files"][number]) => {
     try {
-      const put = await fetch(slot.url, {
-        method: "PUT",
-        headers: { "Content-Type": slot.type },
-        body: file,
+      // XHR rather than fetch: fetch reports no upload progress.
+      await new Promise<void>((resolve, reject) => {
+        const xhr = new XMLHttpRequest();
+        xhr.open("PUT", slot.url, true);
+        xhr.setRequestHeader("Content-Type", slot.type);
+        xhr.upload.onprogress = (event) => {
+          if (event.lengthComputable) {
+            setRow(row.id, { progress: Math.round((event.loaded / event.total) * 100) });
+          }
+        };
+        xhr.onload = () =>
+          xhr.status >= 200 && xhr.status < 300
+            ? resolve()
+            : reject(new Error(`Storage refused the file (${xhr.status})`));
+        xhr.onerror = () => reject(new TypeError("network"));
+        xhr.send(file);
       });
-      if (!put.ok) throw new Error(`Storage refused the file (${put.status})`);
       const done = await fetch(`/api/buyers/${buyerId}/documents/complete`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -206,6 +248,7 @@ export function BuyerDocumentsCard({
       .filter(({ row }) => row.status === "uploading");
     if (sendable.length === 0) return;
 
+    setBefore(currentIds());
     setUploading(true);
     try {
       for (const batch of batchesOf(sendable)) {
@@ -243,6 +286,7 @@ export function BuyerDocumentsCard({
         );
       }
       await refresh();
+      settleFresh();
     } catch {
       toast.error("We couldn't reach the server. Try again.");
       setUploads((current) =>
@@ -455,18 +499,23 @@ export function BuyerDocumentsCard({
                     />
                   )}
                 </span>
-                <span className="min-w-0 flex-1">
+                <div className="min-w-0 flex-1">
                   <span className="block truncate text-ink" title={row.name}>
                     {row.name}
                   </span>
+                  {row.status === "uploading" ? (
+                    <div className="mt-xxs">
+                      <ProgressBar value={row.progress ?? 0} fill="bg-ink" />
+                    </div>
+                  ) : null}
                   <span className="block text-[length:var(--text-caption)] text-ink-tertiary">
                     {row.status === "uploading"
-                      ? "Uploading…"
+                      ? `Uploading… ${row.progress ?? 0}%`
                       : row.status === "done"
                         ? `Saved in ${row.folder}`
                         : row.reason}
                   </span>
-                </span>
+                </div>
               </li>
             ))}
           </ul>
@@ -523,6 +572,8 @@ export function BuyerDocumentsCard({
               onPreview={setPreviewing}
               onMove={(doc) => setMoving({ doc, folder: entry.name })}
               onDelete={setDeleting}
+              leaving={leaving}
+              fresh={fresh}
             />
           ))}
         </div>
@@ -635,20 +686,36 @@ export function BuyerDocumentsCard({
               pending={busy}
               onClick={async () => {
                 if (!deleting) return;
-                setBusy(true);
+                // The row starts folding as Delete is pressed, not when the
+                // server answers: the action revalidates the page, and its
+                // answer removes the row the moment it lands — before any
+                // fold started afterwards could play (measured 2026-09-25).
+                // If the delete is refused, the row simply opens again.
+                const gone = deleting.id;
+                setDeleting(null);
+                setLeaving((current) => new Set(current).add(gone));
+                const unfold = () =>
+                  setLeaving((current) => {
+                    const next = new Set(current);
+                    next.delete(gone);
+                    return next;
+                  });
                 try {
-                  const result = await deleteBuyerDocument({ id: deleting.id });
+                  const [result] = await Promise.all([
+                    deleteBuyerDocument({ id: gone }),
+                    new Promise((resolve) => setTimeout(resolve, CONCEAL_MS)),
+                  ]);
                   if (!result.success) {
+                    unfold();
                     toast.error(result.error);
                     return;
                   }
-                  setDeleting(null);
                   await refresh();
+                  unfold();
                   toast.success("File deleted");
                 } catch {
+                  unfold();
                   toast.error("We couldn't reach the server. Try again.");
-                } finally {
-                  setBusy(false);
                 }
               }}
             >
@@ -688,7 +755,9 @@ export function BuyerDocumentsCard({
                     return;
                   }
                   setMoving(null);
+                  setMoved(moving.doc.id);
                   await refresh();
+                  settleFresh();
                   toast.success(`Moved to ${result.data.folder}`);
                 } catch {
                   toast.error("We couldn't reach the server. Try again.");

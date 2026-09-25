@@ -190,3 +190,31 @@ describe("the board's stock column", () => {
     expect(markup).not.toContain("On hand");
   });
 });
+
+describe("an order row folding in and out", () => {
+  const folding = (closing: boolean) =>
+    renderToStaticMarkup(
+      <table>
+        <tbody>
+          <OrderRow line={line()} board={board} reveal={{ closing }} />
+        </tbody>
+      </table>,
+    );
+
+  it("moves every cell's padding inside the growing box", () => {
+    // A padded cell holds the row open while its content shrinks.
+    const out = folding(false);
+    expect(out).not.toMatch(/<td[^>]*py-sm/);
+    expect(out.match(/animate-reveal/g)?.length).toBeGreaterThan(3);
+  });
+
+  it("folds every cell together when it closes", () => {
+    const out = folding(true);
+    expect(out).not.toContain("animate-reveal");
+    expect(out.match(/animate-conceal/g)?.length).toBe(out.match(/<td/g)?.length);
+  });
+
+  it("is unchanged when it is not folding", () => {
+    expect(row()).not.toContain("reveal");
+  });
+});

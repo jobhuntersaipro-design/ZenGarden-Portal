@@ -1,13 +1,16 @@
 "use client";
 
 import Link from "next/link";
+import { useState } from "react";
 import { AlertCircle, Trash2 } from "lucide-react";
 import { ProductThumb } from "@/components/products/ProductThumb";
+import { Reveal } from "@/components/portal/Reveal";
 import { CartonStepper } from "@/components/shop/CartonStepper";
 import { unitLabel } from "@/lib/cartons";
 import { formatMYR } from "@/lib/money";
 import { shopHref } from "@/lib/shop-routes";
 import type { CartLine } from "@/lib/queries/cart";
+import { CONCEAL_MS } from "@/hooks/usePresence";
 
 export type SetCartonsResult = { success: boolean; error?: string };
 
@@ -24,8 +27,27 @@ export function CartLines({
 }: {
   lines: CartLine[];
   onSetCartons: (productId: string, cartons: number) => Promise<SetCartonsResult>;
-  onRemove: (productId: string) => void;
+  onRemove: (productId: string) => void | Promise<unknown>;
 }) {
+  // A removed line folds away before it goes, so the lines and the summary
+  // below close the gap rather than jump into it (2026-09-25: 0.15 of the
+  // screen moved in one frame on a phone). If the removal fails, the line
+  // is still in `lines` and simply opens again.
+  const [leaving, setLeaving] = useState<ReadonlySet<string>>(() => new Set());
+  const remove = async (productId: string) => {
+    setLeaving((current) => new Set(current).add(productId));
+    await new Promise((resolve) => setTimeout(resolve, CONCEAL_MS));
+    try {
+      await onRemove(productId);
+    } finally {
+      setLeaving((current) => {
+        const next = new Set(current);
+        next.delete(productId);
+        return next;
+      });
+    }
+  };
+
   return (
     <div className="overflow-hidden rounded-lg border border-hairline">
       <div className="hidden bg-surface px-lg py-sm text-[length:var(--text-caption)] text-ink-tertiary md:grid md:grid-cols-[88px_1fr_140px_120px_40px] md:items-center md:gap-md">
@@ -37,8 +59,16 @@ export function CartLines({
       </div>
       <ul>
         {lines.map((line) => (
-          <li key={line.productId}>
-            <CartRow line={line} onSetCartons={onSetCartons} onRemove={onRemove} />
+          // The rule is on the item, not the row: the row now sits inside the
+          // folding box, where it is always its parent's last child.
+          <li key={line.productId} className="border-b border-hairline last:border-b-0">
+            <Reveal closing={leaving.has(line.productId)} appear={false}>
+              <CartRow
+                line={line}
+                onSetCartons={onSetCartons}
+                onRemove={(productId) => void remove(productId)}
+              />
+            </Reveal>
           </li>
         ))}
       </ul>
@@ -61,7 +91,7 @@ function CartRow({
 
   return (
     <div
-      className={`grid grid-cols-[88px_minmax(0,1fr)] items-start gap-sm border-b border-hairline p-md last:border-b-0 md:grid-cols-[88px_1fr_140px_120px_40px] md:items-center md:gap-md md:p-lg ${
+      className={`grid grid-cols-[88px_minmax(0,1fr)] items-start gap-sm p-md md:grid-cols-[88px_1fr_140px_120px_40px] md:items-center md:gap-md md:p-lg ${
         line.unavailable ? "bg-surface" : "bg-canvas"
       }`}
     >

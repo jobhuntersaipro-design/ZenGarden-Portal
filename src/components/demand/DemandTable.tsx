@@ -4,7 +4,9 @@ import { ChevronRight } from "lucide-react";
 import Link from "next/link";
 import { useState } from "react";
 import { Scroller } from "@/components/demand/Scroller";
+import { Reveal } from "@/components/portal/Reveal";
 import { StageBadge } from "@/components/portal/StatusBadge";
+import { usePresence } from "@/hooks/usePresence";
 import type { DemandBoard, DemandLine, DemandRow } from "@/lib/queries/demand";
 
 const num = (value: number) => value.toLocaleString("en-MY");
@@ -146,6 +148,10 @@ function ProductRows({
   expanded: boolean;
   onToggle: () => void;
 }) {
+  // The orders stay mounted while they fold away, so the rows below are
+  // walked back up rather than dropped (2026-09-25: opening one product
+  // moved everything under it 470px in a single frame).
+  const { mounted, closing } = usePresence(expanded);
   return (
     <>
       <tr className="border-b border-hairline last:border-0">
@@ -216,9 +222,14 @@ function ProductRows({
           )}
         </Td>
       </tr>
-      {expanded
+      {mounted
         ? row.lines.map((line) => (
-            <OrderRow key={line.purchaseOrderId} line={line} board={board} />
+            <OrderRow
+              key={line.purchaseOrderId}
+              line={line}
+              board={board}
+              reveal={{ closing }}
+            />
           ))
         : null}
     </>
@@ -261,10 +272,22 @@ function dueIn(days: number | null): string {
  * product, not per order, so a dash here would be answering a question that
  * was never asked of this row.
  */
-export function OrderRow({ line, board }: { line: DemandLine; board: DemandBoard }) {
-  return (
-    <tr className="border-b border-hairline bg-surface-soft/40 last:border-0">
-      <td className="sticky left-0 z-10 max-w-72 bg-canvas py-sm pl-lg pr-md">
+export function OrderRow({
+  line,
+  board,
+  reveal,
+}: {
+  line: DemandLine;
+  board: DemandBoard;
+  /**
+   * Given, the row grows into place and — with `closing` — folds away. A
+   * table row cannot animate its own height, so each cell's content does,
+   * with the cell's padding moved inside the growing box: padding outside it
+   * would hold the row open at 24px.
+   */
+  reveal?: { closing: boolean };
+}) {
+  const first = (
         <div className="pl-[calc(var(--spacing-xs)+1.5rem)]">
           <p
             className="truncate text-[length:var(--text-body-sm)] text-ink"
@@ -316,9 +339,20 @@ export function OrderRow({ line, board }: { line: DemandLine; board: DemandBoard
             <StageBadge stage={line.stage} state="done" compact />
           </p>
         </div>
-      </td>
+  );
+  return (
+    <tr className="border-b border-hairline bg-surface-soft/40 last:border-0">
+      {reveal ? (
+        <td className="sticky left-0 z-10 max-w-72 bg-canvas py-0 pl-lg pr-md">
+          <Reveal closing={reveal.closing} className="py-sm">
+            {first}
+          </Reveal>
+        </td>
+      ) : (
+        <td className="sticky left-0 z-10 max-w-72 bg-canvas py-sm pl-lg pr-md">{first}</td>
+      )}
       {board.anyOverdue ? (
-        <Td numeric>
+        <Td reveal={reveal} numeric>
           {line.columnKey === null ? (
             <span className="font-semibold text-accent-red">{num(line.cartons)}</span>
           ) : (
@@ -327,7 +361,7 @@ export function OrderRow({ line, board }: { line: DemandLine; board: DemandBoard
         </Td>
       ) : null}
       {board.columns.map((column) => (
-        <Td key={column.key} numeric>
+        <Td reveal={reveal} key={column.key} numeric>
           {line.columnKey === column.key ? (
             num(line.cartons)
           ) : (
@@ -335,10 +369,10 @@ export function OrderRow({ line, board }: { line: DemandLine; board: DemandBoard
           )}
         </Td>
       ))}
-      <Td numeric>{num(line.cartons)}</Td>
-      <Td numeric />
-      <Td numeric />
-      <Td numeric className="pr-lg" />
+      <Td reveal={reveal} numeric>{num(line.cartons)}</Td>
+      <Td reveal={reveal} numeric />
+      <Td reveal={reveal} numeric />
+      <Td reveal={reveal} numeric className="pr-lg" />
     </tr>
   );
 }
@@ -362,15 +396,34 @@ function Th({
   );
 }
 
+type TdProps = {
+  children?: React.ReactNode;
+  numeric?: boolean;
+  className?: string;
+};
+
+/**
+ * `reveal` is an order row's cell growing in or folding away: the padding
+ * moves inside the growing box, because padding on the cell itself would hold
+ * the row open while its content shrank.
+ */
 function Td({
   children,
   numeric = false,
   className = "",
-}: {
-  children?: React.ReactNode;
-  numeric?: boolean;
-  className?: string;
-}) {
+  reveal,
+}: TdProps & { reveal?: { closing: boolean } }) {
+  if (reveal) {
+    return (
+      <td
+        className={`whitespace-nowrap py-0 pr-md text-[length:var(--text-body-sm)] text-ink ${numeric ? "text-right tabular-nums" : ""} ${className}`}
+      >
+        <Reveal closing={reveal.closing} className="py-sm">
+          {children}
+        </Reveal>
+      </td>
+    );
+  }
   return (
     <td
       className={`whitespace-nowrap py-sm pr-md text-[length:var(--text-body-sm)] text-ink ${numeric ? "text-right tabular-nums" : ""} ${className}`}

@@ -370,6 +370,20 @@
   /* The indeterminate extraction bar: a short fill sliding across its track.
      Length is unknown, so the bar reports motion, never a fraction. */
   --animate-indeterminate: indeterminate 1.4s cubic-bezier(0.5, 0, 0.5, 1) infinite;
+  /* Something opening or closing in place (2026-09-25): a folder, a product's
+     orders on the Demand Board, a cart line going. The row grows from nothing
+     to its content's height, so what sits below is walked down over 220ms
+     rather than thrown 470px in one frame — measured on the Demand Board as
+     the worst jump in the app. Pair with the `reveal` utility. */
+  --animate-reveal: reveal 220ms cubic-bezier(0.2, 0.7, 0.2, 1) both;
+  --animate-conceal: conceal 180ms cubic-bezier(0.4, 0, 1, 1) both;
+  /* A tick or a count that has just become true: the stage node a move
+     completed, the Add button's "Added". A short overshoot, like count-pop. */
+  --animate-tick-in: count-pop 420ms cubic-bezier(0.34, 1.56, 0.64, 1);
+  /* A row that has just arrived or changed: a tint that fades to nothing, so
+     the eye has somewhere to land after an action and the row is ordinary
+     again a moment later. */
+  --animate-just-changed: just-changed 1.6s ease-out both;
   /* The stage stepper's 2.8s loop, all three parts on the same beat. */
   --animate-stage-breathe: stage-breathe 2.8s cubic-bezier(0.5, 0, 0.5, 1) infinite;
   --animate-stage-dot: stage-dot 2.8s cubic-bezier(0.5, 0, 0.5, 1) infinite;
@@ -410,6 +424,24 @@
 
   @media (min-width: 40rem) {
     [data-sonner-toast] [data-close-button]::after {
+      inset: 0;
+    }
+  }
+
+  /* A toast's action ("Undo" on a removed cart line, 2026-09-25) is 24px tall
+     in sonner's stylesheet — measured 47×24 at 390. Same treatment as the ✕:
+     the button keeps its size and its target grows to 44. Sonner sets no
+     `position` on it, so this one is not inert. */
+  [data-sonner-toast] [data-button] {
+    position: relative;
+  }
+  [data-sonner-toast] [data-button]::after {
+    content: "";
+    position: absolute;
+    inset: -10px 0;
+  }
+  @media (min-width: 40rem) {
+    [data-sonner-toast] [data-button]::after {
       inset: 0;
     }
   }
@@ -613,6 +645,70 @@
 }
 @utility disclosure-open {
   grid-template-rows: 1fr;
+}
+
+/*
+ * The box `animate-reveal` / `animate-conceal` grow and shrink. Its one row is
+ * the content's height, which `height: auto` cannot animate and a grid track
+ * can; the child needs `min-h-0 overflow-hidden`. Used inside table cells too,
+ * where a row's height is its tallest cell's content.
+ */
+@utility reveal {
+  display: grid;
+  grid-template-rows: 1fr;
+}
+
+@keyframes reveal {
+  from {
+    grid-template-rows: 0fr;
+    opacity: 0;
+  }
+  to {
+    grid-template-rows: 1fr;
+    opacity: 1;
+  }
+}
+
+@keyframes conceal {
+  from {
+    grid-template-rows: 1fr;
+    opacity: 1;
+  }
+  to {
+    grid-template-rows: 0fr;
+    opacity: 0;
+  }
+}
+
+@keyframes just-changed {
+  from {
+    background-color: var(--color-surface-soft);
+  }
+  to {
+    background-color: transparent;
+  }
+}
+
+/* Under reduced motion a section is simply open or shut, and a changed row is
+   not tinted: the tint is the motion. */
+@media (prefers-reduced-motion: reduce) {
+  .animate-reveal,
+  .animate-conceal,
+  .animate-tick-in,
+  .animate-just-changed {
+    animation: none;
+  }
+}
+
+/*
+ * The stage stepper's filled track: when a move lands, the fill slides from
+ * the old stage to the new one rather than jumping (2026-09-25).
+ */
+@utility track-fill {
+  transition: width 600ms cubic-bezier(0.2, 0.7, 0.2, 1);
+  @media (prefers-reduced-motion: reduce) {
+    transition: none;
+  }
 }
 
 /*

@@ -23,7 +23,8 @@ export function CartScreen({
 }: {
   lines: CartLine[];
   onSetCartons: (productId: string, cartons: number) => Promise<SetCartonsResult>;
-  onRemove: (productId: string) => void;
+  /** Resolves once the line is gone, or not — `CartLines` folds it away first. */
+  onRemove: (productId: string) => void | Promise<unknown>;
   subtotal: string;
   cta: ReactNode;
   /** Rendered in place of the captions/grid while a caller is still waiting

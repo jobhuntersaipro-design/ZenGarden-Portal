@@ -4,6 +4,7 @@ import { useState, useTransition } from "react";
 import { Plus } from "lucide-react";
 import { toast } from "sonner";
 import { addManyToCart } from "@/actions/cart";
+import { announceCartAdded } from "@/components/shop/cart-events";
 import { CartonStepper } from "@/components/shop/CartonStepper";
 import { useGuestCart } from "@/components/shop/GuestCartProvider";
 import { useShopViewer } from "@/components/shop/ShopViewer";
@@ -73,6 +74,7 @@ export function VariantBuyRows({
         // showing the old quantities would send them twice.
         setCartons({});
         toast.success(added);
+        announceCartAdded();
         return;
       }
 
@@ -88,6 +90,7 @@ export function VariantBuyRows({
         );
       } else {
         toast.success(added);
+        announceCartAdded();
       }
     });
   };

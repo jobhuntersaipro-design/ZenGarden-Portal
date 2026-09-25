@@ -80,6 +80,7 @@ export function DataTable<Row extends { id: string }>({
   onSortChange,
   emptyText,
   rowHref,
+  onRowOpen,
   renderCard,
   entrance = false,
 }: {
@@ -90,6 +91,12 @@ export function DataTable<Row extends { id: string }>({
   onSortChange: (key: string, dir: SortDirection) => void;
   emptyText: string;
   rowHref?: (row: Row) => string;
+  /**
+   * Told the moment a row is opened, before the navigation answers — so a
+   * page can show where the reader is going while the server works (the
+   * Stock drawer opens at once with the product's name, 2026-09-25).
+   */
+  onRowOpen?: (row: Row) => void;
   /**
    * Below `md`, draw the whole card yourself instead of the default
    * title-plus-`<dl>`.
@@ -164,13 +171,14 @@ export function DataTable<Row extends { id: string }>({
    * row is also reachable by keyboard. A click that already went through the
    * link is left alone rather than navigated twice.
    */
-  const openRow = (event: MouseEvent<HTMLElement>, href: string) => {
+  const openRow = (event: MouseEvent<HTMLElement>, href: string, row: Row) => {
     // A control inside the row acts on the row; it does not open it. Without
     // `button` here, a row action navigates away the moment it is clicked —
     // and a dialog it opened then lands the user on a page for the very row
     // they just deleted.
     if ((event.target as HTMLElement).closest("a, button")) return;
     if (window.getSelection()?.toString()) return;
+    onRowOpen?.(row);
     beginRouteProgress();
     router.push(href);
   };
@@ -248,7 +256,7 @@ export function DataTable<Row extends { id: string }>({
               return (
                 <li
                   key={row.id}
-                  onClick={href ? (event) => openRow(event, href) : undefined}
+                  onClick={href ? (event) => openRow(event, href, row) : undefined}
                   className={`rounded-lg border border-hairline bg-canvas p-md transition-shadow ${
                     href ? "cursor-pointer hover:shadow-xs" : ""
                   } ${entrance ? `animate-rise ${staggerClass(rowIndex)}` : ""}`}
@@ -260,6 +268,7 @@ export function DataTable<Row extends { id: string }>({
                       {href ? (
                         <Link
                           href={href}
+                          onClick={() => onRowOpen?.(row)}
                           className="block rounded-xxs focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-focus"
                         >
                           {titleColumn.cell(row)}
@@ -377,7 +386,7 @@ export function DataTable<Row extends { id: string }>({
                     <tr
                       key={row.id}
                       onClick={
-                        href ? (event) => openRow(event, href) : undefined
+                        href ? (event) => openRow(event, href, row) : undefined
                       }
                       className={`group ${href ? "cursor-pointer" : ""} ${
                         entrance ? `animate-rise ${staggerClass(rowIndex)}` : ""
@@ -404,6 +413,7 @@ export function DataTable<Row extends { id: string }>({
                           {href && index === 0 ? (
                             <Link
                               href={href}
+                              onClick={() => onRowOpen?.(row)}
                               className="block rounded-xxs focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-focus"
                             >
                               {column.cell(row)}

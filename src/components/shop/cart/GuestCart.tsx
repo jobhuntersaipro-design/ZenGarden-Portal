@@ -1,5 +1,6 @@
 "use client";
 
+import { toast } from "sonner";
 import Link from "next/link";
 import { Lock } from "lucide-react";
 import { Shimmer } from "@/components/portal/Skeletons";
@@ -17,7 +18,7 @@ import type { CartLine } from "@/lib/queries/cart";
  * source, its mutators, its own CTA and its loading-rows skeleton.
  */
 export function GuestCart() {
-  const { hydrated, cart, priced, pricingFailed, retryPricing, set, remove } = useGuestCart();
+  const { hydrated, cart, priced, pricingFailed, retryPricing, set, remove, add } = useGuestCart();
 
   // Before hydration `cart.lines` is always empty — localStorage has not
   // been read yet — so a reload of a cart that actually holds lines must not
@@ -50,7 +51,15 @@ export function GuestCart() {
         set(productId, cartons);
         return Promise.resolve({ success: true });
       }}
-      onRemove={remove}
+      onRemove={(productId) => {
+        const line = lines.find((entry) => entry.productId === productId);
+        remove(productId);
+        if (line) {
+          toast.success(`Removed ${line.name}`, {
+            action: { label: "Undo", onClick: () => add(productId, line.cartons) },
+          });
+        }
+      }}
       cta={<GuestCta />}
       skeleton={
         showError ? (

@@ -10,7 +10,7 @@ import { formatBytes } from "@/lib/validation/upload";
  * the states — a taller or differently-rounded bar reads as a different kind
  * of progress (docs/specs/03-upload.md §2, design reference §3.3).
  */
-function ProgressBar({
+export function ProgressBar({
   value,
   fill,
   indeterminate = false,
