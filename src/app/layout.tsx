@@ -3,6 +3,7 @@ import { Inter, Plus_Jakarta_Sans, Sometype_Mono } from "next/font/google";
 import { SpeedInsights } from "@vercel/speed-insights/next";
 import "./globals.css";
 import { cn } from "@/lib/utils";
+import { SPLASH_SCREENS, splashMedia, splashPath } from "@/lib/splash-screens";
 
 const plusJakartaSans = Plus_Jakarta_Sans({
   variable: "--font-plus-jakarta-sans",
@@ -24,6 +25,19 @@ export const metadata: Metadata = {
   title: "Zen Garden Portal",
   description:
     "Purchase-order intake and fulfillment tracking for the Zen Garden ops team",
+  // Opened from a home-screen icon, iOS shows a launch image until the first
+  // byte arrives and plain white when none matches the device. These are the
+  // badge on white, placed where `AppSplash` draws it, so the launch image,
+  // the streamed splash and the page follow each other without a blank frame.
+  appleWebApp: {
+    capable: true,
+    title: "Zen Garden",
+    statusBarStyle: "default",
+    startupImage: SPLASH_SCREENS.map((screen) => ({
+      url: splashPath(screen),
+      media: splashMedia(screen),
+    })),
+  },
 };
 
 /**
@@ -36,6 +50,7 @@ export const viewport: Viewport = {
   width: "device-width",
   initialScale: 1,
   viewportFit: "cover",
+  themeColor: "#ffffff",
 };
 
 export default function RootLayout({

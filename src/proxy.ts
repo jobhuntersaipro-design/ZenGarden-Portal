@@ -161,7 +161,9 @@ export const config = {
     // Everything except Next's own assets and static files — `.lottie` too,
     // or the shop host rewrites the success animation under /shop and 404s
     // it. `/api/auth` is matched on purpose — it is let through in the
-    // handler above, where the reason is visible.
-    "/((?!_next/static|_next/image|favicon.ico|.*\\.(?:svg|png|jpg|jpeg|gif|webp|ico|lottie)$).*)",
+    // handler above, where the reason is visible. The web manifest too: a
+    // home-screen install reads it signed out, and on the shop host it would
+    // otherwise be rewritten under /shop and 404.
+    "/((?!_next/static|_next/image|favicon.ico|manifest.webmanifest|.*\\.(?:svg|png|jpg|jpeg|gif|webp|ico|lottie)$).*)",
   ],
 };

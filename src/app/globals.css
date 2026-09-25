@@ -384,6 +384,12 @@
      the eye has somewhere to land after an action and the row is ordinary
      again a moment later. */
   --animate-just-changed: just-changed 1.6s ease-out both;
+  /* The cold-open splash (2026-09-25): it fades in after 150ms, so an open
+     that answers quickly never flashes it, and the badge breathes while the
+     server works. Opacity only on the way in; reduced motion stills the
+     breathing. */
+  --animate-splash-in: splash-in 360ms ease-out 150ms backwards;
+  --animate-splash-breathe: splash-breathe 2.4s cubic-bezier(0.5, 0, 0.5, 1) infinite;
   /* The stage stepper's 2.8s loop, all three parts on the same beat. */
   --animate-stage-breathe: stage-breathe 2.8s cubic-bezier(0.5, 0, 0.5, 1) infinite;
   --animate-stage-dot: stage-dot 2.8s cubic-bezier(0.5, 0, 0.5, 1) infinite;
@@ -569,6 +575,28 @@
   }
   /* Skeletons still hold the layout; they just stop breathing. */
   .animate-pulse {
+    animation: none;
+  }
+}
+
+@keyframes splash-in {
+  from {
+    opacity: 0;
+  }
+}
+
+@keyframes splash-breathe {
+  0%,
+  100% {
+    transform: scale(1);
+  }
+  50% {
+    transform: scale(1.04);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .animate-splash-breathe {
     animation: none;
   }
 }

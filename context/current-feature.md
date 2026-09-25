@@ -1,3 +1,82 @@
+# Current feature: a splash on a cold open, not a white screen
+
+## Status
+
+**Built and measured on `claude/modest-mayer-bixr87`, not yet merged**
+(2026-09-25). Reported with an iPhone screenshot of a blank white screen,
+opening the portal from a home-screen icon added from Chrome: "Please add
+loading screen, so it dont feel stuck".
+
+**Why it was white.** Every route group's layout awaits the session, the
+user's row and the review count before it sends a byte, and each group's
+`loading.tsx` sits *inside* that layout, so it cannot show until the layout
+has answered. A first open (new tab, home-screen icon, a function waking up)
+drew nothing at all until then. There was no web manifest and no iOS launch
+image either, so the phone had nothing to draw before the first byte.
+
+**Three layers, one picture.**
+- **`app/loading.tsx` → `AppSplash`**: the root boundary, above every group's
+  layout, so the HTML shell streams at once. The badge breathes, a short
+  gradient bar slides under it, and "Just a moment…" sits below. It fades in
+  after 150ms, so an open that answers quickly never flashes it. Under reduced
+  motion the badge holds still and the bar rests full width. Inside a group
+  the group's own skeletons still take over, because its layout is already
+  on screen.
+- **iPhone launch images** (`public/splash/`, 11 portrait screens from SE to
+  16 Pro Max), drawn by `scripts/make-splash-images.ts` from the badge and
+  linked through `appleWebApp.startupImage`. `src/lib/splash-screens.ts` is
+  the one list both read. The badge is placed where `AppSplash` draws it, so
+  launch image → splash → page runs without the logo jumping.
+- **`app/manifest.ts`**: "Zen Garden", standalone, white background and
+  theme. Named without "Portal" because the shop host serves the same file.
+  `manifest.webmanifest` joined the proxy matcher's skip list; otherwise a
+  signed-out install hits the sign-in redirect and the shop host rewrites it
+  under `/shop` and 404s it.
+
+## Verified, with the figures
+
+Local Postgres behind a TCP proxy holding every chunk 600ms each way, to stand
+in for a cold, distant database. Production builds, recorded as real frames
+through a CDP screencast. A screenshot waits for the document to paint, so it
+cannot capture the white.
+- **Before** (same build without `app/loading.tsx`): no frame at all until
+  **1,317ms**, then skeleton; dashboard at 6.3s.
+- **After**: first frame at **146ms**, the splash; dashboard at 6.5s, the same
+  wait but never blank.
+- The splash badge's top measures **306px** at 390×844, the launch image's own
+  `(844 − 232) / 2`.
+- Tabbing Dashboard → Buyers → Products → Demand drew the splash **0** times,
+  with and without reduced motion. Under reduced motion `animation-name` reads
+  `none` on the badge.
+- `/manifest.webmanifest` answers **200** `application/manifest+json`, signed
+  out, on both hosts; each launch image **200**; 11 `apple-touch-startup-image`
+  links in the head; signed-out `/` still **307** to sign-in.
+- No page overflow at 390.
+- 1726/1726 tests (2 new: one file per screen, and every file exists),
+  `tsc` clean, lint unchanged (4 `ShopHeader` errors, 3 warnings), build
+  clean.
+
+## Not verified
+
+- **A real iPhone.** iOS picks a launch image only on an exact media-query
+  match. The queries follow Apple's documented device sizes but were not seen
+  on a device, and **a home-screen icon added before this deploys may need
+  removing and adding again** before iOS reads the new tags.
+- Landscape launches still show white.
+- **Chrome on iOS.** It adds to the home screen through the same web-clip
+  mechanism, so it should behave like Safari's, but that was not checked.
+- **Crossing between route groups** (portal → `/admin`, sign-in → portal) now
+  shows the splash while the other group's layout loads, where it used to hold
+  the old page. It fades in only after 150ms. Not driven, since the seeded
+  super admin is Google-only.
+- **Status codes.** A layout `redirect()` after the shell has streamed becomes
+  a client-side redirect rather than a 307. The proxy still answers the
+  signed-out case with a real 307, which is the one that matters.
+- The build ran with the rig's Prisma adapter swapped in; `tsc` was re-run on
+  the restored tree.
+
+## Previous phase
+
 # Current feature: motion where the screen changed and said nothing
 
 ## Status
