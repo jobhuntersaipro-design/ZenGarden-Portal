@@ -2,6 +2,7 @@ import type { ReactNode } from "react";
 import type { Metadata } from "next";
 import { redirect } from "next/navigation";
 import { NavProgressProvider } from "@/components/portal/NavProgress";
+import { PullToRefresh } from "@/components/portal/PullToRefresh";
 import { SkipLink } from "@/components/portal/SkipLink";
 import { Toaster } from "@/components/ui/sonner";
 import { CartSummaryProvider, GuestCartProvider } from "@/components/shop/GuestCartProvider";
@@ -84,6 +85,7 @@ export default async function StorefrontLayout({
           <ShopUtilityBar />
           <ShopHeader categories={categories} summary={summary} />
           <NavProgressProvider>
+            <PullToRefresh />
             {/* pb-section, not pb-xxl: MobileCartBar is taller than the old
                 60px floor once its own safe-area padding is added, and it is
                 only ever present below `md`. */}

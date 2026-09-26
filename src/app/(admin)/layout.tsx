@@ -4,6 +4,7 @@ import { redirect } from "next/navigation";
 import { Role } from "@/generated/prisma/enums";
 import { AdminNav } from "@/components/admin/AdminNav";
 import { NavProgressProvider } from "@/components/portal/NavProgress";
+import { PullToRefresh } from "@/components/portal/PullToRefresh";
 import { Wordmark } from "@/components/portal/Wordmark";
 import { PersonAvatar } from "@/components/ui/person";
 import { TooltipProvider } from "@/components/ui/tooltip";
@@ -32,6 +33,7 @@ export default async function AdminLayout({
       {/* The users table filters and sorts through the same URL machinery as
           the portal, so it gets the same progress bar (brief G1). */}
       <NavProgressProvider>
+        <PullToRefresh />
         <div className="min-h-dvh bg-canvas">
           <header className="flex h-topbar items-center gap-md border-b border-hairline px-lg">
             {/* The way home, as it is in the portal sidebar and the shop

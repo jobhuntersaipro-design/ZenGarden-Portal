@@ -452,6 +452,17 @@
     }
   }
 
+  /* The app's own pull-to-refresh (`PullToRefresh`, 2026-09-26) replaces the
+     browser's on a touch screen. Left on, Chrome's would reload the whole page
+     over ours and throw away filters and drafts that `router.refresh()`
+     keeps. `contain` rather than `none`, so scrolling inside a sheet or a
+     table still stops at its edge instead of dragging the page. */
+  @media (pointer: coarse) {
+    html {
+      overscroll-behavior-y: contain;
+    }
+  }
+
   body {
     background-color: var(--color-canvas);
     color: var(--color-ink);

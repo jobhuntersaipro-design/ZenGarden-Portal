@@ -1,3 +1,45 @@
+# Current feature: pull down to refresh, on a touch screen
+
+## Status
+
+**Built and driven on `claude/modest-mayer-bixr87`, not yet merged**
+(2026-09-26). Asked for as "when on mobile, I want to add a refresh feature
+when I over scroll up".
+
+`PullToRefresh` is mounted in the portal, shop and admin shells. It starts
+only at the very top of the page, on a mostly-downward touch drag that is
+not inside a dialog, a Radix scroll lock or a scroller with its own scroll.
+The indicator follows at half the finger's travel. Past 72px its arrow flips
+and a release refreshes; short of that it springs back. The refresh is an
+awaited `router.refresh()`: server data re-renders while filters, open rows
+and drafts stay, and the spinner holds until the new payload lands. On a
+coarse pointer `html` gets `overscroll-behavior-y: contain`, so Chrome's own
+full-page reload does not compete with it.
+
+## Verified
+
+Local Postgres, production build, 390×844, real touch events sent through
+CDP.
+- Short pull (100px of finger): indicator shown, sprang back, **0**
+  requests.
+- Full pull (220px): armed arrow, then spinner, then idle. A buyer renamed in
+  the database underneath showed its new name with **no reload**: a
+  `window` marker set before the pull survived.
+- Sideways drag, drag while scrolled down, and drag with the body
+  scroll-locked: **0** requests each.
+- No overflow (390/390).
+- 1729/1729 tests (3 new, on `pullDistance`), `tsc` clean, lint unchanged
+  (4 `ShopHeader` errors, 3 warnings), build clean.
+
+## Not verified
+
+- A real phone, and the iOS home-screen app it was asked for.
+- The shop and admin shells on screen: the drive signed in as a member, so
+  `/admin` 404s, and the shop needs a client.
+- A dialog opened for real. The lock was simulated with its attribute.
+
+## Previous phase
+
 # Current feature: a splash on a cold open, not a white screen
 
 ## Status

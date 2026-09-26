@@ -11,6 +11,7 @@ import { Toaster } from "@/components/ui/sonner";
 import { AvatarChangeListener } from "@/components/portal/AvatarBroadcast";
 import { AvatarSavingProvider } from "@/components/portal/AvatarSaving";
 import { NavProgressProvider } from "@/components/portal/NavProgress";
+import { PullToRefresh } from "@/components/portal/PullToRefresh";
 import { MobileTabBar, MobileTopBar } from "@/components/portal/MobileNav";
 import { NAV } from "@/components/portal/nav";
 import { roleCan } from "@/lib/permissions/require";
@@ -94,6 +95,7 @@ export default async function PortalLayout({
           <ReviewCountProvider initial={reviewCount}>
           {/* A picture changed in another tab has to reach this one. */}
           <AvatarChangeListener />
+          <PullToRefresh />
           <SkipLink />
           <div className="flex min-h-dvh bg-canvas">
             <Sidebar
