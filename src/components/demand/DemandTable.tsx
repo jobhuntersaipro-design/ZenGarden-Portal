@@ -73,7 +73,7 @@ export function DemandTable({ board }: { board: DemandBoard }) {
         <table className="w-full border-collapse text-left">
           <thead>
             <tr className="border-b border-hairline">
-              <Th className="sticky left-0 z-10 bg-canvas pl-lg">Product</Th>
+              <Th className={`sticky left-0 z-10 bg-canvas pl-xs sm:pl-lg ${PRODUCT_COLUMN}`}>Product</Th>
               {board.anyOverdue ? <Th numeric>Overdue</Th> : null}
               {board.columns.map((column) => (
                 <Th key={column.key} numeric>
@@ -104,7 +104,7 @@ export function DemandTable({ board }: { board: DemandBoard }) {
           </tbody>
           <tfoot>
             <tr className="border-t-2 border-ink">
-              <Th className="sticky left-0 z-10 bg-canvas pl-lg">Total cartons</Th>
+              <Th className={`sticky left-0 z-10 bg-canvas pl-xs sm:pl-lg ${PRODUCT_COLUMN}`}>Total cartons</Th>
               {board.anyOverdue ? (
                 <Td numeric>
                   <span className="font-semibold text-ink">{num(board.totals.overdue)}</span>
@@ -155,8 +155,8 @@ function ProductRows({
   return (
     <>
       <tr className="border-b border-hairline last:border-0">
-        <td className="sticky left-0 z-10 max-w-72 bg-canvas py-sm pl-lg pr-md">
-          <div className="flex items-start gap-xs">
+        <td className={`sticky left-0 z-10 bg-canvas py-sm pl-xs pr-xs sm:pl-lg sm:pr-md ${PRODUCT_COLUMN}`}>
+          <div className="flex items-start gap-xxs sm:gap-xs">
             <button
               type="button"
               onClick={onToggle}
@@ -164,7 +164,7 @@ function ProductRows({
               // The count is in the name because the caret alone does not say
               // how much is behind it, and a screen reader gets no column.
               aria-label={`${expanded ? "Hide" : "Show"} the ${row.orders} order${row.orders === 1 ? "" : "s"} behind ${row.name}`}
-              className="flex size-11 shrink-0 items-center justify-center rounded-sm text-ink-tertiary transition-colors hover:bg-surface hover:text-ink focus-visible:outline-2 focus-visible:outline-focus sm:size-6"
+              className="relative flex size-6 shrink-0 items-center justify-center rounded-sm text-ink-tertiary transition-colors after:absolute after:-inset-2.5 hover:bg-surface hover:text-ink focus-visible:outline-2 focus-visible:outline-focus sm:after:hidden"
             >
               <ChevronRight
                 className={`size-4 transition-transform ${expanded ? "rotate-90" : ""}`}
@@ -175,14 +175,21 @@ function ProductRows({
             <div className="min-w-0">
               <Link
                 href={`/products/${row.productId}`}
-                className="block truncate text-[length:var(--text-body-sm)] font-semibold text-ink hover:text-brand-link focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-focus"
+                className="line-clamp-2 break-words text-[length:var(--text-body-sm)] font-semibold text-ink hover:text-brand-link sm:line-clamp-none sm:block sm:truncate focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-focus"
                 title={row.name}
               >
                 {row.name}
               </Link>
-              <p className="truncate font-mono text-[length:var(--text-caption)] text-ink-tertiary">
+              <p className="break-words font-mono text-[length:var(--text-caption)] text-ink-tertiary sm:truncate">
                 {row.sku}
-                {row.market ? ` · ${row.market}` : ""}
+                {/* On a phone the market takes its own line rather than
+                    wrapping mid-way and opening a line with the dot. */}
+                {row.market ? (
+                  <>
+                    <span className="max-sm:hidden"> · </span>
+                    <span className="max-sm:block">{row.market}</span>
+                  </>
+                ) : null}
               </p>
             </div>
           </div>
@@ -288,7 +295,7 @@ export function OrderRow({
   reveal?: { closing: boolean };
 }) {
   const first = (
-        <div className="pl-[calc(var(--spacing-xs)+1.5rem)]">
+        <div className="sm:pl-[calc(var(--spacing-xs)+1.5rem)]">
           <p
             className="truncate text-[length:var(--text-body-sm)] text-ink"
             title={line.buyerName}
@@ -343,13 +350,13 @@ export function OrderRow({
   return (
     <tr className="border-b border-hairline bg-surface-soft/40 last:border-0">
       {reveal ? (
-        <td className="sticky left-0 z-10 max-w-72 bg-canvas py-0 pl-lg pr-md">
+        <td className={`sticky left-0 z-10 bg-canvas py-0 pl-xs pr-xs sm:pl-lg sm:pr-md ${PRODUCT_COLUMN}`}>
           <Reveal closing={reveal.closing} className="py-sm">
             {first}
           </Reveal>
         </td>
       ) : (
-        <td className="sticky left-0 z-10 max-w-72 bg-canvas py-sm pl-lg pr-md">{first}</td>
+        <td className={`sticky left-0 z-10 bg-canvas py-sm pl-xs pr-xs sm:pl-lg sm:pr-md ${PRODUCT_COLUMN}`}>{first}</td>
       )}
       {board.anyOverdue ? (
         <Td reveal={reveal} numeric>
@@ -376,6 +383,15 @@ export function OrderRow({
     </tr>
   );
 }
+
+/**
+ * The pinned product column. Below `sm` it is a fixed 176px so the day
+ * columns keep most of a phone's width (2026-09-26: at 288px it left one
+ * column in view and cut every name). Names wrap to two lines there instead
+ * of cutting at one; above `sm` the column sizes to its content, as before.
+ * 176px is also the widest a sub-row's unbroken `PO number …` line needs.
+ */
+const PRODUCT_COLUMN = "w-44 min-w-44 max-w-44 sm:w-auto sm:min-w-0 sm:max-w-72";
 
 function Th({
   children,

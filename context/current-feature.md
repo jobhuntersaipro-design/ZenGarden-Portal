@@ -1,3 +1,45 @@
+# Current feature: the Demand Board's product column reads on a phone
+
+## Status
+
+**Built and measured on `claude/modest-mayer-bixr87`, not yet merged**
+(2026-09-26). Reported with a phone screenshot of `/demand`: "This part is
+hard to read". The pinned Product column was up to 288px of a 348px card. That
+left about one day column in view, and every name and SKU line was cut with an
+ellipsis.
+
+Below `sm` the pinned column is a fixed 176px (`PRODUCT_COLUMN` in
+`DemandTable.tsx`):
+- Its padding drops to `xs`.
+- Names wrap to two lines instead of cutting at one.
+- The market sits on its own line under the SKU, with no " · ".
+- The caret is 24px on screen, and an `::after` inset keeps its tap area at
+  44px.
+- An order sub-row's indent is dropped below `sm`, so its unbroken
+  `PO number …` line still fits.
+
+Above `sm` nothing changes.
+
+## Verified
+
+Dev server on local Postgres, 390×844 touch and 1440, with the seed's names
+lengthened to match the screenshot.
+- Before: the pinned column was 288px of the 348px card, with Overdue half in
+  view and no day column.
+- After: 176px, with Overdue, 26 Sep and part of 27 Sep in view.
+- Caret 24×24 with a hit inset of −10px (44px).
+- No page overflow at 390 or 1440, collapsed or expanded; 0 clipped lines.
+- 1733/1733 tests, `tsc` clean, lint unchanged (4 `ShopHeader` errors, 3
+  warnings), build clean.
+
+## Not verified
+
+- A real phone.
+- A PO number long enough to widen the column past 176px. The column then
+  grows to fit it, as it did before.
+
+## Previous phase
+
 # Current feature: every wait shows for at least 0.2s
 
 ## Status
