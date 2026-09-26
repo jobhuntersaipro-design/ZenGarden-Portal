@@ -13,6 +13,7 @@ import {
   renderAvatarDataUri,
 } from "@/lib/avatar-styles";
 import { prisma } from "@/lib/prisma";
+import { withLoadingFloor } from "@/lib/loading-floor";
 
 export const metadata: Metadata = {
   title: "Settings · Zen Garden Portal",
@@ -25,7 +26,7 @@ export const metadata: Metadata = {
  */
 const SEEDS = Array.from({ length: 12 }, (_, i) => `option-${i + 1}`);
 
-export default async function SettingsPage() {
+async function SettingsPage() {
   const session = await getSessionUser();
   if (!session) redirect("/signin?next=/settings");
 
@@ -87,3 +88,5 @@ export default async function SettingsPage() {
     </SessionProvider>
   );
 }
+
+export default withLoadingFloor(SettingsPage);

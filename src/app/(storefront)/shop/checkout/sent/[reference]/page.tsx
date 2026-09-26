@@ -8,6 +8,7 @@ import { formatMYR } from "@/lib/money";
 import { loadSentOrder } from "@/lib/queries/shop-checkout";
 import { shopHref } from "@/lib/shop-routes";
 import { loadShopViewer } from "@/lib/shop-viewer";
+import { withLoadingFloor } from "@/lib/loading-floor";
 
 export const metadata: Metadata = { title: "Order sent · Zen Garden" };
 export const dynamic = "force-dynamic";
@@ -20,7 +21,7 @@ export const dynamic = "force-dynamic";
  * caller's own buyer — another company's reference finds nothing, and answers
  * the same way a made-up one does.
  */
-export default async function OrderSentPage({
+async function OrderSentPage({
   params,
 }: {
   params: Promise<{ reference: string }>;
@@ -123,3 +124,5 @@ function Cell({
     </div>
   );
 }
+
+export default withLoadingFloor(OrderSentPage);

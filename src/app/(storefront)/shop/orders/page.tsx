@@ -14,13 +14,14 @@ import {
   listBuyerOrders,
   type BuyerOrderSortKey,
 } from "@/lib/queries/web-orders";
+import { withLoadingFloor } from "@/lib/loading-floor";
 
 export const dynamic = "force-dynamic";
 export const metadata: Metadata = { title: "My orders · Zen Garden" };
 
 const PER_PAGE = 20;
 
-export default async function OrdersPage({
+async function OrdersPage({
   searchParams,
 }: {
   searchParams: Promise<Record<string, string | string[] | undefined>>;
@@ -95,3 +96,5 @@ export default async function OrdersPage({
     </div>
   );
 }
+
+export default withLoadingFloor(OrdersPage);

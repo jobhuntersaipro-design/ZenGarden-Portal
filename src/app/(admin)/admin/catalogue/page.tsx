@@ -5,6 +5,7 @@ import { Rise } from "@/components/portal/Rise";
 import { LABEL_KINDS } from "@/lib/catalog-labels";
 import { listCatalogLabels } from "@/lib/queries/catalog-labels";
 import { listFamilies } from "@/lib/queries/product-families";
+import { withLoadingFloor } from "@/lib/loading-floor";
 
 export const metadata: Metadata = { title: "Catalogue · Zen Garden Portal" };
 export const dynamic = "force-dynamic";
@@ -16,7 +17,7 @@ export const dynamic = "force-dynamic";
  * so a value could be added only by typing it into a product and could never
  * be corrected or cleared. They are rows now, and this is where they are kept.
  */
-export default async function AdminCataloguePage() {
+async function AdminCataloguePage() {
   const [labels, families] = await Promise.all([listCatalogLabels(), listFamilies()]);
   const total = LABEL_KINDS.reduce((sum, kind) => sum + labels[kind].length, 0);
 
@@ -52,3 +53,5 @@ export default async function AdminCataloguePage() {
     </>
   );
 }
+
+export default withLoadingFloor(AdminCataloguePage);

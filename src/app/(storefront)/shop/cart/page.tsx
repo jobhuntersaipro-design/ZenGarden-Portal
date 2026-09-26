@@ -3,6 +3,7 @@ import { ClientCart } from "@/components/shop/cart/ClientCart";
 import { GuestCart } from "@/components/shop/cart/GuestCart";
 import { loadCart } from "@/lib/queries/cart";
 import { loadShopViewer } from "@/lib/shop-viewer";
+import { withLoadingFloor } from "@/lib/loading-floor";
 
 export const dynamic = "force-dynamic";
 
@@ -14,7 +15,7 @@ export const metadata: Metadata = { title: "Your cart · Zen Garden" };
  * `localStorage` and is read by `GuestCart` itself — this component never
  * fetches a guest's cart.
  */
-export default async function CartPage() {
+async function CartPage() {
   const viewer = await loadShopViewer();
   // Unreachable in practice: the storefront layout already redirects staff
   // to the portal before any page under it renders. Narrowed here only so
@@ -37,3 +38,5 @@ export default async function CartPage() {
   // rebuilding them.
   return <GuestCart />;
 }
+
+export default withLoadingFloor(CartPage);

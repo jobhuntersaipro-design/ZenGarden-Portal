@@ -6,6 +6,7 @@ import { ProductForm } from "@/components/products/ProductForm";
 import { listFamilies } from "@/lib/queries/product-families";
 import { listAllLabels } from "@/lib/queries/products";
 import { can } from "@/lib/permissions/require";
+import { withLoadingFloor } from "@/lib/loading-floor";
 
 export const metadata: Metadata = {
   title: "New product · Zen Garden Portal",
@@ -21,7 +22,7 @@ export const dynamic = "force-dynamic";
 // its own export instead.
 export const maxDuration = 120;
 
-export default async function NewProductPage() {
+async function NewProductPage() {
   // The catalog only offers this link to whoever may use it, but the link is
   // a URL and anyone can type it. `createProductVariants` refuses either way;
   // this is so a reader sees the catalog rather than a form that can never
@@ -54,3 +55,5 @@ export default async function NewProductPage() {
     </>
   );
 }
+
+export default withLoadingFloor(NewProductPage);

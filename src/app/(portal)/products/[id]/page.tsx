@@ -37,6 +37,7 @@ import {
 } from "@/lib/queries/pagination";
 import { prisma } from "@/lib/prisma";
 import { can, requirePagePermission } from "@/lib/permissions/require";
+import { withLoadingFloor } from "@/lib/loading-floor";
 
 export const dynamic = "force-dynamic";
 
@@ -69,7 +70,7 @@ export async function generateMetadata({
   return { title: `${product?.name ?? "Product"} · Zen Garden Portal` };
 }
 
-export default async function ProductPage({
+async function ProductPage({
   params,
   searchParams,
 }: {
@@ -473,3 +474,5 @@ export default async function ProductPage({
     </>
   );
 }
+
+export default withLoadingFloor(ProductPage);

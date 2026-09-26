@@ -5,6 +5,7 @@ import { AddProductToListing } from "@/components/admin/AddProductToListing";
 import { ListingMembers } from "@/components/admin/ListingMembers";
 import { Rise } from "@/components/portal/Rise";
 import { loadListing, productsOutsideFamily } from "@/lib/queries/product-families";
+import { withLoadingFloor } from "@/lib/loading-floor";
 
 export const metadata: Metadata = { title: "Listing · Zen Garden Portal" };
 export const dynamic = "force-dynamic";
@@ -17,7 +18,7 @@ export const dynamic = "force-dynamic";
  * offers. Before this there was nowhere to see a listing whole — membership
  * could only be read and changed one product at a time, from the product.
  */
-export default async function ListingPage({
+async function ListingPage({
   params,
 }: {
   params: Promise<{ id: string }>;
@@ -73,3 +74,5 @@ export default async function ListingPage({
     </>
   );
 }
+
+export default withLoadingFloor(ListingPage);

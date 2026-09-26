@@ -16,6 +16,7 @@ import { firstParam, type SearchParams } from "@/lib/queries/pagination";
 import { loadPoStageBoard } from "@/lib/queries/po-stages";
 import { resolveStageShow } from "@/lib/po-stage-window";
 import { requirePagePermission } from "@/lib/permissions/require";
+import { withLoadingFloor } from "@/lib/loading-floor";
 
 export const metadata: Metadata = { title: "Demand Board · Zen Garden Portal" };
 export const dynamic = "force-dynamic";
@@ -95,7 +96,7 @@ function resolveWindow(
   };
 }
 
-export default async function DemandPage({
+async function DemandPage({
   searchParams,
 }: {
   searchParams: Promise<SearchParams>;
@@ -212,3 +213,5 @@ export default async function DemandPage({
     </div>
   );
 }
+
+export default withLoadingFloor(DemandPage);

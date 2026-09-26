@@ -42,6 +42,7 @@ import {
   parseSort,
   type SearchParams,
 } from "@/lib/queries/pagination";
+import { withLoadingFloor } from "@/lib/loading-floor";
 
 export const metadata: Metadata = { title: "Products · Zen Garden Portal" };
 export const dynamic = "force-dynamic";
@@ -60,7 +61,7 @@ const FILTERS: ProductFilter[] = [
 /** Grid pages differ from the table's, because cards are cheaper to scan. */
 const GRID_SIZES = [12, 8, 30, 50] as const;
 
-export default async function ProductsPage({
+async function ProductsPage({
   searchParams,
 }: {
   searchParams: Promise<SearchParams>;
@@ -335,3 +336,5 @@ export default async function ProductsPage({
     </>
   );
 }
+
+export default withLoadingFloor(ProductsPage);

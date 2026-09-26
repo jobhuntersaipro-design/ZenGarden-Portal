@@ -17,6 +17,7 @@ import {
 } from "@/lib/queries/shop-catalogue";
 import { shopHref } from "@/lib/shop-routes";
 import { loadShopAudience } from "@/lib/shop-viewer";
+import { withLoadingFloor } from "@/lib/loading-floor";
 
 export const dynamic = "force-dynamic";
 
@@ -37,7 +38,7 @@ export async function generateMetadata({
   return { title: `${product?.name ?? "Product"} · Zen Garden` };
 }
 
-export default async function ShopProductPage({
+async function ShopProductPage({
   params,
 }: {
   params: Promise<{ id: string }>;
@@ -193,3 +194,5 @@ export default async function ShopProductPage({
     </div>
   );
 }
+
+export default withLoadingFloor(ShopProductPage);

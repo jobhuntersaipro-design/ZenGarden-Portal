@@ -15,13 +15,14 @@ import {
   parseSort,
   type SearchParams,
 } from "@/lib/queries/pagination";
+import { withLoadingFloor } from "@/lib/loading-floor";
 
 export const metadata: Metadata = { title: "User management · Zen Garden Portal" };
 export const dynamic = "force-dynamic";
 
 const STATUSES: UserStatusFilter[] = ["all", "active", "invited", "disabled"];
 
-export default async function AdminPage({
+async function AdminPage({
   searchParams,
 }: {
   searchParams: Promise<SearchParams>;
@@ -63,3 +64,5 @@ export default async function AdminPage({
     </>
   );
 }
+
+export default withLoadingFloor(AdminPage);

@@ -28,13 +28,14 @@ import {
   parseSort,
   type SearchParams,
 } from "@/lib/queries/pagination";
+import { withLoadingFloor } from "@/lib/loading-floor";
 
 export const metadata: Metadata = { title: "Buyers · Zen Garden Portal" };
 export const dynamic = "force-dynamic";
 
 const FILTERS: BuyerFilter[] = ["lapsed", "at-risk", "overdue"];
 
-export default async function BuyersPage({
+async function BuyersPage({
   searchParams,
 }: {
   searchParams: Promise<SearchParams>;
@@ -169,3 +170,5 @@ export default async function BuyersPage({
     </>
   );
 }
+
+export default withLoadingFloor(BuyersPage);

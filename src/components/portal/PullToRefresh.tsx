@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import { ArrowDown } from "lucide-react";
 import { Spinner } from "@/components/portal/Spinner";
 import { useAwaitableRefresh } from "@/hooks/useAwaitableRefresh";
+import { atLeastFloor } from "@/lib/loading-floor";
 
 /** How far the finger must travel, after resistance, before a release refreshes. */
 export const PULL_THRESHOLD = 72;
@@ -127,7 +128,9 @@ export function PullToRefresh() {
       setPhase("refreshing");
       setPull(PULL_THRESHOLD);
       try {
-        await refresh();
+        // Held for the loading floor, so a refresh that answers at once
+        // still shows its spinner rather than a flicker.
+        await atLeastFloor(refresh());
       } finally {
         busy = false;
         setPhase("idle");

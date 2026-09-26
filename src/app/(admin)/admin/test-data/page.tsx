@@ -1,11 +1,12 @@
 import type { Metadata } from "next";
 import { TestDataCard } from "@/components/admin/TestDataCard";
 import { countTestData, isProduction } from "@/lib/test-data";
+import { withLoadingFloor } from "@/lib/loading-floor";
 
 export const metadata: Metadata = { title: "Test data · Zen Garden Portal" };
 export const dynamic = "force-dynamic";
 
-export default async function TestDataPage() {
+async function TestDataPage() {
   const counts = await countTestData();
 
   return (
@@ -21,3 +22,5 @@ export default async function TestDataPage() {
     </>
   );
 }
+
+export default withLoadingFloor(TestDataPage);

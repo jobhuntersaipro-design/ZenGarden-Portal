@@ -8,6 +8,7 @@ import { loadCart } from "@/lib/queries/cart";
 import { loadReviewBuyer } from "@/lib/queries/shop-checkout";
 import { shopHref } from "@/lib/shop-routes";
 import { loadShopViewer } from "@/lib/shop-viewer";
+import { withLoadingFloor } from "@/lib/loading-floor";
 
 export const metadata: Metadata = { title: "Review your order · Zen Garden" };
 export const dynamic = "force-dynamic";
@@ -21,7 +22,7 @@ export const dynamic = "force-dynamic";
  * the cart — that screen is where both are explained and fixed, and sending
  * either would fail in `submitWebOrder` anyway.
  */
-export default async function CheckoutReviewPage() {
+async function CheckoutReviewPage() {
   const viewer = await loadShopViewer();
   if (viewer === "staff") return null;
   if (viewer.kind !== "client") {
@@ -70,3 +71,5 @@ export default async function CheckoutReviewPage() {
     </div>
   );
 }
+
+export default withLoadingFloor(CheckoutReviewPage);

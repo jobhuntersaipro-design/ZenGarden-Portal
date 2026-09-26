@@ -23,6 +23,7 @@ import {
   listPurchaseOrders,
   listReviewQueue,
 } from "@/lib/queries/purchase-orders";
+import { withLoadingFloor } from "@/lib/loading-floor";
 
 export const metadata: Metadata = {
   title: "Purchase orders · Zen Garden Portal",
@@ -51,7 +52,7 @@ const asDate = (value: string | undefined) => {
   return Number.isNaN(date.getTime()) ? undefined : date;
 };
 
-export default async function PurchaseOrdersPage({
+async function PurchaseOrdersPage({
   searchParams,
 }: {
   searchParams: Promise<SearchParams>;
@@ -124,3 +125,5 @@ export default async function PurchaseOrdersPage({
     </>
   );
 }
+
+export default withLoadingFloor(PurchaseOrdersPage);

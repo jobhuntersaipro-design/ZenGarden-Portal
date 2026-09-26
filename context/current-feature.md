@@ -1,3 +1,58 @@
+# Current feature: every wait shows for at least 0.2s
+
+## Status
+
+**Built and measured on `claude/modest-mayer-bixr87`, not yet merged**
+(2026-09-26). Asked for as "for every loading, add 0.2s to load, I want to
+show it's loading". The user chose a **minimum of 0.2s**: a fast load is held
+to 0.2s and a slow load gets nothing added. They chose all four scopes: page
+skeletons, filters/sorts/paging, pull to refresh and button spinners.
+
+- **Pages.** All 30 portal, admin and shop pages are wrapped in
+  `withLoadingFloor` (`src/lib/loading-floor.ts`). The page's own work runs
+  alongside a 200ms timer. The wrapped page covers everything that waits on
+  it:
+  - the route skeleton and top bar;
+  - "Updating…" and the pending chip on a filter, sort or page change;
+  - an action's `revalidatePath` answer.
+
+  `notFound`/`redirect` pass through at once. Auth pages sit under no
+  skeleton and are left alone. The floor is off under `NODE_ENV=test`.
+- **Button spinners.** `Button`'s ring goes through `HeldSpinner` /
+  `useHeldFlag`, which keeps it on screen 200ms after `pending` turns on.
+  `disabled` and `aria-busy` still follow `pending`, so the button is never
+  locked longer than the work takes.
+- **Pull to refresh.** The pull awaits `atLeastFloor(refresh())`.
+
+## Verified
+
+Local Postgres, production builds, sampled every frame, 3 runs per build
+(ms).
+
+| | Before | After |
+|---|---|---|
+| Filter chip: bar and "Updating…" | 42 / 46 / 34 | 200–223 |
+| Pull spinner | 218 / 134 / 218 | 233–354 |
+| Save button spinner | 242 / 223 / 167 | 316–384 (one 1,499) |
+| Dashboard → Buyers skeleton | 297 / 302 / 288 | 286–303 (already above the floor, so nothing added) |
+
+- A screenshot 120ms after the Confirmed chip shows "Updating…" after the
+  change and nothing before it.
+- 1733/1733 tests, including 4 new tests on the floor. Two of them were
+  watched failing against a version that waits only on the work.
+- `tsc` clean, lint unchanged (4 `ShopHeader` errors, 3 warnings), build
+  clean.
+
+## Not verified
+
+- Production. Any cold database is already slower than 0.2s, so the floor
+  should rarely show there.
+- The shop and admin pages on screen.
+- Actions that do not re-render a page (toasts only). They are covered only
+  by the button's ring.
+
+## Previous phase
+
 # Current feature: pull down to refresh, on a touch screen
 
 ## Status

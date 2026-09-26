@@ -17,6 +17,7 @@ import {
 import { orderLabel } from "@/lib/order-identity";
 import { loadBuyerOrder } from "@/lib/queries/web-orders";
 import { shopHref } from "@/lib/shop-routes";
+import { withLoadingFloor } from "@/lib/loading-floor";
 
 export const dynamic = "force-dynamic";
 
@@ -38,7 +39,7 @@ export async function generateMetadata({
   };
 }
 
-export default async function OrderDetailPage({
+async function OrderDetailPage({
   params,
 }: {
   params: Promise<{ id: string }>;
@@ -245,3 +246,5 @@ export default async function OrderDetailPage({
     </div>
   );
 }
+
+export default withLoadingFloor(OrderDetailPage);

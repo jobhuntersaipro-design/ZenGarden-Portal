@@ -11,11 +11,12 @@ import { SHOP_PER_PAGE, parseShopQuery, shopQueryHref } from "@/lib/shop-filters
 import { shopHref } from "@/lib/shop-routes";
 import { NoMarketPanel } from "@/components/shop/NoMarketPanel";
 import { loadShopAudience } from "@/lib/shop-viewer";
+import { withLoadingFloor } from "@/lib/loading-floor";
 
 export const metadata: Metadata = { title: "Products · Zen Garden" };
 export const dynamic = "force-dynamic";
 
-export default async function ShopCataloguePage({
+async function ShopCataloguePage({
   searchParams,
 }: {
   searchParams: Promise<SearchParams>;
@@ -135,3 +136,5 @@ export default async function ShopCataloguePage({
     </div>
   );
 }
+
+export default withLoadingFloor(ShopCataloguePage);

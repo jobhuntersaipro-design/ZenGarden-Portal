@@ -4,12 +4,13 @@ import { can } from "@/lib/permissions/require";
 import { BackLink } from "@/components/portal/BackLink";
 import { PageHeader } from "@/components/portal/PageHeader";
 import { UploadWorkspace } from "@/components/upload/UploadWorkspace";
+import { withLoadingFloor } from "@/lib/loading-floor";
 
 export const metadata: Metadata = {
   title: "Upload purchase orders · Zen Garden Portal",
 };
 
-export default async function UploadPage({
+async function UploadPage({
   searchParams,
 }: {
   searchParams: Promise<Record<string, string | string[] | undefined>>;
@@ -30,3 +31,5 @@ export default async function UploadPage({
     </>
   );
 }
+
+export default withLoadingFloor(UploadPage);

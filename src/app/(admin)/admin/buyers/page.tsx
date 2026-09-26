@@ -17,11 +17,12 @@ import {
   selectAdminBuyers,
 } from "@/lib/queries/admin-buyers";
 import { firstParam, parseSort, type SearchParams } from "@/lib/queries/pagination";
+import { withLoadingFloor } from "@/lib/loading-floor";
 
 export const metadata: Metadata = { title: "Buyer management · Zen Garden Portal" };
 export const dynamic = "force-dynamic";
 
-export default async function AdminBuyersPage({
+async function AdminBuyersPage({
   searchParams,
 }: {
   searchParams: Promise<SearchParams>;
@@ -112,3 +113,5 @@ export default async function AdminBuyersPage({
     </>
   );
 }
+
+export default withLoadingFloor(AdminBuyersPage);

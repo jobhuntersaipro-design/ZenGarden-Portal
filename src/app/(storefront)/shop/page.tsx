@@ -6,6 +6,7 @@ import { HowItWorks } from "@/components/shop/home/HowItWorks";
 import { NoMarketPanel } from "@/components/shop/NoMarketPanel";
 import { loadShopHome } from "@/lib/queries/shop-home";
 import { loadShopAudience } from "@/lib/shop-viewer";
+import { withLoadingFloor } from "@/lib/loading-floor";
 
 export const dynamic = "force-dynamic";
 
@@ -18,7 +19,7 @@ export const dynamic = "force-dynamic";
  * real client whose buyer has no market, who gets told why rather than shown
  * an empty shelf.
  */
-export default async function ShopHome() {
+async function ShopHome() {
   const audience = await loadShopAudience();
   if (audience.kind === "unassigned") {
     return (
@@ -52,3 +53,5 @@ export default async function ShopHome() {
     </div>
   );
 }
+
+export default withLoadingFloor(ShopHome);

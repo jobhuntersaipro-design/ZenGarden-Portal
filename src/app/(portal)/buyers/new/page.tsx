@@ -5,13 +5,14 @@ import { BackLink } from "@/components/portal/BackLink";
 import { BuyerForm } from "@/components/buyers/BuyerForm";
 import { listLabels } from "@/lib/queries/products";
 import { can } from "@/lib/permissions/require";
+import { withLoadingFloor } from "@/lib/loading-floor";
 
 export const metadata: Metadata = {
   title: "New buyer · Zen Garden Portal",
 };
 export const dynamic = "force-dynamic";
 
-export default async function NewBuyerPage() {
+async function NewBuyerPage() {
   // The directory only offers this link to whoever may use it, but the link
   // is a URL and anyone can type it. `createBuyer` refuses either way; this
   // is so a reader sees the directory rather than a form that can never save.
@@ -46,3 +47,5 @@ export default async function NewBuyerPage() {
     </>
   );
 }
+
+export default withLoadingFloor(NewBuyerPage);

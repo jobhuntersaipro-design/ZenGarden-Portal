@@ -9,6 +9,7 @@ import { PageHeader } from "@/components/portal/PageHeader";
 import { todayISO } from "@/lib/dates";
 import { prisma } from "@/lib/prisma";
 import type { PoDraft } from "@/lib/validation/purchase-orders";
+import { withLoadingFloor } from "@/lib/loading-floor";
 
 export const metadata: Metadata = { title: "Review · Zen Garden Portal" };
 export const dynamic = "force-dynamic";
@@ -77,7 +78,7 @@ function confidenceMap(raw: unknown): Record<string, number> {
   );
 }
 
-export default async function ReviewPage({
+async function ReviewPage({
   params,
   searchParams,
 }: {
@@ -184,3 +185,5 @@ export default async function ReviewPage({
     </>
   );
 }
+
+export default withLoadingFloor(ReviewPage);

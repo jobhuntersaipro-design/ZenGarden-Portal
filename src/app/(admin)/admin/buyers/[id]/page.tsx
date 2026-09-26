@@ -20,6 +20,7 @@ import { listBuyerContacts } from "@/lib/queries/clients";
 import { firstParam, parsePagination, type SearchParams } from "@/lib/queries/pagination";
 import { prisma } from "@/lib/prisma";
 import { listLabels } from "@/lib/queries/products";
+import { withLoadingFloor } from "@/lib/loading-floor";
 
 export const dynamic = "force-dynamic";
 
@@ -74,7 +75,7 @@ export async function generateMetadata({
 
 const plural = (count: number, noun: string) => `${count} ${noun}${count === 1 ? "" : "s"}`;
 
-export default async function AdminBuyerPage({
+async function AdminBuyerPage({
   params,
   searchParams,
 }: {
@@ -218,3 +219,5 @@ export default async function AdminBuyerPage({
     </>
   );
 }
+
+export default withLoadingFloor(AdminBuyerPage);

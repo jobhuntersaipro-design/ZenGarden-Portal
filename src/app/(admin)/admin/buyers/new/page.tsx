@@ -2,11 +2,12 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { BuyerForm } from "@/components/buyers/BuyerForm";
 import { listLabels } from "@/lib/queries/products";
+import { withLoadingFloor } from "@/lib/loading-floor";
 
 export const metadata: Metadata = { title: "New buyer · Zen Garden Portal" };
 export const dynamic = "force-dynamic";
 
-export default async function NewAdminBuyerPage() {
+async function NewAdminBuyerPage() {
   // The MARKET vocabulary, so the picker offers the same values
   // `Product.market` is chosen from — the two have to match exactly for a
   // buyer to see anything.
@@ -24,3 +25,5 @@ export default async function NewAdminBuyerPage() {
     </>
   );
 }
+
+export default withLoadingFloor(NewAdminBuyerPage);

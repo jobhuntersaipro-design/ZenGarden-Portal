@@ -31,11 +31,12 @@ import {
 import { PO_LIST_SORT_KEYS } from "@/lib/queries/po-list.sql";
 import { listPurchaseOrders } from "@/lib/queries/purchase-orders";
 import { requirePagePermission } from "@/lib/permissions/require";
+import { withLoadingFloor } from "@/lib/loading-floor";
 
 export const metadata: Metadata = { title: "Dashboard · Zen Garden Portal" };
 export const dynamic = "force-dynamic";
 
-export default async function DashboardPage({
+async function DashboardPage({
   searchParams,
 }: {
   searchParams: Promise<SearchParams>;
@@ -313,3 +314,5 @@ export default async function DashboardPage({
     </>
   );
 }
+
+export default withLoadingFloor(DashboardPage);

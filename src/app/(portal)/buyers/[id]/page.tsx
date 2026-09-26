@@ -41,6 +41,7 @@ import { PO_LIST_SORT_KEYS } from "@/lib/queries/po-list.sql";
 import { listPurchaseOrders } from "@/lib/queries/purchase-orders";
 import { prisma } from "@/lib/prisma";
 import { can, requirePagePermission } from "@/lib/permissions/require";
+import { withLoadingFloor } from "@/lib/loading-floor";
 
 export const dynamic = "force-dynamic";
 
@@ -64,7 +65,7 @@ export async function generateMetadata({
 /** Weekly and up: a buyer's own history is too sparse to read daily. */
 const AGGS: Aggregation[] = ["week", "month", "quarter", "year"];
 
-export default async function BuyerPage({
+async function BuyerPage({
   params,
   searchParams,
 }: {
@@ -372,3 +373,5 @@ export default async function BuyerPage({
     </>
   );
 }
+
+export default withLoadingFloor(BuyerPage);

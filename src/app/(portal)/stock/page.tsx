@@ -19,6 +19,7 @@ import {
   type StockSheetRow,
 } from "@/lib/queries/stock";
 import { TIME_ZONE } from "@/lib/dates";
+import { withLoadingFloor } from "@/lib/loading-floor";
 
 export const metadata: Metadata = { title: "Stock · Zen Garden Portal" };
 export const dynamic = "force-dynamic";
@@ -52,7 +53,7 @@ function selectRows(
   });
 }
 
-export default async function StockPage({
+async function StockPage({
   searchParams,
 }: {
   searchParams: Promise<SearchParams>;
@@ -109,3 +110,5 @@ export default async function StockPage({
     </>
   );
 }
+
+export default withLoadingFloor(StockPage);

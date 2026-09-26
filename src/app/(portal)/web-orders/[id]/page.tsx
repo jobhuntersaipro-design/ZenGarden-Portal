@@ -8,6 +8,7 @@ import { WebOrderReviewForm } from "@/components/web-orders/WebOrderReviewForm";
 import { can, requirePagePermission } from "@/lib/permissions/require";
 import { prisma } from "@/lib/prisma";
 import { loadWebOrderForReview } from "@/lib/queries/web-orders";
+import { withLoadingFloor } from "@/lib/loading-floor";
 
 export const metadata: Metadata = { title: "Shop order · Zen Garden Portal" };
 export const dynamic = "force-dynamic";
@@ -19,7 +20,7 @@ export const dynamic = "force-dynamic";
  * buyer sent in a side rail — the same geometry as `/review/[id]`, so it reads
  * as the same job. An order with no PDF keeps the two half-width panes.
  */
-export default async function WebOrderReviewPage({
+async function WebOrderReviewPage({
   params,
 }: {
   params: Promise<{ id: string }>;
@@ -86,3 +87,5 @@ export default async function WebOrderReviewPage({
     </>
   );
 }
+
+export default withLoadingFloor(WebOrderReviewPage);

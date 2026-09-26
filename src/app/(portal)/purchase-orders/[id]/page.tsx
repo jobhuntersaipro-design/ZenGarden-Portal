@@ -27,6 +27,7 @@ import { PO_STAGES } from "@/lib/po-stages";
 import { ORDER_IDENTITY_SELECT, orderIdentity, orderLabel } from "@/lib/order-identity";
 import { prisma } from "@/lib/prisma";
 import { PersonChip } from "@/components/ui/person";
+import { withLoadingFloor } from "@/lib/loading-floor";
 
 export const dynamic = "force-dynamic";
 
@@ -51,7 +52,7 @@ export async function generateMetadata({
 
 const DAY_MS = 24 * 60 * 60 * 1000;
 
-export default async function PurchaseOrderPage({
+async function PurchaseOrderPage({
   params,
 }: {
   params: Promise<{ id: string }>;
@@ -539,3 +540,5 @@ export default async function PurchaseOrderPage({
     </>
   );
 }
+
+export default withLoadingFloor(PurchaseOrderPage);
