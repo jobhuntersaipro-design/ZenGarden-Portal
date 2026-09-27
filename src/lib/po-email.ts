@@ -1,4 +1,5 @@
 import "server-only";
+import { BRAND_LOGO_HEIGHT } from "@/lib/brand-logo";
 import path from "node:path";
 import type { PartnerLogo } from "@/emails/Layout";
 import { PO_PREVIEW_CONTENT_ID } from "@/emails/po-parts";
@@ -127,16 +128,22 @@ export function poEmailAttachments({
 /** Referenced as `cid:`; the buyer's logo is attached under this id. */
 export const BUYER_LOGO_CONTENT_ID = "buyer-logo";
 
-/** The box the buyer's logo is drawn in beside ours — our badge is 50px tall. */
-const BUYER_LOGO_MAX_HEIGHT = 44;
-const BUYER_LOGO_MAX_WIDTH = 160;
+/**
+ * The box the buyer's logo is drawn in: as tall as our own badge in the same
+ * header (2026-09-27: at 44px beside a 98px badge it read as an afterthought,
+ * reported with a screenshot). The width cap keeps our badge, the divider and
+ * a wide logo on one line in a 390px mail client.
+ */
+const BUYER_LOGO_MAX_HEIGHT = Math.round(BRAND_LOGO_HEIGHT / 2);
+const BUYER_LOGO_MAX_WIDTH = 180;
 
 /**
- * The display size for a stored logo: fitted inside the header box, never
- * enlarged, rounded to whole pixels because the attributes are integers.
+ * The display size for a stored logo: scaled to fit the header box, up as
+ * well as down, so a small upload still stands level with our badge. Rounded
+ * to whole pixels because the attributes are integers.
  */
 export function buyerLogoDisplaySize(width: number, height: number) {
-  const scale = Math.min(1, BUYER_LOGO_MAX_HEIGHT / height, BUYER_LOGO_MAX_WIDTH / width);
+  const scale = Math.min(BUYER_LOGO_MAX_HEIGHT / height, BUYER_LOGO_MAX_WIDTH / width);
   return {
     width: Math.max(1, Math.round(width * scale)),
     height: Math.max(1, Math.round(height * scale)),

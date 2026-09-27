@@ -147,8 +147,8 @@ describe("preparePoEmail", () => {
     });
     getObjectBytes.mockResolvedValue(new Uint8Array([1, 2, 3]));
     const mail = await preparePoEmail("wo1", "W-2609-00015", null);
-    // 512×128 fitted inside 160×44 — width is the bound.
-    expect(mail.buyerLogo).toEqual({ cid: "buyer-logo", alt: "Acme", width: 160, height: 40 });
+    // 512×128 fitted to 180×98 — width is the bound.
+    expect(mail.buyerLogo).toEqual({ cid: "buyer-logo", alt: "Acme", width: 180, height: 45 });
     expect(mail.attachments).toEqual([
       {
         filename: "buyer-logo.png",
@@ -172,10 +172,11 @@ describe("preparePoEmail", () => {
 });
 
 describe("buyerLogoDisplaySize", () => {
-  it("fits inside the header box and never enlarges", () => {
-    expect(buyerLogoDisplaySize(512, 512)).toEqual({ width: 44, height: 44 });
-    expect(buyerLogoDisplaySize(40, 20)).toEqual({ width: 40, height: 20 });
-    expect(buyerLogoDisplaySize(1000, 100)).toEqual({ width: 160, height: 16 });
+  it("stands as tall as our 98px badge, scaling small logos up", () => {
+    expect(buyerLogoDisplaySize(512, 512)).toEqual({ width: 98, height: 98 });
+    expect(buyerLogoDisplaySize(40, 20)).toEqual({ width: 180, height: 90 });
+    expect(buyerLogoDisplaySize(512, 171)).toEqual({ width: 180, height: 60 });
+    expect(buyerLogoDisplaySize(100, 200)).toEqual({ width: 49, height: 98 });
   });
 });
 
