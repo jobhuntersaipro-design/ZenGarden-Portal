@@ -134,6 +134,18 @@ export function ShopHeader({
         </Link>
 
         <div className="flex items-center gap-xxs">
+          {/* Cart before the account, as on the desktop row. */}
+          <Link
+            href={shopHref.cart()}
+            className="relative flex size-11 items-center justify-center rounded-full text-ink focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-focus"
+          >
+            {/* No `aria-label` here: it would hide `CartBadge`'s own
+                sr-only count from the accessible name, since aria-label
+                replaces content instead of joining it. */}
+            <span className="sr-only">Cart</span>
+            <ShoppingCart className="size-5" aria-hidden />
+            <CartBadge summary={summary} variant="mobile" />
+          </Link>
           {viewer.kind === "client" ? (
             <ShopAccountMenu
               name={viewer.name}
@@ -151,17 +163,6 @@ export function ShopHeader({
               <User className="size-5" aria-hidden />
             </Link>
           )}
-          <Link
-            href={shopHref.cart()}
-            className="relative flex size-11 items-center justify-center rounded-full text-ink focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-focus"
-          >
-            {/* No `aria-label` here: it would hide `CartBadge`'s own
-                sr-only count from the accessible name, since aria-label
-                replaces content instead of joining it. */}
-            <span className="sr-only">Cart</span>
-            <ShoppingCart className="size-5" aria-hidden />
-            <CartBadge summary={summary} variant="mobile" />
-          </Link>
         </div>
       </div>
 
