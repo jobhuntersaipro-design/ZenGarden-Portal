@@ -20,6 +20,7 @@ const document: PoDocumentData = {
   buyer: {
     name: "Acme Industrial Sdn Bhd",
     address: "12 Jalan Perindustrian\n40150 Shah Alam\nSelangor",
+    orderedBy: null,
     contact: "Aisha Rahman · orders@acme.test",
   },
   lines: [
@@ -79,7 +80,7 @@ describe("renderPurchaseOrderPdf", () => {
         total: "1420709.71",
         notes: null,
         paymentTerms: null,
-        buyer: { name: "Acme Industrial Sdn Bhd", address: null, contact: null },
+        buyer: { name: "Acme Industrial Sdn Bhd", address: null, orderedBy: null, contact: null },
       },
       "Confirmed by our team.",
     );

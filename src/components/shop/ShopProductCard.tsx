@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useId, useState } from "react";
 import Link from "next/link";
 import { AddToCart } from "@/components/shop/AddToCart";
 import { CartonStepper } from "@/components/shop/CartonStepper";
@@ -10,6 +10,7 @@ import { unitLabel } from "@/lib/cartons";
 import { formatMYR } from "@/lib/money";
 import { variantLabels } from "@/lib/product-groups";
 import { shopHref } from "@/lib/shop-routes";
+import { cartonsProblem } from "@/lib/validation/cart";
 import type { ShopProduct, ShopProductGroup } from "@/lib/queries/shop-catalogue";
 
 /**
@@ -39,6 +40,8 @@ export function ShopProductCard({
    * picks another flavour — three of Lemon says nothing about Lime.
    */
   const [cartons, setCartons] = useState(1);
+  const problem = cartonsProblem(cartons);
+  const problemId = useId();
   const selected =
     group.variants.find((variant) => variant.id === selectedId) ?? group.variants[0];
   const labels = variantLabels(group.variants);
@@ -136,6 +139,7 @@ export function ShopProductCard({
           </span>
           <CartonStepper
             size="card"
+            live
             value={cartons}
             packSize={selected.packSize}
             unit={selected.unit}
@@ -145,6 +149,15 @@ export function ShopProductCard({
               return { success: true };
             }}
           />
+          {problem ? (
+            <p
+              id={problemId}
+              role="alert"
+              className="text-[length:var(--text-caption)] text-accent-red"
+            >
+              {problem}
+            </p>
+          ) : null}
         </div>
         <AddToCart
           key={selected.id}
@@ -154,6 +167,8 @@ export function ShopProductCard({
           unit={selected.unit}
           variant="card"
           cartons={cartons}
+          disabled={problem !== null}
+          describedBy={problem ? problemId : undefined}
         />
       </div>
     </li>

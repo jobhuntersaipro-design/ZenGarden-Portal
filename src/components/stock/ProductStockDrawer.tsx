@@ -25,11 +25,10 @@ import { useUrlNavigation } from "@/hooks/useUrlNavigation";
 import { formatDate } from "@/lib/dates";
 import { latestCount, type StockCountRow } from "@/lib/stock";
 import type { StockSheetRow } from "@/lib/queries/stock";
+import { plural } from "@/lib/plural";
 
 const label = "font-mono text-[length:var(--text-eyebrow)] text-ink-tertiary";
 const caption = "text-[length:var(--text-caption)] text-ink-tertiary";
-
-const num = (value: number) => value.toLocaleString("en-MY");
 
 /**
  * One product's stock: what it reads now, how it has moved, who moved it, and
@@ -109,7 +108,7 @@ export function ProductStockDrawer({
         toast.success(
           result.data.corrected > 0
             ? `Corrected ${formatDate(countedOn)}`
-            : `Counted ${num(Number(value))} cartons`,
+            : `Counted ${plural(Number(value), "carton")}`,
         );
         await refresh();
         close();
@@ -152,7 +151,7 @@ export function ProductStockDrawer({
           <div>
             <p className={label}>On hand</p>
             <p className="font-display text-[length:var(--text-heading-md)] font-[650] text-ink">
-              {latest === null ? "Not counted yet" : `${num(latest.cartons)} cartons`}
+              {latest === null ? "Not counted yet" : plural(latest.cartons, "carton")}
             </p>
             <p className={caption}>
               {latest === null

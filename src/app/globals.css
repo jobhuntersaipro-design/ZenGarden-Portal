@@ -304,6 +304,13 @@
   --container-table-wide: 56rem; /* 896px card — expected delivery still leaves Status inside */
   --container-table-lg: 64rem; /* 1024px card — source */
   --container-table-xl: 90rem; /* 1440px card — wider than the page column */
+  /*
+   * A compact KPI tile's content width, for `@kpi-money:`. Below it the value
+   * steps down to heading-sm (S-18, 2026-09-29): four tiles across a 1280px
+   * window leave ~196px, and "RM 8,180,490.81" at heading-md is ~215px, so
+   * the figure broke inside the number. Above it, at 1440, heading-md fits.
+   */
+  --container-kpi-money: 14rem;
   /* The auth card — sign in, access requested, forgot, reset, change password. */
   --container-auth-card: 480px;
 

@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { formatMYR } from "@/lib/money";
 import type { ProductDetail } from "@/lib/queries/product-detail";
+import { plural } from "@/lib/plural";
 
 /**
  * The product this one is a variant of, and its siblings (Phase 36).
@@ -36,9 +37,9 @@ export function FamilyCard({
           </h2>
         </div>
         <p className="text-[length:var(--text-caption)] text-ink-tertiary tabular-nums">
-          {family.siblings.length} {family.siblings.length === 1 ? "variant" : "variants"} ·{" "}
+          {plural(family.siblings.length, "variant")} ·{" "}
           {Math.round(family.units).toLocaleString("en-MY")} sold ·{" "}
-          {family.orders} orders · {formatMYR(family.revenue.toFixed(2))} in 12 months
+          {plural(family.orders, "order")} · {formatMYR(family.revenue.toFixed(2))} in 12 months
         </p>
       </div>
 

@@ -16,13 +16,14 @@ const webOrderDeleteMany = vi.fn();
 // silently satisfying the same assertions as the real transactional write.
 const looseAuditCreate = vi.fn();
 const sendEmail = vi.fn();
+const userFindMany = vi.fn();
 const requireSuperAdmin = vi.fn();
 
 // The three actions that write and audit in one transaction hand the
 // callback a `tx` carrying the same spies the real client would.
 const transaction = vi.fn(async (fn: (tx: unknown) => unknown) =>
   fn({
-    user: { create: userCreate, update: userUpdate, delete: userDelete },
+    user: { create: userCreate, update: userUpdate, delete: userDelete, findMany: userFindMany },
     buyer: { findUnique: buyerFindUnique },
     webOrder: { deleteMany: webOrderDeleteMany },
     auditEvent: { create: auditCreate },
@@ -85,10 +86,11 @@ beforeEach(() => {
   buyerFindUnique.mockResolvedValue({ id: "buyer-1" });
   userCreate.mockResolvedValue({ id: "c1", name: "Siti", email: "siti@buyer.com" });
   userUpdate.mockResolvedValue({});
+  userFindMany.mockResolvedValue([]);
   auditCreate.mockResolvedValue({ id: "evt-1" });
   transaction.mockImplementation(async (fn: (tx: unknown) => unknown) =>
     fn({
-      user: { create: userCreate, update: userUpdate, delete: userDelete },
+      user: { create: userCreate, update: userUpdate, delete: userDelete, findMany: userFindMany },
       buyer: { findUnique: buyerFindUnique },
       webOrder: { deleteMany: webOrderDeleteMany },
       auditEvent: { create: auditCreate },
@@ -191,11 +193,35 @@ describe("inviteBuyerContact", () => {
     expect(data.phone).toBe("+60 12-345 6789");
   });
 
-  it("refuses a contact with no handle", async () => {
-    const { username, ...rest } = input;
-    const result = await inviteBuyerContact(rest as typeof input);
+  // S-04: a blank handle refused the whole invite with a rule about a field
+  // nobody had typed. It is derived from the email now, past taken handles.
+  it("derives a handle from the email when none is given", async () => {
+    userFindMany.mockResolvedValue([{ username: "chrislam1112" }]);
+    const result = await inviteBuyerContact({
+      ...input,
+      email: "chrislam1112+lhbuyer@gmail.com",
+      username: "  ",
+    });
+    expect(result.success).toBe(true);
+    expect(userCreate.mock.calls[0][0].data.username).toBe("chrislam1112-2");
+  });
+
+  it("still refuses a handle that was typed and is malformed", async () => {
+    const result = await inviteBuyerContact({ ...input, username: "a b" });
     expect(result.success).toBe(false);
     expect(userCreate).not.toHaveBeenCalled();
+  });
+
+  it("reports whether the invitation email went", async () => {
+    expect(await inviteBuyerContact(input)).toEqual({
+      success: true,
+      data: { id: "c1", sent: true },
+    });
+    sendEmail.mockResolvedValue({ sent: false, error: "Domain not verified" });
+    expect(await inviteBuyerContact(input)).toEqual({
+      success: true,
+      data: { id: "c1", sent: false },
+    });
   });
 
   // sendEmail is documented "Never throws" — it reports a failed send as

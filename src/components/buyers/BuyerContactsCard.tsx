@@ -1,6 +1,6 @@
 "use client";
 
-import { useRef, useState, useTransition } from "react";
+import { useId, useRef, useState, useTransition } from "react";
 import { toast } from "sonner";
 import { KeyRound, MoreHorizontal } from "lucide-react";
 import { PersonChip } from "@/components/ui/person";
@@ -22,6 +22,7 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { useAwaitableRefresh } from "@/hooks/useAwaitableRefresh";
+import { usernameBase } from "@/lib/username";
 import {
   inviteBuyerContact,
   removeBuyerContact,
@@ -61,6 +62,13 @@ export function BuyerContactsCard({
   const [email, setEmail] = useState("");
   const [username, setUsername] = useState("");
   const [phone, setPhone] = useState("");
+  /**
+   * The invite's own refusal, printed under the form rather than only as a
+   * toast (S-04): the form stays open with what was typed, and the reason
+   * sits beside the fields it is about.
+   */
+  const [inviteError, setInviteError] = useState<string | null>(null);
+  const inviteErrorId = useId();
   const [busy, setBusy] = useState<string | null>(null);
   const [editing, setEditing] = useState<string | null>(null);
   const [draft, setDraft] = useState({ name: "", username: "", phone: "" });
@@ -306,17 +314,40 @@ export function BuyerContactsCard({
           className="mt-md flex flex-col gap-xs"
           onSubmit={(event) => {
             event.preventDefault();
+            setInviteError(null);
             startTransition(async () => {
-              const ok = await run("invite", () =>
-                inviteBuyerContact({ buyerId, name, email, username, phone }),
-              );
-              if (ok) {
-                toast.success("Invite sent.");
+              setBusy("invite");
+              try {
+                const result = await inviteBuyerContact({
+                  buyerId,
+                  name,
+                  email,
+                  username,
+                  phone,
+                });
+                if (!result.success) {
+                  setInviteError(result.error);
+                  return;
+                }
+                // Says whether the email went, not what we hoped (S-04): the
+                // contact exists either way, and resending is on their row.
+                if (result.data.sent) {
+                  toast.success(`Invite sent to ${email.trim()}.`);
+                } else {
+                  toast.warning(
+                    `${name.trim()} was added, but the invitation to ${email.trim()} didn't send. Use Resend invitation in their ⋯ menu.`,
+                  );
+                }
                 setName("");
                 setEmail("");
                 setUsername("");
                 setPhone("");
                 setOpen(false);
+                await refresh();
+              } catch {
+                setInviteError("We couldn't reach the server. Check your connection and try again.");
+              } finally {
+                setBusy(null);
               }
             });
           }}
@@ -335,8 +366,12 @@ export function BuyerContactsCard({
             onChange={(event) => setEmail(event.target.value)}
           />
           <Input
-            aria-label="Contact username"
-            placeholder="siti.ops"
+            aria-label="Contact username (optional)"
+            placeholder={
+              email.includes("@")
+                ? `Username (optional) — we'll use ${usernameBase(email)}`
+                : "Username (optional)"
+            }
             value={username}
             onChange={(event) => setUsername(event.target.value)}
           />
@@ -346,8 +381,21 @@ export function BuyerContactsCard({
             value={phone}
             onChange={(event) => setPhone(event.target.value)}
           />
+          {inviteError ? (
+            <p
+              id={inviteErrorId}
+              role="alert"
+              className="text-[length:var(--text-caption)] text-accent-red"
+            >
+              {inviteError}
+            </p>
+          ) : null}
           <div className="flex items-center gap-xs">
-            <Button type="submit" pending={busy === "invite"}>
+            <Button
+              type="submit"
+              pending={busy === "invite"}
+              aria-describedby={inviteError ? inviteErrorId : undefined}
+            >
               {busy === "invite" ? "Sending…" : "Send invite"}
             </Button>
             <p className="text-[length:var(--text-caption)] text-ink-tertiary">

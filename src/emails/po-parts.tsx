@@ -129,6 +129,12 @@ export function PoSummary({
             <Fact name="Currency">{document.currency}</Fact>
             <Fact name="PO number">{document.poNumber ?? "—"}</Fact>
           </tr>
+          {document.buyer.orderedBy ? (
+            <tr>
+              <Fact name="Ordered by">{document.buyer.orderedBy}</Fact>
+              <td />
+            </tr>
+          ) : null}
         </tbody>
       </table>
 

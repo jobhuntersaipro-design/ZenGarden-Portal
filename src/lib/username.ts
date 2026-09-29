@@ -17,7 +17,9 @@ const MAX = 32;
 
 /** The local part, lower-cased, reduced to the handle alphabet, sized to fit. */
 export function usernameBase(email: string): string {
-  const local = email.trim().toLowerCase().split("@")[0] ?? "";
+  // A "+tag" is an alias of the same mailbox (`chris+buyer@…` is Chris), so
+  // the handle is the name before it (S-04, 2026-09-29).
+  const local = (email.trim().toLowerCase().split("@")[0] ?? "").split("+")[0] ?? "";
   const cleaned = local
     .replace(/[^a-z0-9._-]/g, "")
     // Must start with a letter or a number.
@@ -40,4 +42,31 @@ export function usernameFromEmail(email: string, taken: Iterable<string>): strin
     const candidate = `${base.slice(0, MAX - suffix.length)}${suffix}`;
     if (!used.has(candidate)) return candidate;
   }
+}
+
+/**
+ * `usernameFromEmail` against the handles already stored. Pass the
+ * transaction the contact is created in, so two admins inviting "siti@…" at
+ * once cannot both be handed "siti" — the unique index would still refuse the
+ * loser, and the error would blame a handle nobody typed.
+ */
+export async function uniqueUsername(
+  tx: {
+    user: {
+      findMany(args: {
+        where: { username: { startsWith: string } };
+        select: { username: true };
+      }): Promise<{ username: string | null }[]>;
+    };
+  },
+  email: string,
+): Promise<string> {
+  const taken = await tx.user.findMany({
+    where: { username: { startsWith: usernameBase(email) } },
+    select: { username: true },
+  });
+  return usernameFromEmail(
+    email,
+    taken.map((row) => row.username).filter((value): value is string => value !== null),
+  );
 }

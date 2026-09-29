@@ -60,8 +60,8 @@ describe("ShopProductCard price", () => {
 
   it("shows the selected flavour's own price when the flavours are priced apart", () => {
     const html = renderToStaticMarkup(<ShopProductCard group={priced} />);
-    expect(html).toContain("RM 10.00");
-    expect(html).not.toContain("RM 5.00");
+    expect(html).toContain("RM\u00A010.00");
+    expect(html).not.toContain("RM\u00A05.00");
     // "from" would claim a range the buyer is not choosing from.
     expect(html).not.toMatch(/>from</);
   });
@@ -69,8 +69,8 @@ describe("ShopProductCard price", () => {
   it("shows the cheaper flavour's price when that one is selected", () => {
     const cheapFirst = group([...priced.variants].reverse());
     const html = renderToStaticMarkup(<ShopProductCard group={cheapFirst} />);
-    expect(html).toContain("RM 5.00");
-    expect(html).not.toContain("RM 10.00");
+    expect(html).toContain("RM\u00A05.00");
+    expect(html).not.toContain("RM\u00A010.00");
   });
 });
 

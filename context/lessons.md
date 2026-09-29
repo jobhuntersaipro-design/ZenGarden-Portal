@@ -356,3 +356,18 @@ revalidates, so the row was gone ~330ms after the click, before the
 only because its fold ran *before* calling the action. The stage advance's
 toast, reordered to follow `await refresh()`, once waited on that hook's 8s
 give-up; it now waits for the `next` prop to change.
+
+---
+
+## 13. What a button sends is what the box shows, at the moment of the click
+
+**Rule.** When an action reads a value a field holds, the field has to hand
+that value over as it is typed, not on blur. Committing on blur looks right
+with a mouse. But the blur runs at mousedown, as a transition, and the click
+after it can still read the old state. A field whose value belongs to a
+server write can wait: save when typing pauses, on Enter, and on blur.
+
+**The case (2026-09-29, found by a tester).** On a product page, typing 4 in
+the cartons box and clicking Add to cart added 1 and toasted "1 carton
+added". Pressing Tab first worked, so it looked like a quirk.
+

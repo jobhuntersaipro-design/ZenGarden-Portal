@@ -82,7 +82,7 @@ export function TrendCard({
         count === 1 ? `1 ${subject} selected` : `${count} ${noun} selected`
       }
       formatValue={(value) =>
-        money ? formatMYR(value.toFixed(2)) : `${formatUnits(value)} cartons`
+        money ? formatMYR(value.toFixed(2)) : `${formatUnits(value)} ${value === 1 ? "carton" : "cartons"}`
       }
       // Whole numbers: a figure beside a point is read at a glance, and
       // `RM 85,231.47` over `RM 85,110.02` is two decimals of noise between

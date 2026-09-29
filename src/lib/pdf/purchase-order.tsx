@@ -184,7 +184,14 @@ function Party({
       <Text style={styles.partyHeading}>{heading.toUpperCase()}</Text>
       <Text style={styles.partyName}>{party.name}</Text>
       {party.address ? <Text style={styles.partyLine}>{party.address}</Text> : null}
-      {party.contact ? <Text style={styles.partyLine}>{party.contact}</Text> : null}
+      {party.orderedBy ? (
+        <Text style={styles.partyLine}>Ordered by: {party.orderedBy}</Text>
+      ) : null}
+      {party.contact ? (
+        <Text style={styles.partyLine}>
+          {party.orderedBy ? `Account contact: ${party.contact}` : party.contact}
+        </Text>
+      ) : null}
     </View>
   );
 }

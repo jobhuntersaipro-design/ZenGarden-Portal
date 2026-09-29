@@ -5,6 +5,7 @@ import {
   AWAITING_CONFIRMATION_NOTE,
   DOCUMENT_COMPANY_NAME,
   type PoDocumentData,
+  type PoDocumentParty,
 } from "@/lib/purchase-order-document";
 
 /**
@@ -274,7 +275,7 @@ function Party({
   party,
 }: {
   heading: string;
-  party: { name: string; address: string | null; contact: string | null };
+  party: PoDocumentParty;
 }) {
   return (
     <div>
@@ -289,9 +290,16 @@ function Party({
           {party.address}
         </p>
       ) : null}
-      {party.contact ? (
+      {party.orderedBy ? (
         <p className="mt-xs text-[length:var(--text-body-md)] text-ink-secondary">
-          {party.contact}
+          Ordered by: {party.orderedBy}
+        </p>
+      ) : null}
+      {party.contact ? (
+        <p
+          className={`${party.orderedBy ? "mt-xxs" : "mt-xs"} text-[length:var(--text-body-md)] text-ink-secondary`}
+        >
+          {party.orderedBy ? `Account contact: ${party.contact}` : party.contact}
         </p>
       ) : null}
     </div>

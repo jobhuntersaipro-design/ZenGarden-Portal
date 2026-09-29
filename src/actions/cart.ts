@@ -34,6 +34,8 @@ import {
   PO_NUMBER_REQUIRED,
   setCartonsSchema,
   submitOrderSchema,
+  checkoutDraftSchema,
+  type CheckoutDraftInput,
   type SubmitOrderInput,
 } from "@/lib/validation/cart";
 
@@ -293,6 +295,35 @@ export async function clearCart(): Promise<ActionResult> {
   } catch (cause) {
     console.error("[cart] clearCart", cause);
     return { success: false, error: "We couldn't empty your order." };
+  }
+}
+
+/**
+ * Keep what the review screen has typed on the open cart (S-29). Written as
+ * the buyer types, so no page is re-rendered for it — the screen already
+ * shows what it sent — and a draft that has since been sent matches nothing.
+ */
+export async function saveCheckoutDraft(
+  input: CheckoutDraftInput,
+): Promise<ActionResult<null>> {
+  const { user, error } = await guard();
+  if (!user) return { success: false, error: error! };
+
+  const parsed = checkoutDraftSchema.safeParse(input);
+  if (!parsed.success) return { success: false, error: "That could not be saved." };
+
+  try {
+    await prisma.webOrder.updateMany({
+      where: { placedById: user.id, status: WebOrderStatus.DRAFT },
+      data: {
+        buyerReference: parsed.data.buyerReference || null,
+        notes: parsed.data.notes || null,
+      },
+    });
+    return { success: true, data: null };
+  } catch (cause) {
+    console.error("[cart] saveCheckoutDraft", cause);
+    return { success: false, error: "That could not be saved." };
   }
 }
 

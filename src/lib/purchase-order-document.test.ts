@@ -3,6 +3,7 @@ import {
   buildPoDocument,
   buildPoDocumentFromOrder,
   documentAgreesWithOrder,
+  documentParty,
 } from "@/lib/purchase-order-document";
 import type { CartLine } from "@/lib/queries/cart";
 
@@ -41,6 +42,7 @@ const build = (over: Partial<Parameters<typeof buildPoDocument>[0]> = {}) =>
     lines: [line()],
     subtotal: "676.50",
     buyer,
+    placedBy: null,
     poNumber: null,
     orderId: "W-2609-00007",
     notes: null,
@@ -153,7 +155,7 @@ describe("buildPoDocument", () => {
 
   it("survives a buyer that could not be read", () => {
     const doc = build({ buyer: null });
-    expect(doc.buyer).toEqual({ name: "—", address: null, contact: null });
+    expect(doc.buyer).toEqual({ name: "—", address: null, orderedBy: null, contact: null });
   });
 
   // We are the supplier and the masthead says so, so the document carries no
@@ -211,6 +213,7 @@ describe("buildPoDocumentFromOrder", () => {
     buyer: {
       name: "Acme Industrial Sdn Bhd",
       address: "12 Jalan Perindustrian 4",
+      orderedBy: null,
       contact: "Aisha Rahman · aisha@acme.test",
     },
     lines: [storedLine()],
@@ -336,7 +339,51 @@ describe("buildPoDocumentFromOrder", () => {
     expect(fromOrder().buyer).toEqual({
       name: "Acme Industrial Sdn Bhd",
       address: "12 Jalan Perindustrian 4",
+      orderedBy: null,
       contact: "Aisha Rahman · aisha@acme.test",
     });
+  });
+});
+
+describe("documentParty (S-02)", () => {
+  const company = {
+    name: "Acme Industrial Sdn Bhd",
+    address: null,
+    contactName: "Aisha Rahman",
+    email: "aisha@acme.test",
+  };
+
+  it("names the contact who sent the order, then the account contact", () => {
+    const party = documentParty(company, {
+      name: "Siti Nurhaliza",
+      email: "siti@acme.test",
+      phone: "012-345 6789",
+    });
+    expect(party.orderedBy).toBe("Siti Nurhaliza · siti@acme.test · 012-345 6789");
+    expect(party.contact).toBe("Aisha Rahman · aisha@acme.test");
+  });
+
+  it("prints no account contact when the account contact sent it", () => {
+    const party = documentParty(company, {
+      name: "Aisha R.",
+      email: " AISHA@acme.test ",
+      phone: null,
+    });
+    expect(party.orderedBy).toBe("Aisha R. · AISHA@acme.test");
+    expect(party.contact).toBeNull();
+  });
+
+  it("keeps the account contact alone where nobody sent it from the shop", () => {
+    const party = documentParty(company, null);
+    expect(party.orderedBy).toBeNull();
+    expect(party.contact).toBe("Aisha Rahman · aisha@acme.test");
+  });
+
+  it("puts the sender on the cart's own preview", () => {
+    const document = build({
+      placedBy: { name: "Siti Nurhaliza", email: "siti@acme.test", phone: null },
+    });
+    expect(document.buyer.orderedBy).toBe("Siti Nurhaliza · siti@acme.test");
+    expect(document.buyer.contact).toBe("Aisha Rahman · aisha@acme.test");
   });
 });

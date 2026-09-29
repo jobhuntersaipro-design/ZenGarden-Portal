@@ -172,7 +172,7 @@ describe("confirmPurchaseOrder — the totals gate", () => {
     expect(edit).toBeDefined();
     expect(edit.changedById).toBe("user-1");
     expect(edit.note).toBe(
-      "Confirmed with a totals mismatch: computed RM 12,400.00, document RM 12,000.00, difference RM 400.00",
+      "Confirmed with a totals mismatch: computed RM\u00A012,400.00, document RM\u00A012,000.00, difference RM\u00A0400.00",
     );
   });
 

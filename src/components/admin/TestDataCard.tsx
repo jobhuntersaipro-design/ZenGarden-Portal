@@ -10,6 +10,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { useAwaitableRefresh } from "@/hooks/useAwaitableRefresh";
 import { MAX_ORDERS, type TestDataCounts } from "@/lib/test-data-shape";
+import { plural } from "@/lib/plural";
 
 const label = "font-mono text-[length:var(--text-eyebrow)] text-ink-tertiary";
 const caption = "text-[length:var(--text-caption)] text-ink-tertiary";
@@ -152,8 +153,8 @@ export function TestDataCard({
         {total === 0
           ? "No test data in the database."
           : `In the database now: ${counts.purchaseOrders} purchase orders · ` +
-            `${counts.lineItems} lines · ${counts.buyers} buyers · ` +
-            `${counts.products} products · ${counts.reviewQueue} in the review queue · ` +
+            `${plural(counts.lineItems, "line")} · ${plural(counts.buyers, "buyer")} · ` +
+            `${plural(counts.products, "product")} · ${counts.reviewQueue} in the review queue · ` +
             `${counts.shopOrders} shop orders.`}
       </p>
     </section>

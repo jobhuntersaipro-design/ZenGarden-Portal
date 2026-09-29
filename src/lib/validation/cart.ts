@@ -13,6 +13,20 @@ export const cartonsSchema = z
   .positive("Order at least one carton")
   .max(MAX_CARTONS_PER_LINE, `That is more than ${MAX_CARTONS_PER_LINE} cartons`);
 
+/**
+ * Why a typed carton count cannot be added, or null when it can (S-01). The
+ * product page and the catalogue card read it before Add to cart, so an empty
+ * box or a 0 disables the button with a reason instead of adding something
+ * other than what the box shows.
+ */
+export function cartonsProblem(cartons: number): string | null {
+  if (!Number.isInteger(cartons) || cartons < 1) return "Enter at least 1 carton.";
+  if (cartons > MAX_CARTONS_PER_LINE) {
+    return `Up to ${MAX_CARTONS_PER_LINE.toLocaleString("en-MY")} cartons at a time.`;
+  }
+  return null;
+}
+
 export const addToCartSchema = z.object({
   productId: z.string().min(1),
   cartons: cartonsSchema,
@@ -55,6 +69,19 @@ export const submitOrderSchema = z.object({
   buyerReference: z.string().trim().min(1, PO_NUMBER_REQUIRED).max(64),
   notes: z.string().trim().max(2000).nullable().optional(),
 });
+
+/**
+ * What the review screen keeps on the open cart while it is typed into
+ * (S-29, 2026-09-29), so a reload or a trip back to the cart does not empty
+ * it. Blank is allowed here — the PO number is required at send, not while
+ * it is still being typed.
+ */
+export const checkoutDraftSchema = z.object({
+  buyerReference: z.string().trim().max(64),
+  notes: z.string().trim().max(2000),
+});
+
+export type CheckoutDraftInput = z.infer<typeof checkoutDraftSchema>;
 
 export type AddToCartInput = z.infer<typeof addToCartSchema>;
 export type SubmitOrderInput = z.infer<typeof submitOrderSchema>;

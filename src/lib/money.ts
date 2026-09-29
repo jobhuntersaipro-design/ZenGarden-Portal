@@ -22,11 +22,18 @@ const toDecimal = (value: MoneyInput): Decimal =>
  * `RM 1,234.50`. Two decimals, grouped thousands, MYR only. Chart value labels
  * pass `0` and get `RM 1,235`: they sit beside a bar and a rounded figure is
  * what fits, the exact one is a hover away in the tooltip.
+ *
+ * The space after "RM" is a no-break space (S-18, 2026-09-29): at 1280 a KPI
+ * tile set "RM" on one line and "10,252,851.50" on the next. Every screen,
+ * chart and email that prints money goes through here, so one character
+ * keeps the currency with its figure everywhere.
  */
+export const MYR_PREFIX = "RM\u00A0";
+
 export function formatMYR(value: MoneyInput, decimals: 0 | 2 = 2): string {
   const decimal = toDecimal(value);
   const sign = decimal.isNegative() ? "-" : "";
-  return `${sign}RM ${formatGrouped(decimal.abs(), decimals)}`;
+  return `${sign}${MYR_PREFIX}${formatGrouped(decimal.abs(), decimals)}`;
 }
 
 /**

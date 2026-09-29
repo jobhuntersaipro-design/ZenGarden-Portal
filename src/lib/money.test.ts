@@ -4,21 +4,26 @@ import { formatGrouped, formatMYR, parseMYR, sumDecimals } from "@/lib/money";
 
 describe("formatMYR", () => {
   it("always shows two decimals", () => {
-    expect(formatMYR(5)).toBe("RM 5.00");
-    expect(formatMYR("1234.5")).toBe("RM 1,234.50");
+    expect(formatMYR(5)).toBe("RM\u00A05.00");
+    expect(formatMYR("1234.5")).toBe("RM\u00A01,234.50");
   });
 
   it("groups thousands", () => {
-    expect(formatMYR(1_000_000)).toBe("RM 1,000,000.00");
-    expect(formatMYR(999)).toBe("RM 999.00");
+    expect(formatMYR(1_000_000)).toBe("RM\u00A01,000,000.00");
+    expect(formatMYR(999)).toBe("RM\u00A0999.00");
+  });
+
+  it("keeps RM on the same line as its figure (S-18)", () => {
+    expect(formatMYR("10252851.5")).toBe("RM\u00A010,252,851.50");
+    expect(formatMYR("1")).not.toContain("RM ");
   });
 
   it("keeps the minus outside the RM", () => {
-    expect(formatMYR(-1234.5)).toBe("-RM 1,234.50");
+    expect(formatMYR(-1234.5)).toBe("-RM\u00A01,234.50");
   });
 
   it("does not lose precision the way a float would", () => {
-    expect(formatMYR(new Prisma.Decimal("0.1").plus("0.2"))).toBe("RM 0.30");
+    expect(formatMYR(new Prisma.Decimal("0.1").plus("0.2"))).toBe("RM\u00A00.30");
   });
 });
 
@@ -38,6 +43,8 @@ describe("parseMYR", () => {
 
   it("accepts the prefix, commas and stray space", () => {
     expect(parseMYR(" RM 1,234.50 ").toString()).toBe("1234.5");
+    // What formatMYR itself prints since S-18, read back.
+    expect(parseMYR(formatMYR("1234.5")).toString()).toBe("1234.5");
   });
 
   it("throws rather than returning NaN", () => {

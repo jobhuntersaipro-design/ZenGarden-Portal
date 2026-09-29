@@ -10,6 +10,7 @@ import {
   type PoListRow,
   type PoListSortKey,
 } from "@/lib/queries/po-list.sql";
+import { expireStaleExtractions } from "@/lib/extraction/expire";
 
 export type ListResult = {
   rows: PoListRow[];
@@ -28,6 +29,9 @@ export async function listPurchaseOrders(
   take: number,
   skip: number,
 ): Promise<ListResult> {
+  // Before the read, so a dead upload lists as Failed rather than Extracting
+  // for ever (S-12).
+  await expireStaleExtractions();
   const [rows, summary] = await Promise.all([
     prisma.$queryRaw<PoListRow[]>(poListQuery(filters, sort, take, skip)),
     prisma.$queryRaw<{ count: number; total: Prisma.Decimal }[]>(

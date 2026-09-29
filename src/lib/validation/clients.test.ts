@@ -53,9 +53,12 @@ describe("inviteContactSchema", () => {
     expect(parsed.username).toBe("siti");
   });
 
-  it("requires a username — a contact without one is not creatable", () => {
-    const { username, ...rest } = base;
-    expect(inviteContactSchema.safeParse(rest).success).toBe(false);
+  // Reversed on 2026-09-29 (S-04): a blank handle is the action's to derive
+  // from the email, the way the new-buyer form always has.
+  it("leaves a blank username for the action to derive", () => {
+    const parsed = inviteContactSchema.safeParse({ ...base, username: "   " });
+    expect(parsed.success).toBe(true);
+    expect(parsed.data?.username).toBeUndefined();
   });
 });
 

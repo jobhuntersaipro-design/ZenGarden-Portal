@@ -1,6 +1,7 @@
 import { PoEventKind, WebOrderStatus } from "@/generated/prisma/enums";
 import { matchesBuyerOrder, type BuyerOrderFilter } from "@/lib/buyer-order-filter";
 import { orderIdentity } from "@/lib/order-identity";
+import { documentParty, type PoDocumentParty } from "@/lib/purchase-order-document";
 import { prisma } from "@/lib/prisma";
 import type { PoStage } from "@/generated/prisma/enums";
 
@@ -295,12 +296,8 @@ export type ClientStageEvent = {
 };
 
 /** A party as the purchase order prints it. */
-export type ClientOrderParty = {
-  name: string;
-  address: string | null;
-  /** "Aisha Rahman · orders@acme.test" — either half may be missing. */
-  contact: string | null;
-};
+/** The document's buyer block, `documentParty`'s answer (S-02). */
+export type ClientOrderParty = PoDocumentParty;
 
 export type ClientOrderDetail = ClientOrder & {
   lines: ClientOrderLine[];
@@ -326,11 +323,6 @@ export type ClientOrderDetail = ClientOrder & {
   documentId: string | null;
 };
 
-const joinContact = (name: string | null, email: string | null): string | null => {
-  const parts = [name, email].filter(Boolean);
-  return parts.length ? parts.join(" · ") : null;
-};
-
 /**
  * The buyer's own company, as the document prints it.
  *
@@ -346,6 +338,13 @@ const BUYER_PARTY_SELECT = {
   email: true,
   paymentTerms: true,
 } as const;
+
+/**
+ * The contact who sent a shop order, for the document's "Ordered by" (S-02).
+ * Their name, email and phone and nothing else: the buyer reading this is the
+ * same company, and these are what the account screen already shows them.
+ */
+const PLACED_BY_SELECT = { name: true, email: true, phone: true } as const;
 
 
 /** One order, scoped to the caller's buyer. A guessed id returns null. */
@@ -377,6 +376,7 @@ export async function loadBuyerOrder(
         select: {
           reference: true,
           buyerReference: true,
+          placedBy: { select: PLACED_BY_SELECT },
           notes: true,
           documentId: true,
         },
@@ -434,11 +434,7 @@ export async function loadBuyerOrder(
       // emailed file, which is ops-only and must not be served to a buyer.
       documentId: po.webOrder?.documentId ?? null,
       lineCount: po.lineItems.length,
-      buyer: {
-        name: po.buyer.name,
-        address: po.buyer.address,
-        contact: joinContact(po.buyer.contactName, po.buyer.email),
-      },
+      buyer: documentParty(po.buyer, po.webOrder?.placedBy ?? null),
       events: po.stageEvents.map((event) => ({
         toStage: event.toStage,
         changedAt: event.changedAt.toISOString(),
@@ -486,6 +482,7 @@ export async function loadBuyerOrder(
       currency: true,
       documentId: true,
       buyer: { select: BUYER_PARTY_SELECT },
+      placedBy: { select: PLACED_BY_SELECT },
       lines: {
         select: {
           cartons: true,
@@ -527,11 +524,7 @@ export async function loadBuyerOrder(
     documentId: web.documentId,
     lineCount: web.lines.length,
     declinedReason: web.declinedReason,
-    buyer: {
-      name: web.buyer.name,
-      address: web.buyer.address,
-      contact: joinContact(web.buyer.contactName, web.buyer.email),
-    },
+    buyer: documentParty(web.buyer, web.placedBy),
     events: [],
     // A cart has no position column (the schema says why), so the document's
     // numbering comes from the order the rows are read in.
@@ -583,6 +576,7 @@ export async function loadWebOrderDocumentSource(webOrderId: string) {
       // redrawn at confirm and whenever that date moves.
       purchaseOrder: { select: { deliveryDate: true } },
       buyer: { select: BUYER_PARTY_SELECT },
+      placedBy: { select: PLACED_BY_SELECT },
       lines: {
         select: {
           cartons: true,
@@ -621,11 +615,7 @@ export async function loadWebOrderDocumentSource(webOrderId: string) {
       notes: order.notes,
       // The cart quotes no tax; the team settles it when they confirm.
       tax: null as string | null,
-      buyer: {
-        name: order.buyer.name,
-        address: order.buyer.address,
-        contact: joinContact(order.buyer.contactName, order.buyer.email),
-      },
+      buyer: documentParty(order.buyer, order.placedBy),
       // A cart has no position column, so the numbering is the read order —
       // the same rule `loadBuyerOrder` applies to the same rows.
       lines: order.lines.map((line, index) => ({

@@ -14,6 +14,7 @@ import {
   uniqueMessage,
 } from "@/lib/client-invites";
 import { prisma } from "@/lib/prisma";
+import { uniqueUsername } from "@/lib/username";
 import {
   contactPatchSchema,
   inviteContactSchema,
@@ -57,7 +58,7 @@ function revalidateCustomer(buyerId: string | null): void {
  */
 export async function inviteBuyerContact(
   input: InviteContactInput,
-): Promise<ActionResult<{ id: string }>> {
+): Promise<ActionResult<{ id: string; sent: boolean }>> {
   const { user, error } = await guard();
   if (!user) return { success: false, error: error! };
 
@@ -83,11 +84,13 @@ export async function inviteBuyerContact(
     const passwordHash = await hashPassword(password);
 
     const created = await prisma.$transaction(async (tx) => {
+      // A blank handle is derived, the way the new-buyer form does (S-04).
+      const username = data.username ?? (await uniqueUsername(tx, data.email));
       const row = await tx.user.create({
         data: {
           name: data.name,
           email: data.email,
-          username: data.username,
+          username,
           phone: data.phone,
           role: Role.CLIENT,
           buyerId: buyer.id,
@@ -107,10 +110,12 @@ export async function inviteBuyerContact(
       return row;
     });
 
-    await sendInviteEmail(created, password);
+    // Reported, not assumed: the contact exists either way, and the screen
+    // has to say whether the email that lets them in actually went (S-04).
+    const sent = await sendInviteEmail(created, password);
 
     revalidateCustomer(buyer.id);
-    return { success: true, data: { id: created.id } };
+    return { success: true, data: { id: created.id, sent } };
   } catch (cause) {
     if (
       cause instanceof Prisma.PrismaClientKnownRequestError &&

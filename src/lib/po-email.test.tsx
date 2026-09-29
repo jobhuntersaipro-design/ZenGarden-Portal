@@ -35,7 +35,7 @@ const document: PoDocumentData = {
   awaitingConfirmation: true,
   paymentTerms: null,
   currency: "MYR",
-  buyer: { name: "Acme Industrial Sdn Bhd", address: null, contact: null },
+  buyer: { name: "Acme Industrial Sdn Bhd", address: null, orderedBy: null, contact: null },
   lines: [
     {
       position: 1,

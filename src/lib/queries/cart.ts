@@ -37,6 +37,13 @@ export type Cart = {
    * client has no PO number of their own (Phase 32).
    */
   reference: string | null;
+  /**
+   * The PO number and note typed on the review screen and kept on the open
+   * cart (S-29), so a reload does not empty them. Cleared by nothing: sending
+   * turns this draft into an order, and the next cart starts without them.
+   */
+  buyerReference: string | null;
+  notes: string | null;
 };
 
 export const EMPTY_CART: Cart = {
@@ -45,6 +52,8 @@ export const EMPTY_CART: Cart = {
   subtotal: "0.00",
   cartonCount: 0,
   reference: null,
+  buyerReference: null,
+  notes: null,
 };
 
 export type CartSummary = {
@@ -228,6 +237,8 @@ export async function loadCart(
     select: {
       id: true,
       reference: true,
+      buyerReference: true,
+      notes: true,
       lines: {
         select: {
           productId: true,
@@ -243,7 +254,15 @@ export async function loadCart(
     order.lines,
     buyerMarket,
   );
-  return { id: order.id, lines, subtotal, cartonCount, reference: order.reference };
+  return {
+    id: order.id,
+    lines,
+    subtotal,
+    cartonCount,
+    reference: order.reference,
+    buyerReference: order.buyerReference,
+    notes: order.notes,
+  };
 }
 
 /**

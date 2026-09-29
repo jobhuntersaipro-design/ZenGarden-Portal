@@ -1,6 +1,7 @@
 import Link from "next/link";
 import type { PriceDrift } from "@/lib/analytics/price-drift";
 import { formatMYR } from "@/lib/money";
+import { plural } from "@/lib/plural";
 
 /** A diverging bar centred at zero: up is green to the right, down red left. */
 function DivergingBar({ percent }: { percent: number }) {
@@ -34,7 +35,7 @@ export function PriceDriftList({ drift }: { drift: PriceDrift }) {
         {drift.upCount} up · {drift.downCount} down
       </p>
       <p className="text-[length:var(--text-caption)] text-ink-secondary">
-        of {drift.comparedCount} products sold in both periods
+        of {plural(drift.comparedCount, "product")} sold in both periods
       </p>
 
       {drift.rows.length === 0 ? (

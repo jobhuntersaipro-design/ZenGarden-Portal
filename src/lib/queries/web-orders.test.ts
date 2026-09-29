@@ -177,13 +177,19 @@ describe("loadBuyerOrder", () => {
     // buyer. `PurchaseOrder.documentId` stays out of the top-level select,
     // because on a scan-origin order that is the ops team's own upload.
     // `reference` joined on 2026-09-17: the shop order's Order ID, shown as
-    // its own field rather than as the buyer's PO number.
+    // its own field rather than as the buyer's PO number. `placedBy` joined
+    // on 2026-09-29 (S-02): the document names who sent the order, and it
+    // reads that person's name, email and phone — never more of the row.
     expect(Object.keys(args.select.webOrder.select).sort()).toEqual([
       "buyerReference",
       "documentId",
       "notes",
+      "placedBy",
       "reference",
     ]);
+    expect(args.select.webOrder.select.placedBy).toEqual({
+      select: { name: true, email: true, phone: true },
+    });
     expect(args.select.documentId).toBeUndefined();
   });
 });

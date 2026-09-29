@@ -2,6 +2,7 @@ import Link from "next/link";
 import { ProductThumb } from "@/components/products/ProductThumb";
 import type { ProductRow } from "@/lib/queries/products";
 import { formatMYR } from "@/lib/money";
+import { plural } from "@/lib/plural";
 
 /** The one flag worth surfacing on a card, most serious first. */
 function flagFor(product: ProductRow) {
@@ -92,7 +93,7 @@ export function ProductCard({
 
       <p className="border-t border-hairline px-md py-xs text-[length:var(--text-caption)] text-ink-tertiary tabular-nums">
         {Math.round(product.stats.units).toLocaleString("en-MY")} sold ·{" "}
-        {product.stats.buyers} buyers ·{" "}
+        {plural(product.stats.buyers, "buyer")} ·{" "}
         {formatMYR(product.stats.revenue.toFixed(2))}
         {/* The grid is the default view, so a count only in the table's own
             column would be a count most readers never see. Left out entirely

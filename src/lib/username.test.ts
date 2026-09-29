@@ -8,7 +8,8 @@ describe("usernameBase", () => {
   });
 
   it("drops characters the handle alphabet refuses", () => {
-    expect(usernameBase("raj+orders@acme.com")).toBe("rajorders");
+    expect(usernameBase("raj+orders@acme.com")).toBe("raj");
+    expect(usernameBase("chrislam1112+lhbuyer@gmail.com")).toBe("chrislam1112");
     expect(usernameBase("mei ling@acme.com")).toBe("meiling");
   });
 

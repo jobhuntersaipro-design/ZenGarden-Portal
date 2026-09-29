@@ -71,8 +71,25 @@ export type PoDocumentParty = {
   name: string;
   /** Free-form, printed with its line breaks kept. */
   address: string | null;
-  /** "Aisha Rahman · orders@acme.test" — either half may be missing. */
+  /**
+   * The person who sent this order from the shop — "Siti Nurhaliza ·
+   * siti@acme.test · 012-345 6789" (S-02, 2026-09-29). Null on a purchase
+   * order read off a scan, where the document itself names who ordered.
+   */
+  orderedBy: string | null;
+  /**
+   * The company's account contact, "Aisha Rahman · orders@acme.test" — either
+   * half may be missing. Beside `orderedBy` it is printed as "Account
+   * contact", and it is left out when it is the same person.
+   */
   contact: string | null;
+};
+
+/** Who placed a shop order: the signed-in contact, read off their own row. */
+export type OrderPlacer = {
+  name: string | null;
+  email: string;
+  phone: string | null;
 };
 
 export type PoDocumentData = {
@@ -117,10 +134,42 @@ export type PoDocumentData = {
   notes: string | null;
 };
 
-const joinContact = (name: string | null, email: string | null): string | null => {
-  const parts = [name, email].filter(Boolean);
-  return parts.length ? parts.join(" · ") : null;
+const joinContact = (...parts: (string | null | undefined)[]): string | null => {
+  const present = parts.map((part) => part?.trim()).filter(Boolean);
+  return present.length ? present.join(" · ") : null;
 };
+
+/**
+ * The document's buyer block (S-02). Until 2026-09-29 it printed the
+ * company's account contact whoever sent the order, so an order placed by a
+ * second contact carried the first contact's name and email on the PDF, the
+ * email and both order pages. The person who ordered now leads, and the
+ * account contact follows only when it is somebody else — matched on email,
+ * the one field that identifies a person here.
+ */
+export function documentParty(
+  buyer: {
+    name: string;
+    address: string | null;
+    contactName: string | null;
+    email: string | null;
+  },
+  placedBy: OrderPlacer | null,
+): PoDocumentParty {
+  const account = joinContact(buyer.contactName, buyer.email);
+  if (!placedBy) {
+    return { name: buyer.name, address: buyer.address, orderedBy: null, contact: account };
+  }
+  const samePerson =
+    buyer.email !== null &&
+    buyer.email.trim().toLowerCase() === placedBy.email.trim().toLowerCase();
+  return {
+    name: buyer.name,
+    address: buyer.address,
+    orderedBy: joinContact(placedBy.name, placedBy.email, placedBy.phone),
+    contact: samePerson ? null : account,
+  };
+}
 
 /**
  * A line's quantity columns (Phase 45), from the product's pack size and
@@ -183,6 +232,8 @@ export function buildPoDocument(input: {
   lines: CartLine[];
   subtotal: string;
   buyer: ReviewBuyer | null;
+  /** The signed-in contact about to send it. */
+  placedBy: OrderPlacer | null;
   /** The client's own PO number, when they typed one. */
   poNumber: string | null;
   /** Our Order ID, `W-…`, minted when the cart was opened. */
@@ -216,11 +267,10 @@ export function buildPoDocument(input: {
     awaitingConfirmation: true,
     paymentTerms: input.paymentTerms?.trim() || null,
     currency: input.currency ?? "MYR",
-    buyer: {
-      name: input.buyer?.name ?? "—",
-      address: input.buyer?.address ?? null,
-      contact: joinContact(input.buyer?.contactName ?? null, input.buyer?.email ?? null),
-    },
+    buyer: documentParty(
+      input.buyer ?? { name: "—", address: null, contactName: null, email: null },
+      input.placedBy,
+    ),
     lines,
     subtotal: summed,
     // A cart quotes no tax. Delivery and any tax are settled when the team

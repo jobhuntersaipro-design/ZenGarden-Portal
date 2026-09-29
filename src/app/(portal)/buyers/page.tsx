@@ -29,6 +29,7 @@ import {
   type SearchParams,
 } from "@/lib/queries/pagination";
 import { withLoadingFloor } from "@/lib/loading-floor";
+import { plural } from "@/lib/plural";
 
 export const metadata: Metadata = { title: "Buyers · Zen Garden Portal" };
 export const dynamic = "force-dynamic";
@@ -91,7 +92,7 @@ async function BuyersPage({
 
       <BuyerRangeChips
         preset={range.preset}
-        summary={`${formatDate(range.from)} – ${formatDate(range.to)} · ${roster.kpis.buyersOnRecord} buyers · ${formatMYR(roster.kpis.rangeTotal.toFixed(2))} in range`}
+        summary={`${formatDate(range.from)} – ${formatDate(range.to)} · ${plural(roster.kpis.buyersOnRecord, "buyer")} · ${formatMYR(roster.kpis.rangeTotal.toFixed(2))} in range`}
         options={BUYER_RANGES}
       />
 

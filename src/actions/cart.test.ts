@@ -11,6 +11,7 @@ const lineUpdateMany = vi.fn();
 const lineDeleteMany = vi.fn();
 const lineUpdate = vi.fn();
 const requireClient = vi.fn();
+const webOrderUpdateMany = vi.fn();
 const prismaWebOrderFindUnique = vi.fn();
 const userFindMany = vi.fn();
 // Who is told a shop order has arrived is read off the permission grid, not
@@ -36,6 +37,7 @@ vi.mock("@/lib/prisma", () => ({
       findFirst: webOrderFindFirst,
       create: webOrderCreate,
       update: webOrderUpdate,
+      updateMany: webOrderUpdateMany,
     },
     webOrderLine: {
       upsert: lineUpsert,
@@ -111,6 +113,7 @@ const {
   submitWebOrder,
   mergeGuestCart,
   addManyToCart,
+  saveCheckoutDraft,
 } = await import("@/actions/cart");
 const { Prisma } = await import("@/generated/prisma/client");
 
@@ -644,5 +647,34 @@ describe("addManyToCart", () => {
     await expect(
       addManyToCart({ lines: [{ productId: "p-1", cartons: 1 }] }),
     ).rejects.toThrow();
+  });
+});
+
+describe("saveCheckoutDraft (S-29)", () => {
+  it("keeps the typed PO number and note on this client's open cart only", async () => {
+    webOrderUpdateMany.mockResolvedValue({ count: 1 });
+    const result = await saveCheckoutDraft({ buyerReference: " PO-77 ", notes: "Back door" });
+    expect(result).toEqual({ success: true, data: null });
+    expect(webOrderUpdateMany).toHaveBeenCalledWith({
+      where: { placedById: "c1", status: "DRAFT" },
+      data: { buyerReference: "PO-77", notes: "Back door" },
+    });
+  });
+
+  it("stores a cleared field as nothing rather than an empty string", async () => {
+    webOrderUpdateMany.mockResolvedValue({ count: 1 });
+    await saveCheckoutDraft({ buyerReference: "  ", notes: "" });
+    expect(webOrderUpdateMany.mock.calls[0][0].data).toEqual({
+      buyerReference: null,
+      notes: null,
+    });
+  });
+
+  it("writes nothing for somebody who is not a shop account", async () => {
+    const { UnauthorizedError } = await import("@/lib/auth-guards");
+    requireClient.mockRejectedValue(new UnauthorizedError("not a shop account"));
+    const result = await saveCheckoutDraft({ buyerReference: "PO-77", notes: "" });
+    expect(result.success).toBe(false);
+    expect(webOrderUpdateMany).not.toHaveBeenCalled();
   });
 });

@@ -17,7 +17,7 @@ import { blockedMessage } from "@/lib/buyer-delete-message";
 import { registerLabels } from "@/lib/catalog-label-registry";
 import { prisma } from "@/lib/prisma";
 import { deleteObject } from "@/lib/r2";
-import { usernameBase, usernameFromEmail } from "@/lib/username";
+import { uniqueUsername } from "@/lib/username";
 import { createBuyerSchema, type CreateBuyerInput } from "@/lib/validation/clients";
 
 export type ActionResult<T = undefined> =
@@ -102,15 +102,7 @@ export async function createBuyer(
       // creating "siti@…" contacts at once cannot both be handed "siti" —
       // the unique index would still refuse the loser, and `uniqueMessage`
       // would then blame a handle nobody typed.
-      const base = usernameBase(contact.email);
-      const taken = await tx.user.findMany({
-        where: { username: { startsWith: base } },
-        select: { username: true },
-      });
-      const username = usernameFromEmail(
-        contact.email,
-        taken.map((row) => row.username).filter((value): value is string => value !== null),
-      );
+      const username = await uniqueUsername(tx, contact.email);
       const user = await tx.user.create({
         data: {
           name: contact.name,

@@ -28,6 +28,8 @@ export function AddToCart({
   packSize,
   variant = "card",
   cartons,
+  disabled = false,
+  describedBy,
 }: {
   productId: string;
   name: string;
@@ -35,6 +37,9 @@ export function AddToCart({
   packSize: number | null;
   variant?: "card" | "buybox";
   cartons?: number;
+  /** The typed count cannot be added (S-01); the reason is beside the stepper. */
+  disabled?: boolean;
+  describedBy?: string;
 }) {
   const viewer = useShopViewer();
   const guestCart = useGuestCart();
@@ -80,6 +85,8 @@ export function AddToCart({
     <Button
       type="button"
       pending={pending}
+      disabled={disabled}
+      aria-describedby={describedBy}
       onClick={run}
       aria-label={`${fullLabel} — ${name}, ${unitLabel(packSize, unit)}`}
       className={cn(

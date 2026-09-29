@@ -38,6 +38,7 @@ import {
 import { prisma } from "@/lib/prisma";
 import { can, requirePagePermission } from "@/lib/permissions/require";
 import { withLoadingFloor } from "@/lib/loading-floor";
+import { plural } from "@/lib/plural";
 
 export const dynamic = "force-dynamic";
 
@@ -275,7 +276,7 @@ async function ProductPage({
               [
                 "Per pallet",
                 data.product.cartonsPerPallet
-                  ? `${data.product.cartonsPerPallet} cartons`
+                  ? plural(data.product.cartonsPerPallet, "carton")
                   : "—",
               ],
               /**
@@ -288,7 +289,7 @@ async function ProductPage({
                 "Stock",
                 data.product.stockCartons === null
                   ? "—"
-                  : `${data.product.stockCartons.toLocaleString("en-MY")} cartons`,
+                  : plural(data.product.stockCartons, "carton"),
               ],
               [
                 "First sold",
@@ -340,7 +341,7 @@ async function ProductPage({
           {
             label: "Orders · 12m",
             value: <CountUp value={data.stats.orders} />,
-            caption: `from ${data.stats.buyers} buyers`,
+            caption: `from ${plural(data.stats.buyers, "buyer")}`,
           },
           {
             label: "Price drift · 12m",

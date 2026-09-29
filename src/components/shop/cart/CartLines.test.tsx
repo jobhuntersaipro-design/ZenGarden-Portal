@@ -39,6 +39,6 @@ describe("CartLines", () => {
   });
 
   it("keeps the price per carton", () => {
-    expect(html).toContain("RM 312.00 per carton");
+    expect(html).toContain("RM\u00A0312.00 per carton");
   });
 });

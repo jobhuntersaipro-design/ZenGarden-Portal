@@ -1,4 +1,4 @@
-import type { ReactNode } from "react";
+import { isValidElement, type ReactNode } from "react";
 import { CountUp } from "@/components/portal/CountUp";
 
 /**
@@ -33,7 +33,9 @@ export function KpiTile({
   /**
    * A step down to `heading-md`. Four money tiles across a row cannot hold a
    * full MYR figure at display size, and "RM 741,941.12" broken over two lines
-   * is not a number any more.
+   * is not a number any more. A money tile narrower than
+   * `--container-kpi-money` (a 1280 window) steps once more, to `heading-sm`
+   * (S-18).
    */
   compact?: boolean;
   /**
@@ -47,13 +49,18 @@ export function KpiTile({
    */
   mobileFull?: boolean;
 }) {
+  // Only a money figure steps down in a narrow tile: it cannot wrap and
+  // cannot be abbreviated, where a count or a name can sit at full size.
+  const fitsMoney = compact && isValidElement(value) && value.type === KpiMoney;
   const span = wide
     ? "col-span-2"
     : mobileFull
       ? "col-span-2 sm:col-span-1"
       : "";
   return (
-    <div className={`rounded-md border border-hairline bg-canvas p-md ${span}`}>
+    <div
+      className={`rounded-md border border-hairline bg-canvas p-md ${fitsMoney ? "@container" : ""} ${span}`}
+    >
       <p className="font-mono text-[length:var(--text-eyebrow)] text-ink-tertiary">
         {label}
       </p>
@@ -62,9 +69,11 @@ export function KpiTile({
           mid-word — "Northwii Traders" — at 768px (2026-09-06 review, A6). */}
       <p
         className={`mt-xxs font-display font-[650] break-words text-ink tabular-nums ${
-          compact
-            ? "text-[length:var(--text-heading-md)] tracking-[-0.91px]"
-            : "text-[length:var(--text-display-md)] tracking-[-1.36px]"
+          fitsMoney
+            ? "text-[length:var(--text-heading-sm)] tracking-[-0.54px] @kpi-money:text-[length:var(--text-heading-md)] @kpi-money:tracking-[-0.91px]"
+            : compact
+              ? "text-[length:var(--text-heading-md)] tracking-[-0.91px]"
+              : "text-[length:var(--text-display-md)] tracking-[-1.36px]"
         }`}
       >
         {value}

@@ -5,7 +5,7 @@ import { CheckoutSteps } from "@/components/shop/checkout/CheckoutSteps";
 import { ReviewSendForm } from "@/components/shop/checkout/ReviewSendForm";
 import { formatDate } from "@/lib/dates";
 import { loadCart } from "@/lib/queries/cart";
-import { loadReviewBuyer } from "@/lib/queries/shop-checkout";
+import { loadOrderPlacer, loadReviewBuyer } from "@/lib/queries/shop-checkout";
 import { shopHref } from "@/lib/shop-routes";
 import { loadShopViewer } from "@/lib/shop-viewer";
 import { withLoadingFloor } from "@/lib/loading-floor";
@@ -29,9 +29,10 @@ async function CheckoutReviewPage() {
     redirect(shopHref.signIn(shopHref.checkoutReview()));
   }
 
-  const [cart, buyer] = await Promise.all([
+  const [cart, buyer, placedBy] = await Promise.all([
     loadCart(viewer.id, viewer.market),
     loadReviewBuyer(viewer.buyerId),
+    loadOrderPlacer(viewer.id),
   ]);
 
   if (cart.lines.length === 0) redirect(shopHref.cart());
@@ -66,6 +67,7 @@ async function CheckoutReviewPage() {
       <ReviewSendForm
         cart={cart}
         buyer={buyer}
+        placedBy={placedBy}
         orderDate={formatDate(new Date())}
       />
     </div>

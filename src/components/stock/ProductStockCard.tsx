@@ -3,6 +3,7 @@ import { StockActivityFeed } from "@/components/stock/StockActivityFeed";
 import { StockTrend } from "@/components/stock/StockTrend";
 import { formatDate } from "@/lib/dates";
 import { latestCount, type StockCountRow } from "@/lib/stock";
+import { plural } from "@/lib/plural";
 
 const label = "font-mono text-[length:var(--text-eyebrow)] text-ink-tertiary";
 const caption = "text-[length:var(--text-caption)] text-ink-tertiary";
@@ -29,7 +30,7 @@ export function ProductStockCard({
           <p className="font-display text-[length:var(--text-heading-md)] font-[650] text-ink">
             {latest === null
               ? "Not counted yet"
-              : `${latest.cartons.toLocaleString("en-MY")} cartons`}
+              : plural(latest.cartons, "carton")}
           </p>
           <p className={caption}>
             {latest === null

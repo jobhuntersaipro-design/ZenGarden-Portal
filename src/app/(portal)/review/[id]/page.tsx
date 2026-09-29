@@ -10,6 +10,7 @@ import { todayISO } from "@/lib/dates";
 import { prisma } from "@/lib/prisma";
 import type { PoDraft } from "@/lib/validation/purchase-orders";
 import { withLoadingFloor } from "@/lib/loading-floor";
+import { expireStaleExtractions } from "@/lib/extraction/expire";
 
 export const metadata: Metadata = { title: "Review · Zen Garden Portal" };
 export const dynamic = "force-dynamic";
@@ -89,12 +90,16 @@ async function ReviewPage({
   if (!(await can("po.review"))) notFound();
   const { id } = await params;
   const query = await searchParams;
+  // A read cut off with its function is failed, not still reading (S-12).
+  await expireStaleExtractions();
 
   const extraction = await prisma.extraction.findUnique({
     where: { id },
     select: {
       id: true,
       status: true,
+      startedAt: true,
+      createdAt: true,
       error: true,
       rawJson: true,
       draftJson: true,
@@ -155,7 +160,10 @@ async function ReviewPage({
       />
 
       {running ? (
-        <RunningPoller extractionId={id} />
+        <RunningPoller
+          extractionId={id}
+          startedAt={(extraction.startedAt ?? extraction.createdAt).toISOString()}
+        />
       ) : (
         <ReviewForm
           document={

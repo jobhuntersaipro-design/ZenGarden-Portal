@@ -1,6 +1,6 @@
 "use client";
 
-import { useOptimistic, useState, useTransition } from "react";
+import { useEffect, useOptimistic, useRef, useState, useTransition } from "react";
 import { Minus, Plus } from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
@@ -12,7 +12,18 @@ import { piecesFor } from "@/lib/cartons";
  *
  * `useOptimistic` so the number moves on click rather than after the round
  * trip; the server value replaces it when the action settles.
+ *
+ * **A typed number is never held back until blur** (S-01, 2026-09-29). It used
+ * to be committed only when the box lost focus, so typing 4 and clicking Add
+ * to cart at once added the count from before: the blur's commit ran as a
+ * transition and the click read the old state. A `live` caller holds the
+ * count in its own state, so it gets every keystroke at once — including 0 for
+ * an empty box, which is the caller's to refuse. The cart's caller is a
+ * server write, so it gets the number once typing pauses, on Enter, or on
+ * blur, whichever comes first.
  */
+const TYPE_SETTLE_MS = 400;
+
 export function CartonStepper({
   value,
   packSize,
@@ -22,6 +33,7 @@ export function CartonStepper({
   label,
   size = "md",
   disabled = false,
+  live = false,
 }: {
   value: number;
   packSize: number | null;
@@ -45,13 +57,30 @@ export function CartonStepper({
    * cannot commit a change — a wrapping `pointer-events-none` only blocks a
    * pointer, never keyboard activation. */
   disabled?: boolean;
+  /** `onChange` only sets the caller's own state (the product page, a card,
+   * the variant rows): every keystroke is passed straight through, an empty
+   * box as 0, so the caller's Add to cart always reads what is on screen. */
+  live?: boolean;
 }) {
   const [pending, startTransition] = useTransition();
   const [optimistic, setOptimistic] = useOptimistic(value);
   const [typed, setTyped] = useState<string | null>(null);
+  const settleTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const current = live ? value : optimistic;
+
+  const cancelSettle = () => {
+    if (settleTimer.current === null) return;
+    clearTimeout(settleTimer.current);
+    settleTimer.current = null;
+  };
+  useEffect(() => cancelSettle, []);
 
   const commit = (next: number) => {
     if (next < min || !Number.isInteger(next)) return;
+    if (live) {
+      void onChange(next);
+      return;
+    }
     startTransition(async () => {
       setOptimistic(next);
       const result = await onChange(next);
@@ -59,7 +88,59 @@ export function CartonStepper({
     });
   };
 
-  const pieces = piecesFor(optimistic, packSize);
+  const step = (next: number) => {
+    cancelSettle();
+    setTyped(null);
+    commit(next);
+  };
+
+  const type = (raw: string) => {
+    const text = raw.replace(/[^0-9]/g, "");
+    setTyped(text);
+    if (live) {
+      void onChange(text === "" ? 0 : Number(text));
+      return;
+    }
+    cancelSettle();
+    if (text === "") return;
+    const next = Number(text);
+    settleTimer.current = setTimeout(() => {
+      settleTimer.current = null;
+      commit(next);
+    }, TYPE_SETTLE_MS);
+  };
+
+  // Blur and Enter: whatever is typed is final. A live caller left with
+  // nothing valid goes back to the smallest count rather than an empty box.
+  const settle = () => {
+    cancelSettle();
+    if (typed !== null) {
+      const next = typed === "" ? Number.NaN : Number(typed);
+      if (live) {
+        if (!(next >= min)) void onChange(min);
+      } else if (next !== optimistic) {
+        commit(next);
+      }
+    }
+    setTyped(null);
+  };
+
+  const inputProps = {
+    "aria-label": `${unit}s — ${label}`,
+    inputMode: "numeric" as const,
+    disabled,
+    value: typed ?? String(current),
+    onChange: (event: React.ChangeEvent<HTMLInputElement>) => type(event.target.value),
+    onBlur: settle,
+    onKeyDown: (event: React.KeyboardEvent<HTMLInputElement>) => {
+      if (event.key === "Enter") {
+        event.preventDefault();
+        settle();
+      }
+    },
+  };
+
+  const pieces = piecesFor(current, packSize);
 
   if (size === "lg") {
     return (
@@ -67,29 +148,21 @@ export function CartonStepper({
         <button
           type="button"
           aria-label={`One fewer ${unit} — ${label}`}
-          disabled={disabled || pending || optimistic <= min}
-          onClick={() => commit(optimistic - 1)}
+          disabled={disabled || pending || current <= min}
+          onClick={() => step(current - 1)}
           className="flex size-control-lg shrink-0 items-center justify-center text-ink hover:bg-surface-soft focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-focus disabled:pointer-events-none disabled:opacity-40"
         >
           <Minus className="size-4" aria-hidden />
         </button>
         <input
-          aria-label={`${unit}s — ${label}`}
-          inputMode="numeric"
-          disabled={disabled}
-          value={typed ?? String(optimistic)}
-          onChange={(event) => setTyped(event.target.value.replace(/[^0-9]/g, ""))}
-          onBlur={() => {
-            if (typed !== null && typed !== "") commit(Number(typed));
-            setTyped(null);
-          }}
+          {...inputProps}
           className="h-full w-14 border-0 bg-transparent text-center text-[length:var(--text-body-lg)] font-semibold tabular-nums text-ink focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-focus disabled:pointer-events-none"
         />
         <button
           type="button"
           aria-label={`One more ${unit} — ${label}`}
           disabled={disabled || pending}
-          onClick={() => commit(optimistic + 1)}
+          onClick={() => step(current + 1)}
           className="flex size-control-lg shrink-0 items-center justify-center text-ink hover:bg-surface-soft focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-focus disabled:pointer-events-none disabled:opacity-40"
         >
           <Plus className="size-4" aria-hidden />
@@ -107,22 +180,14 @@ export function CartonStepper({
         <Button
           variant="secondary"
           aria-label={`One fewer ${unit} — ${label}`}
-          disabled={disabled || pending || optimistic <= min}
-          onClick={() => commit(optimistic - 1)}
+          disabled={disabled || pending || current <= min}
+          onClick={() => step(current - 1)}
           className="size-11 shrink-0 p-0 sm:size-control-sm"
         >
           <Minus className="size-4" aria-hidden />
         </Button>
         <input
-          aria-label={`${unit}s — ${label}`}
-          inputMode="numeric"
-          disabled={disabled}
-          value={typed ?? String(optimistic)}
-          onChange={(event) => setTyped(event.target.value.replace(/[^0-9]/g, ""))}
-          onBlur={() => {
-            if (typed !== null && typed !== "") commit(Number(typed));
-            setTyped(null);
-          }}
+          {...inputProps}
           className={`h-11 rounded-sm border border-hairline-strong bg-transparent text-center text-[length:var(--text-body-sm)] tabular-nums text-ink focus-visible:border-focus focus-visible:outline-2 focus-visible:outline-focus disabled:pointer-events-none disabled:opacity-50 sm:h-control-sm ${
             fill ? "min-w-0 flex-1" : "w-16"
           }`}
@@ -131,7 +196,7 @@ export function CartonStepper({
           variant="secondary"
           aria-label={`One more ${unit} — ${label}`}
           disabled={disabled || pending}
-          onClick={() => commit(optimistic + 1)}
+          onClick={() => step(current + 1)}
           className="size-11 shrink-0 p-0 sm:size-control-sm"
         >
           <Plus className="size-4" aria-hidden />
@@ -140,7 +205,7 @@ export function CartonStepper({
       {fill ? null : (
         <p className="text-[length:var(--text-caption)] text-ink-tertiary">
           {pieces === null
-            ? `${optimistic} ${unit}${optimistic === 1 ? "" : "s"}`
+            ? `${current} ${unit}${current === 1 ? "" : "s"}`
             : `${pieces} piece${pieces === 1 ? "" : "s"}`}
         </p>
       )}

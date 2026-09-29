@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useTransition } from "react";
+import { useEffect, useRef, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { beginRouteProgress } from "@/lib/route-progress";
 import { ChevronDown, Send } from "lucide-react";
@@ -17,10 +17,14 @@ import {
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { PurchaseOrderPreview } from "@/components/shop/checkout/PurchaseOrderPreview";
-import { submitWebOrder } from "@/actions/cart";
+import { saveCheckoutDraft, submitWebOrder } from "@/actions/cart";
 import { PO_NUMBER_REQUIRED } from "@/lib/validation/cart";
 import { formatMYR } from "@/lib/money";
-import { buildPoDocument, documentAgreesWithOrder } from "@/lib/purchase-order-document";
+import {
+  buildPoDocument,
+  documentAgreesWithOrder,
+  type OrderPlacer,
+} from "@/lib/purchase-order-document";
 import { shopHref } from "@/lib/shop-routes";
 import type { Cart } from "@/lib/queries/cart";
 import type { ReviewBuyer } from "@/lib/queries/shop-checkout";
@@ -49,20 +53,57 @@ const PO_FIELD_ID = "buyerReference";
  * check rather than a speed bump: the PO number the order is filed under,
  * the counts, and the total the prices are fixed at.
  */
+type CheckoutDraft = { buyerReference: string; notes: string };
+
+/**
+ * Keeps what is typed on the open cart (S-29), once it differs from what was
+ * last kept. A convenience, not the order: a save that fails costs a retyped
+ * field after a reload, never the send, so it is not reported.
+ */
+function flushCheckoutDraft(
+  latest: { current: CheckoutDraft },
+  saved: { current: CheckoutDraft },
+) {
+  const draft = latest.current;
+  if (
+    draft.buyerReference === saved.current.buyerReference &&
+    draft.notes === saved.current.notes
+  ) {
+    return;
+  }
+  saved.current = draft;
+  void saveCheckoutDraft(draft).catch(() => undefined);
+}
+
 export function ReviewSendForm({
   cart,
   buyer,
+  placedBy,
   orderDate,
 }: {
   cart: Cart;
   buyer: ReviewBuyer | null;
+  /** The signed-in contact, printed as "Ordered by" (S-02). */
+  placedBy: OrderPlacer | null;
   /** Today, already formatted, so the document and the server agree on it. */
   orderDate: string;
 }) {
   const router = useRouter();
   const [pending, startTransition] = useTransition();
-  const [buyerReference, setBuyerReference] = useState("");
-  const [notes, setNotes] = useState("");
+  // Seeded from the open cart, where the screen keeps them as they are typed
+  // (S-29): a reload, or a trip back to the cart, used to empty both.
+  const [buyerReference, setBuyerReference] = useState(cart.buyerReference ?? "");
+  const [notes, setNotes] = useState(cart.notes ?? "");
+  const latestDraft = useRef({ buyerReference, notes });
+  const savedDraft = useRef({ buyerReference, notes });
+
+  // Half a second after typing stops, and once more on the way out.
+  useEffect(() => {
+    latestDraft.current = { buyerReference, notes };
+    const timer = setTimeout(() => flushCheckoutDraft(latestDraft, savedDraft), 500);
+    return () => clearTimeout(timer);
+  }, [buyerReference, notes]);
+  useEffect(() => () => flushCheckoutDraft(latestDraft, savedDraft), []);
   // Phone only: whether the purchase order is unfolded below the form.
   const [previewOpen, setPreviewOpen] = useState(false);
   /**
@@ -86,6 +127,7 @@ export function ReviewSendForm({
     lines: cart.lines,
     subtotal: cart.subtotal,
     buyer,
+    placedBy,
     poNumber: buyerReference || null,
     orderId: cart.reference,
     notes: notes || null,
@@ -115,6 +157,8 @@ export function ReviewSendForm({
   };
 
   const send = () => {
+    // Sending writes both fields itself, so nothing is left to keep.
+    savedDraft.current = latestDraft.current;
     startTransition(async () => {
       const result = await submitWebOrder({
         buyerReference: buyerReference.trim(),

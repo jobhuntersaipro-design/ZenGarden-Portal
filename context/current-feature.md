@@ -1,3 +1,97 @@
+# Current feature: seven fixes from the 29 Sep role review
+
+## Status
+
+**Built and driven in a browser on `claude/amazing-ptolemy-j5cqv6`, pushed
+to `main`** (2026-09-29). Asked for as "start these and push to main: S-01,
+S-02, S-04, S-18, S-20, S-29 and S-12", from an outside tester's spec
+(`spec-all-suggestions.md`, 29 Sep). The rest of that spec was reviewed first:
+several items reverse decisions already taken here (S-13, S-16, S-19, S-21),
+and some describe things that already exist (S-23 loading states, the "AR"
+nav item, which is Aisha Rahman's avatar).
+
+- **S-01, typed cartons.** `CartonStepper` committed a typed number only on
+  blur, as a transition, so typing 4 and clicking Add to cart added 1. A
+  `live` caller (product page, catalogue card, variant rows) now gets every
+  keystroke at once, an empty box as 0. `cartonsProblem` disables Add to cart
+  with "Enter at least 1 carton." or the 9,999 ceiling. The cart (a server
+  write) saves 400ms after typing stops, on Enter, or on blur.
+- **S-02, who ordered.** The PO's buyer block printed the company's account
+  contact whoever sent the order. `documentParty` prints "Ordered by: name ·
+  email · phone" from `WebOrder.placedBy`, then "Account contact: …" only
+  when that is someone else (matched on email). On the review preview, the
+  buyer's order page, the PDF and the order emails' facts. `loadBuyerOrder`'s
+  pinned `webOrder` select widened by `placedBy` (name, email, phone only).
+- **S-04, invite.** The invite form required a username. The new-buyer form
+  already derived one. Blank now derives through `uniqueUsername` (shared
+  with `createBuyer`); a `+tag` is dropped (`chris+buyer@` → `chris`). The
+  refusal prints under the form, which stays open. The toast says whether
+  the email went.
+- **S-18, money wrapping.** `formatMYR` joins "RM" to its figure with a
+  no-break space. A compact money KPI tile narrower than
+  `--container-kpi-money` (14rem, a 1280 window) steps down to `heading-sm`.
+  Before, the figure broke mid-number.
+- **S-20, "1 buyers".** `src/lib/plural.ts`, used on product cards, the
+  family card, the product page, the buyers summary, stock and the test-data
+  card.
+- **S-29, PO number lost on reload.** The review screen keeps the PO number
+  and note on the open cart (`saveCheckoutDraft`, 500ms after typing and on
+  leaving). The cart seeds them. Sending turns the draft into the order, so
+  the next cart starts empty.
+- **S-12, stuck extraction.** A read cut off with its function stayed RUNNING
+  for good. `expireStaleExtractions` fails any RUNNING/PENDING row older than
+  5 minutes, with a reason. It runs on the review page, the status poll, the
+  PO list and the dashboard, so the existing Try again and hand-entry state
+  takes over. The reading screen shows elapsed time and "Still reading" after
+  2 minutes.
+
+## Verified
+
+Local Postgres 16 and the project's seed. Production builds of this branch
+and of untouched `HEAD` side by side. `src/lib/prisma.ts` and `prisma/seed.ts`
+were pointed at `PrismaPg` for the drive and restored; the cluster, worktree
+and `.env.local` were removed.
+- S-01: typed 4, clicked at once. HEAD toast "1 carton added", cart 1. Now
+  "4 cartons added", cart 4. An empty box disables Add on the page and on a
+  390 card. Cart: Enter saved 5; typing 6 then Review and send saved 6.
+- S-02: HEAD printed "Aisha Rahman · orders@…" for an order Chris Lam sent.
+  Now "Ordered by: Chris Lam · chrislam1112+lhbuyer@gmail.com · 012-345
+  6789" then the account contact, on the preview, the sent order's page at
+  390 and a rendered PDF.
+- S-04: blank username with `chrislam1112+lhbuyer@gmail.com` stored
+  `chrislam1112`, a second `+` address `chrislam1112-2`. "a b" printed its
+  rule under the form at 1440 and 390, form kept.
+- S-18: text nodes where "RM" and the last digit sit on different lines,
+  over `/`, `/products`, `/buyers`, `/purchase-orders` at 1280, 1440, 390:
+  **50 on HEAD, 0 after**.
+- S-29: HEAD returned an empty PO field after reload. Now "TEST-UX-0001" and
+  the note come back, and the DRAFT row holds both.
+- S-12: HEAD showed the skeleton for a read two days old. Now "Reading this
+  document took too long and was stopped." with Try again. A fresh read counts
+  "0:46", shows "Still reading" at 2:32, and turned failed on its own past
+  5:00, with no reload.
+- No page overflow at 390 and 1440 on every screen driven.
+- 1757 tests pass (the `xlsx` stand-in file still fails to import). `tsc` clean. Lint unchanged (4 `ShopHeader` errors) with
+  one fewer warning. Build clean.
+
+## Not verified
+
+- Production, and a real email: this rig has no Resend key, so every invite
+  toast read "didn't send", which is the honest case.
+- S-02 is read from the placer's current row, not a snapshot: a contact
+  renamed after ordering renames the on-screen document, and the stored PDF
+  if it is redrawn at confirm. A snapshot needs a migration.
+- S-20 on screen: no seeded product has exactly one buyer.
+- S-12 on Vercel. The 5 minutes assumes the upload route's 120s limit and a
+  server action's default. A read that is only slow and finishes later still
+  writes SUCCEEDED over the timeout.
+- **Rig trap:** `SHOP_HOST` must be a bare hostname. With a port
+  (`shop.localhost:3000`) the proxy's host check never matches. The portal
+  then renders shop paths and bounces clients to the shop host in a loop,
+  which looks like a defect on HEAD too.
+
+## Previous phase
+
 # Current feature: the Demand Board's product column reads on a phone
 
 ## Status

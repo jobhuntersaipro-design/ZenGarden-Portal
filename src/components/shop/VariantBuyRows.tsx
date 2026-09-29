@@ -126,6 +126,7 @@ export function VariantBuyRows({
               </div>
 
               <CartonStepper
+                live
                 value={count}
                 min={0}
                 packSize={variant.packSize}

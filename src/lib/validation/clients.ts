@@ -34,7 +34,13 @@ export const inviteContactSchema = z.object({
   buyerId: z.string().min(1),
   name: z.string().min(1, "A name is required").max(120),
   email: emailSchema,
-  username: usernameSchema,
+  // Optional since 2026-09-29 (S-04): left blank, the action derives one from
+  // the email the way the new-buyer form always has. Required here, a blank
+  // field refused the whole invite with a rule about a handle nobody typed.
+  username: z.preprocess(
+    (value) => (typeof value === "string" && value.trim() === "" ? undefined : value),
+    usernameSchema.optional(),
+  ),
   phone: phoneSchema,
 });
 

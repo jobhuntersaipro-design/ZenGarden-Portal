@@ -12,6 +12,7 @@ import {
 import { ChartScroller } from "@/components/charts/ChartScroller";
 import { formatDate } from "@/lib/dates";
 import { stockTrend, type StockCountRow } from "@/lib/stock";
+import { plural } from "@/lib/plural";
 
 /**
  * The counts that stand, oldest first.
@@ -63,7 +64,7 @@ export function StockTrend({ rows }: { rows: StockCountRow[] }) {
             />
             <Tooltip
               formatter={(value) => [
-                `${Number(value).toLocaleString("en-MY")} cartons`,
+                plural(Number(value), "carton"),
                 "Counted",
               ]}
               labelFormatter={(value) => formatDate(String(value))}

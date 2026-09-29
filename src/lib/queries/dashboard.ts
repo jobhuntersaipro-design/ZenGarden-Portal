@@ -42,6 +42,7 @@ import {
 } from "@/lib/analytics/sales";
 import { shareBy, type ShareSlice } from "@/lib/analytics/share";
 import type { AnalyticsOrder } from "@/lib/analytics/types";
+import { expireStaleExtractions } from "@/lib/extraction/expire";
 
 /** Only the latest revision of a PO counts; a superseded one is history. */
 const LATEST_ONLY = { supersededBy: { is: null } } as const;
@@ -215,6 +216,9 @@ export async function loadDashboard(
   },
 ): Promise<DashboardData> {
   const previous = previousPeriod(range);
+  // Before the intake counts, so "still extracting" never counts a read that
+  // died with its function (S-12).
+  await expireStaleExtractions();
 
   const [current, prior, history, intakeRows, anyOrder, openWebOrders] =
     await Promise.all([

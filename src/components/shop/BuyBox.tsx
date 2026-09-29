@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useId, useState } from "react";
 import Link from "next/link";
 import { Check } from "lucide-react";
 import { AddToCart } from "@/components/shop/AddToCart";
@@ -9,6 +9,7 @@ import { useShopViewer } from "@/components/shop/ShopViewer";
 import { VariantBuyRows } from "@/components/shop/VariantBuyRows";
 import { lineTotal } from "@/lib/cartons";
 import { formatMYR } from "@/lib/money";
+import { cartonsProblem } from "@/lib/validation/cart";
 import type { ShopVariant } from "@/lib/queries/shop-catalogue";
 import { shopHref } from "@/lib/shop-routes";
 
@@ -45,6 +46,8 @@ export function BuyBox({
   const viewer = useShopViewer();
   const [cartons, setCartons] = useState(1);
   const pieces = packSize === null ? null : cartons * packSize;
+  const problem = cartonsProblem(cartons);
+  const problemId = useId();
 
   return (
     <section className="rounded-lg border border-hairline p-md sm:p-lg">
@@ -70,6 +73,7 @@ export function BuyBox({
           <div className="mt-md flex flex-wrap items-center gap-md sm:mt-lg">
             <CartonStepper
               size="lg"
+              live
               value={cartons}
               packSize={packSize}
               unit={unit}
@@ -95,6 +99,15 @@ export function BuyBox({
               </p>
             </div>
           </div>
+          {problem ? (
+            <p
+              id={problemId}
+              role="alert"
+              className="mt-xs text-[length:var(--text-caption)] text-accent-red"
+            >
+              {problem}
+            </p>
+          ) : null}
 
           <div className="mt-md flex gap-sm sm:mt-lg">
             <div className="flex-1">
@@ -105,6 +118,8 @@ export function BuyBox({
                 packSize={packSize}
                 variant="buybox"
                 cartons={cartons}
+                disabled={problem !== null}
+                describedBy={problem ? problemId : undefined}
               />
             </div>
             <Link

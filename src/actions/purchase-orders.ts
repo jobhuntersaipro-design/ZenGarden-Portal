@@ -24,6 +24,7 @@ import {
   deletePurchaseOrderSchema,
   type PoDraft,
 } from "@/lib/validation/purchase-orders";
+import { expireStaleExtractions } from "@/lib/extraction/expire";
 
 export type ActionResult<T = undefined> =
   { success: true; data: T } | { success: false; error: string };
@@ -516,6 +517,8 @@ export async function getExtractionStatus(
   const { user, error } = await guardPermission("po.upload");
   if (!user) return { success: false, error: error! };
 
+  // The poll is what notices a read that died with its function (S-12).
+  await expireStaleExtractions();
   const extraction = await prisma.extraction.findUnique({
     where: { id: extractionId },
     select: { status: true, error: true },

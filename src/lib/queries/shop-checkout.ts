@@ -1,5 +1,6 @@
 import { WebOrderStatus } from "@/generated/prisma/enums";
 import { prisma } from "@/lib/prisma";
+import type { OrderPlacer } from "@/lib/purchase-order-document";
 
 /**
  * The two reads the checkout screens need (Phase 32).
@@ -34,6 +35,17 @@ export async function loadReviewBuyer(buyerId: string): Promise<ReviewBuyer | nu
     },
   });
   return buyer ?? null;
+}
+
+/**
+ * The contact about to send the order, for the preview's "Ordered by" (S-02).
+ * Read off their own row: the session carries no phone.
+ */
+export async function loadOrderPlacer(userId: string): Promise<OrderPlacer | null> {
+  return prisma.user.findUnique({
+    where: { id: userId },
+    select: { name: true, email: true, phone: true },
+  });
 }
 
 export type SentOrder = {
