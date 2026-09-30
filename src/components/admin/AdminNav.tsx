@@ -9,6 +9,9 @@ const TABS = [
   { href: "/admin/buyers", label: "Buyer management" },
   { href: "/admin/catalogue", label: "Catalogue" },
   { href: "/admin/test-data", label: "Test data" },
+  // The Arc rebuild's preview (docs/specs/60-arc-foundation.md). Leaves once
+  // the rebuild has shipped every phase.
+  { href: "/admin/arc", label: "Arc preview" },
 ] as const;
 
 /**

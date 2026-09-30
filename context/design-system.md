@@ -457,6 +457,8 @@ The geometry contrast is deliberate: chips are nearly square (4px), tiles are so
 - **`cta-banner-light`** — the bottom-of-page CTA banner. `{colors.surface}` background, `{rounded.xxl}` 35px, 60px padding.
 - **`footer-region`** + **`footer-link`** — the multi-column footer with `{colors.ink-secondary}` ("#646464") text at body-sm.
 
+- **Arc parts** (2026-09-30, `docs/specs/60-arc-foundation.md`). The portal is being rebuilt on Arc's components, vendored into `src/components/arc/` by `scripts/arc-import.ts`. **They wear these tokens, not Arc's**: every Arc variable is renamed `--arc-*` and defined in `src/app/arc-tokens.css` from the `@theme` tokens above — ink accent, `--color-focus` ring, indigo shadows, Plus Jakarta over Inter, 44px controls, the share palette for series. Arc's `foundation.css` is never imported (it removes every focus outline). **Product deviation:** Arc styles itself with CSS modules, which the "Tailwind for all styling" rule does not allow; they are vendored, read only `--arc-*`, and are changed through the script's `PATCHES` or the token map, never by hand.
+
 ## Do's and Don'ts
 
 > **Project override — Zen Garden Portal, 2026-09-05.** One rule below is

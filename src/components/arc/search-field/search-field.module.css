@@ -1,0 +1,19 @@
+/* Vendored from Arc (MIT) at cde1b40 by scripts/arc-import.ts. Tokens renamed --x → --arc-x; see src/app/arc-tokens.css. */
+.field { display: grid; gap: var(--arc-space-2); min-width: 0; }
+.field label { font-size: var(--arc-text-sm); font-weight: 500; }
+/* The focus ring contracts onto the border while it fades in; the shell never changes size. */
+.shell { display: flex; min-height: var(--arc-control-height-md); align-items: center; gap: var(--arc-space-2); border: 1px solid var(--arc-border-strong); border-radius: var(--arc-radius-control); padding: 0 var(--arc-space-3); background: var(--arc-surface); box-shadow: 0 0 0 6px transparent; transition: border-color var(--arc-duration-fast) var(--arc-ease-standard), box-shadow var(--arc-duration-standard) var(--arc-ease-standard); }
+@media (hover: hover) and (pointer: fine) { .shell:hover:not(:focus-within) { border-color: var(--arc-foreground); } }
+.shell:focus-within { border-color: var(--arc-foreground); box-shadow: 0 0 0 3px var(--arc-focus-ring); outline: 2px solid transparent; outline-offset: 2px; }
+/* The glass wakes up with the field: muted at rest, full contrast while searching. */
+.shell > svg { flex: 0 0 auto; color: var(--arc-text-muted); transition: color var(--arc-duration-fast) var(--arc-ease-standard); }
+.shell:focus-within > svg, .shell[data-filled="true"] > svg { color: var(--arc-foreground); }
+.input { width: 100%; min-width: 0; border: 0; background: transparent; color: var(--arc-foreground); font: inherit; font-size: var(--arc-text-sm); outline: 0; }
+.input:focus-visible { outline: 0; }
+.input::placeholder { color: var(--arc-text-muted); }
+.input::-webkit-search-cancel-button { display: none; }
+.clearSlot { display: grid; width: 24px; height: 24px; flex: 0 0 auto; place-items: center; }
+.shell button { display: grid; width: 24px; height: 24px; flex: 0 0 auto; place-items: center; border: 0; border-radius: var(--arc-radius-control); background: transparent; color: var(--arc-text-muted); transition: background-color var(--arc-duration-fast) var(--arc-ease-standard), color var(--arc-duration-fast) var(--arc-ease-standard); }
+@media (hover: hover) and (pointer: fine) { .shell button:hover { background: var(--arc-surface-muted); color: var(--arc-foreground); } }
+.shell button:focus-visible { outline: 2px solid var(--arc-focus-ring); outline-offset: 2px; }
+@media (prefers-reduced-motion: reduce) { .shell, .shell > svg, .shell button { transition: none; } }
