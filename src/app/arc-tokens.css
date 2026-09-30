@@ -1,0 +1,169 @@
+/*
+ * Arc's foundation, dressed in ours.
+ *
+ * The Arc parts in src/components/arc read `--arc-*` custom properties
+ * (renamed from Arc's own `--accent`, `--space-4`, … by
+ * scripts/arc-import.ts). Arc's foundation.css is not imported: it removes
+ * every focus outline in the app and its token names collide with shadcn's
+ * and Tailwind's. This file defines the same set from the ClickUp `@theme`
+ * tokens in globals.css, so an Arc part and a shadcn part side by side read as
+ * one product. Change a value here, never in a vendored file.
+ *
+ * Light only: nothing in this portal sets `data-theme="dark"`, so Arc's dark
+ * blocks never apply.
+ */
+:root {
+  /* Neutral ramp — our ink and surface tiers, lightest first. */
+  --arc-neutral-0: var(--color-canvas);
+  --arc-neutral-1: var(--color-canvas);
+  --arc-neutral-2: var(--color-surface);
+  --arc-neutral-3: var(--color-surface-soft);
+  --arc-neutral-4: var(--color-hairline);
+  --arc-neutral-5: var(--color-hairline-strong);
+  --arc-neutral-6: var(--color-ink-disabled);
+  --arc-neutral-7: var(--color-ink-tertiary);
+  --arc-neutral-8: var(--color-ink-secondary);
+  --arc-neutral-9: var(--color-ink);
+  --arc-neutral-10: var(--color-ink-deep);
+  --arc-neutral-11: var(--color-ink-darkest);
+
+  /* Surfaces and text */
+  --arc-background: var(--color-canvas);
+  --arc-surface: var(--color-canvas);
+  --arc-surface-raised: var(--color-canvas);
+  --arc-surface-muted: var(--color-surface);
+  --arc-foreground: var(--color-ink);
+  --arc-text-secondary: var(--color-ink-secondary);
+  --arc-text-muted: var(--color-ink-tertiary);
+  --arc-border: var(--color-hairline);
+  --arc-border-subtle: color-mix(in srgb, var(--color-hairline) 55%, var(--color-canvas));
+  --arc-border-strong: var(--color-hairline-strong);
+
+  /* Accent is ink: the primary CTA is the dark pill, never purple. */
+  --arc-accent: var(--color-ink);
+  --arc-accent-strong: var(--color-ink-deep);
+  --arc-accent-subtle: color-mix(in srgb, var(--color-ink) 8%, transparent);
+  --arc-accent-foreground: var(--color-canvas);
+
+  /* Selection controls */
+  --arc-control-on: var(--color-ink);
+  --arc-control-glyph: var(--color-canvas);
+  --arc-control-track: var(--color-hairline-strong);
+  --arc-control-track-hover: color-mix(in srgb, var(--color-hairline-strong) 60%, var(--color-ink-disabled));
+  --arc-control-thumb: var(--color-canvas);
+  --arc-control-thumb-on: var(--color-canvas);
+  --arc-control-thumb-shadow:
+    0 0 0 0.5px color-mix(in srgb, var(--color-shadow-indigo) 10%, transparent),
+    0 1px 2px color-mix(in srgb, var(--color-shadow-indigo) 16%, transparent),
+    0 2px 6px color-mix(in srgb, var(--color-shadow-indigo) 8%, transparent);
+  --arc-control-on-subtle: color-mix(in srgb, var(--arc-control-on) 10%, transparent);
+  --arc-control-fill: var(--arc-control-on);
+
+  /* Arc ships `transparent` here. Ours is the 2px purple ring. */
+  --arc-focus-ring: var(--color-focus);
+
+  --arc-success: var(--color-accent-green);
+  --arc-warning: var(--color-brand-amber-strong);
+  --arc-danger: var(--color-accent-red);
+
+  /* Elevation — indigo-tinted, never neutral gray. */
+  --arc-shadow-resting: 0 1px 2px color-mix(in srgb, var(--color-shadow-indigo) 6%, transparent);
+  --arc-shadow-raised: var(--shadow-sm);
+  --arc-shadow-floating: var(--shadow-md);
+
+  /* Arc's soft wash, from the brand hues at a whisper. Dark text on it. */
+  --arc-gradient-from: color-mix(in srgb, var(--color-primary-soft) 30%, var(--color-canvas));
+  --arc-gradient-to: color-mix(in srgb, var(--color-brand-coral) 22%, var(--color-canvas));
+  --arc-gradient: linear-gradient(100deg, var(--arc-gradient-from), var(--arc-gradient-to));
+  --arc-gradient-foreground: var(--color-ink);
+  --arc-gradient-soft: linear-gradient(
+    135deg,
+    color-mix(in srgb, var(--color-primary-soft) 8%, var(--color-canvas)),
+    color-mix(in srgb, var(--color-brand-coral) 6%, var(--color-canvas))
+  );
+  --arc-gradient-line: linear-gradient(100deg, var(--color-primary-soft), var(--color-brand-coral));
+  --arc-gradient-ink: linear-gradient(100deg, var(--color-accent-purple), var(--color-accent-magenta));
+
+  /* Spacing — Arc's 4px steps, counted from our own 4px base. */
+  --arc-space-1: var(--spacing-xxs);
+  --arc-space-2: var(--spacing-xs);
+  --arc-space-3: var(--spacing-sm);
+  --arc-space-4: calc(var(--spacing-xxs) * 4);
+  --arc-space-5: var(--spacing-md);
+  --arc-space-6: var(--spacing-lg);
+  --arc-space-8: calc(var(--spacing-xxs) * 8);
+  --arc-space-10: var(--spacing-xl);
+  --arc-space-12: calc(var(--spacing-xxs) * 12);
+  --arc-space-16: calc(var(--spacing-xxs) * 16);
+  --arc-space-20: calc(var(--spacing-xxs) * 20);
+  --arc-space-24: calc(var(--spacing-xxs) * 24);
+
+  /* Radius — inputs and secondary controls at 9px, panels 25, surfaces 35.
+     A button is the 20px pill (patched in by the import script). */
+  --arc-radius-control: var(--radius-sm);
+  --arc-radius-button: var(--radius-pill);
+  --arc-radius-panel: var(--radius-xl);
+  --arc-radius-surface: var(--radius-xxl);
+  --arc-radius-pill: 9999px;
+
+  /* Controls — Arc's lg is 50px; ours is the 52px primary pill. */
+  --arc-control-height-sm: var(--spacing-control-sm);
+  --arc-control-height-md: var(--spacing-control-md);
+  --arc-control-height-lg: var(--spacing-control-lg);
+
+  /* Type — Plus Jakarta Sans for display, Inter for everything else. */
+  --arc-font-display: var(--font-display);
+  --arc-font-body: var(--font-sans);
+  --arc-text-xs: var(--text-caption);
+  --arc-text-sm: var(--text-body-sm);
+  --arc-text-base: var(--text-body-md);
+  --arc-text-lg: var(--text-body-lg);
+  --arc-text-xl: var(--text-heading-sm);
+  --arc-text-2xl: var(--text-heading-md);
+  --arc-text-3xl: var(--text-display-md);
+  --arc-text-4xl: var(--text-display-xl);
+  --arc-text-5xl: var(--text-display-3xl);
+  --arc-tracking-display: -0.035em;
+  --arc-tracking-body: -0.011em;
+  --arc-leading-display: 1.2;
+  --arc-leading-body: 1.43;
+
+  /* Motion — Arc's own curves; we had none to map them to. */
+  --arc-ease-enter: cubic-bezier(0.16, 1, 0.3, 1);
+  --arc-ease-standard: cubic-bezier(0.22, 1, 0.36, 1);
+  --arc-ease-exit: cubic-bezier(0.7, 0, 0.84, 0);
+  --arc-ease-in-out: cubic-bezier(0.65, 0, 0.35, 1);
+  --arc-ease-spring: linear(0, 0.0258, 0.09, 0.1763, 0.2732, 0.3724, 0.4683, 0.5573, 0.6376, 0.7082, 0.7689, 0.8202, 0.8628, 0.8976, 0.9256, 0.9476, 0.9648, 0.9778, 0.9875, 0.9945, 0.9994, 1.0026, 1.0047, 1.0058, 1.0062, 1.0062, 1.0059, 1.0055, 1.0049, 1.0043, 1.0036, 1.0031, 1.0025, 1.002, 1.0016, 1.0013, 1);
+  --arc-duration-instant: 120ms;
+  --arc-duration-fast: 160ms;
+  --arc-duration-standard: 240ms;
+  --arc-duration-considered: 480ms;
+  --arc-duration-spring: 580ms;
+
+  /* Charts — the validated share palette, in rank order. */
+  --arc-series-1: var(--color-share-1);
+  --arc-series-2: var(--color-share-2);
+  --arc-series-3: var(--color-share-3);
+  --arc-series-4: var(--color-share-4);
+}
+
+/* The 44px touch floor below `sm` (40rem). Arc's small controls — tabs,
+   pagination, chips, segments, menu rows, the sm button — all read this one
+   height, so raising it here meets the floor for every one of them at once.
+   Fixed-size icon buttons (closes, clears, reveals) do not read it; each is
+   fixed when its part lands on a real screen (60-arc-foundation.md §5). */
+@media (width < 40rem) {
+  :root {
+    --arc-control-height-sm: var(--spacing-control-md);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  :root {
+    --arc-duration-instant: 0ms;
+    --arc-duration-fast: 0ms;
+    --arc-duration-standard: 0ms;
+    --arc-duration-considered: 0ms;
+    --arc-duration-spring: 0ms;
+  }
+}

@@ -1,3 +1,58 @@
+# Current feature: the portal rebuilt on Arc — phase 1, foundation
+
+## Status
+
+**Built and driven in a browser on `claude/amazing-ptolemy-j5cqv6`, pushed
+to the branch for a Vercel preview, not merged** (2026-09-30). Asked for as:
+"Explore deeply how can I use https://uiarc.dev/ for portal design / I want
+to utilize every component in uiarc / Help me rebuild it / Also, let me
+preview it before merge to main". The user chose Arc's parts in our look,
+every part with a job here (73), a look-only Vercel preview (previews share
+the production database), and six phases, each previewed. Spec:
+`docs/specs/60-arc-foundation.md`.
+
+- **`scripts/arc-import.ts`** vendors Arc (MIT) at `cde1b40` into
+  `src/components/arc/`: 171 files from 73 items. It never copies Arc's
+  `foundation.css`, which removes every focus outline. It renames Arc's 90
+  tokens `--x` → `--arc-x` (they collide with shadcn's `--accent`/`--border`
+  and Tailwind's `--text-sm`), points Radix imports at `radix-ui`, and applies
+  two listed patches: the button pill radius, and a clip around each chart's
+  screen-reader table.
+- **`src/app/arc-tokens.css`** defines every `--arc-*` token from the ClickUp
+  `@theme`: ink accent, purple focus ring, indigo shadows, Plus Jakarta over
+  Inter, 44px controls (and 44px for the small height below `sm`), the share
+  palette.
+- **`/admin/arc`**, the "Arc preview" admin tab: every part with its job here
+  and the phase that ships it, on static data.
+- **`motion` 13** is the one new dependency.
+
+No real screen changes in this phase.
+
+## Verified
+
+- 73 specimens, 200, no overflow at 1440 and 390. The page first measured 436
+  at 390, from line-chart's screen-reader table. It is wrapped now and reads
+  390.
+- The first drive showed two hydration mismatches: Arc's calendar and range
+  picker format dates through `Intl`, and Node and Chrome disagree. Both mount
+  after hydration now, and no mismatch is reported.
+- Tokens computed in the browser: focus `#7612fa`, accent `#292d34`, Inter,
+  small control 44px at 390 and 36px at 1440.
+- A touch and focus audit per part is recorded in the spec (§5) as the gate
+  each part passes before a real screen uses it: fixed-size icon buttons under
+  44px, faint focus on about a dozen parts, `page-header`/`empty-states` being
+  prop-less demos, `metric-card` painting zeros first, `bar-chart` unable to
+  stack, `phone-input` without Malaysia.
+- 16 new tests (the import transforms; the token map covering every token a
+  vendored part reads, with a non-transparent focus ring and no raw colour).
+
+## Not verified
+
+- The Vercel preview build itself; Safari, Firefox, a real phone, a screen
+  reader.
+
+## Previous phase
+
 # Current feature: seven fixes from the 29 Sep role review
 
 ## Status
