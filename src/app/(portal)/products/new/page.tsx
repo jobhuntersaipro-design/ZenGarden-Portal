@@ -1,5 +1,4 @@
 import type { Metadata } from "next";
-import Link from "next/link";
 import { redirect } from "next/navigation";
 import { BackLink } from "@/components/portal/BackLink";
 import { ProductForm } from "@/components/products/ProductForm";
@@ -8,7 +7,6 @@ import { listAllLabels } from "@/lib/queries/products";
 import { can } from "@/lib/permissions/require";
 import { withLoadingFloor } from "@/lib/loading-floor";
 import { Breadcrumb } from "@/components/arc/breadcrumb/breadcrumb";
-import { ModeSwitch } from "@/components/ui-mode/ModeSwitch";
 
 export const metadata: Metadata = {
   title: "New product · Zen Garden Portal",
@@ -40,32 +38,15 @@ async function NewProductPage() {
   return (
     <>
       <BackLink fallbackHref="/products" />
-      {/* Arc mode: Arc's breadcrumb (docs/specs/61-arc-preview-switch.md). */}
-      <ModeSwitch
-        arc={
-          <div className="mb-xs">
-            <Breadcrumb
-              items={[
-                { label: "Products", href: "/products" },
-                { label: "New product" },
-              ]}
-            />
-          </div>
-        }
-      >
-        <nav aria-label="Breadcrumb" className="mb-xs">
-          <Link
-            href="/products"
-            className="inline-flex min-h-control-md items-center rounded-xxs text-[length:var(--text-body-sm)] text-brand-link underline-offset-2 hover:underline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-focus sm:min-h-0"
-          >
-            Products
-          </Link>
-          <span className="text-[length:var(--text-body-sm)] text-ink-tertiary">
-            {" / "}
-            New product
-          </span>
-        </nav>
-      </ModeSwitch>
+      {/* Arc's breadcrumb (docs/specs/61-arc-preview-switch.md). */}
+      <div className="mb-xs">
+        <Breadcrumb
+          items={[
+            { label: "Products", href: "/products" },
+            { label: "New product" },
+          ]}
+        />
+      </div>
 
       <ProductForm labels={labels} families={families} />
     </>

@@ -1,6 +1,5 @@
 import Link from "next/link";
 import chip from "@/components/arc/chip-group/chip-group.module.css";
-import { ModeSwitch } from "@/components/ui-mode/ModeSwitch";
 import { formatMYR } from "@/lib/money";
 import { variantLabels } from "@/lib/product-groups";
 import { shopHref } from "@/lib/shop-routes";
@@ -52,9 +51,8 @@ export function VariantPicker({
         aria-labelledby="variant-picker"
         className="mt-xs flex flex-wrap gap-xs"
       >
-        <ModeSwitch arc={<>
-        {/* Arc mode: each variant is one of Arc's chips (arc/chip-group),
-            the current one tinted. */}
+        {/* Each variant is one of Arc's chips (arc/chip-group), the
+            current one tinted. */}
         {variants.map((variant) => {
           const isSelected = variant.id === selectedId;
           const label = labels.get(variant.id) ?? variant.sku;
@@ -82,35 +80,6 @@ export function VariantPicker({
             </li>
           );
         })}
-        </>}>
-        {variants.map((variant) => {
-          const isSelected = variant.id === selectedId;
-          const label = labels.get(variant.id) ?? variant.sku;
-          const priceSuffix = showPrices ? ` · ${formatMYR(Number(variant.listPrice))}` : "";
-
-          return (
-            <li key={variant.id}>
-              {isSelected ? (
-                <span
-                  aria-current="page"
-                  className="flex h-11 items-center rounded-pill border border-ink bg-ink px-md text-[length:var(--text-body-sm)] font-semibold text-canvas"
-                >
-                  {label}
-                  {priceSuffix}
-                </span>
-              ) : (
-                <Link
-                  href={shopHref.product(variant.id)}
-                  className="flex h-11 items-center rounded-pill border border-hairline-strong px-md text-[length:var(--text-body-sm)] text-ink-secondary hover:border-ink hover:text-ink focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-focus"
-                >
-                  {label}
-                  {priceSuffix}
-                </Link>
-              )}
-            </li>
-          );
-        })}
-        </ModeSwitch>
       </ul>
     </div>
   );

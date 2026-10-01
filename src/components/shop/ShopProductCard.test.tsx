@@ -97,10 +97,10 @@ describe("ShopProductCard quantity", () => {
   /** A stepper cannot go below one, so no line is ever added at zero. */
   it("starts with One fewer disabled", () => {
     const html = renderToStaticMarkup(<ShopProductCard group={one} />);
-    // React writes `disabled` before the attributes that identify the button,
-    // so the whole element is what has to be read, not the text after it.
-    const upTo = html.slice(0, html.indexOf("One fewer carton"));
-    const button = upTo.slice(upTo.lastIndexOf("<button"));
+    // The whole opening tag is what has to be read: React may write
+    // `disabled` on either side of the label that identifies the button.
+    const at = html.indexOf("One fewer carton");
+    const button = html.slice(html.lastIndexOf("<button", at), html.indexOf(">", at) + 1);
     expect(button).toContain("disabled");
   });
 });

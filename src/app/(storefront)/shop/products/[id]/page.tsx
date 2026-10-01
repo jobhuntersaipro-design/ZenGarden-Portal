@@ -1,6 +1,5 @@
 import type { Metadata } from "next";
 import { notFound } from "next/navigation";
-import Link from "next/link";
 import { Prisma } from "@/generated/prisma/browser";
 import { BuyBox } from "@/components/shop/BuyBox";
 import { ProductGallery } from "@/components/products/ProductGallery";
@@ -19,7 +18,6 @@ import { shopHref } from "@/lib/shop-routes";
 import { loadShopAudience } from "@/lib/shop-viewer";
 import { withLoadingFloor } from "@/lib/loading-floor";
 import { Breadcrumb } from "@/components/arc/breadcrumb/breadcrumb";
-import { ModeSwitch } from "@/components/ui-mode/ModeSwitch";
 
 export const dynamic = "force-dynamic";
 
@@ -79,43 +77,14 @@ async function ShopProductPage({
 
   return (
     <div className="pt-lg">
-      {/* Arc mode: Arc's breadcrumb (docs/specs/61-arc-preview-switch.md). */}
-      <ModeSwitch
-        arc={
-          <Breadcrumb
-            items={[
-              { label: "Home", href: shopHref.home() },
-              { label: product.category, href: shopHref.catalogue({ category: product.category }) },
-              { label: product.name },
-            ]}
-          />
-        }
-      >
-        <nav
-          aria-label="Breadcrumb"
-          className="flex min-w-0 items-center gap-xs text-[length:var(--text-caption)] text-ink-tertiary"
-        >
-          <Link
-            href={shopHref.home()}
-            className="text-brand-link hover:underline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-focus"
-          >
-            Home
-          </Link>
-          <span aria-hidden>/</span>
-          <Link
-            href={shopHref.catalogue({ category: product.category })}
-            className="text-brand-link hover:underline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-focus"
-          >
-            {product.category}
-          </Link>
-          <span aria-hidden>/</span>
-          {/* One line: the title below prints the name in full, so a second
-              full copy up here only pushes the price down a phone's screen. */}
-          <span className="min-w-0 truncate text-ink" title={product.name}>
-            {product.name}
-          </span>
-        </nav>
-      </ModeSwitch>
+      {/* Arc's breadcrumb (docs/specs/61-arc-preview-switch.md). */}
+      <Breadcrumb
+        items={[
+          { label: "Home", href: shopHref.home() },
+          { label: product.category, href: shopHref.catalogue({ category: product.category }) },
+          { label: product.name },
+        ]}
+      />
 
       <div className="mt-md grid gap-sm sm:gap-xl lg:grid-cols-[5fr_7fr]">
         <div className="self-start">

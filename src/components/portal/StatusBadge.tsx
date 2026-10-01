@@ -1,6 +1,5 @@
 import type { PoStage } from "@/generated/prisma/enums";
-import type { BadgeTone } from "@/components/arc/badge/badge";
-import { ModeBadge } from "@/components/portal/ModeBadge";
+import { Badge, type BadgeTone } from "@/components/arc/badge/badge";
 import { stageColorVar, stageLabel } from "@/lib/po-stages";
 
 /**
@@ -58,30 +57,9 @@ export const INTAKE_STATUS: Record<IntakeStatus, StatusTone> = {
 };
 
 /**
- * The pill states its own type rather than inheriting it. Dropped into the
- * Status heading it came out in Plus Jakarta Sans at weight 650 with the
- * heading's -0.54px tracking, which closed the space in "In production" and
- * made the same badge read differently from the one in the page header two
- * rows above it. A status pill is UI text — Inter, normal weight — and the
- * design system's rule is that the two families are never crossed.
+ * Each status as Arc's badge, in its nearest tone. The label is always
+ * present — colour alone never carries meaning.
  */
-const PILL_BASE =
-  "inline-flex items-center gap-xxs rounded-full bg-surface-soft py-xxs font-sans text-[length:var(--text-caption)] font-normal tracking-normal";
-
-const PILL = `${PILL_BASE} shrink-0 px-sm`;
-
-/**
- * The same pill in a six-across stepper column, which at `sm` is about 90px
- * wide: tighter padding, and free to shrink and wrap its label rather than
- * push the page sideways.
- */
-const PILL_COMPACT = `${PILL_BASE} min-w-0 px-xs text-center`;
-
-/**
- * Coloured text on `surface-soft`, never a coloured fill, and the label is
- * always present — colour alone never carries meaning.
- */
-/** Arc mode's tone for each intake status (docs/specs/61-arc-preview-switch.md). */
 const INTAKE_TONE: Record<IntakeStatus, BadgeTone> = {
   EXTRACTING: "info",
   NEEDS_REVIEW: "warning",
@@ -91,33 +69,25 @@ const INTAKE_TONE: Record<IntakeStatus, BadgeTone> = {
 };
 
 export function StatusBadge({ status }: { status: IntakeStatus }) {
-  const { label, text } = INTAKE_STATUS[status];
   return (
-    <ModeBadge tone={INTAKE_TONE[status]} classic={`${PILL} ${text}`}>
-      {label}
-    </ModeBadge>
+    <Badge tone={INTAKE_TONE[status]} size="sm" className="shrink-0">
+      {INTAKE_STATUS[status].label}
+    </Badge>
   );
 }
 
 /**
- * Where a stage sits against the order's current one. `current` is the
- * header's own badge, unchanged — everywhere a stage is named on a purchase
- * order reads the same pill, so there is one status palette and not a second
- * one invented per screen (2026-09-18). `done` and `upcoming` only step down
- * the ink ramp the stepper's plain labels already used.
+ * Where a stage sits against the order's current one. Everywhere a stage is
+ * named on a purchase order reads the same badge, so there is one status
+ * palette and not a second one invented per screen (2026-09-18).
  */
 export type StageBadgeState = "current" | "done" | "upcoming";
 
-const STATE_TEXT: Record<StageBadgeState, string> = {
-  current: "text-ink",
-  done: "text-ink-secondary",
-  upcoming: "text-ink-tertiary",
-};
-
 /**
- * The same pill once a PO is confirmed. Text is `ink` for the five stages in
- * progress and `accent-green` for Delivered; the 6px dot carries the stage's
- * ramp colour so the badge still reads at a glance (design reference §4).
+ * The same badge once a PO is confirmed: neutral for the five stages in
+ * progress and success for Delivered, the one stage that reads as done. The
+ * 6px dot carries the stage's ramp colour so the badge still reads at a
+ * glance (design reference §4).
  *
  * A stage the order has not reached shows a hairline dot instead: the ramp
  * colour means "this happened", and colouring a future stage would promise it.
@@ -125,21 +95,16 @@ const STATE_TEXT: Record<StageBadgeState, string> = {
 export function StageBadge({
   stage,
   state = "current",
-  compact = false,
 }: {
   stage: PoStage;
   state?: StageBadgeState;
-  compact?: boolean;
 }) {
   const delivered = stage === "DELIVERED";
-  const text =
-    state === "current" && delivered ? "text-accent-green" : STATE_TEXT[state];
-  // Arc mode keeps the stage's own colour on the dot; the pill is neutral
-  // except Delivered, which is the one stage that reads as done.
   return (
-    <ModeBadge
+    <Badge
       tone={state === "current" && delivered ? "success" : "neutral"}
-      classic={`${compact ? PILL_COMPACT : PILL} ${text}`}
+      size="sm"
+      className="shrink-0"
       icon={
         <span
           aria-hidden
@@ -154,6 +119,6 @@ export function StageBadge({
       }
     >
       {stageLabel(stage)}
-    </ModeBadge>
+    </Badge>
   );
 }

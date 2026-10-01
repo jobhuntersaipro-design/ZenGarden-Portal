@@ -14,7 +14,6 @@ import { usePresence } from "@/hooks/usePresence";
 import { useEdgeFades } from "@/hooks/useEdgeFades";
 import arcTable from "@/components/arc/sortable-data-table/sortable-data-table.module.css";
 import { Button } from "@/components/ui/button";
-import { useIsArc } from "@/components/ui-mode/UiModeProvider";
 import { PoStage } from "@/generated/prisma/enums";
 import { PO_STAGES, stageLabel } from "@/lib/po-stages";
 import { STAGE_VARS, cssVar } from "@/lib/analytics/palette";
@@ -206,11 +205,9 @@ export function StageBoard({
   }, [pinned]);
 
   const columns = OPEN_STAGES.length + (anyOverdue ? 2 : 1) + 1;
-  // Arc mode: the breakdown sits in Arc's data-table frame and "Back to
-  // today" is Arc's ghost button. The stacked chart stays ours in both
-  // modes — Arc's bar chart cannot stack (docs/specs/61 §3).
-  const isArc = useIsArc();
-
+  // The breakdown sits in Arc's data-table frame and "Back to today" is
+  // Arc's ghost button. The stacked chart stays ours — Arc's bar chart
+  // cannot stack (docs/specs/61 §3).
   return (
     <section className="mb-lg rounded-xl bg-surface p-lg sm:p-xl">
       <div className="flex flex-wrap items-start justify-between gap-md">
@@ -361,18 +358,10 @@ export function StageBoard({
               </span>
             ) : null}
           </h3>
-          {pinned && isArc ? (
+          {pinned ? (
             <Button variant="ghost" size="sm" onClick={() => setPinned(null)}>
               Back to today
             </Button>
-          ) : pinned ? (
-            <button
-              type="button"
-              onClick={() => setPinned(null)}
-              className="h-control-md sm:h-auto text-[length:var(--text-caption)] text-brand-link underline-offset-2 hover:underline"
-            >
-              Back to today
-            </button>
           ) : null}
         </div>
         <p className="mt-xxs text-[length:var(--text-caption)] text-ink-tertiary">
@@ -384,14 +373,10 @@ export function StageBoard({
         </p>
 
         {rows.length > 0 ? (
-          <div className={`relative mt-sm ${isArc ? arcTable.wrapper : ""}`}>
+          <div className={`relative mt-sm ${arcTable.wrapper}`}>
             <div ref={ref} onScroll={measure} className="overflow-x-auto">
               <table
-                className={
-                  isArc
-                    ? `${arcTable.table} min-w-stage-table`
-                    : "w-full min-w-stage-table border-collapse text-[length:var(--text-body-sm)]"
-                }
+                className={`${arcTable.table} min-w-stage-table`}
               >
                 <thead>
                   <tr className="border-b border-hairline text-left">
@@ -636,7 +621,7 @@ function OrderRow({
             ) : null}
           </span>
           <span className="mt-xxs">
-            <StageBadge stage={entry.stage} state="done" compact />
+            <StageBadge stage={entry.stage} state="done" />
           </span>
         </div>
         </Reveal>

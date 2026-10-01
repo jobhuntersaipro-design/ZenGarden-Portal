@@ -7,7 +7,6 @@ import { Dialog as DialogPrimitive } from "radix-ui"
 import { Button } from "@/components/ui/button"
 import { XIcon } from "lucide-react"
 import arc from "@/components/arc/dialog/dialog.module.css"
-import { useIsArc } from "@/components/ui-mode/UiModeProvider"
 
 function Dialog({
   ...props
@@ -40,10 +39,7 @@ function DialogOverlay({
   return (
     <DialogPrimitive.Overlay
       data-slot="dialog-overlay"
-      className={cn(
-        "fixed inset-0 isolate z-50 bg-black/10 duration-100 supports-backdrop-filter:backdrop-blur-xs data-open:animate-in data-open:fade-in-0 data-closed:animate-out data-closed:fade-out-0",
-        className
-      )}
+      className={cn(arc.overlay, arc.keyframes, className)}
       {...props}
     />
   )
@@ -57,66 +53,32 @@ function DialogContent({
 }: React.ComponentProps<typeof DialogPrimitive.Content> & {
   showCloseButton?: boolean
 }) {
-  // Arc mode: Arc's dialog surface, overlay and entrance (its keyframe path,
-  // the one Arc uses under a plain Radix root), on our header/body/footer
+  // Arc's dialog surface, overlay and entrance (its keyframe path, the one
+  // Arc uses under a plain Radix root), on our header/body/footer
   // composition. A caller's own max-width still widens it above `sm`.
-  const isArc = useIsArc()
-  if (isArc) {
-    const callerSetsWidth = /(?:^|\s)\S*max-w-/.test(className ?? "")
-    return (
-      <DialogPortal>
-        <DialogPrimitive.Overlay
-          data-slot="dialog-overlay"
-          className={cn(arc.overlay, arc.keyframes)}
-        />
-        <DialogPrimitive.Content
-          data-slot="dialog-content"
-          className={cn(
-            arc.content,
-            arc.keyframes,
-            "grid gap-md p-lg",
-            callerSetsWidth && "sm:w-full",
-            className
-          )}
-          {...props}
-        >
-          {children}
-          {showCloseButton && (
-            <DialogPrimitive.Close
-              data-slot="dialog-close"
-              className={cn(arc.close, "absolute top-md right-md max-sm:size-11")}
-              aria-label="Close dialog"
-            >
-              <XIcon className="size-4" aria-hidden />
-            </DialogPrimitive.Close>
-          )}
-        </DialogPrimitive.Content>
-      </DialogPortal>
-    )
-  }
+  const callerSetsWidth = /(?:^|\s)\S*max-w-/.test(className ?? "")
   return (
     <DialogPortal>
       <DialogOverlay />
       <DialogPrimitive.Content
         data-slot="dialog-content"
         className={cn(
-          "fixed top-1/2 left-1/2 z-50 grid w-full max-w-[calc(100%-2rem)] -translate-x-1/2 -translate-y-1/2 gap-4 rounded-xl bg-popover p-4 text-sm text-popover-foreground ring-1 ring-foreground/10 duration-100 outline-none sm:max-w-panel-sm data-open:animate-in data-open:fade-in-0 data-open:zoom-in-95 data-closed:animate-out data-closed:fade-out-0 data-closed:zoom-out-95",
+          arc.content,
+          arc.keyframes,
+          "grid gap-md p-lg",
+          callerSetsWidth && "sm:w-full",
           className
         )}
         {...props}
       >
         {children}
         {showCloseButton && (
-          <DialogPrimitive.Close data-slot="dialog-close" asChild>
-            <Button
-              variant="ghost"
-              className="absolute top-2 right-2"
-              size="icon-sm"
-            >
-              <XIcon
-              />
-              <span className="sr-only">Close</span>
-            </Button>
+          <DialogPrimitive.Close
+            data-slot="dialog-close"
+            className={cn(arc.close, "absolute top-md right-md max-sm:size-11")}
+            aria-label="Close dialog"
+          >
+            <XIcon className="size-4" aria-hidden />
           </DialogPrimitive.Close>
         )}
       </DialogPrimitive.Content>
@@ -125,20 +87,10 @@ function DialogContent({
 }
 
 function DialogHeader({ className, ...props }: React.ComponentProps<"div">) {
-  const isArc = useIsArc()
-  if (isArc) {
-    return (
-      <div
-        data-slot="dialog-header"
-        className={cn("flex flex-col gap-xxs pr-xxl", className)}
-        {...props}
-      />
-    )
-  }
   return (
     <div
       data-slot="dialog-header"
-      className={cn("flex flex-col gap-2", className)}
+      className={cn("flex flex-col gap-xxs pr-xxl", className)}
       {...props}
     />
   )
@@ -152,14 +104,11 @@ function DialogFooter({
 }: React.ComponentProps<"div"> & {
   showCloseButton?: boolean
 }) {
-  const isArc = useIsArc()
   return (
     <div
       data-slot="dialog-footer"
       className={cn(
-        isArc
-          ? "flex flex-col-reverse gap-xs pt-xs sm:flex-row sm:justify-end"
-          : "-mx-4 -mb-4 flex flex-col-reverse gap-2 rounded-b-xl border-t bg-muted/50 p-4 sm:flex-row sm:justify-end",
+        "flex flex-col-reverse gap-xs pt-xs sm:flex-row sm:justify-end",
         className
       )}
       {...props}
@@ -178,23 +127,10 @@ function DialogTitle({
   className,
   ...props
 }: React.ComponentProps<typeof DialogPrimitive.Title>) {
-  const isArc = useIsArc()
-  if (isArc) {
-    return (
-      <DialogPrimitive.Title
-        data-slot="dialog-title"
-        className={cn(arc.title, className)}
-        {...props}
-      />
-    )
-  }
   return (
     <DialogPrimitive.Title
       data-slot="dialog-title"
-      className={cn(
-        "font-heading text-base leading-none font-medium",
-        className
-      )}
+      className={cn(arc.title, className)}
       {...props}
     />
   )
@@ -204,23 +140,10 @@ function DialogDescription({
   className,
   ...props
 }: React.ComponentProps<typeof DialogPrimitive.Description>) {
-  const isArc = useIsArc()
-  if (isArc) {
-    return (
-      <DialogPrimitive.Description
-        data-slot="dialog-description"
-        className={cn(arc.description, "mt-0", className)}
-        {...props}
-      />
-    )
-  }
   return (
     <DialogPrimitive.Description
       data-slot="dialog-description"
-      className={cn(
-        "text-sm text-muted-foreground *:[a]:underline *:[a]:underline-offset-3 *:[a]:hover:text-foreground",
-        className
-      )}
+      className={cn(arc.description, "mt-0", className)}
       {...props}
     />
   )

@@ -1,10 +1,6 @@
 "use client";
 
 import { AnimatedCounter } from "@/components/arc/animated-counter/animated-counter";
-import { useIsArc } from "@/components/ui-mode/UiModeProvider";
-import { useCountUp } from "@/hooks/useCountUp";
-import { formatMYR } from "@/lib/money";
-import { formatUnits } from "@/lib/units";
 
 /**
  * How the animated number is written. A string rather than a formatter
@@ -13,25 +9,11 @@ import { formatUnits } from "@/lib/units";
  */
 export type CountFormat = "money" | "money0" | "number" | "grouped" | "percent";
 
-const write = (value: number, format: CountFormat, decimals: number): string => {
-  switch (format) {
-    case "money":
-      return formatMYR(value.toFixed(2));
-    case "money0":
-      return formatMYR(value, 0);
-    case "grouped":
-      return formatUnits(value);
-    case "percent":
-      return `${value.toFixed(decimals)}%`;
-    case "number":
-      return value.toFixed(decimals);
-  }
-};
-
 /**
- * One headline figure that counts up. Renders the server's value on the first
- * paint and animates after mount — see `useCountUp` for why that ordering is
- * the whole point.
+ * One headline figure, as Arc's animated counter. It paints the real figure
+ * first and rolls each digit on a change, so a KPI never reads zero on its
+ * first paint (00-master §4). It takes the tile's own type through
+ * `data-count-host` (arc-tokens.css).
  */
 export function CountUp({
   value,
@@ -48,30 +30,15 @@ export function CountUp({
   prefix?: string;
   suffix?: string;
 }) {
-  const shown = useCountUp(value);
-  const isArc = useIsArc();
-  if (isArc) {
-    // Arc mode: Arc's animated counter. It paints the real figure first and
-    // rolls each digit on a change, so a KPI still never reads zero on its
-    // first paint (00-master §4). It takes the tile's own type through
-    // `data-count-host` (arc-tokens.css).
-    const money = format === "money" || format === "money0";
-    return (
-      <span data-count-host>
-        <AnimatedCounter
-          value={value}
-          prefix={`${prefix}${money ? "RM\u00a0" : ""}`}
-          suffix={`${format === "percent" ? "%" : ""}${suffix}`}
-          decimals={format === "money" ? 2 : format === "money0" || format === "grouped" ? 0 : decimals}
-        />
-      </span>
-    );
-  }
+  const money = format === "money" || format === "money0";
   return (
-    <>
-      {prefix}
-      {write(shown, format, decimals)}
-      {suffix}
-    </>
+    <span data-count-host>
+      <AnimatedCounter
+        value={value}
+        prefix={`${prefix}${money ? "RM\u00a0" : ""}`}
+        suffix={`${format === "percent" ? "%" : ""}${suffix}`}
+        decimals={format === "money" ? 2 : format === "money0" || format === "grouped" ? 0 : decimals}
+      />
+    </span>
   );
 }

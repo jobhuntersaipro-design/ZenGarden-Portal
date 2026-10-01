@@ -1,6 +1,22 @@
-# Current feature: Current / Arc — every page, one switch
+# Current feature: Arc only — the Current look and its switch removed
 
 ## Status
+
+**Current removed** (2026-10-01), on `claude/modest-faraday-oh2ij9`. Asked
+for as "remove the old Current code and the switch". Arc is the only
+implementation: no switch, no `zg-ui` cookie, no `?ui=`, no `data-ui`, no
+classic branch in any primitive, composite or page. Spec
+`docs/specs/61-arc-preview-switch.md` §7.
+
+- Toasts are Arc's stack only; sonner and next-themes left `package.json`.
+- Button spinners are held 200ms again (Arc's button had dropped the floor).
+- Verified against a `HEAD` build side by side: the shop pixel-identical on
+  all 12 shots, the portal identical but for the random welcome line and one
+  "Last active"; overflow and sub-44px counts identical on every page; 1782
+  tests, `tsc`, lint unchanged, build clean.
+- **Not verified:** production; other browsers; a real phone.
+
+## Before that: Arc chosen
 
 **Arc chosen and merged to `main`** (2026-10-01), from
 `claude/modest-faraday-oh2ij9`. Asked for as "change every component in this

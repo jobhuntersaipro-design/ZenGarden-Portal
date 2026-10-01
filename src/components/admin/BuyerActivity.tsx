@@ -62,7 +62,6 @@ export function BuyerActivity({
             <ChoiceButton
               key={filter.value}
               look="segment"
-              compact
               selected={choice.value === filter.value}
               pending={choice.isPending(filter.value)}
               dimmed={choice.pending && !choice.isPending(filter.value)}

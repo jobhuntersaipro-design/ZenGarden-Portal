@@ -26,7 +26,6 @@ import type { AdminUserRow, UserStatusFilter } from "@/lib/queries/users";
 import type { SortDirection } from "@/lib/queries/pagination";
 import { useUrlNavigation } from "@/hooks/useUrlNavigation";
 import { ChoiceButton } from "@/components/portal/ChoiceButton";
-import { useIsArc } from "@/components/ui-mode/UiModeProvider";
 
 const STATUSES: { value: UserStatusFilter; label: string }[] = [
   { value: "all", label: "All" },
@@ -52,7 +51,6 @@ export function UsersTable({
   status: UserStatusFilter;
   openUserId: string | null;
 }) {
-  const isArc = useIsArc();
   const onSortChange = useTableSort();
   const { replace } = useUrlNavigation();
   const pathname = usePathname();
@@ -188,37 +186,16 @@ export function UsersTable({
             className="h-control-md sm:h-control-sm w-64"
           />
           <div className="flex flex-wrap items-center gap-xxs">
-            {STATUSES.map((option) =>
-              isArc ? (
-                // Arc mode: Arc's chips, as on every other filter row.
-                <ChoiceButton
-                  key={option.value}
-                  look="chip"
-                  selected={status === option.value}
-                  onClick={() => write({ status: option.value === "all" ? null : option.value })}
-                >
-                  {option.label}
-                </ChoiceButton>
-              ) : (
-              <button
+            {STATUSES.map((option) => (
+              <ChoiceButton
                 key={option.value}
-                type="button"
-                aria-pressed={status === option.value}
-                onClick={() =>
-                  write({
-                    status: option.value === "all" ? null : option.value,
-                  })
-                }
-                className={`h-control-md sm:h-control-sm rounded-pill px-md text-[length:var(--text-caption)] transition-colors focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-focus ${
-                  status === option.value
-                    ? "bg-ink text-canvas"
-                    : "bg-surface-soft text-ink-secondary hover:text-ink"
-                }`}
+                look="chip"
+                selected={status === option.value}
+                onClick={() => write({ status: option.value === "all" ? null : option.value })}
               >
                 {option.label}
-              </button>
-              ),
-            )}
+              </ChoiceButton>
+            ))}
           </div>
         </div>
         <Button onClick={() => openDrawer("new")}>+ New user</Button>

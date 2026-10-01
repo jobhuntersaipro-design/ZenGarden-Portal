@@ -2,7 +2,6 @@ import NextAuth from "next-auth";
 import { NextResponse } from "next/server";
 import { Role } from "@/generated/prisma/enums";
 import { authConfig } from "@/lib/auth.config";
-import { UI_MODE_COOKIE, UI_MODE_PARAM, arcPreviewEnabled, parseUiMode } from "@/lib/ui-mode";
 // `shop-routes.ts` has no imports of its own, so pulling one function from it
 // keeps this file's promise of reading only `process.env` and the JWT.
 
@@ -53,23 +52,6 @@ export default auth((request) => {
   const session = request.auth;
 
   if (pathname.startsWith("/api/auth")) return NextResponse.next();
-
-  // `?ui=arc` / `?ui=classic` sets the preview switch's cookie and drops the
-  // parameter, so a link can open a page in either component set. Same host,
-  // so the redirect keeps its origin. Off in production, which always draws
-  // Arc (src/lib/ui-mode.ts).
-  const uiParam = parseUiMode(request.nextUrl.searchParams.get(UI_MODE_PARAM));
-  if (uiParam && arcPreviewEnabled()) {
-    const clean = request.nextUrl.clone();
-    clean.searchParams.delete(UI_MODE_PARAM);
-    const response = NextResponse.redirect(clean);
-    response.cookies.set(UI_MODE_COOKIE, uiParam, {
-      path: "/",
-      maxAge: 60 * 60 * 24 * 365,
-      sameSite: "lax",
-    });
-    return response;
-  }
 
   const host = request.headers.get("host")?.split(":")[0].toLowerCase() ?? "";
   const onShopHost = Boolean(SHOP_HOST) && host === SHOP_HOST;

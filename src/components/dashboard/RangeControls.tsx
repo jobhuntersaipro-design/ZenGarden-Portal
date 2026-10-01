@@ -159,7 +159,6 @@ export function RangeControls({
             <ChoiceButton
               key={option.value}
               look="segment"
-              compact
               selected={aggs.value === option.value}
               pending={aggs.isPending(option.value)}
               dimmed={aggs.pending && !aggs.isPending(option.value)}

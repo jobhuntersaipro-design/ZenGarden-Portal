@@ -5,17 +5,18 @@ import { Slot } from "radix-ui"
 import { cn } from "cn"
 import { Button as ArcButton, type ButtonSize, type ButtonVariant } from "@/components/arc/button/button"
 import arcStyles from "@/components/arc/button/button.module.css"
-import { useIsArc } from "@/components/ui-mode/UiModeProvider"
-import { ButtonClassic, type ButtonProps } from "./button-classic"
+import { useHeldFlag } from "@/hooks/useHeldFlag"
 
 /**
- * Every button in the app. Under the preview switch's Arc mode
- * (docs/specs/61-arc-preview-switch.md) it is Arc's button: the 20px pill,
- * the spring press and a label that morphs. Otherwise the shadcn button,
- * unchanged. `buttonVariants` lives in `button-classic.tsx`: a value exported
- * from this client module would not be that value in a server component.
+ * Every button in the app: Arc's button — the 20px pill, the spring press and
+ * a label that morphs (docs/specs/61-arc-preview-switch.md). The variant and
+ * size names are the shadcn ones the app was written against, mapped onto
+ * Arc's three variants and three sizes.
  */
-const ARC_VARIANT: Record<string, ButtonVariant> = {
+type Variant = "default" | "gradient" | "secondary" | "outline" | "ghost" | "link" | "destructive"
+type Size = "default" | "xs" | "sm" | "lg" | "icon" | "icon-xs" | "icon-sm" | "icon-lg"
+
+const ARC_VARIANT: Record<Variant, ButtonVariant> = {
   default: "primary",
   gradient: "primary",
   secondary: "secondary",
@@ -25,7 +26,9 @@ const ARC_VARIANT: Record<string, ButtonVariant> = {
   destructive: "danger",
 }
 
-const ARC_SIZE: Record<string, ButtonSize> = {
+const ARC_SIZE: Record<Size, ButtonSize> = {
+  default: "md",
+  icon: "md",
   xs: "sm",
   sm: "sm",
   "icon-xs": "sm",
@@ -34,22 +37,35 @@ const ARC_SIZE: Record<string, ButtonSize> = {
   "icon-lg": "lg",
 }
 
-function Button(props: ButtonProps) {
-  const arc = useIsArc()
-  if (!arc) return <ButtonClassic {...props} />
-  const {
-    className,
-    variant = "default",
-    size = "default",
-    asChild = false,
-    pending = false,
-    disabled,
-    children,
-    ref,
-    ...rest
-  } = props
-  const arcVariant = ARC_VARIANT[variant ?? "default"] ?? "primary"
-  const arcSize = ARC_SIZE[size ?? "default"] ?? "md"
+type ButtonProps = React.ComponentProps<"button"> & {
+  variant?: Variant | null
+  size?: Size | null
+  asChild?: boolean
+  /**
+   * The button is waiting on the network. It shows Arc's spinner, marks
+   * itself `aria-busy` and swallows presses — the caller still swaps the
+   * words ("Saving…"), because the label names the work and the ring only
+   * says that it is happening. The spinner stays at least 200ms
+   * (`useHeldFlag`), so a fast save still shows it worked. Ignored with `asChild`: a Link shows its own
+   * progress through `LinkSpinner`.
+   */
+  pending?: boolean
+}
+
+function Button({
+  className,
+  variant = "default",
+  size = "default",
+  asChild = false,
+  pending = false,
+  disabled,
+  children,
+  ref,
+  ...rest
+}: ButtonProps) {
+  const held = useHeldFlag(pending)
+  const arcVariant = ARC_VARIANT[variant ?? "default"]
+  const arcSize = ARC_SIZE[size ?? "default"]
   // A square icon button drops Arc's side padding; the caller sizes it.
   const iconOnly = size?.startsWith("icon")
   const classes = cn(iconOnly && "px-0", className)
@@ -75,7 +91,7 @@ function Button(props: ButtonProps) {
       ref={ref as React.Ref<HTMLButtonElement>}
       variant={arcVariant}
       size={arcSize}
-      loading={pending}
+      loading={held}
       disabled={disabled}
       className={classes}
     >

@@ -131,8 +131,69 @@ Settled the same day — "keep Arc, merge to main". `resolveUiMode` now draws
 whatever the cookie says. The switch stays outside production (Arc selected
 by default) so the earlier look can still be compared while its code is in
 the tree; production never shows it. Removing the classic branches, the
-switch and the cookie is a follow-up, not part of this merge.
+switch and the cookie was the follow-up — §7.
 
-## 6. Not verified
+## 6. Not verified (at the decision)
 
 The Vercel preview itself; Safari, Firefox, a real phone, a screen reader.
+
+## 7. Current removed
+
+Asked for the same day: "remove the old Current code and the switch". §1 now
+describes code that no longer exists.
+
+- **Gone:** `src/lib/ui-mode.ts`, `ui-mode-server.ts` and their test,
+  `UiModeProvider`, `ModeSwitch`, `UiModeSwitch`, the `zg-ui` cookie, the
+  proxy's `?ui=` redirect, `<html data-ui>`, `button-classic.tsx`,
+  `ModeBadge`, `HeldSpinner`, `StageTick`, `useCountUp`, and every classic
+  branch in the primitives, composites and the six pages that passed both
+  breadcrumbs. `ArcSelection` moved to `src/components/ui/arc-selection.tsx`.
+  The root layout no longer reads a cookie.
+- **Toasts** go to Arc's stack only; sonner and next-themes left
+  `package.json` (edited by hand — `npm uninstall` cannot run where the
+  `xlsx` CDN is blocked; run `npm install` once to prune `node_modules`).
+  `--spacing-ui-toast` drops from 132px to 76px above the safe area: it no
+  longer has to clear the switch, only the tab bar and the cart bar.
+- **arc-tokens.css** rules that were scoped to `[data-ui="arc"]` (skeletons,
+  native selects, folding rows) apply unconditionally, under `:root` so their
+  specificity is unchanged.
+- **Button spinners are held 200ms again.** The classic button carried the
+  loading floor (`HeldSpinner`); Arc's took `pending` directly, so Arc mode had
+  quietly dropped it. `Button` now passes `useHeldFlag(pending)` to Arc's
+  `loading`, which also swallows presses for that hold.
+- **Props that only the classic tree read** were removed with it:
+  `StageBadge compact`, `ChoiceButton compact`, `DonutShare hrefBase`,
+  `SalesLineChart agg`/`fade`, `SeriesTrend formatLabelValue`/`yAxisWidth`,
+  `SalesCard agg`, `Switch size`.
+
+### Verified
+
+Local Postgres and the seed; production builds of `HEAD` (072d43d, Arc by
+default) and of this change side by side, signed in as the super admin and a
+shop contact, 21 portal and shop pages plus both sign-ins × 1440 and 390.
+- **Shop: all 12 screenshots pixel-identical** to `HEAD`. Portal: identical
+  except the welcome card's line, which is random per sign-in (a longer line
+  at 390 moves the page down 21px), and the admin roster's "Last active" for
+  the contact who signed in between runs. `/admin/buyers` and
+  `/admin/catalogue` at 390 read 0.000%.
+- No page overflow on any page at either width, and the same count of
+  sub-44px controls page for page as `HEAD`.
+- `[data-ui-switch]` 0 and `data-ui` absent on every page; on `HEAD` 1 and
+  `arc`.
+- A save on Settings toasts "Saved" in Arc's stack at both widths, sitting
+  just above the tab bar at 390; the account menu opens with its three rows
+  (48px at 390); the stock drawer opens 512px at 1440 and full width at 390,
+  scrolling itself, with no page overflow.
+- The same console errors in both builds (React #419 once on the portal, a
+  `SyntaxError` from a script answered with HTML), so neither is this
+  change's.
+- 1782 tests pass (the `xlsx` stand-in file still fails to import);
+  `arc-parts.test.tsx` replaces the mode test with Arc-only assertions, and
+  three tests that read classic markup were moved to Arc's. `tsc` clean, lint
+  unchanged (4 `ShopHeader` errors, 1 warning), build clean.
+
+### Not verified
+
+Production after deploy; Safari, Firefox, a real phone, a screen reader. The
+dashboard donuts' legend rows no longer link to their buyer or product — true
+since Arc became the default, now permanent.

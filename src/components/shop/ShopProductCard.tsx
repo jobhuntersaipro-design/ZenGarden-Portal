@@ -14,7 +14,6 @@ import { cartonsProblem } from "@/lib/validation/cart";
 import type { ShopProduct, ShopProductGroup } from "@/lib/queries/shop-catalogue";
 import card from "@/components/arc/card/card.module.css";
 import chip from "@/components/arc/chip-group/chip-group.module.css";
-import { useIsArc } from "@/components/ui-mode/UiModeProvider";
 
 /**
  * One card in the catalogue.
@@ -36,7 +35,6 @@ export function ShopProductCard({
   /** e.g. "Best seller" — a pill over the top-left of the image well. */
   badge?: string;
 }) {
-  const isArc = useIsArc();
   const [selectedId, setSelectedId] = useState(group.variants[0]?.id);
   /**
    * How many cartons this card adds. One by default, so "add the one I am
@@ -67,21 +65,17 @@ export function ShopProductCard({
     .join(" · ");
 
   return (
-    // Arc mode: Arc's card surface — its border, panel radius and the raised
+    // Arc's card surface — its border, panel radius and the raised
     // shadow on hover; the media well is Arc's muted fill.
     <li
-      className={
-        isArc
-          ? `${card.card} flex flex-col p-md hover:border-hairline-strong hover:shadow-md`
-          : "flex flex-col rounded-lg border border-hairline bg-canvas p-md transition-colors hover:border-hairline-strong hover:shadow-sm"
-      }
+      className={`${card.card} flex flex-col p-md hover:border-hairline-strong hover:shadow-md`}
     >
       <Link
         href={shopHref.product(selected.id)}
         className="rounded-md focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-focus"
       >
         <div
-          className={`relative aspect-square overflow-hidden rounded-md ${isArc ? card.media : "bg-surface-soft"}`}
+          className={`relative aspect-square overflow-hidden rounded-md ${card.media}`}
         >
           {/* Without a photo the card draws its category's bottle, not two
               letters of its name: "ZD" and "M1" identify nothing
@@ -102,11 +96,7 @@ export function ShopProductCard({
           ) : null}
         </div>
         <h3
-          className={
-            isArc
-              ? `${card.title} mt-xs text-[length:var(--text-body-sm)] text-ink`
-              : "mt-xs text-[length:var(--text-body-sm)] font-semibold text-ink"
-          }
+          className={`${card.title} mt-xs text-[length:var(--text-body-sm)] text-ink`}
           title={group.name}
         >
           {group.name}
@@ -126,7 +116,6 @@ export function ShopProductCard({
           group={group}
           labels={labels}
           selectedId={selected.id}
-          arc={isArc}
           onSelect={(id) => {
             setSelectedId(id);
             setCartons(1);
@@ -213,14 +202,11 @@ function VariantChips({
   group,
   labels,
   selectedId,
-  arc,
   onSelect,
 }: {
   group: ShopProductGroup;
   labels: Map<string, string>;
   selectedId: string;
-  /** Arc mode: the flavours are Arc's chips, the phone select Arc's field. */
-  arc: boolean;
   onSelect: (id: string) => void;
 }) {
   return (
@@ -245,26 +231,6 @@ function VariantChips({
       >
         {group.variants.map((variant: ShopProduct) => {
           const isSelected = variant.id === selectedId;
-          if (arc) {
-            return (
-              <button
-                key={variant.id}
-                type="button"
-                role="radio"
-                aria-checked={isSelected}
-                onClick={() => onSelect(variant.id)}
-                title={labels.get(variant.id)}
-                className={`${chip.chip} ${isSelected ? "text-ink" : ""}`}
-              >
-                <span className={chip.body} data-selected={isSelected}>
-                  <span className={`${chip.surface} right-0`} aria-hidden />
-                  <span className={`${chip.label} text-[length:var(--text-caption)]`}>
-                    {labels.get(variant.id)}
-                  </span>
-                </span>
-              </button>
-            );
-          }
           return (
             <button
               key={variant.id}
@@ -273,15 +239,17 @@ function VariantChips({
               aria-checked={isSelected}
               onClick={() => onSelect(variant.id)}
               title={labels.get(variant.id)}
-              className={`max-w-full truncate rounded-pill border px-xs py-xxs text-[length:var(--text-caption)] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-focus ${
-                isSelected
-                  ? "border-ink bg-ink font-semibold text-canvas"
-                  : "border-hairline-strong text-ink-secondary hover:border-ink hover:text-ink"
-              }`}
+              className={`${chip.chip} ${isSelected ? "text-ink" : ""}`}
             >
-              {labels.get(variant.id)}
+              <span className={chip.body} data-selected={isSelected}>
+                <span className={`${chip.surface} right-0`} aria-hidden />
+                <span className={`${chip.label} text-[length:var(--text-caption)]`}>
+                  {labels.get(variant.id)}
+                </span>
+              </span>
             </button>
           );
+        
         })}
       </div>
     </>

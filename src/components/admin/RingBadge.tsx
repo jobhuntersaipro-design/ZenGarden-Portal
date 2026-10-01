@@ -1,4 +1,4 @@
-import { ModeBadge } from "@/components/portal/ModeBadge";
+import { Badge } from "@/components/arc/badge/badge";
 
 /**
  * Neutral text inside an amber ring, and deliberately not the amber-*text*
@@ -10,21 +10,13 @@ import { ModeBadge } from "@/components/portal/ModeBadge";
  * list.
  */
 export function RingBadge({ children }: { children: React.ReactNode }) {
-  // Arc mode: Arc's warning badge, the nearest of its tones to the ring.
+  // Arc's warning badge, the nearest of its tones to the ring.
   return (
-    <ModeBadge
-      tone="warning"
-      classic="inline-flex shrink-0 items-center rounded-full bg-surface-soft px-sm py-xxs text-[length:var(--text-caption)] text-ink-secondary ring-1 ring-brand-amber"
-    >
+    <Badge tone="warning" size="sm" className="shrink-0">
       {children}
-    </ModeBadge>
+    </Badge>
   );
 }
-
-const TONE = {
-  Active: "text-accent-green",
-  Disabled: "text-ink-tertiary",
-} as const;
 
 export function UserStatusBadge({
   status,
@@ -33,12 +25,9 @@ export function UserStatusBadge({
 }) {
   if (status === "Invited") return <RingBadge>Invited</RingBadge>;
   return (
-    <ModeBadge
-      tone={status === "Active" ? "success" : "neutral"}
-      classic={`inline-flex shrink-0 items-center rounded-full bg-surface-soft px-sm py-xxs text-[length:var(--text-caption)] ${TONE[status]}`}
-    >
+    <Badge tone={status === "Active" ? "success" : "neutral"} size="sm" className="shrink-0">
       {status}
-    </ModeBadge>
+    </Badge>
   );
 }
 

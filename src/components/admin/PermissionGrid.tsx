@@ -10,7 +10,6 @@ import {
 } from "@/actions/permissions";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
-import { useIsArc } from "@/components/ui-mode/UiModeProvider";
 import { SegmentGroup } from "@/components/portal/SegmentGroup";
 import { useAwaitableRefresh } from "@/hooks/useAwaitableRefresh";
 import { useEdgeFades } from "@/hooks/useEdgeFades";
@@ -102,7 +101,6 @@ export function PermissionGrid({
   /** Administration starts closed. Tests open it without a click. */
   initialAdminOpen?: boolean;
 }) {
-  const isArc = useIsArc();
   const refresh = useAwaitableRefresh();
   const [draft, setDraft] = useState<PermissionMatrix>(matrix);
   const [saving, setSaving] = useState(false);
@@ -166,36 +164,17 @@ export function PermissionGrid({
     const key = cellKey(role, action.key);
     const title =
       role === Role.SUPER_ADMIN ? SUPER_ADMIN_TITLE : action.locked ? LOCKED_TITLE : undefined;
-    // Arc mode: Arc's checkbox — the drawn tick and its 44px target, which
-    // also clears the grid's sub-44px native boxes.
-    if (isArc) {
-      return (
-        <span title={title} className="inline-flex">
-          <Checkbox
-            checked={draft[key] ?? false}
-            disabled={fixed}
-            onCheckedChange={() => toggle(role, action)}
-            aria-label={`${roleLabel(role)}: ${action.label}`}
-          />
-        </span>
-      );
-    }
+    // Arc's checkbox — the drawn tick and its 44px target, which also clears
+    // the grid's sub-44px native boxes.
     return (
-      <input
-        type="checkbox"
-        checked={draft[key] ?? false}
-        disabled={fixed}
-        onChange={() => toggle(role, action)}
-        aria-label={`${roleLabel(role)}: ${action.label}`}
-        title={
-          role === Role.SUPER_ADMIN
-            ? SUPER_ADMIN_TITLE
-            : action.locked
-              ? LOCKED_TITLE
-              : undefined
-        }
-        className="size-5 accent-ink disabled:cursor-not-allowed disabled:opacity-40"
-      />
+      <span title={title} className="inline-flex">
+        <Checkbox
+          checked={draft[key] ?? false}
+          disabled={fixed}
+          onCheckedChange={() => toggle(role, action)}
+          aria-label={`${roleLabel(role)}: ${action.label}`}
+        />
+      </span>
     );
   };
 

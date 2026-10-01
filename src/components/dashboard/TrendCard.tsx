@@ -87,11 +87,9 @@ export function TrendCard({
       // Whole numbers: a figure beside a point is read at a glance, and
       // `RM 85,231.47` over `RM 85,110.02` is two decimals of noise between
       // the only digits that differ.
-      formatLabelValue={(value) => (money ? formatMYR(value, 0) : formatUnits(value))}
       formatOption={(value) =>
         money ? formatMYR(value.toFixed(2)) : `${formatUnits(value)} ctn`
       }
-      yAxisWidth={money ? 72 : 40}
       yTickFormatter={money ? (value: number) => formatMYR(value, 0) : undefined}
       header={
         <SegmentGroup label="By" busy={subjects.pending}>

@@ -4,25 +4,6 @@ import { useState } from "react";
 import { usePathname, useSearchParams } from "next/navigation";
 import { ChevronsUpDown } from "lucide-react";
 import {
-  CartesianGrid,
-  LabelList,
-  Line,
-  LineChart,
-  ResponsiveContainer,
-  Tooltip,
-  XAxis,
-  YAxis,
-} from "recharts";
-import {
-  axisInterval,
-  CHART_ANIMATION,
-  LABEL_FONT_SIZE,
-  rotateSeriesLabels,
-  useLabelStep,
-  valueLabel,
-} from "@/components/charts/labels";
-import { ChartScroller } from "@/components/charts/ChartScroller";
-import {
   Popover,
   PopoverContent,
   PopoverTrigger,
@@ -33,7 +14,6 @@ import { Spinner } from "@/components/portal/Spinner";
 import { usePendingChoice } from "@/hooks/usePendingChoice";
 import { LineChart as ArcLineChart } from "@/components/arc/line-chart/line-chart";
 import chip from "@/components/arc/chip-group/chip-group.module.css";
-import { useIsArc } from "@/components/ui-mode/UiModeProvider";
 
 /**
  * Six, because `SHARE_VARS` holds six hues the dataviz validator signed off
@@ -134,9 +114,7 @@ export function SeriesTrend({
   selectedLabel,
   param,
   formatValue,
-  formatLabelValue,
   formatOption,
-  yAxisWidth = 40,
   yTickFormatter,
   header,
 }: {
@@ -157,46 +135,18 @@ export function SeriesTrend({
   param: string;
   /** The tooltip's figure. */
   formatValue: (value: number) => string;
-  /** The figure beside a point, and what the label spacing is measured on. */
-  formatLabelValue: (value: number) => string;
   /** The ranked figure in the picker's own rows. */
   formatOption: (value: number) => string;
-  yAxisWidth?: number;
   yTickFormatter?: (value: number) => string;
   /** An extra control in the header — the dashboard's subject switch. */
   header?: React.ReactNode;
 }) {
-  const isArc = useIsArc();
   const selected = slots.filter(Boolean);
   // Which row was toggled, so it alone spins until the chart has caught up.
   const picks = usePendingChoice<string>("");
   const pathname = usePathname();
   const searchParams = useSearchParams();
   const [capWarning, setCapWarning] = useState(false);
-  const longest = points.reduce(
-    (max, point) =>
-      selected.reduce(
-        (inner, id) =>
-          Math.max(inner, formatLabelValue(Number(point[id] ?? 0)).length),
-        max,
-      ),
-    0,
-  );
-  const labels = useLabelStep(points.length, longest);
-  /**
-   * The label slots, shared out across the drawn series in slot order — so a
-   * bucket carries at most one figure and any two figures are `step` apart,
-   * whichever line they belong to. See `rotateSeriesLabels`.
-   */
-  const labelled = rotateSeriesLabels(
-    slots
-      .filter(Boolean)
-      .map((id) => ({
-        key: id,
-        values: points.map((point) => Number(point[id] ?? 0)),
-      })),
-    labels.step,
-  );
 
   const chips = legendChips(options, selected);
   /** The spares a phone leaves to the picker — see `PHONE_SPARES`. */
@@ -340,8 +290,8 @@ export function SeriesTrend({
           <p className="py-xl text-center text-[length:var(--text-body-sm)] text-ink-secondary">
             {emptyText}
           </p>
-        ) : isArc ? (
-          // Arc mode: Arc's line chart, one line per drawn series in its own
+        ) : (
+          // Arc's line chart, one line per drawn series in its own
           // slot's hue, with Arc's crosshair readout naming every series at
           // the hovered bucket. Arc's legend is off: the chips below are the
           // chart's switch and stay. About eight axis labels, whatever the
@@ -375,95 +325,7 @@ export function SeriesTrend({
             formatValue={(value) => formatValue(value)}
             formatTick={yTickFormatter}
           />
-        ) : (
-          <ChartScroller
-            buckets={points.length}
-            labels={points.map((point) => point.label)}
-            axisWidth={128}
-            fade="surface"
-          >
-            <div className="h-72 w-full">
-              <ResponsiveContainer onResize={labels.onResize}>
-                {/* The end points sit off the plot edges so their figures
-                do not run into the y axis or the card. `top` is the label's
-                own room above the highest point: 12px of text, 10px up. */}
-                <LineChart data={points} margin={{ top: 24, right: 16 }}>
-                  <CartesianGrid
-                    vertical={false}
-                    stroke="var(--color-hairline)"
-                  />
-                  <XAxis
-                    dataKey="label"
-                    tickLine={false}
-                    axisLine={false}
-                    padding={{ left: 40, right: 24 }}
-                    interval={axisInterval(points.length)}
-                    tick={{
-                      fill: "var(--color-ink-tertiary)",
-                      fontSize: LABEL_FONT_SIZE,
-                    }}
-                  />
-                  {/* One axis, never two: the caller picks the measure and
-                  every series is drawn against it. No explicit domain either
-                  — `auto` picks round ticks, and the chart's top margin is
-                  what keeps the highest figure inside the plot. Pinning the
-                  domain to the data plus headroom prints the headroom itself
-                  as the top tick: RM 52,595 where `auto` reads RM 60,000. */}
-                  <YAxis
-                    allowDecimals={false}
-                    tickLine={false}
-                    axisLine={false}
-                    width={yAxisWidth}
-                    tickFormatter={yTickFormatter}
-                    tick={{
-                      fill: "var(--color-ink-tertiary)",
-                      fontSize: LABEL_FONT_SIZE,
-                    }}
-                  />
-                  <Tooltip
-                    contentStyle={{
-                      backgroundColor: "var(--color-ink)",
-                      border: "none",
-                      borderRadius: 12,
-                      color: "var(--color-canvas)",
-                      fontSize: 12,
-                    }}
-                    formatter={(value, key) => [
-                      formatValue(Number(value ?? 0)),
-                      options.find((option) => option.id === String(key))
-                        ?.name ?? String(key),
-                    ]}
-                  />
-                  {slots.map((id, index) =>
-                    id === "" ? null : (
-                      <Line
-                        key={id}
-                        type="linear"
-                        dataKey={id}
-                        stroke={colorFor(index)}
-                        strokeWidth={2}
-                        {...CHART_ANIMATION}
-                        dot={{
-                          r: 4,
-                          strokeWidth: 2,
-                          stroke: "var(--color-surface)",
-                        }}
-                      >
-                        <LabelList
-                          dataKey={id}
-                          content={valueLabel(
-                            formatLabelValue,
-                            labelled.get(id) ?? new Set<number>(),
-                            10,
-                          )}
-                        />
-                      </Line>
-                    ),
-                  )}
-                </LineChart>
-              </ResponsiveContainer>
-            </div>
-          </ChartScroller>
+
         )}
       </div>
 
@@ -517,26 +379,16 @@ export function SeriesTrend({
                             ? capWarningText
                             : `Show ${option.name}`
                     }
-                    className={
-                      isArc
-                        ? `${chip.chip} ${on ? "text-ink" : full ? "text-ink-disabled" : ""} ${picks.pending && !busy ? "opacity-60" : ""}`
-                        : `flex min-h-11 items-center gap-xxs rounded-pill border px-sm text-[length:var(--text-caption)] transition-colors focus-visible:outline-2 focus-visible:outline-focus sm:min-h-0 sm:py-xxs ${
-                            on
-                              ? "border-transparent bg-surface-soft text-ink"
-                              : full
-                                ? "border-hairline bg-canvas text-ink-disabled"
-                                : "border-hairline-strong bg-canvas text-ink-tertiary hover:text-ink-secondary"
-                          } ${picks.pending && !busy ? "opacity-60" : ""}`
-                    }
+                    className={`${chip.chip} ${on ? "text-ink" : full ? "text-ink-disabled" : ""} ${picks.pending && !busy ? "opacity-60" : ""}`}
                   >
-                    {/* Arc mode: Arc's chip body and surface around the same
+                    {/* Arc's chip body and surface around the same
                         swatch, name and spinner. */}
                     <span
-                      className={isArc ? `${chip.body} max-sm:h-11` : "contents"}
-                      data-selected={isArc ? on : undefined}
+                      className={`${chip.body} max-sm:h-11`}
+                      data-selected={on}
                     >
-                      {isArc ? <span className={`${chip.surface} right-0`} aria-hidden /> : null}
-                      <span className={isArc ? "inline-flex items-center gap-xxs" : "contents"}>
+                      <span className={`${chip.surface} right-0`} aria-hidden />
+                      <span className="inline-flex items-center gap-xxs">
                         <span
                           aria-hidden
                           className={`size-2.5 shrink-0 rounded-xxs ${on ? "" : "border border-current"}`}

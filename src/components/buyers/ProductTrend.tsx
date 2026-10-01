@@ -3,7 +3,6 @@
 import { MAX_SERIES, SeriesTrend } from "@/components/charts/SeriesTrend";
 import type { TrendPoint } from "@/lib/analytics/trend";
 import { formatMYR } from "@/lib/money";
-import { formatUnits } from "@/lib/units";
 
 export type ProductOption = { id: string; name: string; spend: number };
 
@@ -54,7 +53,6 @@ export function ProductTrend({
         count === 1 ? "1 product selected" : `${count} products selected`
       }
       formatValue={(value) => `${value} units`}
-      formatLabelValue={formatUnits}
       formatOption={(value) => formatMYR(value.toFixed(2))}
     />
   );

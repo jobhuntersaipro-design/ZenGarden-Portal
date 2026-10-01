@@ -10,13 +10,10 @@ import { CountUp } from "@/components/portal/CountUp";
  * which is one frame of an ease-out cubic and not a data refetch at all. The
  * animation was cut and the tiles rendered their server value only.
  *
- * It is back, at 2s, by request on the same day — with the rule that made the
- * old one unsafe fixed rather than repeated. The server figure is the initial
- * state, so the HTML and the first paint are always the true number and a
- * static capture of the markup cannot be caught at zero; the count runs after
- * mount as an enhancement, continues from the frame on screen when the range
- * changes instead of restarting at nothing, and does not run at all under
- * `prefers-reduced-motion`. See `useCountUp`.
+ * It is back, by request on the same day — with the rule that made the old
+ * one unsafe kept: the figure is Arc's animated counter (`CountUp`), which
+ * paints the true number first and rolls only the digits that change, so a
+ * static capture of the markup cannot be caught at zero.
  */
 export function KpiTile({
   label,

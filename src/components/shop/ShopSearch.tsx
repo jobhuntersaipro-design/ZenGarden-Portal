@@ -3,7 +3,6 @@
 import { Suspense, useId } from "react";
 import search from "@/components/arc/search-field/search-field.module.css";
 import arcButton from "@/components/arc/button/button.module.css";
-import { useIsArc } from "@/components/ui-mode/UiModeProvider";
 import { Search } from "lucide-react";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { cn } from "cn";
@@ -17,7 +16,6 @@ import { beginRouteProgress, requestSoftNavigation } from "@/lib/route-progress"
  */
 function ShopSearchField({ className }: { className?: string }) {
   const searchParams = useSearchParams();
-  const isArc = useIsArc();
   const router = useRouter();
   // `?q=` is the catalogue's search only on the catalogue. My orders has its
   // own `?q=` (Phase 57), and the header must not echo an order number back
@@ -43,9 +41,7 @@ function ShopSearchField({ className }: { className?: string }) {
         router.push(href);
       }}
       className={cn(
-        isArc
-          ? `${search.shell} rounded-pill pr-xxs pl-md`
-          : "flex h-control-md items-center gap-sm rounded-pill border border-hairline-strong bg-canvas pr-xxs pl-md",
+        `${search.shell} rounded-pill pr-xxs pl-md`,
         className,
       )}
     >
@@ -59,19 +55,11 @@ function ShopSearchField({ className }: { className?: string }) {
         name="q"
         defaultValue={onCatalogue ? (searchParams.get("q") ?? "") : ""}
         placeholder={`Search the catalogue — try "lavender" or "2.1L"`}
-        className={
-          isArc
-            ? `${search.input} flex-1`
-            : "min-w-0 flex-1 border-0 bg-transparent text-[length:var(--text-body-sm)] text-ink outline-none placeholder:text-ink-tertiary"
-        }
+        className={`${search.input} flex-1`}
       />
       <button
         type="submit"
-        className={
-          isArc
-            ? `${arcButton.button} ${arcButton.primary} ${arcButton.sm} h-auto w-auto shrink-0 sm:min-h-8`
-            : "flex h-8 shrink-0 items-center rounded-pill bg-ink px-md text-[length:var(--text-body-sm)] font-semibold text-canvas hover:bg-ink-deep"
-        }
+        className={`${arcButton.button} ${arcButton.primary} ${arcButton.sm} h-auto w-auto shrink-0 sm:min-h-8`}
       >
         Search
       </button>

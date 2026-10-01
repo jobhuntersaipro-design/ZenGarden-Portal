@@ -230,7 +230,6 @@ async function DashboardPage({
         <SalesCard
           measure={measure}
           sales={data.sales}
-          agg={range.agg}
           aggLabel={`${aggLabel}s`}
         />
         <TrendCard
@@ -251,20 +250,17 @@ async function DashboardPage({
               eyebrow="Sales by market"
               slices={data.marketShare}
               centreLabel="top market"
-              hrefBase="/products?market="
             />
           )}
           <DonutShare
             eyebrow="Share by buyer"
             slices={data.buyerShare}
             centreLabel="top buyer"
-            hrefBase="/buyers"
           />
           <DonutShare
             eyebrow="Share by product"
             slices={data.productShare}
             centreLabel="top product"
-            hrefBase="/products"
           />
         </div>
         <InRangeGrid data={data} />

@@ -201,11 +201,9 @@
   --spacing-picker: 360px;
   /* The admin shell's top bar (Phase 09), per design reference §3.7. */
   --spacing-topbar: 60px;
-  /* The Current / Arc preview switch clears the phone tab bar (56px) and the
-     shop's cart bar below `lg`; above it the switch sits at `bottom-lg`. */
-  --spacing-ui-switch: calc(env(safe-area-inset-bottom) + 76px);
-  /* Arc mode's toast stack sits above the switch on a phone. */
-  --spacing-ui-toast: calc(env(safe-area-inset-bottom) + 132px);
+  /* The toast stack clears the phone tab bar (56px) and the shop's cart bar
+     below `lg`; above it the stack keeps its own corner. */
+  --spacing-ui-toast: calc(env(safe-area-inset-bottom) + 76px);
   /* The permissions matrix scrolls inside its card. Short of the viewport so
      the role header can stick to this box — a page-level sticky header cannot,
      because the horizontal scroller is already an overflow container. 36rem
@@ -428,47 +426,6 @@
 }
 
 @layer base {
-  /* A toast's ✕ is 20x20 in sonner's own stylesheet, under this project's
-     44px touch floor. The circle stays 20px — it sits on the toast's corner
-     and a 44px one would cover the words — and the *target* grows around it,
-     the same `::after` negative inset the `Checkbox` and `Switch` primitives
-     already use for controls that are small on purpose. -12px a side on 20px
-     is exactly 44. Above `sm` a pointer needs no help, so it drops away.
-     Nothing here fights sonner for a property it already sets, which matters:
-     its stylesheet is injected unlayered, and unlayered rules outrank every
-     layered one, so a `position` or `width` written here would be inert. The
-     button is already `position: absolute`, hence a containing block, so the
-     inset resolves against it without being told to. */
-  [data-sonner-toast] [data-close-button]::after {
-    content: "";
-    position: absolute;
-    inset: -12px;
-  }
-
-  @media (min-width: 40rem) {
-    [data-sonner-toast] [data-close-button]::after {
-      inset: 0;
-    }
-  }
-
-  /* A toast's action ("Undo" on a removed cart line, 2026-09-25) is 24px tall
-     in sonner's stylesheet — measured 47×24 at 390. Same treatment as the ✕:
-     the button keeps its size and its target grows to 44. Sonner sets no
-     `position` on it, so this one is not inert. */
-  [data-sonner-toast] [data-button] {
-    position: relative;
-  }
-  [data-sonner-toast] [data-button]::after {
-    content: "";
-    position: absolute;
-    inset: -10px 0;
-  }
-  @media (min-width: 40rem) {
-    [data-sonner-toast] [data-button]::after {
-      inset: 0;
-    }
-  }
-
   /* The app's own pull-to-refresh (`PullToRefresh`, 2026-09-26) replaces the
      browser's on a touch screen. Left on, Chrome's would reload the whole page
      over ours and throw away filters and drafts that `router.refresh()`

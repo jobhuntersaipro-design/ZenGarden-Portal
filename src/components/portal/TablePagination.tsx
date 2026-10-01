@@ -3,8 +3,6 @@
 import { usePathname, useSearchParams } from "next/navigation";
 import { Pagination } from "@/components/arc/pagination/pagination";
 import inputStyles from "@/components/arc/input/input.module.css";
-import { Spinner } from "@/components/portal/Spinner";
-import { useIsArc } from "@/components/ui-mode/UiModeProvider";
 import { PAGE_SIZES, pageRange } from "@/lib/queries/pagination";
 import { usePendingChoice } from "@/hooks/usePendingChoice";
 import { useUrlNavigation } from "@/hooks/useUrlNavigation";
@@ -42,48 +40,8 @@ export function TablePagination({
   const stepTo = (target: number) =>
     steps.choose(target, hrefFor({ page: String(target) }));
 
-  const step =
-    "inline-flex min-h-control-md items-center gap-xxs rounded-sm px-sm py-xxs text-[length:var(--text-body-sm)] text-ink transition hover:bg-surface focus-visible:outline-2 focus-visible:outline-focus disabled:pointer-events-none disabled:text-ink-disabled sm:min-h-0";
-  const isArc = useIsArc();
-  if (isArc) {
-    // Arc mode: Arc's pagination, whose ring travels to the page chosen, and
-    // the page-size select drawn as an Arc field.
-    return (
-      <div className="mt-sm flex flex-wrap items-center justify-between gap-md">
-        <div className="flex items-center gap-sm">
-          <span className="tabular-nums text-[length:var(--text-body-sm)] text-ink-secondary">
-            {from}–{to} of {total}
-          </span>
-          <label className="sr-only" htmlFor="page-size">
-            Rows per page
-          </label>
-          <select
-            id="page-size"
-            value={size}
-            onChange={(event) => go({ size: event.target.value, page: null })}
-            className={`${inputStyles.input} w-auto pr-xl`}
-          >
-            {sizes.map((option) => (
-              <option key={option} value={option}>
-                {option} per page
-              </option>
-            ))}
-          </select>
-        </div>
-        <div aria-busy={steps.pending || undefined}>
-          <Pagination
-            page={page}
-            pageCount={pages}
-            onPageChange={stepTo}
-            label="Pages"
-          />
-        </div>
-      </div>
-    );
-  }
-  const dimmed = (target: number) =>
-    steps.pending && !steps.isPending(target) ? "opacity-60" : "";
-
+  // Arc's pagination, whose ring travels to the page chosen, and
+  // the page-size select drawn as an Arc field.
   return (
     <div className="mt-sm flex flex-wrap items-center justify-between gap-md">
       <div className="flex items-center gap-sm">
@@ -96,10 +54,8 @@ export function TablePagination({
         <select
           id="page-size"
           value={size}
-          // Changing the page size resets to page 1; page 7 of a longer list
-          // is often past the end of a shorter one.
           onChange={(event) => go({ size: event.target.value, page: null })}
-          className="h-control-md sm:h-control-sm rounded-sm border border-hairline-strong bg-transparent px-xs text-[length:var(--text-body-sm)] text-ink focus-visible:border-focus focus-visible:outline-2 focus-visible:outline-focus"
+          className={`${inputStyles.input} w-auto pr-xl`}
         >
           {sizes.map((option) => (
             <option key={option} value={option}>
@@ -108,32 +64,13 @@ export function TablePagination({
           ))}
         </select>
       </div>
-
-      <div
-        className="flex items-center gap-sm"
-        aria-busy={steps.pending || undefined}
-      >
-        <button
-          type="button"
-          className={`${step} ${dimmed(page - 1)}`}
-          disabled={page <= 1}
-          onClick={() => stepTo(page - 1)}
-        >
-          {steps.isPending(page - 1) ? <Spinner /> : null}
-          Prev
-        </button>
-        <span className="tabular-nums text-[length:var(--text-body-sm)] text-ink-secondary">
-          Page {page} of {pages}
-        </span>
-        <button
-          type="button"
-          className={`${step} ${dimmed(page + 1)}`}
-          disabled={page >= pages}
-          onClick={() => stepTo(page + 1)}
-        >
-          {steps.isPending(page + 1) ? <Spinner /> : null}
-          Next
-        </button>
+      <div aria-busy={steps.pending || undefined}>
+        <Pagination
+          page={page}
+          pageCount={pages}
+          onPageChange={stepTo}
+          label="Pages"
+        />
       </div>
     </div>
   );

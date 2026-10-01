@@ -91,8 +91,8 @@ export function GuestCartProvider({ children }: { children: ReactNode }) {
 
   useEffect(() => {
     // The state write is inside a nested callback, never a bare statement in
-    // the effect body — the same shape `useCountUp`'s rAF tick and
-    // `useEdgeFades`' ResizeObserver callback use elsewhere in this codebase,
+    // the effect body — the same shape `useEdgeFades`' ResizeObserver callback
+    // uses elsewhere in this codebase,
     // so a synchronous read-then-setState effect does not cascade renders.
     const timer = setTimeout(() => {
       if (isClient) {

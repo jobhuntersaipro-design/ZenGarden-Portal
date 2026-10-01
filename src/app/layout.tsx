@@ -4,10 +4,6 @@ import { SpeedInsights } from "@vercel/speed-insights/next";
 import "./globals.css";
 import { cn } from "@/lib/utils";
 import { SPLASH_SCREENS, splashMedia, splashPath } from "@/lib/splash-screens";
-import { arcPreviewEnabled } from "@/lib/ui-mode";
-import { getUiMode } from "@/lib/ui-mode-server";
-import { UiModeProvider } from "@/components/ui-mode/UiModeProvider";
-import { UiModeSwitch } from "@/components/ui-mode/UiModeSwitch";
 
 const plusJakartaSans = Plus_Jakarta_Sans({
   variable: "--font-plus-jakarta-sans",
@@ -57,19 +53,14 @@ export const viewport: Viewport = {
   themeColor: "#ffffff",
 };
 
-export default async function RootLayout({
+export default function RootLayout({
   children,
 }: Readonly<{
   children: React.ReactNode;
 }>) {
-  // Current or Arc: the preview switch (docs/specs/61-arc-preview-switch.md).
-  // Read once here so every route group, portal, admin, auth and shop, draws
-  // in the same set.
-  const uiMode = await getUiMode();
   return (
     <html
       lang="en"
-      data-ui={uiMode}
       className={cn(
         "h-full antialiased",
         plusJakartaSans.variable,
@@ -78,10 +69,7 @@ export default async function RootLayout({
       )}
     >
       <body className="min-h-full flex flex-col">
-        <UiModeProvider mode={uiMode}>
-          {children}
-          {arcPreviewEnabled() ? <UiModeSwitch /> : null}
-        </UiModeProvider>
+        {children}
         {/* Real-user performance metrics, reported to Vercel. It sits in the
             root layout so one instance covers the portal, the admin room and
             the storefront, and it is inert outside a Vercel deployment — a

@@ -29,7 +29,6 @@ import { prisma } from "@/lib/prisma";
 import { PersonChip } from "@/components/ui/person";
 import { withLoadingFloor } from "@/lib/loading-floor";
 import { Breadcrumb } from "@/components/arc/breadcrumb/breadcrumb";
-import { ModeSwitch } from "@/components/ui-mode/ModeSwitch";
 
 export const dynamic = "force-dynamic";
 
@@ -171,32 +170,15 @@ async function PurchaseOrderPage({
       {/* A detail page reached from four different places needs a way back:
           the explicit control first, the breadcrumb under it (brief G2). */}
       <BackLink fallbackHref="/purchase-orders" />
-      {/* Arc mode: Arc's breadcrumb (docs/specs/61-arc-preview-switch.md). */}
-      <ModeSwitch
-        arc={
-          <div className="mb-xs">
-            <Breadcrumb
-              items={[
-                { label: "Purchase orders", href: "/purchase-orders" },
-                { label: label },
-              ]}
-            />
-          </div>
-        }
-      >
-        <nav aria-label="Breadcrumb" className="mb-xs">
-          <Link
-            href="/purchase-orders"
-            className="inline-flex min-h-control-md items-center rounded-xxs text-[length:var(--text-body-sm)] text-brand-link underline-offset-2 hover:underline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-focus sm:min-h-0"
-          >
-            Purchase orders
-          </Link>
-          <span className="text-[length:var(--text-body-sm)] text-ink-tertiary">
-            {" / "}
-            {label}
-          </span>
-        </nav>
-      </ModeSwitch>
+      {/* Arc's breadcrumb (docs/specs/61-arc-preview-switch.md). */}
+      <div className="mb-xs">
+        <Breadcrumb
+          items={[
+            { label: "Purchase orders", href: "/purchase-orders" },
+            { label: label },
+          ]}
+        />
+      </div>
 
       <PageHeader
         eyebrow={label}

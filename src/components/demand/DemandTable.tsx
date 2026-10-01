@@ -9,7 +9,6 @@ import { StageBadge } from "@/components/portal/StatusBadge";
 import { usePresence } from "@/hooks/usePresence";
 import type { DemandBoard, DemandLine, DemandRow } from "@/lib/queries/demand";
 import arc from "@/components/arc/sortable-data-table/sortable-data-table.module.css";
-import { useIsArc } from "@/components/ui-mode/UiModeProvider";
 
 const num = (value: number) => value.toLocaleString("en-MY");
 
@@ -46,9 +45,8 @@ function Cell({ value }: { value: number | undefined }) {
  * column quietly missing would not say that it is missing.
  */
 export function DemandTable({ board }: { board: DemandBoard }) {
-  // Arc mode: Arc's data-table frame and cells (its header weight, row
-  // height and hairlines) around the same rows, pins and folds.
-  const isArc = useIsArc();
+  // Arc's data-table frame and cells (its header weight, row height and
+  // hairlines) around our rows, pins and folds.
   const [open, setOpen] = useState<ReadonlySet<string>>(new Set());
 
   const toggle = (productId: string) =>
@@ -73,9 +71,9 @@ export function DemandTable({ board }: { board: DemandBoard }) {
   }
 
   return (
-    <section className={isArc ? arc.wrapper : "rounded-lg border border-hairline bg-canvas"}>
+    <section className={arc.wrapper}>
       <Scroller>
-        <table className={isArc ? arc.table : "w-full border-collapse text-left"}>
+        <table className={arc.table}>
           <thead>
             <tr className="border-b border-hairline">
               <Th className={`sticky left-0 z-10 bg-canvas pl-xs sm:pl-lg ${PRODUCT_COLUMN}`}>Product</Th>
@@ -299,7 +297,6 @@ export function OrderRow({
    */
   reveal?: { closing: boolean };
 }) {
-  const isArc = useIsArc();
   const first = (
         <div className="sm:pl-[calc(var(--spacing-xs)+1.5rem)]">
           <p
@@ -349,14 +346,14 @@ export function OrderRow({
             )}
           </p>
           <p className="mt-xxs">
-            <StageBadge stage={line.stage} state="done" compact />
+            <StageBadge stage={line.stage} state="done" />
           </p>
         </div>
   );
   return (
     <tr className="border-b border-hairline bg-surface-soft/40 last:border-0">
       {reveal ? (
-        <td className={`sticky left-0 z-10 bg-canvas py-0 pl-xs pr-xs sm:pl-lg sm:pr-md ${PRODUCT_COLUMN} ${isArc ? "h-auto" : ""}`}>
+        <td className={`sticky left-0 z-10 bg-canvas py-0 pl-xs pr-xs sm:pl-lg sm:pr-md ${PRODUCT_COLUMN} h-auto`}>
           <Reveal closing={reveal.closing} className="py-sm">
             {first}
           </Reveal>
@@ -411,22 +408,11 @@ function Th({
   foot?: boolean;
   className?: string;
 }) {
-  const isArc = useIsArc();
-  if (isArc) {
-    return (
-      <th
-        scope="col"
-        data-numeric={numeric ? "" : undefined}
-        className={`whitespace-nowrap pr-md ${foot ? "border-t border-b-0 border-hairline-strong text-ink" : ""} ${className}`}
-      >
-        {children}
-      </th>
-    );
-  }
   return (
     <th
       scope="col"
-      className={`whitespace-nowrap py-sm pr-md text-[length:var(--text-caption)] font-medium text-ink-tertiary ${numeric ? "text-right" : ""} ${className}`}
+      data-numeric={numeric ? "" : undefined}
+      className={`whitespace-nowrap pr-md ${foot ? "border-t border-b-0 border-hairline-strong text-ink" : ""} ${className}`}
     >
       {children}
     </th>
@@ -452,41 +438,20 @@ function Td({
   className = "",
   reveal,
 }: TdProps & { reveal?: { closing: boolean } }) {
-  const isArc = useIsArc();
-  if (isArc) {
-    // Arc's cell; an order row's cell drops Arc's fixed height so it can
-    // fold to nothing, and keeps the sub-row tint Arc's cell fill would hide.
-    const cell = `whitespace-nowrap pr-md ${foot ? "border-t border-hairline-strong" : ""} ${
-      reveal ? "h-auto py-0 bg-surface-soft/40" : ""
-    } ${className}`;
-    return (
-      <td data-numeric={numeric ? "" : undefined} className={cell}>
-        {reveal ? (
-          <Reveal closing={reveal.closing} className="py-sm">
-            {children}
-          </Reveal>
-        ) : (
-          children
-        )}
-      </td>
-    );
-  }
-  if (reveal) {
-    return (
-      <td
-        className={`whitespace-nowrap py-0 pr-md text-[length:var(--text-body-sm)] text-ink ${numeric ? "text-right tabular-nums" : ""} ${className}`}
-      >
+  // Arc's cell; an order row's cell drops Arc's fixed height so it can
+  // fold to nothing, and keeps the sub-row tint Arc's cell fill would hide.
+  const cell = `whitespace-nowrap pr-md ${foot ? "border-t border-hairline-strong" : ""} ${
+    reveal ? "h-auto py-0 bg-surface-soft/40" : ""
+  } ${className}`;
+  return (
+    <td data-numeric={numeric ? "" : undefined} className={cell}>
+      {reveal ? (
         <Reveal closing={reveal.closing} className="py-sm">
           {children}
         </Reveal>
-      </td>
-    );
-  }
-  return (
-    <td
-      className={`whitespace-nowrap py-sm pr-md text-[length:var(--text-body-sm)] text-ink ${numeric ? "text-right tabular-nums" : ""} ${className}`}
-    >
-      {children}
+      ) : (
+        children
+      )}
     </td>
   );
 }

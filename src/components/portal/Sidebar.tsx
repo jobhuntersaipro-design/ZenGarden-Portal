@@ -6,8 +6,7 @@ import { LinkSpinner } from "@/components/portal/LinkSpinner";
 import { NavCount, withCountLabel } from "@/components/portal/NavCount";
 import { useReviewCount } from "@/components/portal/ReviewCount";
 import { UserMenu } from "@/components/portal/UserMenu";
-import { ArcSelection } from "@/components/ui-mode/ArcSelection";
-import { useIsArc } from "@/components/ui-mode/UiModeProvider";
+import { ArcSelection } from "@/components/ui/arc-selection";
 import { Wordmark } from "@/components/portal/Wordmark";
 import { REVIEW_QUEUE_HREF, isActive, navFor } from "@/components/portal/nav";
 
@@ -43,10 +42,8 @@ export function Sidebar({
   const pathname = usePathname();
   // Orders waiting on the team, beside Purchase Orders (Phase 46).
   const { count: reviewCount } = useReviewCount();
-  // Arc mode: the active row is Arc's selection pill, gliding to the new
-  // destination on a click (docs/specs/61-arc-preview-switch.md).
-  const isArc = useIsArc();
-
+  // The active row is Arc's selection pill, gliding to the new destination
+  // on a click (docs/specs/61-arc-preview-switch.md).
   return (
     // Sticky, not merely tall: the shell grows with the page, so a plain
     // `h-dvh` aside stopped at the fold and left the sidebar's surface and
@@ -77,16 +74,10 @@ export function Sidebar({
               aria-current={active ? "page" : undefined}
               aria-label={count > 0 ? withCountLabel(label, count) : undefined}
               className={`relative flex h-11 items-center gap-sm rounded-sm px-sm text-[length:var(--text-body-sm)] transition-colors duration-[0.25s] ease-[cubic-bezier(0.5,0,0.5,1)] focus-visible:outline-2 focus-visible:outline-focus ${
-                isArc
-                  ? active
-                    ? "font-medium text-ink"
-                    : "font-medium text-ink-secondary hover:text-ink"
-                  : active
-                    ? "bg-surface-soft font-semibold text-ink"
-                    : "font-medium text-ink-secondary hover:bg-canvas hover:text-ink"
+                active ? "font-medium text-ink" : "font-medium text-ink-secondary hover:text-ink"
               }`}
             >
-              {isArc && active ? <ArcSelection id="sidebar-selection" /> : null}
+              {active ? <ArcSelection id="sidebar-selection" /> : null}
               <Icon
                 className="size-5 shrink-0"
                 strokeWidth={1.75}

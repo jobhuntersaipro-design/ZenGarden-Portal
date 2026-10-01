@@ -3,7 +3,6 @@
 import { useEffect, useState } from "react";
 import { Sparkles, XIcon } from "lucide-react";
 import arc from "@/components/arc/alert/alert.module.css";
-import { useIsArc } from "@/components/ui-mode/UiModeProvider";
 import {
   WELCOME_MESSAGES,
   greetingFor,
@@ -65,7 +64,6 @@ export function WelcomeCard({
   loginId: string;
 }) {
   const [shown, setShown] = useState<Shown | null>(null);
-  const isArc = useIsArc();
 
   useEffect(() => {
     if (read(DISMISSED_KEY) === loginId) return;
@@ -112,59 +110,24 @@ export function WelcomeCard({
     setShown(null);
   };
 
-  // Arc mode: Arc's alert — its surface, resting shadow, tinted icon and
+  // Arc's alert — its surface, resting shadow, tinted icon and
   // round dismiss — carrying the same greeting and line.
-  if (isArc) {
-    return (
-      <section aria-label="Welcome" className={`${arc.alert} ${arc.info} mb-lg animate-rise`}>
-        <span aria-hidden className={`${arc.icon} text-brand-pink`}>
-          <Sparkles className="size-4" />
-        </span>
-        <div className={arc.copy}>
-          <p className={`${arc.title} text-[length:var(--text-body-md)] text-ink`}>
-            {shown.greeting}, {firstName}
-          </p>
-          <p className={`${arc.description} text-[length:var(--text-body-sm)]`}>{shown.message}</p>
-        </div>
-        <button
-          type="button"
-          aria-label="Close the welcome message"
-          onClick={dismiss}
-          className={`${arc.dismiss} max-sm:size-11`}
-        >
-          <XIcon aria-hidden className="size-4" />
-        </button>
-      </section>
-    );
-  }
-
   return (
-    <section
-      aria-label="Welcome"
-      className="relative mb-lg flex animate-rise items-start gap-sm overflow-hidden rounded-md border border-hairline bg-canvas py-md pr-xs pl-md shadow-xs"
-    >
-      {/* The brand's colour, as the design system allows it: inside the
-          gradient, never as a flat fill. */}
-      <span aria-hidden className="absolute inset-y-0 left-0 w-1 bg-brand-gradient" />
-      <span
-        aria-hidden
-        className="mt-0.5 grid size-9 shrink-0 place-items-center rounded-full bg-surface text-brand-pink"
-      >
+    <section aria-label="Welcome" className={`${arc.alert} ${arc.info} mb-lg animate-rise`}>
+      <span aria-hidden className={`${arc.icon} text-brand-pink`}>
         <Sparkles className="size-4" />
       </span>
-      <div className="min-w-0 flex-1">
-        <p className="font-display text-[length:var(--text-heading-sm)] font-[650] text-ink">
+      <div className={arc.copy}>
+        <p className={`${arc.title} text-[length:var(--text-body-md)] text-ink`}>
           {shown.greeting}, {firstName}
         </p>
-        <p className="mt-xxs text-[length:var(--text-body-md)] text-ink-secondary">
-          {shown.message}
-        </p>
+        <p className={`${arc.description} text-[length:var(--text-body-sm)]`}>{shown.message}</p>
       </div>
       <button
         type="button"
         aria-label="Close the welcome message"
         onClick={dismiss}
-        className="-mt-xxs grid size-11 shrink-0 place-items-center rounded-sm text-ink-secondary hover:bg-surface hover:text-ink focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-focus sm:size-8"
+        className={`${arc.dismiss} max-sm:size-11`}
       >
         <XIcon aria-hidden className="size-4" />
       </button>

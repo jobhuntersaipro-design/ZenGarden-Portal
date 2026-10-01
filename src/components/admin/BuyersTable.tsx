@@ -208,7 +208,6 @@ export function BuyersTable({
             <ChoiceButton
               key={value}
               look="pill"
-              compact
               selected={choice.value === value}
               pending={choice.isPending(value)}
               dimmed={choice.pending && !choice.isPending(value)}

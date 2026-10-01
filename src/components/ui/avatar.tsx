@@ -1,7 +1,6 @@
 "use client"
 
 import arc from "@/components/arc/avatar/avatar.module.css"
-import { useIsArc } from "@/components/ui-mode/UiModeProvider"
 import * as React from "react"
 import { cn } from "cn"
 import { Avatar as AvatarPrimitive } from "radix-ui"
@@ -13,13 +12,12 @@ function Avatar({
 }: React.ComponentProps<typeof AvatarPrimitive.Root> & {
   size?: "default" | "sm" | "lg"
 }) {
-  const isArc = useIsArc()
   return (
     <AvatarPrimitive.Root
       data-slot="avatar"
       data-size={size}
       className={cn(
-        isArc ? cn(arc.avatar, "size-8 overflow-hidden select-none data-[size=lg]:size-10 data-[size=sm]:size-6") : "group/avatar relative flex size-8 shrink-0 rounded-full select-none after:absolute after:inset-0 after:rounded-full after:border after:border-border after:mix-blend-darken data-[size=lg]:size-10 data-[size=sm]:size-6 dark:after:mix-blend-lighten",
+        cn(arc.avatar, "size-8 overflow-hidden select-none data-[size=lg]:size-10 data-[size=sm]:size-6"),
         className
       )}
       {...props}
@@ -31,12 +29,11 @@ function AvatarImage({
   className,
   ...props
 }: React.ComponentProps<typeof AvatarPrimitive.Image>) {
-  const isArc = useIsArc()
   return (
     <AvatarPrimitive.Image
       data-slot="avatar-image"
       className={cn(
-        isArc ? "absolute inset-0 size-full" : "aspect-square size-full rounded-full object-cover",
+        "absolute inset-0 size-full",
         className
       )}
       {...props}
@@ -48,12 +45,11 @@ function AvatarFallback({
   className,
   ...props
 }: React.ComponentProps<typeof AvatarPrimitive.Fallback>) {
-  const isArc = useIsArc()
   return (
     <AvatarPrimitive.Fallback
       data-slot="avatar-fallback"
       className={cn(
-        isArc ? cn(arc.fallback, "grid size-full place-items-center rounded-full") : "flex size-full items-center justify-center rounded-full bg-muted text-sm text-muted-foreground group-data-[size=sm]/avatar:text-xs",
+        cn(arc.fallback, "grid size-full place-items-center rounded-full"),
         className
       )}
       {...props}

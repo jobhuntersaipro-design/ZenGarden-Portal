@@ -9,7 +9,6 @@ import { staggerClass } from "@/components/portal/Rise";
 import { Spinner } from "@/components/portal/Spinner";
 import arc from "@/components/arc/sortable-data-table/sortable-data-table.module.css";
 import arcInput from "@/components/arc/input/input.module.css";
-import { useIsArc } from "@/components/ui-mode/UiModeProvider";
 import { useEdgeFades } from "@/hooks/useEdgeFades";
 import type { SortDirection } from "@/lib/queries/pagination";
 
@@ -153,11 +152,10 @@ export function DataTable<Row extends { id: string }>({
    * side has more to scroll to.
    */
   const { ref: scroller, clipped, measure } = useEdgeFades<HTMLDivElement>();
-  // Arc mode (docs/specs/61-arc-preview-switch.md): the table wears Arc's
+  // The table wears Arc's (docs/specs/61-arc-preview-switch.md)
   // sortable-data-table — taller rows, a tinted sorted column, Arc's sort
   // buttons — while sorting, links, sticky first column and card mode stay
   // ours.
-  const isArc = useIsArc();
 
   const applySort = (key: string, dir: SortDirection) => {
     setClicked({ key, dir });
@@ -218,11 +216,7 @@ export function DataTable<Row extends { id: string }>({
                 );
                 if (column) applySort(column.key, column.defaultDir ?? "asc");
               }}
-              className={
-                isArc
-                  ? `${arcInput.input} min-w-0 flex-1`
-                  : "h-control-md min-w-0 flex-1 rounded-sm border border-hairline-strong bg-canvas px-xs text-[length:var(--text-body-sm)] text-ink focus-visible:border-focus focus-visible:outline-2 focus-visible:outline-focus"
-              }
+              className={`${arcInput.input} min-w-0 flex-1`}
             >
               {sortable.map((column) => (
                 <option key={column.key} value={column.key}>
@@ -320,11 +314,7 @@ export function DataTable<Row extends { id: string }>({
         <div
           ref={scroller}
           onScroll={measure}
-          className={
-            isArc
-              ? `${arc.wrapper} max-w-full min-w-0 overflow-x-auto`
-              : "max-w-full min-w-0 overflow-x-auto rounded-lg border border-hairline bg-canvas"
-          }
+          className={`${arc.wrapper} max-w-full min-w-0 overflow-x-auto`}
         >
           {/* `border-separate` rather than `border-collapse`: a collapsed table
               merges its borders onto the row, and a sticky cell painted over
@@ -332,9 +322,7 @@ export function DataTable<Row extends { id: string }>({
               its own, so the first column can be sticky and still look like part
               of the table. */}
           <table
-            className={
-              isArc ? `${arc.table} min-w-0` : "w-full border-separate border-spacing-0"
-            }
+            className={`${arc.table} min-w-0`}
             aria-busy={updating || undefined}
           >
             <thead>
@@ -354,18 +342,12 @@ export function DataTable<Row extends { id: string }>({
                             : "descending"
                           : undefined
                       }
-                      data-sorted={isArc && active ? "" : undefined}
-                      data-sortable={isArc && isSortable ? "" : undefined}
-                      data-numeric={isArc && column.align === "right" ? "" : undefined}
-                      className={
-                        isArc
-                          ? `whitespace-nowrap ${column.align === "right" ? "text-right" : "text-left"} ${stickyColumnClass(index, "head")} ${columnShowClass(column.showAt)}`
-                          : `border-b border-hairline bg-canvas px-md py-sm font-mono text-[length:var(--text-eyebrow)] font-normal whitespace-nowrap ${
-                              column.align === "right" ? "text-right" : "text-left"
-                            } ${active ? "text-ink" : "text-ink-tertiary"} ${stickyColumnClass(index, "head")} ${columnShowClass(column.showAt)}`
-                      }
+                      data-sorted={active ? "" : undefined}
+                      data-sortable={isSortable ? "" : undefined}
+                      data-numeric={column.align === "right" ? "" : undefined}
+                      className={`whitespace-nowrap ${column.align === "right" ? "text-right" : "text-left"} ${stickyColumnClass(index, "head")} ${columnShowClass(column.showAt)}`}
                     >
-                      {isSortable && isArc ? (
+                      {isSortable ? (
                         <button
                           type="button"
                           onClick={() => setSort(column)}
@@ -385,21 +367,6 @@ export function DataTable<Row extends { id: string }>({
                               )}
                             </span>
                           </span>
-                        </button>
-                      ) : isSortable ? (
-                        <button
-                          type="button"
-                          onClick={() => setSort(column)}
-                          className="inline-flex items-center gap-xxs rounded-xxs hover:text-ink focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-focus"
-                        >
-                          {column.header}
-                          {spinning ? (
-                            <Spinner className="size-3" />
-                          ) : active ? (
-                            <span aria-hidden>
-                              {shownSort.dir === "asc" ? "↑" : "↓"}
-                            </span>
-                          ) : null}
                         </button>
                       ) : (
                         column.header
@@ -427,7 +394,6 @@ export function DataTable<Row extends { id: string }>({
               ) : (
                 rows.map((row, rowIndex) => {
                   const href = rowHref?.(row);
-                  const last = rowIndex === rows.length - 1;
                   return (
                     <tr
                       key={row.id}
@@ -448,15 +414,9 @@ export function DataTable<Row extends { id: string }>({
                           // The hover tint is on the cell, not the row: the sticky
                           // first cell is opaque, so a background painted on the
                           // row would never show through it.
-                          data-sorted={isArc && shownSort.key === column.key ? "" : undefined}
-                          data-numeric={isArc && column.align === "right" ? "" : undefined}
-                          className={`${
-                            isArc
-                              ? "whitespace-nowrap group-hover:bg-surface-soft"
-                              : `bg-canvas px-md py-sm text-[length:var(--text-body-sm)] whitespace-nowrap text-ink transition-colors group-hover:bg-surface ${
-                                  last ? "" : "border-b border-hairline"
-                                }`
-                          } ${
+                          data-sorted={shownSort.key === column.key ? "" : undefined}
+                          data-numeric={column.align === "right" ? "" : undefined}
+                          className={`whitespace-nowrap group-hover:bg-surface-soft ${
                             column.align === "right"
                               ? "text-right tabular-nums"
                               : "text-left"

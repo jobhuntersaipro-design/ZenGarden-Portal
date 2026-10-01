@@ -345,7 +345,6 @@ export function ProductToolbar({
             <ChoiceButton
               key={chip.label}
               look="pill"
-              compact
               selected={filters.value === chip.value}
               pending={filters.isPending(chip.value)}
               dimmed={filters.pending && !filters.isPending(chip.value)}

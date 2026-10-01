@@ -32,9 +32,14 @@ const render = (rows: BuyerOrderRow[]) =>
     <BuyerOrdersTable rows={rows} sort={{ key: "date", dir: "desc" }} page={1} size={20} total={rows.length} />,
   );
 
-/** The text of every header cell, in order. */
+/** The text of every header cell, in order — without the decorative sort hint. */
 const headers = (html: string) =>
-  [...html.matchAll(/<th[^>]*>([\s\S]*?)<\/th>/g)].map((m) => m[1].replace(/<[^>]+>/g, "").trim());
+  [...html.matchAll(/<th[^>]*>([\s\S]*?)<\/th>/g)].map((m) =>
+    m[1]
+      .replace(/<span[^>]*aria-hidden="true"[^>]*>[\s\S]*?<\/span>/g, "")
+      .replace(/<[^>]+>/g, "")
+      .trim(),
+  );
 
 describe("BuyerOrdersTable", () => {
   // `DataTable` titles each phone card with the first column. With Order ID

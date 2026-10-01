@@ -40,7 +40,6 @@ import { can, requirePagePermission } from "@/lib/permissions/require";
 import { withLoadingFloor } from "@/lib/loading-floor";
 import { plural } from "@/lib/plural";
 import { Breadcrumb } from "@/components/arc/breadcrumb/breadcrumb";
-import { ModeSwitch } from "@/components/ui-mode/ModeSwitch";
 
 export const dynamic = "force-dynamic";
 
@@ -139,32 +138,15 @@ async function ProductPage({
   return (
     <>
       <BackLink fallbackHref="/products" />
-      {/* Arc mode: Arc's breadcrumb (docs/specs/61-arc-preview-switch.md). */}
-      <ModeSwitch
-        arc={
-          <div className="mb-xs">
-            <Breadcrumb
-              items={[
-                { label: "Products", href: "/products" },
-                { label: data.product.name },
-              ]}
-            />
-          </div>
-        }
-      >
-        <nav aria-label="Breadcrumb" className="mb-xs">
-          <Link
-            href="/products"
-            className="inline-flex min-h-control-md items-center rounded-xxs text-[length:var(--text-body-sm)] text-brand-link underline-offset-2 hover:underline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-focus sm:min-h-0"
-          >
-            Products
-          </Link>
-          <span className="text-[length:var(--text-body-sm)] text-ink-tertiary">
-            {" / "}
-            {data.product.name}
-          </span>
-        </nav>
-      </ModeSwitch>
+      {/* Arc's breadcrumb (docs/specs/61-arc-preview-switch.md). */}
+      <div className="mb-xs">
+        <Breadcrumb
+          items={[
+            { label: "Products", href: "/products" },
+            { label: data.product.name },
+          ]}
+        />
+      </div>
 
       <PageHeader
         eyebrow={eyebrow}

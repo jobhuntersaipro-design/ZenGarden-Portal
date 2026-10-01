@@ -1,6 +1,7 @@
 import { renderToStaticMarkup } from "react-dom/server";
 import { describe, expect, it, vi } from "vitest";
 import { Notice } from "@/components/auth/Notice";
+import alert from "@/components/arc/alert/alert.module.css";
 
 // A dismissed strip unmounts rather than persisting a flag, so the at-rest
 // render is the whole of what a static render can see (`context/lessons.md`
@@ -54,11 +55,9 @@ describe("Notice", () => {
     );
   });
 
-  it("marks the tone on the border and an icon, one per tone", () => {
-    expect(html(<Notice>Bad</Notice>)).toContain("border-accent-red");
-    expect(html(<Notice tone="success">Good</Notice>)).toContain(
-      "border-accent-green",
-    );
+  it("marks the tone on Arc's alert and an icon, one per tone", () => {
+    expect(html(<Notice>Bad</Notice>)).toContain(alert.danger);
+    expect(html(<Notice tone="success">Good</Notice>)).toContain(alert.success);
     // An icon rather than colour alone, so the tone survives a reader who
     // cannot tell the two hues apart.
     expect(html(<Notice>Bad</Notice>)).toContain("<svg");

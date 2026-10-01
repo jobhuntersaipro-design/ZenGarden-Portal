@@ -3,10 +3,8 @@
 import { useEffect, useOptimistic, useRef, useState, useTransition } from "react";
 import { Minus, Plus } from "lucide-react";
 import { toast } from "@/lib/toast";
-import { Button } from "@/components/ui/button";
 import { piecesFor } from "@/lib/cartons";
 import nf from "@/components/arc/number-field/number-field.module.css";
-import { useIsArc } from "@/components/ui-mode/UiModeProvider";
 
 /**
  * Cartons in, pieces shown. There is no conversion: `listPrice` is per carton
@@ -64,7 +62,6 @@ export function CartonStepper({
    * box as 0, so the caller's Add to cart always reads what is on screen. */
   live?: boolean;
 }) {
-  const isArc = useIsArc();
   const [pending, startTransition] = useTransition();
   const [optimistic, setOptimistic] = useOptimistic(value);
   const [typed, setTyped] = useState<string | null>(null);
@@ -145,127 +142,55 @@ export function CartonStepper({
 
   const pieces = piecesFor(current, packSize);
 
-  // Arc mode: Arc's number field — a hairline shell with the two steps set
+  // Arc's number field — a hairline shell with the two steps set
   // inside it — around the same input and the same commit rules. The steps
   // keep the 44px floor below `sm`.
-  if (isArc) {
-    const fewerDisabled = disabled || pending || current <= min;
-    const moreDisabled = disabled || pending;
-    return (
-      <div className="flex flex-col gap-xxs">
-        <div className={nf.field} data-size={size === "lg" ? "lg" : "md"}>
-          <div
-            className={`${nf.control} ${size === "md" ? "" : "w-full max-w-none"}`}
-            data-disabled={disabled || undefined}
-          >
-            <button
-              type="button"
-              className={`${nf.step} max-sm:size-11 max-sm:flex-none`}
-              aria-label={`One fewer ${unit} — ${label}`}
-              disabled={fewerDisabled}
-              onClick={() => step(current - 1)}
-            >
-              <span className={nf.icon}>
-                <Minus className="size-4" strokeWidth={1.75} aria-hidden />
-              </span>
-            </button>
-            <div className={nf.valueWrap}>
-              <input
-                {...inputProps}
-                className={`${nf.value} h-full w-full min-w-0 border-0 bg-transparent text-center outline-none disabled:cursor-not-allowed`}
-              />
-            </div>
-            <button
-              type="button"
-              className={`${nf.step} max-sm:size-11 max-sm:flex-none`}
-              aria-label={`One more ${unit} — ${label}`}
-              disabled={moreDisabled}
-              onClick={() => step(current + 1)}
-            >
-              <span className={nf.icon}>
-                <Plus className="size-4" strokeWidth={1.75} aria-hidden />
-              </span>
-            </button>
-          </div>
-        </div>
-        {size === "md" ? (
-          <p className="text-[length:var(--text-caption)] text-ink-tertiary">
-            {pieces === null
-              ? `${current} ${unit}${current === 1 ? "" : "s"}`
-              : `${pieces} piece${pieces === 1 ? "" : "s"}`}
-          </p>
-        ) : null}
-      </div>
-    );
-  }
-
-  if (size === "lg") {
-    return (
-      <div className="flex h-control-lg items-center overflow-hidden rounded-pill border border-hairline-strong">
-        <button
-          type="button"
-          aria-label={`One fewer ${unit} — ${label}`}
-          disabled={disabled || pending || current <= min}
-          onClick={() => step(current - 1)}
-          className="flex size-control-lg shrink-0 items-center justify-center text-ink hover:bg-surface-soft focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-focus disabled:pointer-events-none disabled:opacity-40"
-        >
-          <Minus className="size-4" aria-hidden />
-        </button>
-        <input
-          {...inputProps}
-          className="h-full w-14 border-0 bg-transparent text-center text-[length:var(--text-body-lg)] font-semibold tabular-nums text-ink focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-focus disabled:pointer-events-none"
-        />
-        <button
-          type="button"
-          aria-label={`One more ${unit} — ${label}`}
-          disabled={disabled || pending}
-          onClick={() => step(current + 1)}
-          className="flex size-control-lg shrink-0 items-center justify-center text-ink hover:bg-surface-soft focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-focus disabled:pointer-events-none disabled:opacity-40"
-        >
-          <Plus className="size-4" aria-hidden />
-        </button>
-      </div>
-    );
-  }
-
-  // Across a card's width, the value takes what the two buttons leave.
-  const fill = size === "card";
-
+  const fewerDisabled = disabled || pending || current <= min;
+  const moreDisabled = disabled || pending;
   return (
     <div className="flex flex-col gap-xxs">
-      <div className="flex items-center gap-xxs">
-        <Button
-          variant="secondary"
-          aria-label={`One fewer ${unit} — ${label}`}
-          disabled={disabled || pending || current <= min}
-          onClick={() => step(current - 1)}
-          className="size-11 shrink-0 p-0 sm:size-control-sm"
+      <div className={nf.field} data-size={size === "lg" ? "lg" : "md"}>
+        <div
+          className={`${nf.control} ${size === "md" ? "" : "w-full max-w-none"}`}
+          data-disabled={disabled || undefined}
         >
-          <Minus className="size-4" aria-hidden />
-        </Button>
-        <input
-          {...inputProps}
-          className={`h-11 rounded-sm border border-hairline-strong bg-transparent text-center text-[length:var(--text-body-sm)] tabular-nums text-ink focus-visible:border-focus focus-visible:outline-2 focus-visible:outline-focus disabled:pointer-events-none disabled:opacity-50 sm:h-control-sm ${
-            fill ? "min-w-0 flex-1" : "w-16"
-          }`}
-        />
-        <Button
-          variant="secondary"
-          aria-label={`One more ${unit} — ${label}`}
-          disabled={disabled || pending}
-          onClick={() => step(current + 1)}
-          className="size-11 shrink-0 p-0 sm:size-control-sm"
-        >
-          <Plus className="size-4" aria-hidden />
-        </Button>
+          <button
+            type="button"
+            className={`${nf.step} max-sm:size-11 max-sm:flex-none`}
+            aria-label={`One fewer ${unit} — ${label}`}
+            disabled={fewerDisabled}
+            onClick={() => step(current - 1)}
+          >
+            <span className={nf.icon}>
+              <Minus className="size-4" strokeWidth={1.75} aria-hidden />
+            </span>
+          </button>
+          <div className={nf.valueWrap}>
+            <input
+              {...inputProps}
+              className={`${nf.value} h-full w-full min-w-0 border-0 bg-transparent text-center outline-none disabled:cursor-not-allowed`}
+            />
+          </div>
+          <button
+            type="button"
+            className={`${nf.step} max-sm:size-11 max-sm:flex-none`}
+            aria-label={`One more ${unit} — ${label}`}
+            disabled={moreDisabled}
+            onClick={() => step(current + 1)}
+          >
+            <span className={nf.icon}>
+              <Plus className="size-4" strokeWidth={1.75} aria-hidden />
+            </span>
+          </button>
+        </div>
       </div>
-      {fill ? null : (
+      {size === "md" ? (
         <p className="text-[length:var(--text-caption)] text-ink-tertiary">
           {pieces === null
             ? `${current} ${unit}${current === 1 ? "" : "s"}`
             : `${pieces} piece${pieces === 1 ? "" : "s"}`}
         </p>
-      )}
+      ) : null}
     </div>
   );
 }

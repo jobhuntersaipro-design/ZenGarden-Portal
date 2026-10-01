@@ -20,12 +20,10 @@ import { usePendingChoice } from "@/hooks/usePendingChoice";
 export function SalesCard({
   measure,
   sales,
-  agg,
   aggLabel,
 }: {
   measure: SalesMeasure;
   sales: SalesSeries;
-  agg: string;
   aggLabel: string;
 }) {
   const measures = usePendingChoice<SalesMeasure>(measure);
@@ -83,7 +81,7 @@ export function SalesCard({
       </div>
 
       <div className="mt-lg">
-        <SalesLineChart series={sales} measure={measures.value} agg={agg} />
+        <SalesLineChart series={sales} measure={measures.value} />
       </div>
     </section>
   );

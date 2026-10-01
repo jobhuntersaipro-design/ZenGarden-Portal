@@ -4,37 +4,18 @@ import { useState, type ReactNode } from "react";
 import Link from "next/link";
 import { CircleCheckIcon, InfoIcon, OctagonXIcon, XIcon } from "lucide-react";
 import arc from "@/components/arc/alert/alert.module.css";
-import { useIsArc } from "@/components/ui-mode/UiModeProvider";
-
-/** Arc mode's tone class on Arc's alert (arc/alert). */
-const ARC_TONE: Record<NoticeTone, string> = { error: arc.danger, success: arc.success, info: arc.info };
-
 export type NoticeTone = "error" | "success" | "info";
 
 /**
- * The same icons the toasts use (`src/components/ui/sonner.tsx`), so a message
- * about the same thing is marked the same way whichever surface it lands on.
- * The colour lives on the icon rather than on the words — see below.
+ * Arc's alert in each tone (arc/alert), with the same icons the toasts use,
+ * so a message about the same thing is marked the same way whichever surface
+ * it lands on. The tone colours the icon and the alert's edge; the words stay
+ * `ink` — see below.
  */
-const TONE: Record<
-  NoticeTone,
-  { border: string; icon: string; Icon: typeof InfoIcon }
-> = {
-  error: {
-    border: "border-accent-red",
-    icon: "text-accent-red",
-    Icon: OctagonXIcon,
-  },
-  success: {
-    border: "border-accent-green",
-    icon: "text-accent-green",
-    Icon: CircleCheckIcon,
-  },
-  info: {
-    border: "border-hairline-strong",
-    icon: "text-ink-secondary",
-    Icon: InfoIcon,
-  },
+const TONE: Record<NoticeTone, { className: string; Icon: typeof InfoIcon }> = {
+  error: { className: arc.danger, Icon: OctagonXIcon },
+  success: { className: arc.success, Icon: CircleCheckIcon },
+  info: { className: arc.info, Icon: InfoIcon },
 };
 
 /**
@@ -44,10 +25,8 @@ const TONE: Record<
  * the reference**, which specifies `text-accent-red`. On the `bg-surface-soft`
  * the same reference asks for, `accent-red` measures **3.32:1** and
  * `accent-green` **3.61:1** — both under the 4.5:1 floor for normal text,
- * where `ink` clears **11.59:1**. It is the identical trade the toasts already
- * made for the identical reason (the `--success-text` note in `sonner.tsx`):
- * the tone is carried by a coloured icon, which only has a 3:1 floor to clear
- * and does, and by the border. The background the reference names is kept.
+ * where `ink` clears **11.59:1**. The tone is carried by a coloured icon,
+ * which only has a 3:1 floor to clear and does, and by the alert's edge.
  *
  * **Dismissible only where there is something to dismiss to.** Passing
  * `onDismiss` (a form clearing its own error) or `dismissHref` (a page
@@ -79,29 +58,19 @@ export function Notice({
   dismissHref?: string;
 }) {
   const [hidden, setHidden] = useState(false);
-  const isArc = useIsArc();
-  const { border, icon, Icon } = TONE[tone];
-  const dismissible = Boolean(onDismiss ?? dismissHref);
+  const { className, Icon } = TONE[tone];
 
   if (hidden) return null;
 
   return (
     <div
       role={tone === "error" ? "alert" : "status"}
-      className={
-        isArc
-          ? `${arc.alert} ${ARC_TONE[tone]} text-[length:var(--text-body-sm)] text-ink`
-          : `flex items-start gap-xs rounded-sm border bg-surface-soft py-xs pl-sm text-[length:var(--text-body-sm)] text-ink ${border} ${dismissible ? "pr-xxs" : "pr-sm"}`
-      }
+      className={`${arc.alert} ${className} text-[length:var(--text-body-sm)] text-ink`}
     >
-      {isArc ? (
-        <span className={arc.icon}>
-          <Icon aria-hidden className="size-4" />
-        </span>
-      ) : (
-        <Icon aria-hidden className={`mt-0.5 size-4 shrink-0 ${icon}`} />
-      )}
-      <p className={isArc ? `${arc.copy} ${arc.title}` : "min-w-0 flex-1 py-px"}>{children}</p>
+      <span className={arc.icon}>
+        <Icon aria-hidden className="size-4" />
+      </span>
+      <p className={`${arc.copy} ${arc.title}`}>{children}</p>
       {dismissHref ? (
         <Link
           href={dismissHref}
