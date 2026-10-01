@@ -55,7 +55,28 @@ const loadCart = vi.fn();
 vi.mock("@/lib/queries/cart", () => ({ loadCart }));
 vi.mock("@/lib/env", () => ({ env: { APP_URL: "https://www.example.com" } }));
 const sendEmail = vi.fn().mockResolvedValue({ sent: true });
-vi.mock("@/lib/email", () => ({ sendEmail }));
+// The real one-at-a-time loop, over the mocked single send, without the gap.
+vi.mock("@/lib/email", () => {
+  return {
+    sendEmail,
+    EACH_SEND_GAP_MS: 0,
+    sendEmailToEach: async (
+      recipients: readonly string[],
+      args: Record<string, unknown>,
+    ) => {
+      const result: { sent: string[]; failed: { to: string; error: string }[] } = {
+        sent: [],
+        failed: [],
+      };
+      for (const to of recipients) {
+        const outcome = await sendEmail({ ...args, to });
+        if (outcome.sent) result.sent.push(to);
+        else result.failed.push({ to, error: outcome.error ?? "not sent" });
+      }
+      return result;
+    },
+  };
+});
 // Phase 37: the purchase order is rendered and filed before the two mails go,
 // and both carry it. Mocked here because what matters at this level is that
 // its result reaches the emails — the renderer has its own tests.
@@ -366,17 +387,55 @@ describe("submitWebOrder", () => {
 
     const recipients = sendEmail.mock.calls.map((call) => call[0].to);
     expect(recipients).toContainEqual(["aisha@acme.test"]);
-    expect(recipients).toContainEqual(["ops@lovinghands.test"]);
+    expect(recipients).toContainEqual("ops@lovinghands.test");
   });
 
   /**
-   * Phase 48 added Production planner, QC and Warehouse. This list said
-   * `[MEMBER, SUPER_ADMIN]` from Phase 16 until 2026-09-23, so all three
-   * watched the review queue and were never told an order had arrived.
-   * Pinned as the *key* rather than as a list of roles, because naming roles
-   * here is the thing that went stale in the first place.
+   * 2026-10-01: four `@example.com` test users held a staff role, Resend
+   * refused the one send that carried every staff address, and no super admin
+   * was ever told an order had arrived. One send per person now, so a refused
+   * address costs that address alone.
    */
-  it("tells whoever may see the queue, not a hardcoded pair of roles", async () => {
+  it("emails each staff member on their own, so one refused address stops nobody else", async () => {
+    webOrderFindFirst.mockResolvedValue(cartWith([line()]));
+    prismaWebOrderFindUnique.mockResolvedValue({
+      id: "w1",
+      reference: "W-2609-00001",
+      buyerReference: null,
+      subtotal: dec("2268.00"),
+      buyer: { name: "Acme" },
+      placedBy: { name: "Aisha", email: "aisha@acme.test" },
+      _count: { lines: 1 },
+    });
+    userFindMany.mockResolvedValue([
+      { email: "testux.member@example.com" },
+      { email: "boss@zengarden.my" },
+      { email: "planner@zengarden.my" },
+    ]);
+    sendEmail.mockImplementation(async ({ to }: { to: string | string[] }) =>
+      String(to).endsWith("@example.com")
+        ? { sent: false, error: "Invalid `to` field." }
+        : { sent: true },
+    );
+
+    await submitWebOrder(SENT);
+    await flushAfter();
+
+    const recipients = sendEmail.mock.calls.map((call) => call[0].to);
+    expect(recipients).toEqual([
+      "testux.member@example.com",
+      "boss@zengarden.my",
+      "planner@zengarden.my",
+      ["aisha@acme.test"],
+    ]);
+  });
+
+  /**
+   * 2026-10-01, the user's own list: super admins, members and production
+   * planners. Still intersected with `po.view`, so a role the grid has taken
+   * the queue away from is not sent a link it cannot open.
+   */
+  it("tells super admins, members and production planners who may see the queue", async () => {
     webOrderFindFirst.mockResolvedValue(cartWith([line()]));
     prismaWebOrderFindUnique.mockResolvedValue({
       id: "w1",
@@ -395,13 +454,23 @@ describe("submitWebOrder", () => {
     expect(rolesWithPermission).toHaveBeenCalledWith("po.view");
     expect(userFindMany.mock.calls[0][0].where.role.in).toEqual([
       "SUPER_ADMIN",
-      "PRODUCTION_PLANNER",
-      "QC",
-      "WAREHOUSE",
       "MEMBER",
+      "PRODUCTION_PLANNER",
     ]);
     // Disabled accounts are still left out of it.
     expect(userFindMany.mock.calls[0][0].where.disabledAt).toBeNull();
+  });
+
+  it("leaves out a listed role the grid has taken the queue away from", async () => {
+    webOrderFindFirst.mockResolvedValue(cartWith([line()]));
+    prismaWebOrderFindUnique.mockResolvedValue(notifiable);
+    rolesWithPermission.mockResolvedValue(["SUPER_ADMIN", "QC"]);
+    userFindMany.mockResolvedValue([]);
+
+    await submitWebOrder(SENT);
+    await flushAfter();
+
+    expect(userFindMany.mock.calls[0][0].where.role.in).toEqual(["SUPER_ADMIN"]);
   });
 
   it("still sends the client their receipt when there is no ops staff to tell", async () => {

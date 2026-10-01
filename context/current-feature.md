@@ -1,3 +1,46 @@
+# Fix: staff never got the "New order" email
+
+## Status
+
+**Fixed on `claude/intelligent-mccarthy-85u9gh`** (2026-10-01). Reported as
+"when an order is placed, the email is not sent to superadmin or admin". The
+buyer's receipt arrived; no staff email appeared in Resend at all.
+
+- **Cause.** The staff copy was one send with every staff address in `to`.
+  Production holds four active test users at `@example.com` (TEST UX
+  Planner, QC, Warehouse, Member), and Resend refuses `example.com`
+  recipients with a 422 — which refuses the **whole** send. So nobody on
+  staff was emailed, and nothing reached Resend's log. The buyer's receipt
+  is a separate send, which is why it went.
+- **Fix.** `sendEmailToEach` (`src/lib/email.ts`): one send per address,
+  de-duplicated, spaced 550ms for Resend's two-a-second limit, never throws,
+  returns what went and what was refused. Used for the staff order email and
+  for the access-request email to super admins, which had the same shape.
+  Each refused address is logged as `[cart] order W-… not emailed to …`.
+- **Recipients**, at the user's word: super admins, members and production
+  planners (`ORDER_EMAIL_ROLES`), still intersected with `po.view`. QC and
+  Warehouse no longer get it (they did since 2026-09-23).
+
+## Verified
+
+Production build on local Postgres, Resend pointed at a local stub that
+answers 422 to any `@example.com` recipient, as Resend does. A real shop
+order: `admin@example.com` 422, `aisha@lovinghandsportal.com` 200,
+`testux.member@example.com` 422, the production planner 200, ~558ms apart;
+the QC test user not sent to. Before the change the same order made **one**
+send carrying every address. The new regression test fails against the old
+`cart.ts` (4 red) and passes after. 1793 tests, `tsc` clean, lint unchanged,
+build clean.
+
+## Not verified
+
+Production. **Delete or disable the four `@example.com` users there** —
+they now cost only their own copy, but they will never receive anything.
+`aisha@lovinghandsportal.com` is a seed address; if that mailbox does not
+exist, Resend accepts it and it bounces.
+
+## Before that
+
 # Fix: a UI scan after Arc — the donut that collapsed, and what else it found
 
 ## Status

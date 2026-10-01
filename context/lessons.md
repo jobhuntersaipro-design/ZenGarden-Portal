@@ -388,3 +388,18 @@ size container. On `/buyers/[id]` it sat in a `shrink-0` div beside the bar
 list; the div measured 0px and the 168px ring drew over the product names. No
 test and no overflow check can see it — the page is no wider. A scan for
 "box under 2px wide with a visible child over 20px" finds it in one pass.
+
+---
+
+## 15. One send to many people fails for all of them
+
+**Rule.** Never put a list of people in one email's `to`. A provider that
+refuses one address (Resend: `@example.com`, a typo) refuses the whole send,
+and the people whose addresses were fine get nothing — with nothing in the
+provider's log to say so. Send one email per person (`sendEmailToEach`) and
+record each refusal against its address.
+
+**The case (2026-10-01, reported by the user).** No staff member ever got the
+"New order" email. Four `@example.com` test users held staff roles; the one
+send carrying all seven addresses got a 422; the buyer's own receipt, a
+separate send, arrived, which made the order look fine.

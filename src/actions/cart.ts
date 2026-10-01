@@ -3,13 +3,13 @@
 import { after } from "next/server";
 import { revalidatePath } from "next/cache";
 import { Prisma } from "@/generated/prisma/client";
-import { WebOrderStatus } from "@/generated/prisma/enums";
+import { Role, WebOrderStatus } from "@/generated/prisma/enums";
 import { UnauthorizedError, requireClient } from "@/lib/auth-guards";
 import { rolesWithPermission } from "@/lib/permissions/require";
 import { lineTotal } from "@/lib/cartons";
 import { WebOrderPlaced, webOrderPlacedSubject } from "@/emails/WebOrderPlaced";
 import { WebOrderReceipt, webOrderReceiptSubject } from "@/emails/WebOrderReceipt";
-import { sendEmail } from "@/lib/email";
+import { EACH_SEND_GAP_MS, sendEmail, sendEmailToEach } from "@/lib/email";
 import { preparePoEmail } from "@/lib/po-email";
 import { env } from "@/lib/env";
 import { prisma } from "@/lib/prisma";
@@ -452,6 +452,9 @@ export async function submitWebOrder(
   }
 }
 
+/** Who is emailed when a shop order arrives, before the `po.view` check. */
+const ORDER_EMAIL_ROLES: Role[] = [Role.SUPER_ADMIN, Role.MEMBER, Role.PRODUCTION_PLANNER];
+
 /**
  * Tell the ops team an order is waiting, and the client that we have it.
  *
@@ -460,8 +463,9 @@ export async function submitWebOrder(
  * administrator. The client's own copy is Phase 32 — the sent screen promises
  * it by name, so it is sent from the same place and on the same read.
  *
- * Both go through `sendEmail`, which never throws, inside `after()`. A failed
- * notification is a missing nudge, not a lost order.
+ * Both go through `sendEmail` (the team's one person at a time), which never
+ * throws, inside `after()`. A failed notification is a missing nudge, not a
+ * lost order.
  *
  * Since Phase 37 both carry the purchase order itself. `file` is null when the
  * render or the upload failed, and then both mails go **without** it rather
@@ -489,42 +493,51 @@ async function notify(
     // Rendered once and shared: the team and the buyer get the same preview.
     const po = await preparePoEmail(order.id, order.reference, file);
 
-    // Whoever can see the queue, read off the grid — not a hardcoded pair of
-    // roles. This said `[MEMBER, SUPER_ADMIN]` from Phase 16 until 2026-09-23,
-    // which was every ops role there was; Phase 48 then added Production
-    // planner, QC and Warehouse, all three of which hold `po.view` by default
-    // and watch the review queue, and none of which was ever told an order had
-    // arrived. Asking the permission rather than naming the roles is also what
-    // stops the next role added from reopening the same hole.
+    // The team told about a new order: super admins, members and production
+    // planners (2026-10-01, the user's own list — QC and Warehouse act on an
+    // order later, at their own stages). Still intersected with `po.view`,
+    // so a role the grid has taken the queue away from is not sent a link it
+    // cannot open.
+    const viewers = new Set(await rolesWithPermission("po.view"));
     const staff = await prisma.user.findMany({
       where: {
-        role: { in: await rolesWithPermission("po.view") },
+        role: { in: ORDER_EMAIL_ROLES.filter((role) => viewers.has(role)) },
         disabledAt: null,
       },
       select: { email: true },
     });
 
+    // One email per person, not one email to all of them: Resend refuses the
+    // whole send when any one address is refused, and four `@example.com`
+    // test users did exactly that to every staff copy until 2026-10-01.
     if (staff.length > 0) {
-      await sendEmail({
-        to: staff.map((person) => person.email),
-        subject: webOrderPlacedSubject(
-          order.buyer.name,
-          order.buyerReference,
-          order.reference,
-        ),
-        attachments: po.attachments,
-        react: WebOrderPlaced({
-          reference: order.reference,
-          poNumber: order.buyerReference,
-          buyerName: order.buyer.name,
-          placedByName: order.placedBy.name,
-          reviewUrl: `${env.APP_URL}/web-orders/${order.id}`,
-          document: po.document,
-          buyerLogo: po.buyerLogo,
-          preview: po.preview,
-          attached: po.attached,
-        }),
-      });
+      const { failed } = await sendEmailToEach(
+        staff.map((person) => person.email),
+        {
+          subject: webOrderPlacedSubject(
+            order.buyer.name,
+            order.buyerReference,
+            order.reference,
+          ),
+          attachments: po.attachments,
+          react: WebOrderPlaced({
+            reference: order.reference,
+            poNumber: order.buyerReference,
+            buyerName: order.buyer.name,
+            placedByName: order.placedBy.name,
+            reviewUrl: `${env.APP_URL}/web-orders/${order.id}`,
+            document: po.document,
+            buyerLogo: po.buyerLogo,
+            preview: po.preview,
+            attached: po.attached,
+          }),
+        },
+      );
+      for (const miss of failed) {
+        console.error(`[cart] order ${order.reference} not emailed to ${miss.to}: ${miss.error}`);
+      }
+      // The receipt is one more request against the same rate limit.
+      await new Promise((done) => setTimeout(done, EACH_SEND_GAP_MS));
     }
 
     // The client's copy links to the shop host, not the portal: that is the

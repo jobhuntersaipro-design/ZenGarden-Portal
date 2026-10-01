@@ -73,3 +73,37 @@ describe("sendEmail attachments", () => {
     ).toEqual({ sent: false, error: "Attachment too large" });
   });
 });
+
+describe("sendEmailToEach", () => {
+  it("sends one email per address, so a refused address costs that address alone", async () => {
+    const { sendEmailToEach } = await import("@/lib/email");
+    send.mockImplementation(async ({ to }: { to: string }) =>
+      to.endsWith("@example.com")
+        ? { error: { message: "Invalid `to` field." } }
+        : { error: null },
+    );
+
+    const result = await sendEmailToEach(
+      ["boss@zen.my", "test@example.com", "planner@zen.my", "boss@zen.my"],
+      { subject: "New order", react },
+      0,
+    );
+
+    expect(send.mock.calls.map((call) => call[0].to)).toEqual([
+      "boss@zen.my",
+      "test@example.com",
+      "planner@zen.my",
+    ]);
+    expect(result.sent).toEqual(["boss@zen.my", "planner@zen.my"]);
+    expect(result.failed).toEqual([
+      { to: "test@example.com", error: "Invalid `to` field." },
+    ]);
+  });
+
+  it("never throws when Resend itself throws", async () => {
+    const { sendEmailToEach } = await import("@/lib/email");
+    send.mockRejectedValue(new Error("network down"));
+    const result = await sendEmailToEach(["a@zen.my"], { subject: "x", react }, 0);
+    expect(result).toEqual({ sent: [], failed: [{ to: "a@zen.my", error: "network down" }] });
+  });
+});

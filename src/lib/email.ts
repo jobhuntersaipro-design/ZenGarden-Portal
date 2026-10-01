@@ -87,3 +87,44 @@ export async function sendEmail({
     return { sent: false, error: message };
   }
 }
+
+/**
+ * Resend's default limit is two requests a second, per account. Sends to a
+ * list are spaced by this much so the last one is not refused for speed.
+ */
+export const EACH_SEND_GAP_MS = 550;
+
+export type SendToEachResult = {
+  sent: string[];
+  failed: { to: string; error: string }[];
+};
+
+/**
+ * One email per recipient, never one email to all of them.
+ *
+ * Resend refuses a whole send when any one address in `to` is refused — an
+ * `@example.com` test account, a typo — and then nobody on the list gets it.
+ * That is how every staff "New order" email went missing on 2026-10-01: four
+ * test users with `@example.com` addresses held the `po.view` role, so Resend
+ * answered 422 to the one send that carried all seven addresses, while the
+ * buyer's receipt, a separate send, arrived. Sent one by one, a refused
+ * address costs that address alone, and each recipient sees only their own.
+ *
+ * Never throws, like `sendEmail`. Sequential and spaced, for Resend's rate
+ * limit; the callers run inside `after()`, so nobody waits on the gap.
+ */
+export async function sendEmailToEach(
+  recipients: readonly string[],
+  args: Omit<SendEmailArgs, "to">,
+  gapMs: number = EACH_SEND_GAP_MS,
+): Promise<SendToEachResult> {
+  const result: SendToEachResult = { sent: [], failed: [] };
+  const unique = [...new Set(recipients.map((to) => to.trim()).filter(Boolean))];
+  for (const [index, to] of unique.entries()) {
+    if (index > 0 && gapMs > 0) await new Promise((done) => setTimeout(done, gapMs));
+    const { sent, error } = await sendEmail({ ...args, to });
+    if (sent) result.sent.push(to);
+    else result.failed.push({ to, error: error ?? "not sent" });
+  }
+  return result;
+}
