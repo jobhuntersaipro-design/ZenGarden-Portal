@@ -299,7 +299,7 @@ export function BlocksSection() {
 
       <Specimen
         name="notification-center"
-        job="New: shop orders and uploads waiting for review."
+        job="Not used: the bell was removed on 1 Oct 2026; the badge on Purchase Orders carries the review count."
         phase={2}
         wide
       >

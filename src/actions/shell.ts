@@ -3,8 +3,6 @@
 import { requireUser } from "@/lib/auth-guards";
 import { roleCan } from "@/lib/permissions/require";
 import { prisma } from "@/lib/prisma";
-import { listReviewQueue } from "@/lib/queries/purchase-orders";
-import { formatMYR } from "@/lib/money";
 
 type Result<T> = { success: true; data: T } | { success: false; error: string };
 
@@ -105,53 +103,5 @@ export async function loadCommandIndex(): Promise<Result<CommandEntry[]>> {
     return { success: true, data: entries };
   } catch {
     return { success: false, error: "We couldn't load search. Try again." };
-  }
-}
-
-/** One thing waiting on the team, for the notification center. */
-export type ReviewNotification = {
-  id: string;
-  title: string;
-  description: string;
-  /** ISO, when it joined the queue. */
-  at: string | null;
-  href: string;
-  kind: "shop" | "upload";
-};
-
-/** The longest list the bell shows; the queue itself has the rest. */
-const NOTIFICATION_LIMIT = 20;
-
-/**
- * The review queue as notifications: shop orders sent or received but not
- * confirmed, and uploads Claude has read. The same query the queue section
- * on `/purchase-orders` runs, so the bell and the section cannot disagree.
- */
-export async function loadReviewNotifications(): Promise<Result<ReviewNotification[]>> {
-  try {
-    const user = await requireUser();
-    if (!(await roleCan(user.role, "po.view"))) return { success: true, data: [] };
-    const { rows } = await listReviewQueue();
-    const data = rows.slice(0, NOTIFICATION_LIMIT).map((row) => {
-      const shop = row.kind === "WEB";
-      const name = row.orderId ?? row.poNumber ?? row.fileName ?? "a document";
-      // A draft's buyer reads "—" until the reviewer picks one.
-      const buyer = row.buyerName && row.buyerName !== "—" ? row.buyerName : null;
-      return {
-        id: `${row.kind}:${row.id}`,
-        title: shop
-          ? `Shop order ${name}${buyer ? ` from ${buyer}` : ""}`
-          : `Upload ready to review: ${name}`,
-        description: shop
-          ? `${row.itemCount} ${row.itemCount === 1 ? "line" : "lines"} · ${formatMYR(row.total.toString())} — confirm or decline it.`
-          : `Claude has read it${buyer ? ` — ${buyer}` : ""}. Check the fields and confirm.`,
-        at: row.queuedAt ? row.queuedAt.toISOString() : null,
-        href: shop ? `/web-orders/${row.id}` : `/review/${row.id}`,
-        kind: shop ? ("shop" as const) : ("upload" as const),
-      };
-    });
-    return { success: true, data };
-  } catch {
-    return { success: false, error: "We couldn't load notifications." };
   }
 }

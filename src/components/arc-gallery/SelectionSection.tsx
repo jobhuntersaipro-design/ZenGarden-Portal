@@ -241,7 +241,7 @@ export function SelectionSection() {
       <Specimen name="checkbox" job="The permission grid, and acknowledging a totals mismatch." phase={6}>
         <CheckboxSpecimen />
       </Specimen>
-      <Specimen name="radio-group" job="A user's role in the user drawer." phase={6}>
+      <Specimen name="radio-group" job="Not used: radio-cards took the user drawer's role." phase={6}>
         <RadioGroupSpecimen />
       </Specimen>
       <Specimen name="radio-cards" job="Choices that need a line each, like a new user's role." phase={6}>
@@ -256,7 +256,7 @@ export function SelectionSection() {
       <Specimen name="calendar" job="The Demand Board's “up to” date." phase={2}>
         <CalendarSpecimen />
       </Specimen>
-      <Specimen name="date-picker" job="Expected delivery on confirm and on the edit sheet." phase={3}>
+      <Specimen name="date-picker" job="Not used: every date field is DateInput, built on calendar." phase={3}>
         <DatePickerSpecimen />
       </Specimen>
       <Specimen name="date-range-picker" job="The dashboard's custom range." phase={2}>

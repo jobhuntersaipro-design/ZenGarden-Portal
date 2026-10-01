@@ -1,3 +1,37 @@
+# Fix: the notification bell removed, and the Arc audit
+
+## Status
+
+**Built on `claude/intelligent-mccarthy-85u9gh`** (2026-10-01). Asked for as
+"remove the notification bell, we do not need that", then "have we
+implemented all phases from Arc Preview?".
+
+- **The bell is gone** from the sidebar (beside Search) and the phone top bar.
+  `ReviewNotifications.tsx` and its `loadReviewNotifications` action are
+  deleted. The review count still shows as the badge on Purchase Orders, and
+  the review queue section on `/purchase-orders` is unchanged. Search takes the
+  sidebar's full width. The vendored `notification-center` stays in the Arc
+  import for the `/admin/arc` gallery.
+- **Arc audit, measured by imports:** of 75 vendored parts, 67 are used on a
+  real screen. The 8 that are not: `bar-chart`, `file-upload`, `bottom-sheet`,
+  `toast`, `blocks` (left out on purpose in spec 62), `notification-center`
+  (removed above), and `date-picker` and `radio-group`, whose jobs went to
+  `calendar` (through `DateInput`) and `radio-cards`. Spec 62 and the gallery's
+  job lines now say so. No phase from spec 60 is left unbuilt, so no new spec.
+
+## Verified
+
+Production builds before and after, local Postgres, as the super admin, on
+`/purchase-orders`: the bell present at 1440 and 390 before, absent after; no
+page overflow at either width. 1797 tests, `tsc` and lint clean, build clean.
+
+## Not verified
+
+Production. The shop's Arc parts (cart swipe, photo carousel, Add to cart
+morph) are still undriven, as spec 62 §5 records.
+
+## Before that
+
 # Fix: staff never got the "New order" email
 
 ## Status

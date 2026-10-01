@@ -46,13 +46,16 @@ list named (⌘K search, notifications).
 | resizable-panels | Review screen document and fields, from `xl` (stacked below) |
 | filter-toolbar | Products toolbar: brand, category and market through Add filter and chips |
 | command-palette | ⌘K / Search: pages, the latest 300 POs, buyers, products — read once, scoped by permission (`actions/shell.ts`) |
-| notification-center | The review queue as updates, with Open to each review screen; read and dismissed per browser |
 
 **Not used, on purpose:** `bar-chart` (the stage board stacks; Arc's cannot),
 `file-upload` (the dropzone and queue do its job), `bottom-sheet` (the phone
 filters stay a disclosure — `MobileFilters` records why a sheet was refused),
 `toast` (the stack is `toast-stack`, already in use), `blocks` (demo
-compositions). The dashboard's More analytics stays a URL-driven server
+compositions), `date-picker` (every date field is `DateInput`, built on
+`calendar`), `radio-group` (`radio-cards` took the role).
+`notification-center` was on the sidebar and phone top bar as a bell over the
+review queue, and was removed the same day at the user's request ("we do not
+need that"); the badge on Purchase Orders carries the count. The dashboard's More analytics stays a URL-driven server
 disclosure rather than Arc's accordion, which mounts everything.
 
 ## 2. Import patches (`scripts/arc-import.ts`)
@@ -63,7 +66,9 @@ All through `PATCHES` with `replaceOnce`, which throws when its target is gone:
 - **password-field** exports `EyeMorph`.
 - **phone-input** gains Malaysia (`+60`, 9–10 national digits).
 - **command-palette** lists at most 50 rows, so hundreds of indexed rows stay fast.
-- **notification-center** gains `onOpenItem` (an Open action).
+- **notification-center** gains `onOpenItem` (an Open action). Kept in the
+  import for the `/admin/arc` gallery; no real screen uses it since the bell
+  was removed.
 - **tree-view** rows are 44px (46 with the gap, in the TSX too, since the row
   height is animated in JS).
 
