@@ -148,6 +148,16 @@ export const PATCHES: { file: RegExp; apply: (source: string) => string; why: st
       ),
     why: "Arc's updates can be read and dismissed but lead nowhere; ours are orders waiting on the team, and each one needs a way to its review screen.",
   },
+  {
+    file: /^tree-view\/tree-view\.tsx$/,
+    apply: (source) => replaceOnce(source, "const rowHeight = 38;", "const rowHeight = 46;"),
+    why: "A tree row is a touch target: 44px with its 2px gap, not 36, so a phone keeps the 44px floor. The row height is animated in JS, so CSS alone would let rows overlap.",
+  },
+  {
+    file: /^tree-view\/tree-view\.module\.css$/,
+    apply: (source) => replaceOnce(source, "height: 36px; margin-top: 2px;", "height: 44px; margin-top: 2px;"),
+    why: "The row itself, to match the 46px the TSX animates each row to.",
+  },
 ];
 
 /** `source.replace` that refuses to do nothing, so an upstream change cannot silently drop a patch. */

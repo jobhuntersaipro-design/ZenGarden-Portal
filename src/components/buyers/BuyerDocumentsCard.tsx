@@ -13,7 +13,7 @@ import {
   useFileDrop,
 } from "@/components/buyers/DocumentFolderSection";
 import { GrowingListPicker } from "@/components/products/GrowingListPicker";
-import { DocumentPreview } from "@/components/review/DocumentPreview";
+import { DocumentPreview } from "@/components/review/DocumentPreviewLoader";
 import { Button } from "@/components/ui/button";
 import {
   Dialog,

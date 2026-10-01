@@ -79,6 +79,8 @@ export function ReviewNotifications() {
   const hrefs = new Map((rows ?? []).map((row) => [row.id, row.href]));
 
   return (
+    // Arc's bell is 42px; a phone gets the 44px floor.
+    <span className="contents max-sm:[&>button]:size-11">
     <NotificationCenter
       // Arc seeds its own list once, so a new set of updates remounts it.
       key={items.map((item) => `${item.id}:${item.read ? 1 : 0}`).join("|")}
@@ -106,5 +108,6 @@ export function ReviewNotifications() {
         router.push(href);
       }}
     />
+    </span>
   );
 }

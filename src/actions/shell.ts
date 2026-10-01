@@ -135,14 +135,16 @@ export async function loadReviewNotifications(): Promise<Result<ReviewNotificati
     const data = rows.slice(0, NOTIFICATION_LIMIT).map((row) => {
       const shop = row.kind === "WEB";
       const name = row.orderId ?? row.poNumber ?? row.fileName ?? "a document";
+      // A draft's buyer reads "—" until the reviewer picks one.
+      const buyer = row.buyerName && row.buyerName !== "—" ? row.buyerName : null;
       return {
         id: `${row.kind}:${row.id}`,
         title: shop
-          ? `Shop order ${name} from ${row.buyerName}`
+          ? `Shop order ${name}${buyer ? ` from ${buyer}` : ""}`
           : `Upload ready to review: ${name}`,
         description: shop
           ? `${row.itemCount} ${row.itemCount === 1 ? "line" : "lines"} · ${formatMYR(row.total.toString())} — confirm or decline it.`
-          : `Claude has read it${row.buyerName ? ` (${row.buyerName})` : ""}. Check the fields and confirm.`,
+          : `Claude has read it${buyer ? ` — ${buyer}` : ""}. Check the fields and confirm.`,
         at: row.queuedAt ? row.queuedAt.toISOString() : null,
         href: shop ? `/web-orders/${row.id}` : `/review/${row.id}`,
         kind: shop ? ("shop" as const) : ("upload" as const),

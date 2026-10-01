@@ -1,4 +1,42 @@
-# Current feature: Arc only — the Current look and its switch removed
+# Current feature: the rest of Arc, on real screens
+
+## Status
+
+**Built and driven in a browser, pushed to `main`** (2026-10-01), asked for
+as "is everything implemented as Arc preview already?" (no: 30 of 73 parts
+were on real screens) then "Ok, start everything / just push to main I will
+review it on prod". Spec `docs/specs/62-arc-everywhere.md`.
+
+- Every remaining Arc part with a job here is on its screen: line charts for
+  price and stock trends, gauge (on-time, distinct orders), slope (market
+  mix), sparkline, heatmap (buyer page), calendar `DateInput` for every date,
+  range picker, password shell and strength meter, phone input (Malaysia
+  added), role radio cards, dropzone, progress, skeleton, empty states,
+  shimmer, text morph, metric surface, copy/split/action buttons, confirm
+  morph, swipe actions, accordion, scroll area, timeline, tree, avatar group,
+  hover card, carousel, inline edit, resizable panels, filter toolbar.
+- New: ⌘K command palette and a notification center on the review queue.
+- Left out on purpose: bar-chart (cannot stack), file-upload, bottom-sheet,
+  toast, blocks. Six import patches, each listed in the spec §2.
+- Fixed on the way: a server→client function crash in market mix (mine), and
+  pdf.js loading on the server on every buyer page (pre-existing, the #419).
+
+## Verified
+
+15 pages × 1440 and 390, production build, local Postgres: no overflow, no
+console or server errors beyond Vercel's own script; the new controls 44px at
+390; a catalogue rename round-tripped to the database. 1788 tests, `tsc`,
+lint unchanged, build clean.
+
+## Not verified
+
+Production; the shop screens (no shop contact or photos in the seed); a real
+phone, Safari, Firefox; saves through the date fields and phone field end to
+end.
+
+## Before that
+
+# Arc only — the Current look and its switch removed
 
 ## Status
 

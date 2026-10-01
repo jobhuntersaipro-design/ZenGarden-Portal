@@ -155,7 +155,9 @@ export function BuyerForm({
               onChange={(event) => setContact("name", event.target.value)}
             />
           </div>
-          <div className="grid gap-md sm:grid-cols-2">
+          {/* One column: the phone field carries a country picker, and in
+              half a row the number itself was cut off. */}
+          <div className="grid gap-md">
             <div className="flex flex-col gap-xxs">
               <label htmlFor="contact-email" className={label}>
                 Email

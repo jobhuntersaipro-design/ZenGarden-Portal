@@ -152,6 +152,7 @@ export function CatalogLabelSection({
                         <InlineEdit
                           value={row.value}
                           label={`Rename ${row.value}`}
+                          variant="body"
                           validate={(next) =>
                             next.trim() ? null : `A ${noun.one} needs a name.`
                           }

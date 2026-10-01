@@ -205,7 +205,8 @@ export function LifecycleActions({
               // waits in its menu, so the page keeps one dark control
               // (design reference §3.6) and Move back keeps its confirmation.
               <PopoverAnchor asChild>
-                <span className="inline-flex">
+                {/* The menu half is 38px wide; a phone gets the 44px floor. */}
+                <span className="inline-flex max-sm:[&>div>button:last-child]:min-w-11">
                   <SplitButton
                     label={`Advance to ${stageLabel(next)}`}
                     onClick={() => setAdvanceOpen(true)}
