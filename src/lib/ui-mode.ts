@@ -1,9 +1,8 @@
 /**
- * Which component set draws the app: our shadcn primitives ("classic") or
- * Arc's (https://uiarc.dev, vendored in src/components/arc). Asked for on
- * 2026-10-01 as a side-by-side preview: "let me see the preview first, then I
- * will decide if we want to keep the old one". Spec:
- * docs/specs/61-arc-preview-switch.md.
+ * Which component set draws the app: Arc's (https://uiarc.dev, vendored in
+ * src/components/arc), or our earlier shadcn primitives ("classic"). Built on
+ * 2026-10-01 as a side-by-side preview and settled the same day in Arc's
+ * favour. Spec: docs/specs/61-arc-preview-switch.md.
  *
  * Imports nothing, so the proxy, server components and client components can
  * all read it.
@@ -20,10 +19,10 @@ export function parseUiMode(value: string | null | undefined): UiMode | null {
 }
 
 /**
- * Production never offers the switch and never draws Arc, whatever the
- * cookie says, so merging this cannot change what the team uses until the
- * choice is made. `ARC_PREVIEW=1` turns it on for a production build that
- * wants it; every other deployment (preview, development) has it on.
+ * Arc was chosen on 2026-10-01 ("keep Arc"), so every deployment draws Arc.
+ * The switch back to Current is offered everywhere but production, where it
+ * never appears and Arc is drawn whatever the cookie says. `ARC_PREVIEW=1`
+ * offers it on a production build that wants it.
  */
 type Env = Record<string, string | undefined>;
 
@@ -31,10 +30,10 @@ export function arcPreviewEnabled(env: Env = process.env): boolean {
   return env.ARC_PREVIEW === "1" || env.VERCEL_ENV !== "production";
 }
 
-/** The mode a request draws in. Classic unless the switch is on and the cookie says Arc. */
+/** The mode a request draws in. Arc unless the switch is on and the cookie says Current. */
 export function resolveUiMode(
   cookie: string | null | undefined,
   env?: Env,
 ): UiMode {
-  return arcPreviewEnabled(env) && parseUiMode(cookie) === "arc" ? "arc" : "classic";
+  return arcPreviewEnabled(env) && parseUiMode(cookie) === "classic" ? "classic" : "arc";
 }

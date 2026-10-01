@@ -56,7 +56,8 @@ export default auth((request) => {
 
   // `?ui=arc` / `?ui=classic` sets the preview switch's cookie and drops the
   // parameter, so a link can open a page in either component set. Same host,
-  // so the redirect keeps its origin. Off in production (src/lib/ui-mode.ts).
+  // so the redirect keeps its origin. Off in production, which always draws
+  // Arc (src/lib/ui-mode.ts).
   const uiParam = parseUiMode(request.nextUrl.searchParams.get(UI_MODE_PARAM));
   if (uiParam && arcPreviewEnabled()) {
     const clean = request.nextUrl.clone();

@@ -124,6 +124,15 @@ Second pass, the same rig (production build, both modes):
 - Tests: the stepper keeps both labelled 44px steps in Arc's field (watched
   failing with Arc ignored); admin status as Arc's badge.
 
-## 5. Not verified
+## 5. The decision: Arc
+
+Settled the same day — "keep Arc, merge to main". `resolveUiMode` now draws
+**Arc unless the cookie says `classic`**, and production always draws Arc
+whatever the cookie says. The switch stays outside production (Arc selected
+by default) so the earlier look can still be compared while its code is in
+the tree; production never shows it. Removing the classic branches, the
+switch and the cookie is a follow-up, not part of this merge.
+
+## 6. Not verified
 
 The Vercel preview itself; Safari, Firefox, a real phone, a screen reader.

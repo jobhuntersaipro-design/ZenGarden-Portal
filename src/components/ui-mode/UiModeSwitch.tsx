@@ -12,14 +12,15 @@ const OPTIONS = [
   { value: "arc", label: "Arc" },
 ];
 
-/** A year, so the choice survives a closed browser while the preview runs. */
+/** A year, so the choice survives a closed browser. */
 const MAX_AGE = 60 * 60 * 24 * 365;
 
 /**
- * The Current / Arc switch, pinned to the bottom of every page while the
- * preview runs. It writes the cookie and re-renders the page in place, so
- * filters, scroll and drafts held in the URL stay put and the two versions can
- * be compared on the same data. Never rendered in production (`ui-mode.ts`).
+ * The Current / Arc switch, pinned to the bottom of every page outside
+ * production, for comparing the earlier look while it is still in the tree.
+ * Arc is the default. It writes the cookie and re-renders the page in place,
+ * so filters, scroll and drafts held in the URL stay put. Never rendered in
+ * production (`ui-mode.ts`), which always draws Arc.
  *
  * Bottom-centre from `lg`: bottom-left covered the sidebar's account menu
  * (measured — a click on it landed on the switch). Below `lg` it sits

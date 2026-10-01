@@ -2,16 +2,20 @@
 
 ## Status
 
-**Built and driven in a browser on `claude/modest-faraday-oh2ij9`, pushed for
-a Vercel preview, not merged** (2026-10-01). Asked for as "change every
-component in this page to using the arc preview … let me see the preview
-first, then I will decide". Asked which page: "every pages, including shop and
-portal". Asked how to compare: a toggle on the same URL. Spec:
-`docs/specs/61-arc-preview-switch.md`.
+**Arc chosen and merged to `main`** (2026-10-01), from
+`claude/modest-faraday-oh2ij9`. Asked for as "change every component in this
+page to using the arc preview … let me see the preview first, then I will
+decide", then "convert the remaining parts to Arc too", then **"keep Arc,
+merge to main"**. Spec: `docs/specs/61-arc-preview-switch.md` (§5 is the
+decision).
 
-- A **Current / Arc** switch on every page (cookie `zg-ui`, or `?ui=arc` on any
-  URL), read in the root layout. Off in production: `VERCEL_ENV=production`
-  always draws Current and shows no switch.
+- **Arc is what every deployment draws.** Production always draws Arc and
+  shows no switch; elsewhere Arc is the default and the switch can still show
+  Current (cookie `zg-ui=classic`, or `?ui=classic`) while that code remains.
+  Removing the classic branches is a follow-up.
+- The preview was a **Current / Arc** switch on every page (cookie `zg-ui`, or
+  `?ui=` on any URL), read in the root layout; until the decision production
+  drew Current and showed no switch.
 - In Arc mode the shared primitives draw Arc's parts: button, fields,
   checkbox, switch, dialog, drawer, menus, tooltip, select, avatar, toasts,
   segments and chips, pagination, badges, table, KPI counter, sales line
@@ -46,7 +50,9 @@ Production build, local Postgres and the seed, super admin and a shop contact.
 
 ## Not verified
 
-- The Vercel preview build; Safari, Firefox, a real phone, a screen reader.
+- **Production, on deploy.** The Vercel preview build was never opened, so
+  the first look at Arc on Vercel is production itself; Safari, Firefox, a
+  real phone and a screen reader were not tried either.
 - A React #419 (a Suspense boundary switched to client rendering) was logged
   once in a long drive, in both modes alike; not reproduced on its own.
 

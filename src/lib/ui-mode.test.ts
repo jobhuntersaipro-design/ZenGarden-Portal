@@ -16,10 +16,14 @@ describe("ui mode", () => {
     expect(arcPreviewEnabled({ VERCEL_ENV: "production", ARC_PREVIEW: "1" })).toBe(true);
   });
 
-  it("draws classic in production whatever the cookie says", () => {
-    expect(resolveUiMode("arc", { VERCEL_ENV: "production" })).toBe("classic");
-    expect(resolveUiMode("arc", { VERCEL_ENV: "preview" })).toBe("arc");
-    expect(resolveUiMode(undefined, { VERCEL_ENV: "preview" })).toBe("classic");
-    expect(resolveUiMode("nonsense", {})).toBe("classic");
+  it("draws Arc in production whatever the cookie says", () => {
+    expect(resolveUiMode("classic", { VERCEL_ENV: "production" })).toBe("arc");
+    expect(resolveUiMode(undefined, { VERCEL_ENV: "production" })).toBe("arc");
+  });
+
+  it("draws Arc by default elsewhere, and Current only when asked for", () => {
+    expect(resolveUiMode(undefined, { VERCEL_ENV: "preview" })).toBe("arc");
+    expect(resolveUiMode("nonsense", {})).toBe("arc");
+    expect(resolveUiMode("classic", { VERCEL_ENV: "preview" })).toBe("classic");
   });
 });
