@@ -9,6 +9,7 @@ import {
 } from "@/lib/analytics/range";
 import type { Aggregation } from "@/lib/dates";
 import { ChoiceButton } from "@/components/portal/ChoiceButton";
+import { ChipStrip } from "@/components/portal/ChipStrip";
 import { SegmentGroup } from "@/components/portal/SegmentGroup";
 import { UpdatingHint } from "@/components/portal/UpdatingHint";
 import { usePendingChoice } from "@/hooks/usePendingChoice";
@@ -69,10 +70,7 @@ export function RangeControls({
   return (
     <div className="mb-lg flex flex-col gap-sm">
       <div className="flex flex-wrap items-center gap-sm">
-        <div
-          className="flex flex-wrap items-center gap-xxs"
-          aria-busy={presets.pending || undefined}
-        >
+        <ChipStrip busy={presets.pending}>
           {RANGE_PRESETS.map((option) => (
             <ChoiceButton
               key={option.value}
@@ -91,7 +89,7 @@ export function RangeControls({
               {option.label}
             </ChoiceButton>
           ))}
-        </div>
+        </ChipStrip>
 
         <button
           type="button"

@@ -1,3 +1,49 @@
+# Phones are denser: smaller headings, less padding, chips on one row
+
+## Status
+
+**Built and pushed to `main`** (2026-10-01). Asked for as "the mobile version
+size can be smaller, maybe 30% smaller of everything, so the mobile user can
+see more content"; a flat 30% was advised against (44px controls would become
+31px, inputs under 16px zoom the page on iPhone, body text would fall to
+10–11px), and the user said "Build it and just push to prod".
+
+- **Tokens step down below `sm`** (`@media (width < 40rem)` in `globals.css`),
+  so every page changes at once: page and card padding 20/24 → 16px, section
+  gaps 40/60 → 28/40, headings and display figures about a quarter smaller
+  (page title 26 → 20px, display 34 → 24px), eyebrow 14 → 12px, top bar
+  60 → 52px with a 44px logo, the 52px large button → 44px. Body text,
+  control heights at 44px and the small gaps are untouched. Desktop and
+  tablet read the same tokens as before.
+- **Range chips are one scrolling row on a phone** (`ChipStrip`, used on the
+  dashboard and the buyer pages) with a fade at the edge that has more; they
+  wrapped onto two rows before. They wrap again from `sm`.
+- **Table row cards on a phone** have 12px top and bottom padding (was 20)
+  and 8px between them (was 12).
+
+## Verified
+
+Production build, local Postgres, signed in as the super admin, 390×844
+touch. Page length before → after: dashboard 4,055 → 3,439 (−15%), Purchase
+Orders 2,725 → 2,322 (−15%), Buyers 4,954 → 4,445 (−10%), Products 4,114 →
+3,779 (−8%), Stock 2,674 → 2,372 (−11%), a buyer 6,805 → 5,881 (−14%), a PO
+2,514 → 2,254 (−10%), a product 8,044 → 7,135 (−11%), Settings 1,557 → 1,408
+(−10%), Demand Board 6,546 → 6,280 (−4%). No overflow at 390 on 11 portal
+and 4 shop pages, or at 768 and 1440 on four portal pages; at 768 and 1440
+`--spacing-lg` still reads 24px and the page title 34px. Sub-44px controls
+unchanged on every page (the accepted text-link class). 1797 tests, `tsc`
+clean, lint unchanged, build clean.
+
+## Not verified
+
+Production; a real phone. **Short of the 30% asked for**: the rest of each
+page is body text, 44px controls and content, which were kept on purpose.
+More would mean hiding content behind taps per screen. **Found, not fixed:**
+on a phone 2–6 form fields per page render at 14px, under the 16px at which
+iPhone Safari stops zooming into a focused field; this predates the change.
+
+## Before that
+
 # Fix: the notification bell removed, and the Arc audit
 
 ## Status

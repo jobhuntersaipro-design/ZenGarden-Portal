@@ -5,6 +5,7 @@ import type { BuyerRangePreset } from "@/lib/analytics/buyer-range";
 import { AGGREGATIONS } from "@/lib/analytics/range";
 import type { Aggregation } from "@/lib/dates";
 import { ChoiceButton } from "@/components/portal/ChoiceButton";
+import { ChipStrip } from "@/components/portal/ChipStrip";
 import { SegmentGroup } from "@/components/portal/SegmentGroup";
 import { UpdatingHint } from "@/components/portal/UpdatingHint";
 import { usePendingChoice } from "@/hooks/usePendingChoice";
@@ -38,10 +39,7 @@ export function BuyerRangeChips({
 
   return (
     <div className="mb-lg flex flex-col gap-xs">
-      <div
-        className="flex flex-wrap items-center gap-xxs"
-        aria-busy={presets.pending || undefined}
-      >
+      <ChipStrip busy={presets.pending}>
         {options.map((option) => (
           <ChoiceButton
             key={option.value}
@@ -56,7 +54,7 @@ export function BuyerRangeChips({
             {option.label}
           </ChoiceButton>
         ))}
-      </div>
+      </ChipStrip>
       <div className="flex flex-wrap items-center justify-between gap-sm">
         <p className="text-[length:var(--text-body-sm)] text-ink-secondary">
           {summary}

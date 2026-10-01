@@ -860,6 +860,51 @@
 }
 
 /*
+  Phone density. Below `sm` the same tokens step down, so every page gets
+  denser at once without a per-screen class: display and heading sizes, the
+  page and card padding, the section gaps and the top bar. Three things are
+  deliberately left alone — body text (14–16px stays readable), control
+  heights below 44px (the touch floor; the 52px large control steps down to it) and the small gaps (xxs/xs/sm), which sit
+  inside controls. `@theme` (not `inline`) makes every utility read these
+  variables, so redefining them here is enough; Arc's `--arc-*` tokens read
+  them too.
+*/
+@media (width < 40rem) {
+  :root {
+    --spacing-md: 16px;
+    --spacing-lg: 16px;
+    --spacing-xl: 28px;
+    --spacing-xxl: 40px;
+    --spacing-section: 64px;
+    --spacing-hero: 96px;
+
+    --spacing-control-lg: 44px;
+    --spacing-topbar: 52px;
+    --spacing-logo-mark: 44px;
+    --spacing-logo-badge: 88px;
+    --spacing-cart-thumb: 64px;
+
+    --text-display-3xl: 44px;
+    --text-display-3xl--letter-spacing: -1.54px;
+    --text-display-2xl: 36px;
+    --text-display-2xl--letter-spacing: -1.26px;
+    --text-display-xl: 32px;
+    --text-display-xl--letter-spacing: -1.12px;
+    --text-display-lg: 28px;
+    --text-display-lg--letter-spacing: -1.12px;
+    --text-display-md: 24px;
+    --text-display-md--letter-spacing: -0.96px;
+    --text-heading-md: 20px;
+    --text-heading-md--letter-spacing: -0.6px;
+    --text-heading-sm: 16px;
+    --text-heading-sm--letter-spacing: -0.4px;
+    --text-body-lg: 16px;
+    --text-body-lg--letter-spacing: -0.32px;
+    --text-eyebrow: 12px;
+  }
+}
+
+/*
  ---break---
  */
 

@@ -261,7 +261,7 @@ export function DataTable<Row extends { id: string }>({
         ) : (
           <ul
             aria-busy={updating || undefined}
-            className={`flex flex-col gap-sm transition-opacity ${updating ? "opacity-60" : ""}`}
+            className={`flex flex-col gap-xs transition-opacity sm:gap-sm ${updating ? "opacity-60" : ""}`}
           >
             {rows.map((row, rowIndex) => {
               const href = rowHref?.(row);
@@ -269,7 +269,7 @@ export function DataTable<Row extends { id: string }>({
                 <li
                   key={row.id}
                   onClick={href ? (event) => openRow(event, href, row) : undefined}
-                  className={`rounded-lg border border-hairline bg-canvas p-md transition-shadow ${
+                  className={`rounded-lg border border-hairline bg-canvas px-md py-sm transition-shadow sm:py-md ${
                     href ? "cursor-pointer hover:shadow-xs" : ""
                   } ${entrance ? `animate-rise ${staggerClass(rowIndex)}` : ""}`}
                 >
