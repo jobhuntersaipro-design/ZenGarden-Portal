@@ -393,11 +393,12 @@ test and no overflow check can see it — the page is no wider. A scan for
 
 ## 15. One send to many people fails for all of them
 
-**Rule.** Never put a list of people in one email's `to`. A provider that
+**Rule.** A list of people on one email is all or nothing: a provider that
 refuses one address (Resend: `@example.com`, a typo) refuses the whole send,
 and the people whose addresses were fine get nothing — with nothing in the
-provider's log to say so. Send one email per person (`sendEmailToEach`) and
-record each refusal against its address.
+provider's log to say so. Leave off what is known to be refused, record it,
+and fall back to one email each when the combined one is refused anyway
+(`sendEmailToAndCc`).
 
 **The case (2026-10-01, reported by the user).** No staff member ever got the
 "New order" email. Four `@example.com` test users held staff roles; the one

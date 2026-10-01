@@ -107,3 +107,72 @@ describe("sendEmailToEach", () => {
     expect(result).toEqual({ sent: [], failed: [{ to: "a@zen.my", error: "network down" }] });
   });
 });
+
+describe("sendEmailToAndCc", () => {
+  it("sends one email, to the first list and copying the second", async () => {
+    const { sendEmailToAndCc } = await import("@/lib/email");
+    const result = await sendEmailToAndCc(
+      ["boss@zen.my", "owner@zen.my"],
+      ["member@zen.my", "boss@zen.my"],
+      { subject: "New order", react },
+      0,
+    );
+    expect(send).toHaveBeenCalledOnce();
+    expect(send.mock.calls[0][0].to).toEqual(["boss@zen.my", "owner@zen.my"]);
+    expect(send.mock.calls[0][0].cc).toEqual(["member@zen.my"]);
+    expect(result.combined).toBe(true);
+  });
+
+  /**
+   * 2026-10-01: four `@example.com` test users made Resend refuse the one
+   * email carrying every staff address, and nobody got it.
+   */
+  it("leaves off addresses Resend refuses, so they cannot sink the email", async () => {
+    const { sendEmailToAndCc } = await import("@/lib/email");
+    const result = await sendEmailToAndCc(
+      ["boss@zen.my", "Aisha@LovingHandsPortal.com"],
+      ["testux.qc@example.com", "planner@zen.my", "gone@lovinghandsportal.invalid"],
+      { subject: "New order", react },
+      0,
+    );
+    expect(send).toHaveBeenCalledOnce();
+    expect(send.mock.calls[0][0].to).toEqual(["boss@zen.my"]);
+    expect(send.mock.calls[0][0].cc).toEqual(["planner@zen.my"]);
+    expect(result.skipped).toEqual([
+      "Aisha@LovingHandsPortal.com",
+      "testux.qc@example.com",
+      "gone@lovinghandsportal.invalid",
+    ]);
+  });
+
+  it("falls back to one email each when the combined email is refused", async () => {
+    const { sendEmailToAndCc } = await import("@/lib/email");
+    send.mockImplementation(async ({ to }: { to: string | string[] }) =>
+      Array.isArray(to) || to === "typo@zen" ? { error: { message: "Invalid `to` field." } } : { error: null },
+    );
+    const result = await sendEmailToAndCc(
+      ["boss@zen.my"],
+      ["typo@zen", "planner@zen.my"],
+      { subject: "New order", react },
+      0,
+    );
+    expect(send.mock.calls.map((call) => call[0].to)).toEqual([
+      ["boss@zen.my"],
+      "boss@zen.my",
+      "typo@zen",
+      "planner@zen.my",
+    ]);
+    expect(result).toMatchObject({
+      combined: false,
+      sent: ["boss@zen.my", "planner@zen.my"],
+      failed: [{ to: "typo@zen", error: "Invalid `to` field." }],
+    });
+  });
+
+  it("addresses the copied list when there is nobody to send it to", async () => {
+    const { sendEmailToAndCc } = await import("@/lib/email");
+    await sendEmailToAndCc([], ["member@zen.my"], { subject: "x", react }, 0);
+    expect(send.mock.calls[0][0].to).toEqual(["member@zen.my"]);
+    expect(send.mock.calls[0][0].cc).toBeUndefined();
+  });
+});

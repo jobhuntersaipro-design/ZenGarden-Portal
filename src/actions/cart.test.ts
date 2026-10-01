@@ -55,28 +55,15 @@ const loadCart = vi.fn();
 vi.mock("@/lib/queries/cart", () => ({ loadCart }));
 vi.mock("@/lib/env", () => ({ env: { APP_URL: "https://www.example.com" } }));
 const sendEmail = vi.fn().mockResolvedValue({ sent: true });
-// The real one-at-a-time loop, over the mocked single send, without the gap.
-vi.mock("@/lib/email", () => {
-  return {
-    sendEmail,
-    EACH_SEND_GAP_MS: 0,
-    sendEmailToEach: async (
-      recipients: readonly string[],
-      args: Record<string, unknown>,
-    ) => {
-      const result: { sent: string[]; failed: { to: string; error: string }[] } = {
-        sent: [],
-        failed: [],
-      };
-      for (const to of recipients) {
-        const outcome = await sendEmail({ ...args, to });
-        if (outcome.sent) result.sent.push(to);
-        else result.failed.push({ to, error: outcome.error ?? "not sent" });
-      }
-      return result;
-    },
-  };
-});
+// The combined send's happy path, over the mocked single send; its refusals
+// and fallback are `email.test.ts`'s to pin.
+const combinedSend = async (to: string[], cc: string[], args: Record<string, unknown>) => {
+  const [primary, copied] = to.length > 0 ? [to, cc] : [cc, []];
+  await sendEmail({ ...args, to: primary, cc: copied });
+  return { sent: [...primary, ...copied], failed: [], skipped: [], combined: true };
+};
+const sendEmailToAndCc = vi.fn(combinedSend);
+vi.mock("@/lib/email", () => ({ sendEmail, sendEmailToAndCc, EACH_SEND_GAP_MS: 0 }));
 // Phase 37: the purchase order is rendered and filed before the two mails go,
 // and both carry it. Mocked here because what matters at this level is that
 // its result reaches the emails — the renderer has its own tests.
@@ -152,6 +139,7 @@ const sellable = {
 
 beforeEach(() => {
   vi.resetAllMocks();
+  sendEmailToAndCc.mockImplementation(combinedSend);
   // `market` comes from the guard, which reads it off the buyer's row — every
   // cart action is handed it rather than resolving it for itself.
   requireClient.mockResolvedValue({
@@ -387,47 +375,32 @@ describe("submitWebOrder", () => {
 
     const recipients = sendEmail.mock.calls.map((call) => call[0].to);
     expect(recipients).toContainEqual(["aisha@acme.test"]);
-    expect(recipients).toContainEqual("ops@lovinghands.test");
+    expect(recipients).toContainEqual(["ops@lovinghands.test"]);
   });
 
   /**
-   * 2026-10-01: four `@example.com` test users held a staff role, Resend
-   * refused the one send that carried every staff address, and no super admin
-   * was ever told an order had arrived. One send per person now, so a refused
-   * address costs that address alone.
+   * 2026-10-01, the user's choice: one email, to the super admins, with every
+   * other staff member copied in. (Refused addresses and the fallback to one
+   * email each are pinned in `email.test.ts`.)
    */
-  it("emails each staff member on their own, so one refused address stops nobody else", async () => {
+  it("sends one staff email: super admins in to, everyone else in cc", async () => {
     webOrderFindFirst.mockResolvedValue(cartWith([line()]));
-    prismaWebOrderFindUnique.mockResolvedValue({
-      id: "w1",
-      reference: "W-2609-00001",
-      buyerReference: null,
-      subtotal: dec("2268.00"),
-      buyer: { name: "Acme" },
-      placedBy: { name: "Aisha", email: "aisha@acme.test" },
-      _count: { lines: 1 },
-    });
+    prismaWebOrderFindUnique.mockResolvedValue(notifiable);
     userFindMany.mockResolvedValue([
-      { email: "testux.member@example.com" },
-      { email: "boss@zengarden.my" },
-      { email: "planner@zengarden.my" },
+      { email: "member@zengarden.my", role: "MEMBER" },
+      { email: "boss@zengarden.my", role: "SUPER_ADMIN" },
+      { email: "planner@zengarden.my", role: "PRODUCTION_PLANNER" },
+      { email: "owner@zengarden.my", role: "SUPER_ADMIN" },
     ]);
-    sendEmail.mockImplementation(async ({ to }: { to: string | string[] }) =>
-      String(to).endsWith("@example.com")
-        ? { sent: false, error: "Invalid `to` field." }
-        : { sent: true },
-    );
 
     await submitWebOrder(SENT);
     await flushAfter();
 
-    const recipients = sendEmail.mock.calls.map((call) => call[0].to);
-    expect(recipients).toEqual([
-      "testux.member@example.com",
-      "boss@zengarden.my",
-      "planner@zengarden.my",
-      ["aisha@acme.test"],
-    ]);
+    expect(sendEmailToAndCc).toHaveBeenCalledOnce();
+    const [to, cc] = sendEmailToAndCc.mock.calls[0];
+    expect(to).toEqual(["boss@zengarden.my", "owner@zengarden.my"]);
+    expect(cc).toEqual(["member@zengarden.my", "planner@zengarden.my"]);
+    expect(userFindMany.mock.calls[0][0].select).toEqual({ email: true, role: true });
   });
 
   /**

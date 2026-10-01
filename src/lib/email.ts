@@ -23,6 +23,8 @@ export type EmailAttachment = {
 
 export type SendEmailArgs = {
   to: string | string[];
+  /** Copied in, visible to everyone on the email (2026-10-01, staff orders). */
+  cc?: string[];
   subject: string;
   react: ReactElement;
   /**
@@ -54,6 +56,7 @@ const LOGO_ATTACHMENT: EmailAttachment = {
  */
 export async function sendEmail({
   to,
+  cc,
   subject,
   react,
   attachments,
@@ -70,6 +73,7 @@ export async function sendEmail({
     const { error } = await resend.emails.send({
       from: env.EMAIL_FROM,
       to,
+      ...(cc && cc.length > 0 ? { cc } : {}),
       subject,
       react,
       // The files the caller passed, then the header logo. Always present,
@@ -127,4 +131,68 @@ export async function sendEmailToEach(
     else result.failed.push({ to, error: error ?? "not sent" });
   }
   return result;
+}
+
+/**
+ * Domains Resend refuses outright, answering 422 for the whole send:
+ * `example.com` and its siblings, which test accounts use, and the reserved
+ * `.invalid` / `.localhost` names (a deleted user is renamed to `.invalid`).
+ */
+const REFUSED_DOMAIN = /@(?:[^@]*\.)?(?:example\.(?:com|net|org)|[^@]+\.invalid|[^@]+\.localhost)$/i;
+
+/**
+ * Addresses never emailed, at the user's word (2026-10-01): the seed's super
+ * admin, which has no mailbox behind it.
+ */
+const NEVER_EMAIL = new Set(["aisha@lovinghandsportal.com"]);
+
+export const isRefusedAddress = (email: string) => {
+  const address = email.trim();
+  return REFUSED_DOMAIN.test(address) || NEVER_EMAIL.has(address.toLowerCase());
+};
+
+export type SendToAndCcResult = SendToEachResult & {
+  /** Addresses left off: ones Resend would refuse, and `NEVER_EMAIL`. */
+  skipped: string[];
+  /** True when the one email went; false when it fell back to one each. */
+  combined: boolean;
+};
+
+/**
+ * One email, `to` the people it is for and `cc` everyone else who should see
+ * it (2026-10-01, the user's choice for staff order emails).
+ *
+ * A combined send is all or nothing: Resend refuses the whole email when any
+ * one address is refused, which is how every staff order email went missing
+ * until 2026-10-01. So addresses Resend is known to refuse are left off
+ * first, and if the one email is still refused it falls back to one email per
+ * person (`sendEmailToEach`) rather than reaching nobody.
+ *
+ * Never throws.
+ */
+export async function sendEmailToAndCc(
+  to: readonly string[],
+  cc: readonly string[],
+  args: Omit<SendEmailArgs, "to" | "cc">,
+  gapMs: number = EACH_SEND_GAP_MS,
+): Promise<SendToAndCcResult> {
+  const clean = (list: readonly string[]) => [
+    ...new Set(list.map((email) => email.trim()).filter(Boolean)),
+  ];
+  const skipped = [...clean(to), ...clean(cc)].filter(isRefusedAddress);
+  let primary = clean(to).filter((email) => !isRefusedAddress(email));
+  let copied = clean(cc).filter(
+    (email) => !isRefusedAddress(email) && !primary.includes(email),
+  );
+  // Nobody to address it to: the copied people become the recipients.
+  if (primary.length === 0) [primary, copied] = [copied, []];
+  if (primary.length === 0) return { sent: [], failed: [], skipped, combined: false };
+
+  const { sent, error } = await sendEmail({ ...args, to: primary, cc: copied });
+  if (sent) {
+    return { sent: [...primary, ...copied], failed: [], skipped, combined: true };
+  }
+  console.error(`[email] ${args.subject}: combined send refused (${error}); sending one each`);
+  if (gapMs > 0) await new Promise((done) => setTimeout(done, gapMs));
+  return { ...(await sendEmailToEach([...primary, ...copied], args, gapMs)), skipped, combined: false };
 }

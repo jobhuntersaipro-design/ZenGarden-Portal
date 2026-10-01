@@ -12,11 +12,16 @@ buyer's receipt arrived; no staff email appeared in Resend at all.
   recipients with a 422 — which refuses the **whole** send. So nobody on
   staff was emailed, and nothing reached Resend's log. The buyer's receipt
   is a separate send, which is why it went.
-- **Fix.** `sendEmailToEach` (`src/lib/email.ts`): one send per address,
-  de-duplicated, spaced 550ms for Resend's two-a-second limit, never throws,
-  returns what went and what was refused. Used for the staff order email and
-  for the access-request email to super admins, which had the same shape.
-  Each refused address is logged as `[cart] order W-… not emailed to …`.
+- **Now one email, as the user asked**: super admins in To, members and
+  production planners in Cc (`sendEmailToAndCc`, `src/lib/email.ts`).
+  Addresses Resend refuses (`example.com/.net/.org`, `.invalid`,
+  `.localhost`) and `NEVER_EMAIL` (`aisha@lovinghandsportal.com`, the seed
+  admin with no mailbox — the user's word) are left off first, each logged
+  as `[cart] order W-… left off the email: …`. If the one email is still
+  refused (a typo, say), it falls back to one email per person
+  (`sendEmailToEach`, spaced 550ms for Resend's two-a-second limit) rather
+  than reaching nobody. The access-request email to super admins uses the
+  same helper.
 - **Recipients**, at the user's word: super admins, members and production
   planners (`ORDER_EMAIL_ROLES`), still intersected with `po.view`. QC and
   Warehouse no longer get it (they did since 2026-09-23).
@@ -25,19 +30,19 @@ buyer's receipt arrived; no staff email appeared in Resend at all.
 
 Production build on local Postgres, Resend pointed at a local stub that
 answers 422 to any `@example.com` recipient, as Resend does. A real shop
-order: `admin@example.com` 422, `aisha@lovinghandsportal.com` 200,
-`testux.member@example.com` 422, the production planner 200, ~558ms apart;
-the QC test user not sent to. Before the change the same order made **one**
-send carrying every address. The new regression test fails against the old
-`cart.ts` (4 red) and passes after. 1793 tests, `tsc` clean, lint unchanged,
-build clean.
+order with two super admins (one of them Aisha), an `@example.com` member,
+a real member, a planner and a QC user made **one** send: To the other super
+admin, Cc the member and the planner; Aisha and the `@example.com` member
+left off and logged; QC not sent to. Before the fix the same order made one
+send carrying every address, which the stub refused whole. Guards watched
+failing: the per-recipient regression test against the old `cart.ts` (4
+red), and the skip test with the skip disabled (1 red). 1797 tests, `tsc`
+clean, lint unchanged, build clean.
 
 ## Not verified
 
-Production. **Delete or disable the four `@example.com` users there** —
-they now cost only their own copy, but they will never receive anything.
-`aisha@lovinghandsportal.com` is a seed address; if that mailbox does not
-exist, Resend accepts it and it bounces.
+Production. The four `@example.com` users are now simply left off; deleting
+or disabling them there is still tidier.
 
 ## Before that
 

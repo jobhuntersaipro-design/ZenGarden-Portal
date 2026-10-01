@@ -21,8 +21,8 @@ vi.mock("@/lib/prisma", () => ({
   },
 }));
 vi.mock("@/lib/env", () => ({ env }));
-const sendEmailToEach = vi.fn();
-vi.mock("@/lib/email", () => ({ sendEmail, sendEmailToEach }));
+const sendEmailToAndCc = vi.fn();
+vi.mock("@/lib/email", () => ({ sendEmail, sendEmailToAndCc }));
 
 const { encodeEmail, resolveGoogleSignIn } = await import("@/lib/auth-access");
 
@@ -38,7 +38,7 @@ beforeEach(() => {
   updateRequest.mockResolvedValue({});
   createUser.mockResolvedValue({});
   sendEmail.mockResolvedValue({ sent: true });
-  sendEmailToEach.mockResolvedValue({ sent: [], failed: [] });
+  sendEmailToAndCc.mockResolvedValue({ sent: [], failed: [], skipped: [], combined: true });
 });
 
 describe("resolveGoogleSignIn", () => {
@@ -97,13 +97,13 @@ describe("resolveGoogleSignIn", () => {
     expect(result).toBe(`/signin/pending?e=${encodeEmail("daniel.tan@gmail.com")}`);
     expect(createRequest).toHaveBeenCalledOnce();
     expect(createUser).not.toHaveBeenCalled();
-    // One email per admin (2026-10-01): a refused address stops nobody else.
-    expect(sendEmailToEach).toHaveBeenCalledOnce();
-    expect(sendEmailToEach.mock.calls[0][0]).toEqual([
+    // One email to every super admin (2026-10-01).
+    expect(sendEmailToAndCc).toHaveBeenCalledOnce();
+    expect(sendEmailToAndCc.mock.calls[0][0]).toEqual([
       "a@lovinghandsportal.com",
       "b@lovinghandsportal.com",
     ]);
-    expect(sendEmailToEach.mock.calls[0][1].subject).toBe("Access request from Daniel Tan");
+    expect(sendEmailToAndCc.mock.calls[0][2].subject).toBe("Access request from Daniel Tan");
   });
 
   it("does not email again when the request already exists", async () => {
@@ -113,7 +113,7 @@ describe("resolveGoogleSignIn", () => {
     expect(updateRequest).toHaveBeenCalledOnce();
     expect(createRequest).not.toHaveBeenCalled();
     expect(sendEmail).not.toHaveBeenCalled();
-    expect(sendEmailToEach).not.toHaveBeenCalled();
+    expect(sendEmailToAndCc).not.toHaveBeenCalled();
   });
 
   it("shows the declined copy to a declined requester", async () => {
@@ -126,7 +126,7 @@ describe("resolveGoogleSignIn", () => {
     );
     expect(updateRequest).not.toHaveBeenCalled();
     expect(sendEmail).not.toHaveBeenCalled();
-    expect(sendEmailToEach).not.toHaveBeenCalled();
+    expect(sendEmailToAndCc).not.toHaveBeenCalled();
   });
 
   it("normalises the address before it looks anything up", async () => {

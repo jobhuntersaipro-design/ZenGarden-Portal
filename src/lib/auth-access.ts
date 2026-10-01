@@ -1,7 +1,7 @@
 import { AccessRequestStatus, Role } from "@/generated/prisma/enums";
 import { env } from "@/lib/env";
 import { prisma } from "@/lib/prisma";
-import { sendEmailToEach } from "@/lib/email";
+import { sendEmailToAndCc } from "@/lib/email";
 import {
   AccessRequested,
   accessRequestedSubject,
@@ -112,10 +112,10 @@ async function queueAccessRequest(profile: GoogleProfile): Promise<string> {
     select: { email: true },
   });
 
-  // One email per admin: Resend refuses a whole send when any one address in
-  // it is refused (`sendEmailToEach`).
+  // One email to every super admin, minus addresses Resend refuses — which
+  // would refuse the whole send (`sendEmailToAndCc`).
   if (admins.length > 0) {
-    await sendEmailToEach(admins.map((admin) => admin.email), {
+    await sendEmailToAndCc(admins.map((admin) => admin.email), [], {
       subject: accessRequestedSubject(profile.name),
       react: AccessRequested({
         name: profile.name,

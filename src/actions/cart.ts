@@ -9,7 +9,7 @@ import { rolesWithPermission } from "@/lib/permissions/require";
 import { lineTotal } from "@/lib/cartons";
 import { WebOrderPlaced, webOrderPlacedSubject } from "@/emails/WebOrderPlaced";
 import { WebOrderReceipt, webOrderReceiptSubject } from "@/emails/WebOrderReceipt";
-import { EACH_SEND_GAP_MS, sendEmail, sendEmailToEach } from "@/lib/email";
+import { EACH_SEND_GAP_MS, sendEmail, sendEmailToAndCc } from "@/lib/email";
 import { preparePoEmail } from "@/lib/po-email";
 import { env } from "@/lib/env";
 import { prisma } from "@/lib/prisma";
@@ -463,8 +463,8 @@ const ORDER_EMAIL_ROLES: Role[] = [Role.SUPER_ADMIN, Role.MEMBER, Role.PRODUCTIO
  * administrator. The client's own copy is Phase 32 — the sent screen promises
  * it by name, so it is sent from the same place and on the same read.
  *
- * Both go through `sendEmail` (the team's one person at a time), which never
- * throws, inside `after()`. A failed notification is a missing nudge, not a
+ * Both go through `sendEmail` (the team's as one email, super admins to and
+ * the rest copied), which never throws, inside `after()`. A failed notification is a missing nudge, not a
  * lost order.
  *
  * Since Phase 37 both carry the purchase order itself. `file` is null when the
@@ -504,15 +504,19 @@ async function notify(
         role: { in: ORDER_EMAIL_ROLES.filter((role) => viewers.has(role)) },
         disabledAt: null,
       },
-      select: { email: true },
+      select: { email: true, role: true },
     });
 
-    // One email per person, not one email to all of them: Resend refuses the
-    // whole send when any one address is refused, and four `@example.com`
-    // test users did exactly that to every staff copy until 2026-10-01.
+    // One email, to the super admins with everyone else copied in (the user's
+    // choice, 2026-10-01). Resend refuses a whole send when any one address is
+    // refused — four `@example.com` test users did exactly that to every
+    // staff copy until 2026-10-01 — so `sendEmailToAndCc` leaves those off
+    // and falls back to one email each if the combined one is still refused.
     if (staff.length > 0) {
-      const { failed } = await sendEmailToEach(
-        staff.map((person) => person.email),
+      const isAdmin = (person: { role: Role }) => person.role === Role.SUPER_ADMIN;
+      const { failed, skipped } = await sendEmailToAndCc(
+        staff.filter(isAdmin).map((person) => person.email),
+        staff.filter((person) => !isAdmin(person)).map((person) => person.email),
         {
           subject: webOrderPlacedSubject(
             order.buyer.name,
@@ -535,6 +539,9 @@ async function notify(
       );
       for (const miss of failed) {
         console.error(`[cart] order ${order.reference} not emailed to ${miss.to}: ${miss.error}`);
+      }
+      for (const address of skipped) {
+        console.error(`[cart] order ${order.reference} left off the email: ${address} (an @example.com or never-email address)`);
       }
       // The receipt is one more request against the same rate limit.
       await new Promise((done) => setTimeout(done, EACH_SEND_GAP_MS));
