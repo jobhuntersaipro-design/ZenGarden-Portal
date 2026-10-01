@@ -371,3 +371,20 @@ server write can wait: save when typing pauses, on Enter, and on blur.
 the cartons box and clicking Add to cart added 1 and toasted "1 carton
 added". Pressing Tab first worked, so it looked like a quirk.
 
+
+---
+
+## 14. A size container has no width of its own
+
+**Rule.** An element with `container-type: inline-size` (or `size`) does not
+size from its content: its intrinsic inline size is zero. Put one inside
+anything that shrink-wraps — a `shrink-0` flex item, `w-auto`, an inline-block,
+a `max-content` grid track — and it collapses to 0 while its fixed-width
+children spill over their neighbours. When a vendored part is a size
+container, give it a width at the call site, or put it in a box that has one.
+
+**The case (2026-10-01, reported by the user).** Arc's donut `figure` is a
+size container. On `/buyers/[id]` it sat in a `shrink-0` div beside the bar
+list; the div measured 0px and the 168px ring drew over the product names. No
+test and no overflow check can see it — the page is no wider. A scan for
+"box under 2px wide with a visible child over 20px" finds it in one pass.

@@ -1,3 +1,60 @@
+# Fix: a UI scan after Arc — the donut that collapsed, and what else it found
+
+## Status
+
+**Fixed on `claude/intelligent-mccarthy-85u9gh`** (2026-10-01). Reported with a
+screenshot of `/buyers/[id]`: "there's a bug on buyer details, please do a full
+scan on this project". The scan was a script run over 27 portal and admin
+pages, 6 shop pages and 3 auth pages at 1440 / 768 / 390: page overflow, boxes
+that collapse while their content spills out, overlapping text, hard-clipped
+text, sub-44px controls below `sm`.
+
+- **What they buy: the ring drew over the bars.** Arc's donut `figure` is a
+  size container (`container-type: inline-size`), so it has no width of its
+  own; inside the card's shrink-wrapped flex item it measured **0px** and the
+  168px ring spilled onto the list (also "Who buys it" on a product page). A
+  bare ring now says its own width (`w-donut`). Lessons §14.
+- **Every donut centre read "RM 6…".** The centre is ~90px; the exact figure
+  is 173px. The centre takes a compact figure (`formatMYRCompact`: RM 642K,
+  RM 1.5M) through a new `formatCenter` patch, and scales with the ring; the
+  legend, bars and screen-reader table keep the exact one. Measured: every
+  centre on the dashboard and buyer page fits (78/78).
+- **The centre was mislabelled.** It read "top market / top buyer / top
+  product" over the **total** (Arc's centre is the ring's total). Now "Total
+  sales", "Total spend", "Total units".
+- **Quantity read as ringgit.** With Quantity chosen, the donut printed units
+  as "RM …". `DonutShare` takes a `unit`.
+- **Bar labels cut without an ellipsis below `sm`**: the link was `display:
+  flex`, which never ellipsizes its own text. The label is its own span.
+- **Reorder signals' Upload PO** floated right over a wider caption when it
+  wrapped under the heading. Left-aligned.
+- **Products filter toolbar** was squeezed to ~140px beside search at 390,
+  cutting "No filters applied". Its own row on a phone, `min-w-72` above.
+- **Product cards**: the category pill ran under the "No image" pill on
+  two-up cards. One row; the category truncates.
+- **Catalogue rename** truncated "Zen Gar…" with room to spare (Arc reserved
+  66px for Save/Cancel at rest). Reserved only while editing.
+- **Sub-44px Arc controls at 390, all 44 now**: line-chart series toggles
+  (32), heatmap legend swatches (15×20), donut legend rows (40), catalogue
+  inline edit (33), phone country picker (36, hit area).
+
+## Verified
+
+Production build, local Postgres and the seed, as super admin and a local shop
+contact. After: 27 staff pages × 3 widths with **no overflow, 0 collapsed
+boxes, 0 clipped text**; the shop and auth pages unchanged. 1789 tests (4 new
+on `formatMYRCompact`), `tsc` clean, lint unchanged, build clean.
+
+## Not verified / left as is
+
+Production; a real phone. Left: a KPI value too long for its tile breaks
+mid-word ("Strawberr-y", `break-words`, deliberate over clipping); the shop's
+category chips at 36px (spec-dictated); text links inside sentences and
+breadcrumbs under 44px (the accepted class); the stock drawer's Settings-style
+switch at 42px wide.
+
+## Before that
+
 # Current feature: the rest of Arc, on real screens
 
 ## Status

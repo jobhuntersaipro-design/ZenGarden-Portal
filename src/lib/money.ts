@@ -37,6 +37,20 @@ export function formatMYR(value: MoneyInput, decimals: 0 | 2 = 2): string {
 }
 
 /**
+ * `RM 642K`, `RM 1.5M` — a figure for a space too small for the exact one
+ * (a donut's centre). Display only: it reads a number already summed for a
+ * chart, and the exact figure is always printed beside it.
+ */
+export function formatMYRCompact(value: number): string {
+  const sign = value < 0 ? "-" : "";
+  const figure = new Intl.NumberFormat("en-MY", {
+    notation: "compact",
+    maximumFractionDigits: Math.abs(value) >= 1_000_000 ? 1 : 0,
+  }).format(Math.abs(value));
+  return `${sign}${MYR_PREFIX}${figure}`;
+}
+
+/**
  * `1,234.50` — the figure without the currency, thousands grouped. The
  * purchase order prints its currency once, in the total's label, so every
  * figure in its columns uses this. Pass `0` for a count (`1,200` cartons).

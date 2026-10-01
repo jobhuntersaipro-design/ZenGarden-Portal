@@ -23,6 +23,8 @@ export interface DonutChartProps {
   /** Unit after values, such as "visits". */
   unit?: string;
   formatValue?: (value: number) => string;
+  /** The centre readout's own format, where the legend's exact figure would not fit the ring. */
+  formatCenter?: (value: number) => string;
   /** Center label at rest, above the total. */
   totalLabel?: string;
   /** Diameter in pixels. The chart scales down to fit narrower containers. */
@@ -171,7 +173,7 @@ function useReducedMotionSafe() {
   return !!useReducedMotion() && hydrated;
 }
 
-export function DonutChart({ data, label, unit = "", formatValue = value => grouped.format(value), totalLabel = "Total", size = 208, thickness = 24, groupBelow = .04, maxSegments = 6, otherLabel = "Other", activeKey, defaultActiveKey = null, onActiveChange, hiddenKeys, defaultHiddenKeys, onHiddenKeysChange, legendAction = "toggle", legend = true, emptyLabel = "No data yet", ref, className }: DonutChartProps) {
+export function DonutChart({ data, label, unit = "", formatValue = value => grouped.format(value), formatCenter, totalLabel = "Total", size = 208, thickness = 24, groupBelow = .04, maxSegments = 6, otherLabel = "Other", activeKey, defaultActiveKey = null, onActiveChange, hiddenKeys, defaultHiddenKeys, onHiddenKeysChange, legendAction = "toggle", legend = true, emptyLabel = "No data yet", ref, className }: DonutChartProps) {
   const reduced = useReducedMotionSafe();
   const figure = useRef<HTMLElement>(null);
   useImperativeHandle(ref, () => figure.current as HTMLElement);
@@ -389,7 +391,7 @@ export function DonutChart({ data, label, unit = "", formatValue = value => grou
       <div className={styles.center} aria-hidden="true">
         {readouts.map((item, index) => <motion.span key={item.key} className={styles.readout} initial={false} {...drum(index - activeIndex, reduced)}>
           <span className={styles.centerLabel}>{item.label}</span>
-          <span className={styles.centerValue}>{item.value || item.meta ? <Count value={item.value} format={formatValue} reduced={reduced} /> : " "}</span>
+          <span className={styles.centerValue}>{item.value || item.meta ? <Count value={item.value} format={formatCenter ?? formatValue} reduced={reduced} /> : " "}</span>
           <span className={styles.centerMeta}>{item.meta ? <><Count value={total && !hidden.has(item.key) ? item.value / total : 0} format={shareText} reduced={reduced} /> of {totalLabel.toLowerCase()}</> : unit || " "}</span>
         </motion.span>)}
       </div>

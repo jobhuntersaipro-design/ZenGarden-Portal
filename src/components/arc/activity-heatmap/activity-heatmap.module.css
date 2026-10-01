@@ -87,4 +87,5 @@
   .cell[data-empty], .grid[data-reveal="hidden"] .cell[data-empty] { opacity: 0; transform: none; }
   .month, .ring { transition: opacity 150ms linear; }
 }
+@media (max-width: 639.98px) { .swatch { width: 44px; height: 44px; } }
 }

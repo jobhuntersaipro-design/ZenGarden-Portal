@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { Prisma } from "@/generated/prisma/client";
-import { formatGrouped, formatMYR, parseMYR, sumDecimals } from "@/lib/money";
+import { formatGrouped, formatMYR, formatMYRCompact, parseMYR, sumDecimals } from "@/lib/money";
 
 describe("formatMYR", () => {
   it("always shows two decimals", () => {
@@ -61,5 +61,14 @@ describe("sumDecimals", () => {
 
   it("returns zero for an empty list", () => {
     expect(sumDecimals([]).toString()).toBe("0");
+  });
+});
+
+describe("formatMYRCompact", () => {
+  it("shortens a figure for a small space, keeping RM with it", () => {
+    expect(formatMYRCompact(642043.26)).toBe("RM\u00A0642K");
+    expect(formatMYRCompact(1507428.31)).toBe("RM\u00A01.5M");
+    expect(formatMYRCompact(950)).toBe("RM\u00A0950");
+    expect(formatMYRCompact(-12400)).toBe("-RM\u00A012K");
   });
 });

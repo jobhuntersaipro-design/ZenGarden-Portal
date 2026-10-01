@@ -37,16 +37,24 @@ export function ProductCard({
     >
       <div className="relative aspect-4/3 bg-surface-soft">
         <ProductThumb name={product.name} url={imageUrl} />
-        <span className="absolute left-xs top-xs rounded-full bg-surface-soft px-sm py-xxs text-[length:var(--text-caption)] text-ink-secondary">
-          {product.category}
-        </span>
-        {flag ? (
+        {/* One row, so a long category truncates before the flag instead of
+            running under it (two-up cards at 390 read "Hand wash No image"
+            with one pill on top of the other). */}
+        <div className="absolute inset-x-xs top-xs flex items-start justify-between gap-xxs">
           <span
-            className={`absolute right-xs top-xs rounded-full bg-surface-soft px-sm py-xxs text-[length:var(--text-caption)] ${flag.tone}`}
+            title={product.category}
+            className="min-w-0 truncate rounded-full bg-surface-soft px-sm py-xxs text-[length:var(--text-caption)] text-ink-secondary"
           >
-            {flag.label}
+            {product.category}
           </span>
-        ) : null}
+          {flag ? (
+            <span
+              className={`shrink-0 rounded-full bg-surface-soft px-sm py-xxs text-[length:var(--text-caption)] ${flag.tone}`}
+            >
+              {flag.label}
+            </span>
+          ) : null}
+        </div>
       </div>
 
       <div className="flex flex-1 flex-col gap-xxs p-md">

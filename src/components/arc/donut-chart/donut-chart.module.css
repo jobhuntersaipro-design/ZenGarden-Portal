@@ -46,4 +46,5 @@
 
 .srOnly { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; }
 @media (prefers-reduced-motion: reduce) { .segment, .track, .row, .dot, .rowLabel, .rowValue, .rowShare { transition: none; } }
+.ring { container-type: inline-size; } .centerValue { font-size: min(var(--arc-text-2xl), 12cqi); } @media (max-width: 639.98px) { .row { min-height: 44px; } }
 }

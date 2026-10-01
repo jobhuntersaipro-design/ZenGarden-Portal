@@ -98,4 +98,5 @@
   .shape, .shape::after, .check, .slot, .control { transition-duration: 0ms; }
 }
 @media (prefers-contrast: more) { .shape::after { border-color: var(--arc-border-strong); } }
+@media (max-width: 639.98px) { .lid .trigger::after { content: ""; position: absolute; inset: -4px; } }
 }

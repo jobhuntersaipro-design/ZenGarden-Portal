@@ -61,4 +61,5 @@
   .toggle, .swatch::before, .line, .tooltip, .crosshair, .dot, .series { transition: none; }
   .chart[data-loading] .series, .skeleton { animation: none; }
 }
+@media (max-width: 639.98px) { .toggle { min-height: 44px; } }
 }

@@ -77,4 +77,5 @@ textarea.control { white-space: pre-wrap; overflow-wrap: break-word; }
 .srOnly { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; }
 @keyframes spin { to { transform: rotate(360deg); } }
 @media (prefers-reduced-motion: reduce) { .spinner { animation: none; border-right-color: var(--arc-text-muted); border-top-color: transparent; } .layer, .save, .cancel, .pencil { transition: none; } }
+.root:not([data-editing]):not([data-multiline]) .line { padding-inline-end: 0; } @media (max-width: 639.98px) { .display, .control { padding-block: calc((44px - var(--leading)) / 2 - 1px); } }
 }

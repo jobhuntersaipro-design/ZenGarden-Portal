@@ -28,7 +28,9 @@ export function ReorderSignalsCard({
             From this buyer&rsquo;s full history, not the selected range
           </p>
         </div>
-        <div className="text-right">
+        {/* Left-aligned: when this wraps under the heading (half-width
+            card), a right-aligned link floated over a wider caption. */}
+        <div>
           {/* A signal is only useful if acting on it is one click away. The
               label names what happens: Zen Garden is the seller, so nothing
               here is being bought. */}

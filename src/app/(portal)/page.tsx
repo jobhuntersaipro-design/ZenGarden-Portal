@@ -249,18 +249,18 @@ async function DashboardPage({
             <DonutShare
               eyebrow="Sales by market"
               slices={data.marketShare}
-              centreLabel="top market"
+              centreLabel="Total sales"
             />
           )}
           <DonutShare
             eyebrow="Share by buyer"
             slices={data.buyerShare}
-            centreLabel="top buyer"
+            centreLabel="Total sales"
           />
           <DonutShare
             eyebrow="Share by product"
             slices={data.productShare}
-            centreLabel="top product"
+            centreLabel="Total sales"
           />
         </div>
         <InRangeGrid data={data} />

@@ -201,6 +201,9 @@ export function ProductToolbar({
             market on product rows only, where `FamilyRow.markets` is a count
             and a market row *is* the thing it would select. "No market" is a
             named value, offered while some product carries none. */}
+        {/* Its own line on a phone: beside the search it was squeezed to
+            ~140px and cut "No filters applied" short. */}
+        <div className="min-w-0 basis-full sm:min-w-72 sm:basis-auto sm:flex-1">
         <FilterToolbar
           label="Product filters"
           filters={activeFilters}
@@ -222,6 +225,7 @@ export function ProductToolbar({
               : undefined
           }
         />
+        </div>
 
         {/* The three things the catalog can be a list of. Every switch
             drops the sort, since the keys differ, and drops each filter the

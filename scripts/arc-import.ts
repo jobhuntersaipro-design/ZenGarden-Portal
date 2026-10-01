@@ -158,7 +158,68 @@ export const PATCHES: { file: RegExp; apply: (source: string) => string; why: st
     apply: (source) => replaceOnce(source, "height: 36px; margin-top: 2px;", "height: 44px; margin-top: 2px;"),
     why: "The row itself, to match the 46px the TSX animates each row to.",
   },
+  {
+    file: /^donut-chart\/donut-chart\.tsx$/,
+    apply: (source) =>
+      replaceOnce(
+        replaceOnce(
+          replaceOnce(
+            source,
+            "  formatValue?: (value: number) => string;",
+            "  formatValue?: (value: number) => string;\n  /** The centre readout's own format, where the legend's exact figure would not fit the ring. */\n  formatCenter?: (value: number) => string;",
+          ),
+          "formatValue = value => grouped.format(value), ",
+          "formatValue = value => grouped.format(value), formatCenter, ",
+        ),
+        "<Count value={item.value} format={formatValue} reduced={reduced} /> : \" \"}</span>",
+        "<Count value={item.value} format={formatCenter ?? formatValue} reduced={reduced} /> : \" \"}</span>",
+      ),
+    why: "A 168px ring's centre is ~90px wide, so an exact money figure (RM 642,043.26, 173px) printed as \"RM 6…\" on every donut. The centre takes a compact figure; the legend, bars and screen-reader table keep the exact one.",
+  },
+  {
+    file: /^line-chart\/line-chart\.module\.css$/,
+    apply: (source) => appendInLayer(source, "@media (max-width: 639.98px) { .toggle { min-height: 44px; } }"),
+    why: "The series toggles are 32px; below sm they are touch targets and take the 44px floor.",
+  },
+  {
+    file: /^donut-chart\/donut-chart\.module\.css$/,
+    apply: (source) =>
+      appendInLayer(
+        source,
+        ".ring { container-type: inline-size; } .centerValue { font-size: min(var(--arc-text-2xl), 12cqi); } @media (max-width: 639.98px) { .row { min-height: 44px; } }",
+      ),
+    why: "Legend rows are 40px buttons; a phone gets 44. And the centre figure scales with the ring: at 26px a 168px ring's ~90px centre cut even a compact RM 501.4K.",
+  },
+  {
+    file: /^activity-heatmap\/activity-heatmap\.module\.css$/,
+    apply: (source) => appendInLayer(source, "@media (max-width: 639.98px) { .swatch { width: 44px; height: 44px; } }"),
+    why: "Each legend swatch is a 15×20 button that filters the grid; below sm the button is 44px and the swatch inside it keeps its size.",
+  },
+  {
+    file: /^phone-input\/phone-input\.module\.css$/,
+    apply: (source) =>
+      appendInLayer(source, '@media (max-width: 639.98px) { .lid .trigger::after { content: ""; position: absolute; inset: -4px; } }'),
+    why: "The country trigger sits 3px inside the 44px field, so it measures 36; its hit area reaches the field's edge on a phone.",
+  },
+  {
+    file: /^inline-edit\/inline-edit\.module\.css$/,
+    apply: (source) =>
+      appendInLayer(
+        source,
+        ".root:not([data-editing]):not([data-multiline]) .line { padding-inline-end: 0; } @media (max-width: 639.98px) { .display, .control { padding-block: calc((44px - var(--leading)) / 2 - 1px); } }",
+      ),
+    why: "At rest the 66px kept for Save/Cancel truncated a short value (\"Zen Gar…\") in a narrow row, so it is reserved only while editing; and the display is 33px, so a phone pads display and field alike to 44.",
+  },
 ];
+
+/**
+ * Adds rules at the end of a vendored stylesheet, after the rules they
+ * override (the `@layer arc` wrapper goes on afterwards, in `withHeader`).
+ */
+export function appendInLayer(source: string, rules: string): string {
+  if (!source.trim()) throw new Error("patch is stale: empty stylesheet");
+  return `${source.trimEnd()}\n${rules}\n`;
+}
 
 /** `source.replace` that refuses to do nothing, so an upstream change cannot silently drop a patch. */
 export function replaceOnce(source: string, from: string, to: string): string {

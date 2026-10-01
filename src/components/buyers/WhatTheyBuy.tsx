@@ -90,7 +90,7 @@ function HBarList({
                       title={slice.label}
                       className="flex min-h-control-md min-w-0 flex-1 items-center truncate rounded-xxs text-[length:var(--text-body-sm)] text-ink underline-offset-2 hover:text-brand-link hover:underline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-focus sm:block sm:min-h-0"
                     >
-                      {slice.label}
+                      <span className="min-w-0 truncate">{slice.label}</span>
                     </Link>
                   ) : (
                     <span
@@ -137,7 +137,7 @@ function HBarList({
                         title={member.label}
                         className="flex min-h-control-md min-w-0 flex-1 items-center truncate rounded-xxs text-[length:var(--text-body-sm)] text-ink underline-offset-2 hover:text-brand-link hover:underline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-focus sm:block sm:min-h-0"
                       >
-                        {member.label}
+                        <span className="min-w-0 truncate">{member.label}</span>
                       </Link>
                     ) : (
                       <span
@@ -234,11 +234,12 @@ export function WhatTheyBuy({
         </p>
       ) : (
         <div className="flex flex-wrap items-start gap-lg">
-          <div className="shrink-0">
+          <div className="mx-auto shrink-0 sm:mx-0">
             <DonutShare
               eyebrow=""
               slices={slices}
-              centreLabel={`top product by ${measure === "value" ? "value" : "units"}`}
+              centreLabel={measure === "value" ? "Total spend" : "Total units"}
+              unit={measure === "value" ? "money" : "units"}
               bare
             />
           </div>
