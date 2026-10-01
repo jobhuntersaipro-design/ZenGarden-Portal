@@ -1,7 +1,7 @@
 "use client";
 
+import { Accordion } from "@/components/arc/accordion/accordion";
 import { useId, useRef, useState } from "react";
-import { ChevronDown } from "lucide-react";
 import { toast } from "@/lib/toast";
 import { createBuyer } from "@/actions/admin-buyers";
 import { Rise } from "@/components/portal/Rise";
@@ -55,10 +55,8 @@ export function BuyerForm({
 }) {
   const { pending: navigating, push } = useUrlNavigation();
   const [draft, setDraft] = useState<Draft>(BLANK);
-  const [moreOpen, setMoreOpen] = useState(false);
   const [saving, setSaving] = useState(false);
   const [marketMissing, setMarketMissing] = useState(false);
-  const moreId = useId();
   const marketErrorId = useId();
   // The picker is a popover trigger inside two components, so the button is
   // reached through the wrapper rather than by threading a ref down to it.
@@ -235,38 +233,18 @@ export function BuyerForm({
       </Rise>
 
       <Rise index={3} className="mb-lg">
-        <section className="rounded-lg border border-hairline bg-canvas">
-          <button
-            type="button"
-            aria-expanded={moreOpen}
-            aria-controls={moreId}
-            onClick={() => setMoreOpen((open) => !open)}
-            className="flex min-h-control-md w-full items-center justify-between gap-sm rounded-lg p-lg text-left focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-focus"
-          >
-            <span>
-              <span className={`block ${label}`}>More details</span>
-              <span className={`mt-xxs block ${caption}`}>
-                Delivery address, payment terms and an internal remark. All optional.
-              </span>
-            </span>
-            <ChevronDown
-              aria-hidden
-              className={`size-4 shrink-0 text-ink-tertiary transition-transform duration-200 motion-reduce:transition-none ${
-                moreOpen ? "rotate-180" : ""
-              }`}
-            />
-          </button>
-          {/* The one grid row goes 0fr → 1fr, which is what lets the height
-              animate without measuring it. The inner box must be min-h-0 and
-              overflow-hidden or the row refuses to shrink below its content. */}
-          <div
-            id={moreId}
-            className={`grid transition-[grid-template-rows] duration-300 ease-out motion-reduce:transition-none ${
-              moreOpen ? "disclosure-open" : "disclosure-closed"
-            }`}
-          >
-            <div className="min-h-0 overflow-hidden">
-              <div className="flex flex-col gap-md px-lg pb-lg" hidden={!moreOpen}>
+        {/* Arc's accordion: the optional fields fold away under one row
+            whose height follows a spring. Its title carries what is inside,
+            so nobody has to open it to find out. */}
+        <section className="rounded-lg bg-canvas px-lg [&_h3>button]:text-left">
+          <Accordion
+            defaultOpen={-1}
+            items={[
+              {
+                title:
+                  "More details — delivery address, payment terms and an internal remark. All optional.",
+                content: (
+                  <div className="flex flex-col gap-md pt-xs">
                 <div className="flex flex-col gap-xxs">
                   <label htmlFor="buyer-address" className={label}>
                     Delivery address
@@ -304,9 +282,11 @@ export function BuyerForm({
                   />
                   <p className={caption}>Only our team sees this — it never appears on the shop.</p>
                 </div>
-              </div>
-            </div>
-          </div>
+                  </div>
+                ),
+              },
+            ]}
+          />
         </section>
       </Rise>
 

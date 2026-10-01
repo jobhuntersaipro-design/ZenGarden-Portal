@@ -1,5 +1,6 @@
 "use client";
 
+import { ReviewSplit } from "@/components/review/ReviewSplit";
 import { ConfirmMorph } from "@/components/arc/confirm-morph/confirm-morph";
 import {
   useCallback,
@@ -293,8 +294,7 @@ export function ReviewForm({
         {/* The document leads and the header fields sit in the rail beside it
             from `xl`; below `xl` they stack, document first. The line items
             need 952px, so they run full width underneath both. */}
-        <div className="grid min-w-0 gap-xl xl:grid-cols-document">
-          <div className="min-w-0 xl:sticky xl:top-md xl:self-start">{document}</div>
+        <ReviewSplit document={document}>
           <div className="@container flex min-w-0 flex-col gap-md">
             {/* Buyer leads on its own full-width row so a long buyer name is never
                 the value that truncates (G4, design reference §3.4). */}
@@ -388,7 +388,7 @@ export function ReviewForm({
               />
             </div>
           </div>
-        </div>
+        </ReviewSplit>
 
         <section className="min-w-0">
           <div className="flex items-baseline justify-between gap-sm">

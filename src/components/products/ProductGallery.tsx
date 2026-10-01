@@ -1,5 +1,6 @@
 "use client";
 
+import { Carousel } from "@/components/arc/carousel/carousel";
 import { useEffect, useRef, useState } from "react";
 import { ImageOff } from "lucide-react";
 
@@ -127,6 +128,33 @@ export function ProductGallery({
           </>
         )}
       </section>
+    );
+  }
+
+  // A buyer swipes through the photos: Arc's carousel, one photo a slide,
+  // with its dots and drag. Staff keep the thumbnail strip, which shows every
+  // image at once — what someone checking a listing needs.
+  if (audience === "buyer" && usable.length > 1) {
+    return (
+      <Carousel
+        label={`Photos of ${productName}`}
+        slideSize="100cqw"
+        slideLabel={(index, count) => `Photo ${index + 1} of ${count}`}
+      >
+        {usable.map((image) => (
+          <div
+            key={image.id}
+            className="aspect-4/3 overflow-hidden rounded-lg bg-surface-soft"
+          >
+            <GalleryImage
+              src={image.url!}
+              alt={productName}
+              onFail={() => fail(image.id)}
+              className="size-full object-cover"
+            />
+          </div>
+        ))}
+      </Carousel>
     );
   }
 

@@ -1,8 +1,9 @@
 "use client";
 
+import { InlineEdit } from "@/components/arc/inline-edit/inline-edit";
 import { useState } from "react";
 import Link from "next/link";
-import { Check, Pencil, Plus, Trash2, X } from "lucide-react";
+import { Plus, Trash2 } from "lucide-react";
 import { toast } from "@/lib/toast";
 import { createLabel, removeLabel, renameLabel } from "@/actions/catalog-labels";
 import { Button } from "@/components/ui/button";
@@ -36,8 +37,6 @@ export function CatalogLabelSection({
   const refresh = useAwaitableRefresh();
   const [adding, setAdding] = useState("");
   const [busy, setBusy] = useState<string | null>(null);
-  const [editing, setEditing] = useState<string | null>(null);
-  const [draft, setDraft] = useState("");
 
   const noun = LABEL_NOUN[kind];
   // The catalog filters on brand and category by name; variant and market are
@@ -69,35 +68,35 @@ export function CatalogLabelSection({
     }
   };
 
-  const rename = async (row: LabelRow) => {
-    const value = draft.trim();
-    if (!value || value === row.value) {
-      setEditing(null);
-      return;
-    }
-    setBusy(row.id);
+  /**
+   * Arc's inline edit saves through this: resolving keeps the new text,
+   * throwing rolls it back to the stored value, so a refusal can never leave
+   * a name on screen that the catalogue does not hold.
+   */
+  const rename = async (row: LabelRow, next: string) => {
+    const value = next.trim();
+    if (!value || value === row.value) return;
+    let result: Awaited<ReturnType<typeof renameLabel>>;
     try {
-      const result = await renameLabel({ id: row.id, value });
-      if (!result.success) {
-        toast.error(result.error);
-        return;
-      }
-      setEditing(null);
-      // The count is the point: a rename here rewrote that many products, and
-      // a silent success would hide how far the change reached.
-      toast.success(
-        result.data.products > 0
-          ? `Renamed to “${value}” — ${result.data.products} ${
-              result.data.products === 1 ? "product" : "products"
-            } updated.`
-          : `Renamed to “${value}”.`,
-      );
-      await refresh();
+      result = await renameLabel({ id: row.id, value });
     } catch {
       toast.error("We couldn't reach the server. Try again.");
-    } finally {
-      setBusy(null);
+      throw new Error("unreachable");
     }
+    if (!result.success) {
+      toast.error(result.error);
+      throw new Error(result.error);
+    }
+    // The count is the point: a rename here rewrote that many products, and
+    // a silent success would hide how far the change reached.
+    toast.success(
+      result.data.products > 0
+        ? `Renamed to “${value}” — ${result.data.products} ${
+            result.data.products === 1 ? "product" : "products"
+          } updated.`
+        : `Renamed to “${value}”.`,
+    );
+    await refresh();
   };
 
   const remove = async (row: LabelRow) => {
@@ -138,39 +137,28 @@ export function CatalogLabelSection({
                 key={row.id}
                 className="flex flex-wrap items-center gap-xs py-xs sm:flex-nowrap"
               >
-                {editing === row.id ? (
-                  <>
-                    <Input
-                      aria-label={`Rename ${row.value}`}
-                      autoFocus
-                      value={draft}
-                      onChange={(event) => setDraft(event.target.value)}
-                      onKeyDown={(event) => {
-                        if (event.key === "Enter") void rename(row);
-                        if (event.key === "Escape") setEditing(null);
-                      }}
-                      className="min-w-0 flex-1"
-                    />
-                    <RowButton
-                      label={`Save ${row.value}`}
-                      onClick={() => void rename(row)}
-                      disabled={working}
-                    >
-                      {working ? <Spinner /> : <Check className="size-4" aria-hidden />}
-                    </RowButton>
-                    <RowButton
-                      label="Cancel rename"
-                      onClick={() => setEditing(null)}
-                      disabled={working}
-                    >
-                      <X className="size-4" aria-hidden />
-                    </RowButton>
-                  </>
-                ) : (
-                  <>
-                    <span className="min-w-0 flex-1 truncate text-[length:var(--text-body-sm)] text-ink">
-                      {row.value}
-                    </span>
+                <>
+                    {/* Arc's inline edit: the value is its own rename field.
+                        A value the intake writes stays plain text. */}
+                    {locked ? (
+                      <span
+                        className="min-w-0 flex-1 truncate text-[length:var(--text-body-sm)] text-ink"
+                        title="The purchase-order intake writes this value, so it stays"
+                      >
+                        {row.value}
+                      </span>
+                    ) : (
+                      <span className="min-w-0 flex-1">
+                        <InlineEdit
+                          value={row.value}
+                          label={`Rename ${row.value}`}
+                          validate={(next) =>
+                            next.trim() ? null : `A ${noun.one} needs a name.`
+                          }
+                          onSave={(next) => rename(row, next)}
+                        />
+                      </span>
+                    )}
                     {/* The count is a link into the catalog filtered by this
                         value, so "3 products" can be read rather than trusted. */}
                     {row.products > 0 ? (
@@ -185,21 +173,6 @@ export function CatalogLabelSection({
                         No products
                       </span>
                     )}
-                    <RowButton
-                      label={`Rename ${row.value}`}
-                      disabled={locked || working}
-                      title={
-                        locked
-                          ? "The purchase-order intake writes this value, so it stays"
-                          : undefined
-                      }
-                      onClick={() => {
-                        setEditing(row.id);
-                        setDraft(row.value);
-                      }}
-                    >
-                      <Pencil className="size-4" aria-hidden />
-                    </RowButton>
                     <RowButton
                       label={`Remove ${row.value}`}
                       // Disabled with the reason on the control, not a failure
@@ -216,8 +189,7 @@ export function CatalogLabelSection({
                     >
                       {working ? <Spinner /> : <Trash2 className="size-4" aria-hidden />}
                     </RowButton>
-                  </>
-                )}
+                </>
               </li>
             );
           })}

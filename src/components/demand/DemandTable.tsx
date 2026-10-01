@@ -4,6 +4,7 @@ import { ChevronRight } from "lucide-react";
 import Link from "next/link";
 import { useState } from "react";
 import { Scroller } from "@/components/demand/Scroller";
+import { HoverCard } from "@/components/arc/hover-card/hover-card";
 import { Reveal } from "@/components/portal/Reveal";
 import { StageBadge } from "@/components/portal/StatusBadge";
 import { usePresence } from "@/hooks/usePresence";
@@ -176,13 +177,18 @@ function ProductRows({
               />
             </button>
             <div className="min-w-0">
-              <Link
-                href={`/products/${row.productId}`}
-                className="line-clamp-2 break-words text-[length:var(--text-body-sm)] font-semibold text-ink hover:text-brand-link sm:line-clamp-none sm:block sm:truncate focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-focus"
-                title={row.name}
-              >
-                {row.name}
-              </Link>
+              {/* Arc's hover card: the pinned column cuts long names, so
+                  hovering or focusing one shows the whole product and what
+                  this row adds up to, without leaving the board. */}
+              <HoverCard side="right" align="start" content={<ProductPreview row={row} />}>
+                <Link
+                  href={`/products/${row.productId}`}
+                  className="line-clamp-2 break-words text-[length:var(--text-body-sm)] font-semibold text-ink hover:text-brand-link sm:line-clamp-none sm:block sm:truncate focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-focus"
+                  title={row.name}
+                >
+                  {row.name}
+                </Link>
+              </HoverCard>
               <p className="break-words font-mono text-[length:var(--text-caption)] text-ink-tertiary sm:truncate">
                 {row.sku}
                 {/* On a phone the market takes its own line rather than
@@ -453,5 +459,34 @@ function Td({
         children
       )}
     </td>
+  );
+}
+
+/** What the hover card shows: the product in full, then the row's figures. */
+function ProductPreview({ row }: { row: DemandRow }) {
+  const facts: [string, string][] = [
+    ["SKU", row.sku],
+    ["Market", row.market ?? "—"],
+    ["Committed", `${row.committed.toLocaleString("en-MY")} cartons`],
+    ["Orders", row.orders.toLocaleString("en-MY")],
+    [
+      "Stock count",
+      row.stockCartons === null
+        ? "Not counted"
+        : `${row.stockCartons.toLocaleString("en-MY")} cartons`,
+    ],
+  ];
+  return (
+    <div className="flex max-w-72 flex-col gap-xs">
+      <p className="text-[length:var(--text-body-sm)] font-semibold text-ink">{row.name}</p>
+      <dl className="grid grid-cols-[auto_1fr] gap-x-sm gap-y-xxs text-[length:var(--text-caption)]">
+        {facts.map(([label, value]) => (
+          <div key={label} className="contents">
+            <dt className="text-ink-tertiary">{label}</dt>
+            <dd className="tabular-nums text-ink">{value}</dd>
+          </div>
+        ))}
+      </dl>
+    </div>
   );
 }

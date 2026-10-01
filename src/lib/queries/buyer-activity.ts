@@ -33,11 +33,18 @@ const WEB_ORDER_STATUS: Record<WebOrderStatus, string> = {
 export async function loadBuyerActivity(
   buyerId: string,
   { page, kind }: { page: number; kind: ActivityKind | "all" },
-): Promise<{ entries: ActivityEntry[]; total: number; failedWindowHours: number }> {
+): Promise<{
+  entries: ActivityEntry[];
+  total: number;
+  failedWindowHours: number;
+  /** When this was read, for the timeline's relative times and day groups. */
+  readAt: number;
+}> {
   // Each source is bounded by what the requested page could possibly need, so
   // a customer with four years of orders does not load four years of rows.
   const take = page * ACTIVITY_PAGE_SIZE;
-  const failedSince = new Date(Date.now() - ATTEMPT_RETENTION_HOURS * 3_600_000);
+  const readAt = Date.now();
+  const failedSince = new Date(readAt - ATTEMPT_RETENTION_HOURS * 3_600_000);
 
   const [
     signIns,
@@ -255,5 +262,6 @@ export async function loadBuyerActivity(
       { kind, page, size: ACTIVITY_PAGE_SIZE, total: totalFor(kind) },
     ),
     failedWindowHours: ATTEMPT_RETENTION_HOURS,
+    readAt,
   };
 }

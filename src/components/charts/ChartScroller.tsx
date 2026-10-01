@@ -2,7 +2,7 @@
 
 import type { ReactNode } from "react";
 import { shownTickCount } from "@/components/charts/labels";
-import { useEdgeFades } from "@/hooks/useEdgeFades";
+import { ScrollArea } from "@/components/arc/scroll-area/scroll-area";
 
 /**
  * Gives a chart a floor on its plot width and scrolls it sideways when the
@@ -35,8 +35,6 @@ export function ChartScroller({
    * twelve, however many buckets there are.
    */
   labels,
-  /** The surface behind the chart, so the fade dissolves into it. */
-  fade = "canvas",
   className = "",
   children,
 }: {
@@ -44,12 +42,9 @@ export function ChartScroller({
   axisWidth?: number;
   perBucket?: number;
   labels?: string[];
-  fade?: "canvas" | "surface";
   className?: string;
   children: ReactNode;
 }) {
-  const { ref, clipped, measure } = useEdgeFades<HTMLDivElement>();
-
   const longest =
     labels?.reduce((max, label) => Math.max(max, label.length), 0) ?? 0;
   const labelFloor =
@@ -57,37 +52,27 @@ export function ChartScroller({
       ? shownTickCount(buckets) * (longest * CHAR_PX + TICK_GAP_PX)
       : 0;
   const minWidth = axisWidth + Math.max(buckets * perBucket, labelFloor);
-  // Written out rather than interpolated: Tailwind only emits the classes it
-  // can see as whole strings.
-  const from = fade === "surface" ? "from-surface" : "from-canvas";
 
+  // Arc's scroll area: its own edge fades (a mask, so they dissolve into
+  // whatever surface sits behind), scrollbars that show while scrolling, and
+  // a vertical wheel turned sideways. Unlabelled, so it adds no tab stop.
   return (
-    <div className={`relative ${className}`}>
-      <div ref={ref} onScroll={measure} className="overflow-x-auto">
-        {/* `min-width` in px against a `100%` floor: the chart fills the card
-            whenever the card is wide enough, and only overflows when it is not. */}
-        <div
-          style={{
-            minWidth: `min(100%, ${minWidth}px)`,
-            width: `max(100%, ${minWidth}px)`,
-          }}
-        >
-          {children}
-        </div>
+    <ScrollArea
+      orientation="horizontal"
+      fade={32}
+      wheelToHorizontal={false}
+      className={className}
+    >
+      {/* `min-width` in px against a `100%` floor: the chart fills the card
+          whenever the card is wide enough, and only overflows when it is not. */}
+      <div
+        style={{
+          minWidth: `min(100%, ${minWidth}px)`,
+          width: `max(100%, ${minWidth}px)`,
+        }}
+      >
+        {children}
       </div>
-
-      {clipped.left ? (
-        <div
-          aria-hidden
-          className={`pointer-events-none absolute inset-y-0 left-0 w-lg bg-linear-to-r to-transparent ${from}`}
-        />
-      ) : null}
-      {clipped.right ? (
-        <div
-          aria-hidden
-          className={`pointer-events-none absolute inset-y-0 right-0 w-lg bg-linear-to-l to-transparent ${from}`}
-        />
-      ) : null}
-    </div>
+    </ScrollArea>
   );
 }

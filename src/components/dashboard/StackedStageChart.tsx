@@ -184,7 +184,6 @@ export function StackedStageChart({
       buckets={points.length}
       labels={points.map((point) => point.label)}
       axisWidth={96}
-      fade="surface"
     >
       <div className="h-72 w-full">
         <ResponsiveContainer onResize={labels.onResize}>

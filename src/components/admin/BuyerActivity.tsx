@@ -5,9 +5,11 @@ import { usePathname, useSearchParams } from "next/navigation";
 import { ChoiceButton } from "@/components/portal/ChoiceButton";
 import { SegmentGroup } from "@/components/portal/SegmentGroup";
 import { TablePagination } from "@/components/portal/TablePagination";
-import { PersonChip } from "@/components/ui/person";
+import { FileText, LogIn, Pencil, ShoppingCart } from "lucide-react";
+import { Timeline } from "@/components/arc/timeline/timeline";
+import { roleLabel } from "@/lib/permissions/roles";
+import { TIME_ZONE } from "@/lib/dates";
 import { usePendingChoice } from "@/hooks/usePendingChoice";
-import { formatDateTime } from "@/lib/dates";
 import {
   ACTIVITY_PAGE_SIZE,
   type ActivityEntry,
@@ -22,18 +24,34 @@ const FILTERS: { value: ActivityKind | "all"; label: string; empty: string }[] =
   { value: "change", label: "Changes", empty: "Nobody has changed this account yet." },
 ];
 
+/** What a row without a portrait shows: the kind of thing that happened. */
+function KindIcon({ kind }: { kind: ActivityKind }) {
+  const Icon =
+    kind === "sign-in"
+      ? LogIn
+      : kind === "shop-order"
+        ? ShoppingCart
+        : kind === "purchase-order"
+          ? FileText
+          : Pencil;
+  return <Icon className="size-4" strokeWidth={1.75} aria-hidden />;
+}
+
 export function BuyerActivity({
   entries,
   total,
   kind,
   page,
   failedWindowHours,
+  now,
 }: {
   entries: ActivityEntry[];
   total: number;
   kind: ActivityKind | "all";
   page: number;
   failedWindowHours: number;
+  /** The server's clock, so relative times and day groups hydrate as rendered. */
+  now: number;
 }) {
   const pathname = usePathname();
   const searchParams = useSearchParams();
@@ -78,48 +96,36 @@ export function BuyerActivity({
           {FILTERS.find((filter) => filter.value === kind)?.empty}
         </p>
       ) : (
-        <ol className="flex flex-col">
-          {entries.map((entry) => (
-            <li
-              key={entry.id}
-              className="flex flex-wrap items-baseline gap-xs border-b border-hairline py-xs last:border-0"
-            >
-              <span className="shrink-0 font-mono text-[length:var(--text-caption)] text-ink-tertiary">
-                {formatDateTime(entry.at)}
-              </span>
-              {/* The role rides with the name: this list mixes a buyer's own
-                  contacts signing in and ordering with ops staff confirming,
-                  editing and advancing, and the avatar alone does not say
-                  which side of that a row came from. */}
-              {entry.actor ? (
-                <PersonChip
-                  name={entry.actor.name}
-                  image={entry.actor.image}
-                  role={entry.actor.role}
-                />
-              ) : null}
-              {/* `basis-full` below `sm`, the legend's own rule in
-                  `WhatTheyBuy`: with `flex-1` the sentence is whatever the
-                  timestamp and the person chip leave on the line, and at 390
-                  that measured **5px** — so the PO link overflowed its own
-                  column and pushed the page to 395. A sliver is not a column;
-                  the sentence takes its own line under the two chips instead,
-                  and goes back beside them above `sm`. */}
-              <span className="min-w-0 basis-full text-[length:var(--text-body-sm)] text-ink sm:flex-1 sm:basis-0">
-                {entry.href ? (
-                  <Link
-                    href={entry.href}
-                    className="text-brand-link underline-offset-2 hover:underline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-focus"
-                  >
-                    {entry.text}
-                  </Link>
-                ) : (
-                  entry.text
-                )}
-              </span>
-            </li>
-          ))}
-        </ol>
+        // Arc's timeline: day groups, a line drawing down the rows, and the
+        // actor's job beside their name — this list mixes a buyer's own
+        // contacts signing in and ordering with ops staff confirming, editing
+        // and advancing, and the avatar alone does not say which side of that
+        // a row came from. A row that names a purchase order opens to its link.
+        <Timeline
+          label="Account activity"
+          now={now}
+          timeZone={TIME_ZONE}
+          locale="en-GB"
+          headingLevel={3}
+          events={entries.map((entry) => ({
+            id: entry.id,
+            at: entry.at,
+            title: entry.text,
+            meta: entry.actor
+              ? `${entry.actor.name} · ${roleLabel(entry.actor.role)}`
+              : undefined,
+            avatar: entry.actor?.image ?? undefined,
+            icon: <KindIcon kind={entry.kind} />,
+            detail: entry.href ? (
+              <Link
+                href={entry.href}
+                className="text-brand-link underline-offset-2 hover:underline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-focus"
+              >
+                Open it
+              </Link>
+            ) : undefined,
+          }))}
+        />
       )}
 
       {showsFailures ? (

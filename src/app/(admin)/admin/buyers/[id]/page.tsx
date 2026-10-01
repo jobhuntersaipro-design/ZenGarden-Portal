@@ -204,6 +204,7 @@ async function AdminBuyerPage({
           kind={kind}
           page={page}
           failedWindowHours={activity.failedWindowHours}
+          now={activity.readAt}
         />
       </Rise>
 

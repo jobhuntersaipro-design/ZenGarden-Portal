@@ -6,6 +6,14 @@ import { LayoutGrid, List, Search, X } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { FAMILY_SORT_KEYS, type FamilySortKey } from "@/lib/product-families";
 import { MARKET_SORT_KEYS, NO_MARKET, type MarketSortKey } from "@/lib/product-markets";
+import {
+  FilterToolbar,
+  type FilterChip,
+  type FilterField,
+} from "@/components/arc/filter-toolbar/filter-toolbar";
+
+/** How the unmarketed products read in the filter menu and on its chip. */
+const NO_MARKET_LABEL = "No market";
 import type { ProductFilter, ProductSortKey } from "@/lib/queries/products";
 import { ChoiceButton } from "@/components/portal/ChoiceButton";
 import { SegmentGroup } from "@/components/portal/SegmentGroup";
@@ -48,10 +56,6 @@ const SORTS: { value: ProductSortKey; label: string }[] = [
 ];
 
 const SEARCH_DEBOUNCE_MS = 200;
-
-/** The filter selects' own styling, once rather than three near-copies. */
-const SELECT =
-  "h-control-md sm:h-control-sm rounded-sm border border-hairline-strong bg-transparent px-xs text-[length:var(--text-body-sm)] text-ink focus-visible:border-focus focus-visible:outline-2 focus-visible:outline-focus";
 
 export function ProductToolbar({
   view,
@@ -127,6 +131,33 @@ export function ProductToolbar({
   };
   const write = (next: Record<string, string | null>) => replace(hrefFor(next));
 
+  const filterFields: FilterField[] = [
+    ...(!byMarket && brands.length > 1
+      ? [{ id: "brand", label: "Brand", options: brands }]
+      : []),
+    ...(!byMarket ? [{ id: "category", label: "Category", options: categories }] : []),
+    ...(byProduct && (markets.length > 1 || hasNoMarket)
+      ? [
+          {
+            id: "market",
+            label: "Market",
+            options: hasNoMarket ? [...markets, NO_MARKET_LABEL] : markets,
+          },
+        ]
+      : []),
+  ];
+  const activeFilters: FilterChip[] = filterFields.flatMap((field) => {
+    const value = searchParams.get(field.id);
+    if (!value) return [];
+    return [
+      {
+        id: field.id,
+        label: field.label,
+        value: field.id === "market" && value === NO_MARKET ? NO_MARKET_LABEL : value,
+      },
+    ];
+  });
+
   const chooseView = (next: ProductView) => {
     // Remembered per browser, but the URL always wins on read — a shared link
     // has to show what the sender saw.
@@ -162,69 +193,35 @@ export function ProductToolbar({
           />
         </div>
 
-        {/* Only offered once there is more than one brand to choose between;
-            a dropdown with a single option is a label, not a filter. Absent
-            on market rows: a market spans its brands, so this could only
-            narrow what each row counts, where on family rows it narrows
-            which rows show — see `selectMarkets`. */}
-        {!byMarket && brands.length > 1 ? (
-          <select
-            aria-label="Brand"
-            value={searchParams.get("brand") ?? ""}
-            onChange={(event) => write({ brand: event.target.value })}
-            className={SELECT}
-          >
-            <option value="">All brands</option>
-            {brands.map((brand) => (
-              <option key={brand} value={brand}>
-                {brand}
-              </option>
-            ))}
-          </select>
-        ) : null}
-
-        {/* Absent on market rows for the same reason as the brand select. */}
-        {!byMarket ? (
-          <select
-            aria-label="Category"
-            value={searchParams.get("category") ?? ""}
-            onChange={(event) => write({ category: event.target.value })}
-            className={SELECT}
-          >
-            <option value="">All categories</option>
-            {categories.map((category) => (
-              <option key={category} value={category}>
-                {category}
-              </option>
-            ))}
-          </select>
-        ) : null}
-
-        {/* Where a product is sold — its destination or its retail customer,
-            never where it was made. Offered on product rows only: a family
-            row spans its markets by construction, and `FamilyRow.markets` is
-            a count rather than a list, so there is nothing for this to match
-            a family against, while a market row *is* the thing this would
-            select. It is also left out where it would hold one option, like
-            the brand select — a dropdown holding one is a label — which
-            here means fewer than two real markets and no unmarketed product
-            to offer either. */}
-        {byProduct && (markets.length > 1 || hasNoMarket) ? (
-          <select
-            aria-label="Market"
-            value={searchParams.get("market") ?? ""}
-            onChange={(event) => write({ market: event.target.value })}
-            className={SELECT}
-          >
-            <option value="">All markets</option>
-            {markets.map((market) => (
-              <option key={market} value={market}>
-                {market}
-              </option>
-            ))}
-            {hasNoMarket ? <option value={NO_MARKET}>No market</option> : null}
-          </select>
-        ) : null}
+        {/* Arc's filter toolbar: Add filter opens a field-then-value menu,
+            and each filter in force is a chip with its own ✕. A field is only
+            offered where it can narrow these rows — brand once there is more
+            than one to choose between (a menu with one option is a label),
+            brand and category not on market rows (a market spans both), and
+            market on product rows only, where `FamilyRow.markets` is a count
+            and a market row *is* the thing it would select. "No market" is a
+            named value, offered while some product carries none. */}
+        <FilterToolbar
+          label="Product filters"
+          filters={activeFilters}
+          onRemove={(id) => write({ [id]: null })}
+          onClearAll={() => write({ brand: null, category: null, market: null })}
+          addFilter={
+            filterFields.length > 0
+              ? {
+                  fields: filterFields,
+                  label: "Add filter",
+                  onAdd: (filter) =>
+                    write({
+                      [filter.id]:
+                        filter.id === "market" && filter.value === NO_MARKET_LABEL
+                          ? NO_MARKET
+                          : (filter.value ?? null),
+                    }),
+                }
+              : undefined
+          }
+        />
 
         {/* The three things the catalog can be a list of. Every switch
             drops the sort, since the keys differ, and drops each filter the

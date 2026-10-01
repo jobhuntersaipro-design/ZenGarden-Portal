@@ -5,7 +5,7 @@ import type { Dispatch } from "react";
 import type { DraftAction } from "@/components/review/draft-reducer";
 import { ProductMatchPicker } from "@/components/review/ProductMatchPicker";
 import { Input } from "@/components/ui/input";
-import { useEdgeFades } from "@/hooks/useEdgeFades";
+import { ScrollArea } from "@/components/arc/scroll-area/scroll-area";
 import type { CatalogueEntry, Idf } from "@/lib/extraction/match-products";
 import { formatMYR } from "@/lib/money";
 import type { DraftLineItem } from "@/lib/validation/purchase-orders";
@@ -30,12 +30,12 @@ export function LineItemsTable({
   // than that on every viewport, so this table always scrolls. A container that
   // clips with no visible edge does not look scrollable — it looks like a table
   // missing a column, which is exactly how it was reported.
-  const { ref: scroller, clipped, measure } = useEdgeFades<HTMLDivElement>();
+  // Arc's scroll area draws that edge: a fade on whichever side has more,
+  // and scrollbars while scrolling.
 
   return (
     <div>
-      <div className="relative">
-        <div ref={scroller} onScroll={measure} className="overflow-x-auto">
+      <ScrollArea orientation="horizontal" fade={48} wheelToHorizontal={false}>
           <table className="w-full min-w-line-items table-fixed border-collapse">
             <colgroup>
               {/* Order matches the headers below. `table-fixed` on the table is
@@ -213,22 +213,7 @@ export function LineItemsTable({
               ))}
             </tbody>
           </table>
-        </div>
-        {/* Each fade appears only while there is something on that side to
-            reach. */}
-        {clipped.left ? (
-          <div
-            aria-hidden
-            className="pointer-events-none absolute inset-y-0 left-0 w-xl bg-linear-to-r from-canvas to-transparent"
-          />
-        ) : null}
-        {clipped.right ? (
-          <div
-            aria-hidden
-            className="pointer-events-none absolute inset-y-0 right-0 w-xl bg-linear-to-l from-canvas to-transparent"
-          />
-        ) : null}
-      </div>
+      </ScrollArea>
 
       {/* Outside the scroller: it is an action on the list, not a column of
           it, and it should not drift sideways when the table scrolls. */}

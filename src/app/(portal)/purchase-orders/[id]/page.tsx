@@ -6,6 +6,7 @@ import { DocumentPreview } from "@/components/review/DocumentPreviewLoader";
 import { BackLink } from "@/components/portal/BackLink";
 import { PageHeader } from "@/components/portal/PageHeader";
 import { CopyButton } from "@/components/arc/copy-button/copy-button";
+import { AvatarGroup } from "@/components/arc/avatar-group/avatar-group";
 import { StageBadge } from "@/components/portal/StatusBadge";
 import { LifecycleFeed } from "@/components/purchase-orders/LifecycleFeed";
 import { DownloadOriginal } from "@/components/purchase-orders/DownloadOriginal";
@@ -96,6 +97,15 @@ async function PurchaseOrderPage({
   // Order ID and PO number, never one for the other (2026-09-17).
   const identity = orderIdentity(po);
   const label = orderLabel(identity);
+  const handlers = [
+    po.confirmedBy,
+    ...[...po.stageEvents]
+      .sort((a, b) => a.changedAt.getTime() - b.changedAt.getTime())
+      .map((event) => event.changedBy),
+  ]
+    .filter((person): person is NonNullable<typeof person> => person !== null)
+    .filter((person, index, all) => all.findIndex((p) => p.name === person.name) === index)
+    .map((person) => ({ name: person.name, src: person.image ?? undefined }));
 
   const current = po.stage;
 
@@ -313,6 +323,23 @@ async function PurchaseOrderPage({
               changedByImage: event.changedBy?.image ?? null,
             }))}
         />
+
+        {/* Everyone who has touched this order, as Arc's avatar group:
+            whoever confirmed it, then each person who moved or edited it,
+            once each, in the order they first appeared. */}
+        {handlers.length > 0 ? (
+          <div className="mt-md flex flex-wrap items-center gap-sm">
+            <span className="font-mono text-[length:var(--text-eyebrow)] text-ink-tertiary">
+              Handled by
+            </span>
+            <AvatarGroup
+              size="sm"
+              max={5}
+              label="People who handled this order"
+              members={handlers}
+            />
+          </div>
+        ) : null}
 
         {/* Notes and activity live with the lifecycle they describe
             (2026-09-18), not at the foot of the page. */}
