@@ -8,7 +8,7 @@ import {
   updatePermissions,
   type PermissionChange,
 } from "@/actions/permissions";
-import { Button } from "@/components/ui/button";
+import { ActionButton } from "@/components/arc/action-button/action-button";
 import { Checkbox } from "@/components/ui/checkbox";
 import { SegmentGroup } from "@/components/portal/SegmentGroup";
 import { useAwaitableRefresh } from "@/hooks/useAwaitableRefresh";
@@ -103,7 +103,6 @@ export function PermissionGrid({
 }) {
   const refresh = useAwaitableRefresh();
   const [draft, setDraft] = useState<PermissionMatrix>(matrix);
-  const [saving, setSaving] = useState(false);
   // The phone cannot show five columns at 44px, so it shows one role at a time.
   const [phoneRole, setPhoneRole] = useState<OpsRole>(Role.PRODUCTION_PLANNER);
   // Desktop can show every column, or one — the action names stay either way.
@@ -136,27 +135,26 @@ export function PermissionGrid({
     setDraft((current) => ({ ...current, [key]: !current[key] }));
   };
 
+  /**
+   * Throws on a refusal or an unreachable server, so Arc's action button goes
+   * back to its label and `onActionError` says why; resolving is what turns
+   * it to "Saved". An unguarded await here is what left the avatar picker
+   * permanently disabled on 2026-09-08 — the button owns the guard now.
+   */
   const save = async () => {
-    setSaving(true);
+    let result: Awaited<ReturnType<typeof updatePermissions>>;
     try {
-      const result = await updatePermissions(changes);
-      if (!result.success) {
-        toast.error(result.error);
-        return;
-      }
-      toast.success(
-        result.data.changed === 1
-          ? "1 permission updated."
-          : `${result.data.changed} permissions updated.`,
-      );
-      await refresh();
+      result = await updatePermissions(changes);
     } catch {
-      // An unguarded await here is what left the avatar picker permanently
-      // disabled on 2026-09-08.
-      toast.error("We couldn't reach the server. Try again.");
-    } finally {
-      setSaving(false);
+      throw new Error("We couldn't reach the server. Try again.");
     }
+    if (!result.success) throw new Error(result.error);
+    toast.success(
+      result.data.changed === 1
+        ? "1 permission updated."
+        : `${result.data.changed} permissions updated.`,
+    );
+    await refresh();
   };
 
   const cell = (role: OpsRole, action: PermissionAction) => {
@@ -350,15 +348,24 @@ export function PermissionGrid({
       </div>
 
       <div className="mt-lg flex items-center gap-sm">
-        <Button onClick={() => void save()} pending={saving} disabled={changes.length === 0}>
-          {saving
-            ? "Saving…"
-            : changes.length === 0
+        {/* Arc's action button: the label turns to "Saving", then "Saved",
+            inside the button the reader just pressed. */}
+        <ActionButton
+          label={
+            changes.length === 0
               ? "Save changes"
               : changes.length === 1
                 ? "Save 1 change"
-                : `Save ${changes.length} changes`}
-        </Button>
+                : `Save ${changes.length} changes`
+          }
+          pendingLabel="Saving"
+          successLabel="Saved"
+          disabled={changes.length === 0}
+          onAction={save}
+          onActionError={(error) =>
+            toast.error(error instanceof Error ? error.message : "Something went wrong.")
+          }
+        />
         {changes.length > 0 ? (
           <button
             type="button"

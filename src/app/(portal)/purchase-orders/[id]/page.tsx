@@ -5,6 +5,7 @@ import { Role } from "@/generated/prisma/enums";
 import { DocumentPreview } from "@/components/review/DocumentPreviewLoader";
 import { BackLink } from "@/components/portal/BackLink";
 import { PageHeader } from "@/components/portal/PageHeader";
+import { CopyButton } from "@/components/arc/copy-button/copy-button";
 import { StageBadge } from "@/components/portal/StatusBadge";
 import { LifecycleFeed } from "@/components/purchase-orders/LifecycleFeed";
 import { DownloadOriginal } from "@/components/purchase-orders/DownloadOriginal";
@@ -418,9 +419,21 @@ async function PurchaseOrderPage({
                   </dt>
                   <dd
                     title={value}
-                    className="truncate text-[length:var(--text-body-md)] text-ink"
+                    className="flex min-w-0 items-center gap-xxs text-[length:var(--text-body-md)] text-ink"
                   >
-                    {value}
+                    <span className="truncate">{value}</span>
+                    {/* The two identifiers people paste into an email or a
+                        search: Arc's copy button beside each, when there is
+                        one to copy. */}
+                    {(label === "Order ID" || label === "PO number") && value !== "—" ? (
+                      <CopyButton
+                        value={value}
+                        label={`Copy ${label === "Order ID" ? "Order ID" : "PO number"}`}
+                        iconOnly
+                        variant="plain"
+                        className="shrink-0 max-sm:size-11"
+                      />
+                    ) : null}
                   </dd>
                 </div>
               ))}

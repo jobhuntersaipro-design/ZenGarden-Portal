@@ -8,7 +8,7 @@ import {
   AvatarPicker,
   type StylePreview,
 } from "@/components/settings/AvatarPicker";
-import { Button } from "@/components/ui/button";
+import { ActionButton } from "@/components/arc/action-button/action-button";
 import { Input } from "@/components/ui/input";
 import type { AvatarStyleId } from "@/lib/avatar-style-ids";
 import { formatDate } from "@/lib/dates";
@@ -30,7 +30,21 @@ export function ProfileCard(props: {
   const { update } = useSession();
   const refresh = useAwaitableRefresh();
   const [name, setName] = useState(props.name);
-  const [pending, setPending] = useState(false);
+
+  /**
+   * Throws on a refusal, so Arc's action button returns to "Save" and the
+   * toast says why. update() rewrites the session cookie and refresh() makes
+   * the server-rendered sidebar read it; both finish before the button turns
+   * to "Saved", and the refresh stays inside a transition so the form is not
+   * replaced by the route skeleton.
+   */
+  const save = async () => {
+    const result = await updateProfile({ name });
+    if (!result.success) throw new Error(result.error);
+    await update();
+    await refresh();
+    toast.success("Saved");
+  };
 
   return (
     <section className="rounded-lg border border-hairline bg-canvas p-lg">
@@ -53,23 +67,13 @@ export function ProfileCard(props: {
 
         <form
           className="flex flex-col gap-md"
-          onSubmit={async (event) => {
+          // Enter in the name field presses the save button, which owns the
+          // save, its progress and its "Saved".
+          onSubmit={(event) => {
             event.preventDefault();
-            setPending(true);
-            const result = await updateProfile({ name });
-            if (!result.success) {
-              setPending(false);
-              toast.error(result.error);
-              return;
-            }
-            // update() rewrites the session cookie; refresh() is what makes
-            // the server-rendered sidebar read it. Both finish before the
-            // button leaves "Saving…", and the refresh stays inside a
-            // transition so the form is not replaced by the route skeleton.
-            await update();
-            await refresh();
-            setPending(false);
-            toast.success("Saved");
+            event.currentTarget
+              .querySelector<HTMLButtonElement>("[data-profile-save]")
+              ?.click();
           }}
         >
           <label className="flex max-w-panel-sm flex-col gap-xs">
@@ -108,9 +112,18 @@ export function ProfileCard(props: {
           </div>
 
           <div>
-            <Button type="submit" pending={pending}>
-              {pending ? "Saving…" : "Save"}
-            </Button>
+            <ActionButton
+              data-profile-save
+              label="Save"
+              pendingLabel="Saving"
+              successLabel="Saved"
+              onAction={save}
+              onActionError={(error) =>
+                toast.error(
+                  error instanceof Error ? error.message : "Something went wrong.",
+                )
+              }
+            />
           </div>
         </form>
       </div>

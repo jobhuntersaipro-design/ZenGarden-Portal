@@ -5,6 +5,10 @@ import { useState } from "react";
 import { AlertCircle, Trash2 } from "lucide-react";
 import { ProductThumb } from "@/components/products/ProductThumb";
 import { Reveal } from "@/components/portal/Reveal";
+import {
+  SwipeActions,
+  SwipeActionsRow,
+} from "@/components/arc/swipe-actions/swipe-actions";
 import { CartonStepper } from "@/components/shop/CartonStepper";
 import { unitLabel } from "@/lib/cartons";
 import { formatMYR } from "@/lib/money";
@@ -57,11 +61,28 @@ export function CartLines({
         <span className="text-right">Amount</span>
         <span aria-hidden />
       </div>
-      <ul>
+      {/* Arc's swipe actions: on a phone a line swipes left to reveal
+          Remove, and a long swipe removes it. The row's own remove control
+          stays the accessible path, so Arc's More actions button is hidden
+          rather than offered twice. */}
+      <SwipeActions label="Cart lines" className="[&_[data-swipe-more]]:hidden">
         {lines.map((line) => (
           // The rule is on the item, not the row: the row now sits inside the
           // folding box, where it is always its parent's last child.
-          <li key={line.productId} className="border-b border-hairline last:border-b-0">
+          <SwipeActionsRow
+            key={line.productId}
+            label={line.name}
+            className="border-b border-hairline last:border-b-0"
+            trailing={[
+              {
+                label: "Remove",
+                icon: <Trash2 className="size-4" aria-hidden />,
+                tone: "danger",
+                keepRow: true,
+                onSelect: () => void remove(line.productId),
+              },
+            ]}
+          >
             <Reveal closing={leaving.has(line.productId)} appear={false}>
               <CartRow
                 line={line}
@@ -69,9 +90,9 @@ export function CartLines({
                 onRemove={(productId) => void remove(productId)}
               />
             </Reveal>
-          </li>
+          </SwipeActionsRow>
         ))}
-      </ul>
+      </SwipeActions>
     </div>
   );
 }

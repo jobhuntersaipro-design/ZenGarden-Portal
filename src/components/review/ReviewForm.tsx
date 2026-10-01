@@ -1,5 +1,6 @@
 "use client";
 
+import { ConfirmMorph } from "@/components/arc/confirm-morph/confirm-morph";
 import {
   useCallback,
   useEffect,
@@ -39,16 +40,6 @@ import {
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
 import { formatDate } from "@/lib/dates";
-import {
-  Dialog,
-  DialogClose,
-  DialogContent,
-  DialogDescription,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-  DialogTrigger,
-} from "@/components/ui/dialog";
 import { PoDraftSchema, checkTotals, type PoDraft } from "@/lib/validation/purchase-orders";
 import { paymentTermsDaysInput } from "@/lib/payment-terms";
 
@@ -103,7 +94,6 @@ export function ReviewForm({
   const [isRevision, setIsRevision] = useState(false);
   const [confirming, setConfirming] = useState(false);
   const [retrying, setRetrying] = useState(false);
-  const [discarding, setDiscarding] = useState(false);
   const [formError, setFormError] = useState<string | null>(null);
   const first = useRef(true);
 
@@ -484,45 +474,33 @@ export function ReviewForm({
           </span>
 
           <div className="flex items-center gap-md">
-            <Dialog>
-              <DialogTrigger asChild>
-                <Button variant="secondary">Discard</Button>
-              </DialogTrigger>
-              <DialogContent>
-                <DialogHeader>
-                  <DialogTitle>Discard this file?</DialogTitle>
-                  <DialogDescription>
-                    The upload is kept for 30 days.
-                  </DialogDescription>
-                </DialogHeader>
-                <DialogFooter>
-                  {/* Every other confirm in the app pairs Cancel with the
-                      destructive action; this one offered Discard alone, so
-                      the only ways back were the ✕ and Escape. */}
-                  <DialogClose asChild>
-                    <Button variant="secondary" disabled={discarding}>
-                      Cancel
-                    </Button>
-                  </DialogClose>
-                  <Button
-                    pending={discarding}
-                    onClick={async () => {
-                      setDiscarding(true);
-                      const result = await discardExtraction(extractionId);
-                      if (result.success) {
-                        beginRouteProgress();
-                        router.push("/purchase-orders");
-                        return;
-                      }
-                      setDiscarding(false);
-                      toast.error(result.error);
-                    }}
-                  >
-                    {discarding ? "Discarding…" : "Discard"}
-                  </Button>
-                </DialogFooter>
-              </DialogContent>
-            </Dialog>
+            {/* Arc's confirm morph: Discard asks "Discard this file?" in
+                place, with Cancel beside it, rather than over a dialog. The
+                upload is kept for 30 days, so the question says so. */}
+            <ConfirmMorph
+              label="Discard"
+              prompt="Discard? The upload is kept 30 days."
+              confirmLabel="Discard"
+              cancelLabel="Cancel"
+              pendingLabel="Discarding"
+              doneLabel="Discarded"
+              tone="danger"
+              onConfirm={async () => {
+                let result: Awaited<ReturnType<typeof discardExtraction>>;
+                try {
+                  result = await discardExtraction(extractionId);
+                } catch {
+                  toast.error("We couldn't reach the server. Try again.");
+                  throw new Error("unreachable");
+                }
+                if (!result.success) {
+                  toast.error(result.error);
+                  throw new Error(result.error);
+                }
+                beginRouteProgress();
+                router.push("/purchase-orders");
+              }}
+            />
 
             <div className="text-right">
               <Button disabled={!canConfirm} pending={confirming} onClick={onConfirm}>

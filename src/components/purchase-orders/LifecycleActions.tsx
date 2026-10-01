@@ -14,14 +14,21 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
-import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import {
+  Popover,
+  PopoverAnchor,
+  PopoverContent,
+  PopoverTrigger,
+} from "@/components/ui/popover";
+import { Undo2 } from "lucide-react";
+import { SplitButton } from "@/components/arc/split-button/split-button";
 import { Textarea } from "@/components/ui/textarea";
 import { stageLabel } from "@/lib/po-stages";
 
 /**
- * The page's one dark pill, plus — for super admins only — a real secondary
- * button immediately to its left. Move back rewrites history, so it gets the
- * weight of a button and the friction of a confirmation (design reference §3.6).
+ * The page's one dark pill. For a super admin it is Arc's split button, with
+ * Move back in its menu: Move back rewrites history, so it keeps the friction
+ * of a confirmation and a required note (design reference §3.6).
  */
 export function LifecycleActions({
   poId,
@@ -101,9 +108,13 @@ export function LifecycleActions({
       <div className="flex items-center gap-sm">
         {showMoveBack ? (
           <>
-            <Button variant="secondary" onClick={() => setBackOpen(true)}>
-              Move back
-            </Button>
+            {/* With a stage to advance to, Move back lives in the split
+                button's menu below; alone, it is its own button. */}
+            {next ? null : (
+              <Button variant="secondary" onClick={() => setBackOpen(true)}>
+                Move back
+              </Button>
+            )}
             <Dialog open={backOpen} onOpenChange={setBackOpen}>
               <DialogContent>
                 <DialogHeader>
@@ -189,10 +200,32 @@ export function LifecycleActions({
 
         {next && !blocked ? (
           <Popover open={advanceOpen} onOpenChange={setAdvanceOpen}>
-            <PopoverTrigger asChild>
-              {/* The label always names the stage it moves to. */}
-              <Button>Advance to {stageLabel(next)}</Button>
-            </PopoverTrigger>
+            {showMoveBack ? (
+              // Arc's split button: Advance is the main half and Move back
+              // waits in its menu, so the page keeps one dark control
+              // (design reference §3.6) and Move back keeps its confirmation.
+              <PopoverAnchor asChild>
+                <span className="inline-flex">
+                  <SplitButton
+                    label={`Advance to ${stageLabel(next)}`}
+                    onClick={() => setAdvanceOpen(true)}
+                    actions={[
+                      {
+                        label: `Move back to ${stageLabel(previous)}`,
+                        icon: <Undo2 className="size-4" aria-hidden />,
+                        destructive: true,
+                        onSelect: () => setBackOpen(true),
+                      },
+                    ]}
+                  />
+                </span>
+              </PopoverAnchor>
+            ) : (
+              <PopoverTrigger asChild>
+                {/* The label always names the stage it moves to. */}
+                <Button>Advance to {stageLabel(next)}</Button>
+              </PopoverTrigger>
+            )}
             <PopoverContent align="end" className="w-80 p-md shadow-md">
               <Textarea
                 aria-label="Note for the timeline"
