@@ -7,6 +7,7 @@ import { createBuyer } from "@/actions/admin-buyers";
 import { Rise } from "@/components/portal/Rise";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { PhoneField } from "@/components/ui/phone-field";
 import { GrowingListPicker } from "@/components/products/GrowingListPicker";
 import { Textarea } from "@/components/ui/textarea";
 import { useUrlNavigation } from "@/hooks/useUrlNavigation";
@@ -170,18 +171,12 @@ export function BuyerForm({
                 onChange={(event) => setContact("email", event.target.value)}
               />
             </div>
-            <div className="flex flex-col gap-xxs">
-              <label htmlFor="contact-phone" className={label}>
-                Phone <span className="normal-case">(optional)</span>
-              </label>
-              <Input
-                id="contact-phone"
-                autoComplete="off"
-                placeholder="+60 12-345 6789"
-                value={draft.contact.phone}
-                onChange={(event) => setContact("phone", event.target.value)}
-              />
-            </div>
+            <PhoneField
+              id="contact-phone"
+              label="Phone (optional)"
+              value={draft.contact.phone}
+              onChange={(value) => setContact("phone", value)}
+            />
           </div>
         </section>
       </Rise>

@@ -9,6 +9,7 @@ import { updatePurchaseOrder, type PurchaseOrderPatch } from "@/actions/stages";
 import { REASON_REQUIRED } from "@/lib/validation/purchase-orders";
 import { ReadOnlyField } from "@/components/review/Field";
 import { Button } from "@/components/ui/button";
+import { DateInput } from "@/components/ui/date-input";
 import { Input } from "@/components/ui/input";
 import {
   Sheet,
@@ -106,21 +107,24 @@ export function EditPurchaseOrderSheet({
               >
                 {label}
               </label>
-              <Input
-                id={`edit-${key}`}
-                type={type ?? "text"}
-                // The picker offers no delivery day before the PO date; the
-                // action refuses a typed one (2026-09-17).
-                min={
-                  key === "deliveryDate"
-                    ? patch.poDate || undefined
-                    : key === "paymentTerms"
-                      ? 0
-                      : undefined
-                }
-                value={patch[key] ?? ""}
-                onChange={(event) => set(key, event.target.value)}
-              />
+              {type === "date" ? (
+                // The calendar offers no delivery day before the PO date; the
+                // action refuses one sent anyway (2026-09-17).
+                <DateInput
+                  id={`edit-${key}`}
+                  min={key === "deliveryDate" ? patch.poDate || undefined : undefined}
+                  value={patch[key] ?? ""}
+                  onChange={(value) => set(key, value)}
+                />
+              ) : (
+                <Input
+                  id={`edit-${key}`}
+                  type={type ?? "text"}
+                  min={key === "paymentTerms" ? 0 : undefined}
+                  value={patch[key] ?? ""}
+                  onChange={(event) => set(key, event.target.value)}
+                />
+              )}
             </div>
           ))}
 

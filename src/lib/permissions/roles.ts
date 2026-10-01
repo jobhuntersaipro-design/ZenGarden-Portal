@@ -31,3 +31,15 @@ export const roleLabel = (role: Role): string => LABELS[role];
 
 export const isOpsRole = (role: Role): role is OpsRole =>
   (OPS_ROLES as readonly Role[]).includes(role);
+
+/**
+ * What each ops role does under the default grid, one line each, for the
+ * role picker. The grid is rows, not code, so this says "by default".
+ */
+export const ROLE_DUTIES: Record<OpsRole, string> = {
+  [Role.SUPER_ADMIN]: "Everything, including users and permissions",
+  [Role.PRODUCTION_PLANNER]: "Moves new orders into production",
+  [Role.QC]: "Passes orders through QC",
+  [Role.WAREHOUSE]: "Warehouse, delivering and delivered",
+  [Role.MEMBER]: "Sees everything, changes nothing",
+};

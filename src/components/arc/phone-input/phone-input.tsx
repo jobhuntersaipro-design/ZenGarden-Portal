@@ -79,6 +79,7 @@ export const PHONE_COUNTRIES: PhoneCountry[] = [
   country("KR", "South Korea", "82", ["##-###-####", "##-####-####"], "1020000000"),
   country("TW", "Taiwan", "886", "### ### ###", "912345678"),
   country("HK", "Hong Kong", "852", "#### ####", "51234567", ""),
+  country("MY", "Malaysia", "60", ["##-### ####", "##-#### ####"], "123456789"),
   country("SG", "Singapore", "65", "#### ####", "81234567", ""),
   country("PH", "Philippines", "63", "### ### ####", "9051234567"),
   country("ID", "Indonesia", "62", ["###-###-####", "###-####-####", "###-####-#####"], "81234567890"),

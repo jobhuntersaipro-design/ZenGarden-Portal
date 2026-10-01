@@ -3,6 +3,7 @@
 import { useEffect, useRef, useState } from "react";
 import { usePathname, useSearchParams } from "next/navigation";
 import { Search } from "lucide-react";
+import { DateInput } from "@/components/ui/date-input";
 import { Input } from "@/components/ui/input";
 import { ChoiceButton } from "@/components/portal/ChoiceButton";
 import { SegmentGroup } from "@/components/portal/SegmentGroup";
@@ -151,18 +152,17 @@ export function DemandToolbar({
         {/* Not a fourth chip: the spans somebody asks for past 60 days are a
             different question each time, and a date is the form the planner
             already holds it in — "through the end of the quarter", not 187. */}
-        <label className="flex items-center gap-xs text-[length:var(--text-caption)] text-ink-tertiary">
-          <span>or up to</span>
-          <Input
-            type="date"
+        <div className="flex items-center gap-xs text-[length:var(--text-caption)] text-ink-tertiary">
+          <span aria-hidden>or up to</span>
+          <DateInput
             min={today}
             max={lastDate}
             aria-label={`Show every period up to a date, no later than ${lastDate}`}
             value={until}
-            onChange={(event) => write({ until: event.target.value, window: null })}
+            onChange={(value) => write({ until: value || null, window: null })}
             className="h-control-md sm:h-control-sm w-40"
           />
-        </label>
+        </div>
 
       {/* Its own line above the fold — `md:basis-full` in a wrapping row —
           because the grain, window and date read as one question and the

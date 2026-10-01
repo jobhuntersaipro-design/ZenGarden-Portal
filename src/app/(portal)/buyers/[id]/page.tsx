@@ -13,6 +13,7 @@ import { BuyerDetailsCard } from "@/components/buyers/BuyerDetailsCard";
 import { BuyerDocumentsCard } from "@/components/buyers/BuyerDocumentsCard";
 import { BuyerLogo } from "@/components/buyers/BuyerLogo";
 import { listBuyerDocuments, listDocumentFolders } from "@/lib/queries/buyer-documents";
+import { OrderActivity } from "@/components/buyers/OrderActivity";
 import { BuyerRangeChips } from "@/components/buyers/BuyerRangeChips";
 import { ProductTrend } from "@/components/buyers/ProductTrend";
 import { ReorderSignalsCard } from "@/components/buyers/ReorderSignalsCard";
@@ -263,6 +264,10 @@ async function BuyerPage({
           <SalesLineChart series={data.sales} />
         </div>
       </section>
+
+      <div className="mt-lg">
+        <OrderActivity days={data.activity} />
+      </div>
 
       <div className="mt-lg">
         <ProductTrend

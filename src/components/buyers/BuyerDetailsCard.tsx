@@ -6,6 +6,7 @@ import { useAwaitableRefresh } from "@/hooks/useAwaitableRefresh";
 import { updateBuyer, type BuyerPatch } from "@/actions/buyers";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { PhoneField } from "@/components/ui/phone-field";
 import {
   Sheet,
   SheetContent,
@@ -124,7 +125,18 @@ export function BuyerDetailsCard({
             </div>
           ) : null}
 
-          {CONTACT_FIELDS.map((field) => (
+          {CONTACT_FIELDS.map((field) =>
+            field.key === "phone" ? (
+              <PhoneField
+                key={field.key}
+                id={`buyer-${field.key}`}
+                label={field.label}
+                value={(patch.phone as string | null) ?? ""}
+                onChange={(value) =>
+                  setPatch((current) => ({ ...current, phone: value }))
+                }
+              />
+            ) : (
             <div key={field.key} className="flex flex-col gap-xxs">
               <label
                 htmlFor={`buyer-${field.key}`}
@@ -143,7 +155,8 @@ export function BuyerDetailsCard({
                 }
               />
             </div>
-          ))}
+            ),
+          )}
 
           {/* Out of that loop and a number input, because it is the one field
               here that is not free text: the column stores "30 days" and the

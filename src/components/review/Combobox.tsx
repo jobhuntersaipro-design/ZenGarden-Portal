@@ -1,19 +1,28 @@
 "use client";
 
 import { useState } from "react";
-import { Check, ChevronsUpDown } from "lucide-react";
+import { Check, ChevronDown, Search } from "lucide-react";
+import { cn } from "cn";
+import arc from "@/components/arc/combobox/combobox.module.css";
 import {
   Popover,
   PopoverContent,
   PopoverTrigger,
 } from "@/components/ui/popover";
-import { Input } from "@/components/ui/input";
+
+/** Arc's option row, a little taller on a phone so it clears the 44px floor. */
+const OPTION = cn(
+  arc.option,
+  "w-full justify-start text-left hover:bg-surface-soft focus-visible:bg-surface-soft focus-visible:outline-2 focus-visible:outline-focus max-sm:min-h-11",
+);
 
 export type ComboboxOption = { id: string; label: string; hint?: string };
 
 /**
  * Existing options plus, when nothing matches exactly, an explicit "Create …"
- * row. Used for both buyer and product; neither ever creates something by
+ * row. Drawn with Arc's combobox parts — its control, search row, listbox and
+ * options — around our own behaviour, because Arc's combobox has no create row
+ * and no pinned rows, and both are the point of this one. Used for both buyer and product; neither ever creates something by
  * accident — a new record is always a row the user picked.
  */
 export function Combobox({
@@ -71,32 +80,36 @@ export function Combobox({
         aria-label={ariaLabel}
         aria-invalid={invalid || undefined}
         aria-describedby={describedBy}
-        className="flex h-control-md w-full items-center justify-between gap-xs rounded-sm border border-hairline-strong bg-transparent px-2.5 text-left text-[length:var(--text-body-sm)] focus-visible:border-focus focus-visible:outline-2 focus-visible:outline-focus aria-invalid:border-destructive"
+        className={cn(
+          arc.control,
+          open && arc.open,
+          "w-full justify-between text-left focus-visible:outline-2 focus-visible:outline-focus aria-invalid:border-destructive",
+        )}
       >
         {/* The full value is always recoverable, even when the trigger clips it. */}
         <span
           title={selected?.label ?? undefined}
-          className={`truncate ${selected ? "text-ink" : "text-ink-tertiary"}`}
+          className={`min-w-0 flex-1 truncate ${selected ? "text-ink" : "text-ink-tertiary"}`}
         >
           {selected?.label ?? placeholder}
         </span>
-        <ChevronsUpDown
-          className="size-4 shrink-0 text-ink-tertiary"
-          aria-hidden
-        />
+        <ChevronDown className={cn(arc.chevron, "size-4")} aria-hidden />
       </PopoverTrigger>
       <PopoverContent
         align="start"
         className="w-(--radix-popover-trigger-width) p-xs"
       >
-        <Input
-          autoFocus
-          value={query}
-          placeholder="Search…"
-          onChange={(event) => setQuery(event.target.value)}
-          className="h-control-md sm:h-control-sm"
-        />
-        <ul className="mt-xs max-h-64 overflow-y-auto">
+        <div className={cn(arc.control, "sm:min-h-control-sm")}>
+          <Search className={cn(arc.searchIcon, "size-4")} aria-hidden />
+          <input
+            autoFocus
+            aria-label={`Search ${ariaLabel.toLowerCase()}`}
+            value={query}
+            placeholder="Search…"
+            onChange={(event) => setQuery(event.target.value)}
+          />
+        </div>
+        <ul className={cn(arc.listbox, "mt-xs")}>
           {matches.map((option) => (
             <li key={option.id}>
               <button
@@ -106,10 +119,10 @@ export function Combobox({
                   setOpen(false);
                   setQuery("");
                 }}
-                className="flex w-full items-center gap-xs rounded-sm px-xs py-xxs text-left text-[length:var(--text-body-sm)] text-ink hover:bg-surface focus-visible:outline-2 focus-visible:outline-focus"
+                className={OPTION}
               >
                 <Check
-                  className={`size-4 shrink-0 ${option.id === value ? "text-ink" : "text-transparent"}`}
+                  className={cn(arc.check, "size-4", option.id !== value && "text-transparent")}
                   aria-hidden
                 />
                 <span className="min-w-0 flex-1 truncate" title={option.label}>
@@ -132,7 +145,7 @@ export function Combobox({
                   setOpen(false);
                   setQuery("");
                 }}
-                className="w-full rounded-sm px-xs py-xxs text-left text-[length:var(--text-body-sm)] text-brand-link hover:bg-surface focus-visible:outline-2 focus-visible:outline-focus"
+                className={cn(OPTION, "text-brand-link")}
               >
                 {createLabel(query.trim())}
               </button>
@@ -151,10 +164,10 @@ export function Combobox({
                       setOpen(false);
                       setQuery("");
                     }}
-                    className="flex w-full items-center gap-xs rounded-sm px-xs py-xxs text-left text-[length:var(--text-body-sm)] text-ink hover:bg-surface focus-visible:outline-2 focus-visible:outline-focus"
+                    className={OPTION}
                   >
                     <Check
-                      className={`size-4 shrink-0 ${option.id === value ? "text-ink" : "text-transparent"}`}
+                      className={cn(arc.check, "size-4", option.id !== value && "text-transparent")}
                       aria-hidden
                     />
                     <span className="min-w-0 flex-1 truncate" title={option.label}>
@@ -170,7 +183,7 @@ export function Combobox({
               ))
             : null}
           {matches.length === 0 && !needle && !pinned?.length ? (
-            <li className="px-xs py-xxs text-[length:var(--text-body-sm)] text-ink-tertiary">
+            <li className={arc.empty}>
               Nothing to choose from yet.
             </li>
           ) : null}

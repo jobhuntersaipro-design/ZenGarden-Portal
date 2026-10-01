@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import { toast } from "@/lib/toast";
 import { saveStockCounts } from "@/actions/stock";
 import { Button } from "@/components/ui/button";
+import { DateInput } from "@/components/ui/date-input";
 import { Input } from "@/components/ui/input";
 import {
   Sheet,
@@ -201,12 +202,12 @@ export function ProductStockDrawer({
               <label htmlFor="count-date" className={label}>
                 Counted on
               </label>
-              <Input
+              <DateInput
                 id="count-date"
-                type="date"
                 max={today}
+                clearable={false}
                 value={countedOn}
-                onChange={(event) => setCountedOn(event.target.value)}
+                onChange={setCountedOn}
               />
               <p className={caption}>
                 A day that already has a count is corrected, and both readings

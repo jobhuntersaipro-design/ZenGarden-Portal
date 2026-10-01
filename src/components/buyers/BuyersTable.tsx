@@ -165,7 +165,11 @@ export function BuyersTable({
       header: "Trend",
       defaultDir: "desc",
       cell: (row) => (
-        <Sparkline points={row.sparkline} muted={row.status === "lapsed"} />
+        <Sparkline
+          points={row.sparkline}
+          label={`${row.name}: order value by month`}
+          muted={row.status === "lapsed"}
+        />
       ),
     },
     {

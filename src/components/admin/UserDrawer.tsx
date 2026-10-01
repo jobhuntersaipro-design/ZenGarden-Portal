@@ -1,7 +1,9 @@
 "use client";
 
 import { useState } from "react";
-import { OPS_ROLES, roleLabel } from "@/lib/permissions/roles";
+import { OPS_ROLES, ROLE_DUTIES, roleLabel } from "@/lib/permissions/roles";
+import { RadioCards } from "@/components/arc/radio-cards/radio-cards";
+import { PasswordInput } from "@/components/auth/PasswordInput";
 import { useAwaitableRefresh } from "@/hooks/useAwaitableRefresh";
 import { toast } from "@/lib/toast";
 import {
@@ -109,21 +111,23 @@ export function UserDrawer({
           </div>
 
           <div className="flex flex-col gap-xxs">
-            <label htmlFor="user-role" className={label}>
+            <span id="user-role-label" className={label}>
               Role
-            </label>
-            <select
-              id="user-role"
+            </span>
+            <RadioCards
+              aria-labelledby="user-role-label"
+              layout="list"
               value={form.role}
-              onChange={(event) => set("role", event.target.value as StaffRole)}
-              className="h-control-md rounded-sm border border-hairline-strong bg-transparent px-xs text-[length:var(--text-body-sm)] text-ink focus-visible:border-focus focus-visible:outline-2 focus-visible:outline-focus"
-            >
-              {OPS_ROLES.map((role) => (
-                <option key={role} value={role}>
-                  {roleLabel(role)}
-                </option>
-              ))}
-            </select>
+              onValueChange={(value) => set("role", value as StaffRole)}
+              options={OPS_ROLES.map((role) => ({
+                value: role,
+                label: roleLabel(role),
+                description: ROLE_DUTIES[role],
+              }))}
+            />
+            <p className="text-[length:var(--text-caption)] text-ink-tertiary">
+              What each role does by default; the permission grid can change it.
+            </p>
           </div>
 
           {/* An admin never chooses a new user's password (2026-09-24): the
@@ -134,12 +138,13 @@ export function UserDrawer({
               <label htmlFor="user-password" className={label}>
                 Set a new password
               </label>
-              <Input
+              <PasswordInput
                 id="user-password"
-                type="password"
+                label="New password"
                 autoComplete="new-password"
+                required={false}
                 value={password}
-                onChange={(event) => setPasswordValue(event.target.value)}
+                onChange={setPasswordValue}
               />
               <p className="text-[length:var(--text-caption)] text-ink-tertiary">
                 Setting one signs them out of every session immediately.

@@ -1,60 +1,15 @@
 "use client";
 
 import { usePathname, useSearchParams } from "next/navigation";
-import {
-  CartesianGrid,
-  LabelList,
-  Line,
-  LineChart,
-  ReferenceLine,
-  ResponsiveContainer,
-  Tooltip,
-  XAxis,
-  YAxis,
-} from "recharts";
 import type { PricePoint } from "@/lib/analytics/products";
 import { formatMYR } from "@/lib/money";
 import { formatUnits } from "@/lib/units";
-import {
-  CHART_ANIMATION,
-  LABEL_FONT_SIZE,
-  labelledIndices,
-  useLabelStep,
-  valueLabel,
-} from "@/components/charts/labels";
-import { ChartScroller } from "@/components/charts/ChartScroller";
+import { LineChart } from "@/components/arc/line-chart/line-chart";
 import { ChoiceButton } from "@/components/portal/ChoiceButton";
 import { SegmentGroup } from "@/components/portal/SegmentGroup";
 import { usePendingChoice } from "@/hooks/usePendingChoice";
 
 export type TrendMode = "price" | "units";
-
-function TrendTooltip({
-  active,
-  payload,
-  label,
-  mode,
-}: {
-  active?: boolean;
-  payload?: { value?: number }[];
-  label?: string;
-  mode: TrendMode;
-}) {
-  if (!active || !payload?.length) return null;
-  const value = payload[0].value;
-  return (
-    <div className="rounded-md bg-ink p-sm text-canvas shadow-sm">
-      <p className="text-[length:var(--text-caption)]">
-        {label} —{" "}
-        {value === null || value === undefined
-          ? "no sales"
-          : mode === "price"
-            ? formatMYR(Number(value).toFixed(2))
-            : `${Math.round(Number(value))} units`}
-      </p>
-    </div>
-  );
-}
 
 export function PriceTrendChart({
   points,
@@ -76,23 +31,23 @@ export function PriceTrendChart({
   };
 
   const sold = points.filter((point) => point.avgBilled !== null);
-  const format = (value: number) =>
-    mode === "price" ? formatMYR(value, 0) : formatUnits(value);
-  const longest = sold.reduce(
-    (max, point) =>
-      Math.max(
-        max,
-        format(mode === "price" ? (point.avgBilled ?? 0) : point.units).length,
-      ),
-    0,
-  );
-  const labels = useLabelStep(points.length, longest);
-  const labelled = labelledIndices(
-    points.map((point) => (mode === "price" ? point.avgBilled : point.units)),
-    labels.step,
-  );
   const first = sold[0]?.avgBilled ?? null;
   const last = sold[sold.length - 1]?.avgBilled ?? null;
+
+  // A month with no sales is left off the price line rather than drawn as a
+  // drop to zero: Arc's chart reads a missing value as 0, and an average price
+  // of nothing is not RM 0. Units sold are a real zero, so every month stays.
+  const plotted = mode === "price" ? sold : points;
+  const every = Math.max(1, Math.ceil(plotted.length / 6));
+  const data = plotted.map((point, index) => ({
+    key: point.key,
+    label: point.label,
+    axisLabel: index % every === 0 ? point.label : undefined,
+    values:
+      mode === "price"
+        ? { value: point.avgBilled ?? 0, list: listPrice }
+        : { value: point.units },
+  }));
 
   return (
     <section className="rounded-xl bg-surface p-xl">
@@ -107,8 +62,9 @@ export function PriceTrendChart({
               : "No sales in the last 12 months"}
           </h2>
           <p className="mt-xxs text-[length:var(--text-caption)] text-ink-tertiary">
-            Months with no sales leave a gap · tap or hover a point for the
-            value
+            {mode === "price"
+              ? "Months with no sales are left out · tap or hover for the value"
+              : "Tap or hover a month for the value"}
           </p>
         </div>
 
@@ -133,73 +89,36 @@ export function PriceTrendChart({
         </SegmentGroup>
       </div>
 
-      <ChartScroller
-        buckets={points.length}
-        labels={points.map((point) => point.label)}
-        axisWidth={128}
-        fade="surface"
-        className="mt-lg"
-      >
-        <div className="h-72 w-full">
-          <ResponsiveContainer onResize={labels.onResize}>
-            <LineChart data={points} margin={{ top: 16, right: 16 }}>
-              <CartesianGrid vertical={false} stroke="var(--color-hairline)" />
-              <XAxis
-                dataKey="label"
-                tickLine={false}
-                axisLine={false}
-                padding={{ left: 24, right: 24 }}
-                tick={{
-                  fill: "var(--color-ink-tertiary)",
-                  fontSize: LABEL_FONT_SIZE,
-                }}
-              />
-              <YAxis
-                tickLine={false}
-                axisLine={false}
-                width={56}
-                tick={{
-                  fill: "var(--color-ink-tertiary)",
-                  fontSize: LABEL_FONT_SIZE,
-                }}
-              />
-              <Tooltip content={<TrendTooltip mode={mode} />} />
-              {/* Discounting reads as the gap between the line and the dash. */}
-              {mode === "price" ? (
-                <ReferenceLine
-                  y={listPrice}
-                  stroke="var(--color-brand-link)"
-                  strokeDasharray="4 4"
-                  strokeWidth={2}
-                  label={{
-                    value: `List ${formatMYR(listPrice.toFixed(2))}`,
-                    // Inside the plot: "right" hangs the text past the svg edge.
-                    position: "insideBottomRight",
-                    fill: "var(--color-ink-tertiary)",
-                    fontSize: LABEL_FONT_SIZE,
-                  }}
-                />
-              ) : null}
-              <Line
-                type="linear"
-                dataKey={mode === "price" ? "avgBilled" : "units"}
-                stroke="var(--color-ink)"
-                strokeWidth={2}
-                {...CHART_ANIMATION}
-                // A month with no sales is a gap, not a drop to zero.
-                connectNulls={false}
-                dot={{ r: 4, strokeWidth: 2, stroke: "var(--color-surface)" }}
-              >
-                {/* Whole ringgit or whole units; a gap month has no label. */}
-                <LabelList
-                  dataKey={mode === "price" ? "avgBilled" : "units"}
-                  content={valueLabel(format, labelled, 10)}
-                />
-              </Line>
-            </LineChart>
-          </ResponsiveContainer>
-        </div>
-      </ChartScroller>
+      <div className="mt-lg">
+        <LineChart
+          label={mode === "price" ? "Average unit price" : "Units sold"}
+          categoryLabel="Month"
+          height={288}
+          curve="linear"
+          legend={mode === "price"}
+          series={
+            mode === "price"
+              ? [
+                  { key: "value", label: "Avg unit price", area: true },
+                  // Discounting reads as the gap between the line and the dash.
+                  { key: "list", label: "List price", dashed: true, area: false },
+                ]
+              : [{ key: "value", label: "Units sold", area: true }]
+          }
+          data={data}
+          emptyLabel="No sales in the last 12 months"
+          formatValue={(value) =>
+            mode === "price"
+              ? formatMYR(value.toFixed(2))
+              : `${formatUnits(value)} units`
+          }
+          formatTick={(value) =>
+            mode === "price"
+              ? `RM ${Intl.NumberFormat("en", { notation: "compact" }).format(value)}`
+              : Intl.NumberFormat("en", { notation: "compact" }).format(value)
+          }
+        />
+      </div>
     </section>
   );
 }

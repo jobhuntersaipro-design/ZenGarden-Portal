@@ -4,7 +4,7 @@ import { useState } from "react";
 import { signOut } from "next-auth/react";
 import { resetPassword } from "@/actions/auth";
 import { Notice } from "@/components/auth/Notice";
-import { PASSWORD_HINT, PasswordField } from "@/components/auth/PasswordFields";
+import { PasswordField } from "@/components/auth/PasswordFields";
 import { Button } from "@/components/ui/button";
 
 export function ResetPasswordForm({ token }: { token: string }) {
@@ -51,7 +51,7 @@ export function ResetPasswordForm({ token }: { token: string }) {
         id="password"
         label="New password"
         autoComplete="new-password"
-        hint={PASSWORD_HINT}
+        strength
         value={password}
         onChange={setPassword}
       />

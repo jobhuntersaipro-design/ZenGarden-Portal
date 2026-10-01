@@ -1,6 +1,7 @@
 "use client";
 
 import type { ReactNode } from "react";
+import { DateInput } from "@/components/ui/date-input";
 import { Input } from "@/components/ui/input";
 import { LOW_CONFIDENCE } from "@/lib/extraction/schema";
 
@@ -24,12 +25,16 @@ export function Field({
   value: string;
   confidence?: number;
   type?: string;
-  /** The earliest value a date input's picker offers. */
+  /** The earliest value a date field's calendar offers. */
   min?: string;
   error?: string;
   onChange: (value: string) => void;
 }) {
   const low = typeof confidence === "number" && confidence < LOW_CONFIDENCE;
+  const describedBy =
+    [low ? `${id}-low` : null, error ? `${id}-error` : null]
+      .filter(Boolean)
+      .join(" ") || undefined;
 
   return (
     <div className="flex flex-col gap-xxs">
@@ -48,21 +53,29 @@ export function Field({
           </span>
         ) : null}
       </div>
-      <Input
-        id={id}
-        type={type}
-        min={min}
-        value={value}
-        title={value || undefined}
-        onChange={(event) => onChange(event.target.value)}
-        aria-describedby={
-          [low ? `${id}-low` : null, error ? `${id}-error` : null]
-            .filter(Boolean)
-            .join(" ") || undefined
-        }
-        aria-invalid={error ? true : undefined}
-        className={low ? "border-l-2 border-l-brand-amber" : undefined}
-      />
+      {type === "date" ? (
+        <DateInput
+          id={id}
+          value={value}
+          min={min}
+          onChange={onChange}
+          aria-describedby={describedBy}
+          aria-invalid={error ? true : undefined}
+          className={low ? "border-l-2 border-l-brand-amber" : undefined}
+        />
+      ) : (
+        <Input
+          id={id}
+          type={type}
+          min={min}
+          value={value}
+          title={value || undefined}
+          onChange={(event) => onChange(event.target.value)}
+          aria-describedby={describedBy}
+          aria-invalid={error ? true : undefined}
+          className={low ? "border-l-2 border-l-brand-amber" : undefined}
+        />
+      )}
       {low ? (
         <p
           id={`${id}-low`}

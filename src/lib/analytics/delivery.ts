@@ -35,6 +35,9 @@ export type DeliveryPerformance = {
   undated: number;
   /** Delivered orders counted, across all markets — distinct, not summed. */
   counted: number;
+  /** Of `counted`, the ones delivered on time — distinct, so a rate over
+   *  `counted` is the business's own, not a sum of the rows. */
+  onTime: number;
 };
 
 /** The calendar day in Kuala Lumpur, as `YYYY-MM-DD`, for an honest compare. */
@@ -76,6 +79,7 @@ export function deliveryByMarket(orders: AnalyticsOrder[]): DeliveryPerformance 
   const byMarket = new Map<string, { delivered: number; onTime: number }>();
   let undated = 0;
   const countedOrders = new Set<string>();
+  let onTime = 0;
 
   for (const order of orders) {
     if (order.stage !== PoStage.DELIVERED) continue;
@@ -95,6 +99,7 @@ export function deliveryByMarket(orders: AnalyticsOrder[]): DeliveryPerformance 
 
     const punctual = dayKL(at) <= dayKL(order.deliveryDate);
     countedOrders.add(order.id);
+    if (punctual) onTime += 1;
     for (const market of markets) {
       const entry = byMarket.get(market) ?? { delivered: 0, onTime: 0 };
       entry.delivered += 1;
@@ -113,5 +118,5 @@ export function deliveryByMarket(orders: AnalyticsOrder[]): DeliveryPerformance 
     // Worst first: this card is read to find where the problem is.
     .sort((a, b) => (a.rate ?? 101) - (b.rate ?? 101) || b.delivered - a.delivered);
 
-  return { rows, undated, counted: countedOrders.size };
+  return { rows, undated, counted: countedOrders.size, onTime };
 }

@@ -1,61 +1,35 @@
+import { Sparkline as ArcSparkline } from "@/components/arc/sparkline/sparkline";
+
 /**
- * 60×24 inline SVG, scaled to its own maximum — this is a shape, not a
- * comparison between buyers, and a shared scale would flatten every small
- * buyer to a straight line.
+ * A buyer's monthly totals as Arc's sparkline, 60×24 in the roster cell.
+ *
+ * Scaled to its own maximum — this is a shape, not a comparison between
+ * buyers, and a shared scale would flatten every small buyer to a straight
+ * line. Arc always draws a caption; here it is kept for screen readers only,
+ * because the row already names the buyer and its total.
  */
 export function Sparkline({
   points,
+  label = "Monthly order value",
   muted = false,
 }: {
   points: number[];
+  label?: string;
   muted?: boolean;
 }) {
-  const width = 60;
-  const height = 24;
-  const max = Math.max(...points, 0);
-
-  if (points.length < 2 || max === 0) {
-    return (
-      <span aria-hidden className="block h-6 w-15 text-ink-disabled">
-        <svg width={width} height={height} viewBox={`0 0 ${width} ${height}`}>
-          <line
-            x1={0}
-            y1={height - 1}
-            x2={width}
-            y2={height - 1}
-            stroke="currentColor"
-            strokeWidth={2}
-          />
-        </svg>
-      </span>
-    );
-  }
-
-  const step = width / (points.length - 1);
-  const d = points
-    .map((value, index) => {
-      const x = index * step;
-      // 2px inset top and bottom so the stroke is never clipped.
-      const y = height - 2 - (value / max) * (height - 4);
-      return `${index === 0 ? "M" : "L"} ${x.toFixed(1)},${y.toFixed(1)}`;
-    })
-    .join(" ");
-
+  const flat = points.length < 2 || Math.max(...points, 0) === 0;
   return (
     <span
-      aria-hidden
-      className={`block ${muted ? "text-ink-disabled" : "text-ink"}`}
+      className={`block w-15 [&_figcaption]:sr-only ${muted || flat ? "opacity-50" : ""}`}
     >
-      <svg width={width} height={height} viewBox={`0 0 ${width} ${height}`}>
-        <path
-          d={d}
-          fill="none"
-          stroke="currentColor"
-          strokeWidth={2}
-          strokeLinecap="round"
-          strokeLinejoin="round"
-        />
-      </svg>
+      <ArcSparkline
+        data={flat ? [0, 0] : points}
+        label={label}
+        width={60}
+        height={24}
+        interactive={false}
+        tone="accent"
+      />
     </span>
   );
 }

@@ -7,7 +7,7 @@ import { motionTokens } from "@/components/arc/lib/motion-tokens";
 import styles from "./password-field.module.css";
 export interface PasswordFieldProps extends Omit<InputHTMLAttributes<HTMLInputElement>, "type"> { label: string; description?: string }
 /** One eye that a slash draws across, cutting the outline beneath it, instead of swapping two icons. */
-function EyeMorph({ slashed }: { slashed: boolean }) {
+export function EyeMorph({ slashed }: { slashed: boolean }) {
   const reduced = useReducedMotion(); const maskId = `eye-${useId().replace(/[^a-zA-Z0-9_-]/g, "")}`;
   const slash = { pathLength: slashed ? 1 : 0, opacity: slashed ? 1 : 0 };
   const transition = reduced ? { duration: 0 } : { pathLength: { duration: motionTokens.duration.standard, ease: [...motionTokens.ease.standard] }, opacity: { duration: motionTokens.duration.instant } };

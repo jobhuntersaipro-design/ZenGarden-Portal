@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { SlopeChart } from "@/components/arc/slope-chart/slope-chart";
 import type { Attribution } from "@/lib/analytics/line-filter";
 import type { MarketMix } from "@/lib/analytics/market-mix";
 import { formatMYR } from "@/lib/money";
@@ -34,6 +35,28 @@ export function MarketMixCard({
       <p className="mt-xxs text-[length:var(--text-caption)] text-ink-tertiary">
         Share of attributed sales, against the period before
       </p>
+
+      {mix.priorTotal > 0 && mix.rows.length > 1 ? (
+        // Each market's share then and now, so a market overtaking another
+        // reads as two lines crossing rather than two numbers to compare.
+        <SlopeChart
+          className="mt-md"
+          label="Share of attributed sales by market"
+          startLabel="Before"
+          endLabel="This range"
+          ranks
+          data={mix.rows.map((row) => ({
+            key: row.market,
+            label: row.market,
+            start: row.priorShare,
+            end: row.share,
+          }))}
+          formatValue={(value) => `${value.toFixed(1)}%`}
+          formatChange={(change) =>
+            `${change >= 0 ? "+" : ""}${change.toFixed(1)}pp`
+          }
+        />
+      ) : null}
 
       <ul className="mt-md flex flex-col gap-sm">
         {mix.rows.map((row) => (

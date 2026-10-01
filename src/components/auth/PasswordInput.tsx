@@ -1,8 +1,8 @@
 "use client";
 
 import { useState } from "react";
-import { Eye, EyeOff } from "lucide-react";
-import { Input } from "@/components/ui/input";
+import arc from "@/components/arc/password-field/password-field.module.css";
+import { EyeMorph } from "@/components/arc/password-field/password-field";
 
 export type PasswordInputProps = {
   id: string;
@@ -16,6 +16,8 @@ export type PasswordInputProps = {
    * called "Show password".
    */
   label?: string;
+  /** Sign-in and reset require it; the admin's optional "set a password" does not. */
+  required?: boolean;
 };
 
 /**
@@ -28,8 +30,9 @@ export type PasswordInputProps = {
  * the state is local and deliberately not persisted, so a password is never
  * revealed by a page the user did not just ask to reveal it on.
  *
- * Not on the design canvas. Added on request in Phase 02; worth drawing there
- * so the two stay in step.
+ * Drawn as Arc's password field — its shell, its focus ring and the eye a
+ * slash draws across — around our own label, so each toggle keeps a name of
+ * its own ("Show current password") rather than Arc's shared one.
  */
 export function PasswordInput({
   id,
@@ -38,34 +41,40 @@ export function PasswordInput({
   onChange,
   describedBy,
   label = "password",
+  required = true,
 }: PasswordInputProps) {
   const [revealed, setRevealed] = useState(false);
-  const Icon = revealed ? EyeOff : Eye;
+  // Only a toggle after mount resolves the text, so it never blurs in on load.
+  const [toggled, setToggled] = useState(false);
   const action = `${revealed ? "Hide" : "Show"} ${label.toLowerCase()}`;
 
   return (
-    <div className="relative">
-      <Input
+    <div className={arc.shell}>
+      <input
         id={id}
         name={id}
         type={revealed ? "text" : "password"}
         autoComplete={autoComplete}
-        required
+        required={required}
         value={value}
         onChange={(event) => onChange(event.target.value)}
         aria-describedby={describedBy}
-        // Room for the toggle, so a long password never runs under it.
-        className="pr-control-md"
+        data-reveal={toggled ? (revealed ? "shown" : "hidden") : undefined}
+        className={arc.input}
       />
       <button
         type="button"
-        onClick={() => setRevealed((current) => !current)}
+        onClick={() => {
+          setRevealed((current) => !current);
+          setToggled(true);
+        }}
         aria-label={action}
         aria-pressed={revealed}
         aria-controls={id}
-        className="absolute inset-y-0 right-0 flex w-control-md items-center justify-center rounded-r-sm text-ink-tertiary transition-colors duration-[0.25s] ease-[cubic-bezier(0.5,0,0.5,1)] hover:text-ink focus-visible:outline-2 focus-visible:outline-focus"
+        // Arc's toggle is 30px; a phone gets the 44px floor.
+        className="size-11 sm:size-8"
       >
-        <Icon className="size-4" strokeWidth={1.75} aria-hidden />
+        <EyeMorph slashed={revealed} />
       </button>
     </div>
   );

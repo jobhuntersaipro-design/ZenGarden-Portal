@@ -6,6 +6,7 @@ import { KeyRound, MoreHorizontal } from "lucide-react";
 import { PersonChip } from "@/components/ui/person";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { PhoneField } from "@/components/ui/phone-field";
 import {
   Dialog,
   DialogContent,
@@ -62,6 +63,7 @@ export function BuyerContactsCard({
   const [email, setEmail] = useState("");
   const [username, setUsername] = useState("");
   const [phone, setPhone] = useState("");
+  const [phoneKey, setPhoneKey] = useState(0);
   /**
    * The invite's own refusal, printed under the form rather than only as a
    * toast (S-04): the form stays open with what was typed, and the reason
@@ -164,11 +166,13 @@ export function BuyerContactsCard({
                       setDraft((current) => ({ ...current, username: event.target.value }))
                     }
                   />
-                  <Input
-                    aria-label="Edit contact phone"
+                  <PhoneField
+                    id={`contact-phone-${contact.id}`}
+                    label="Edit contact phone"
+                    hideLabel
                     value={draft.phone}
-                    onChange={(event) =>
-                      setDraft((current) => ({ ...current, phone: event.target.value }))
+                    onChange={(value) =>
+                      setDraft((current) => ({ ...current, phone: value }))
                     }
                   />
                 </div>
@@ -342,6 +346,7 @@ export function BuyerContactsCard({
                 setEmail("");
                 setUsername("");
                 setPhone("");
+                setPhoneKey((key) => key + 1);
                 setOpen(false);
                 await refresh();
               } catch {
@@ -375,11 +380,15 @@ export function BuyerContactsCard({
             value={username}
             onChange={(event) => setUsername(event.target.value)}
           />
-          <Input
-            aria-label="Contact phone"
-            placeholder="+60 12-345 6789"
+          <PhoneField
+            // A new key after each invite clears the field: it formats as it
+            // is typed and is not fed back on every keystroke.
+            key={phoneKey}
+            id="new-contact-phone"
+            label="Contact phone"
+            hideLabel
             value={phone}
-            onChange={(event) => setPhone(event.target.value)}
+            onChange={setPhone}
           />
           {inviteError ? (
             <p

@@ -12,11 +12,14 @@ import { ChoiceButton } from "@/components/portal/ChoiceButton";
 import { SegmentGroup } from "@/components/portal/SegmentGroup";
 import { UpdatingHint } from "@/components/portal/UpdatingHint";
 import { usePendingChoice } from "@/hooks/usePendingChoice";
+import { DateRangePicker } from "@/components/arc/date-range-picker/date-range-picker";
+import { dateToIso, isoToDate } from "@/components/ui/date-input";
+import { useHydrated } from "@/lib/use-hydrated";
 import { useUrlNavigation } from "@/hooks/useUrlNavigation";
 
 /**
  * The preset chips are the primary control and sit alone on the first row. The
- * From/To inputs stay behind a toggle — they were competing with the chips for
+ * custom range picker stays behind a toggle — they were competing with the chips for
  * a job most people do with one click — and open automatically when the URL
  * already carries a custom range.
  */
@@ -50,6 +53,7 @@ export function RangeControls({
   const pathname = usePathname();
   const searchParams = useSearchParams();
   const [customOpen, setCustomOpen] = useState(preset === null);
+  const hydrated = useHydrated();
 
   const hrefFor = (next: Record<string, string | null>) => {
     const params = new URLSearchParams(searchParams.toString());
@@ -101,39 +105,33 @@ export function RangeControls({
         </button>
 
         {customOpen ? (
-          <div className="flex items-center gap-xs">
-            <label className="sr-only" htmlFor="range-from">
-              From
-            </label>
-            <input
-              id="range-from"
-              type="date"
-              value={from}
-              max={to}
-              // Editing a date deselects every chip, because the range is no
-              // longer the preset's.
-              onChange={(event) =>
-                set({ from: event.target.value, to, preset: null })
+          // Arc's range picker formats through Intl, which Node and the
+          // browser disagree on, so it mounts after hydration; until then a
+          // box of the trigger's height holds its place.
+          hydrated ? (
+            <DateRangePicker
+              label="Custom range"
+              locale="en-GB"
+              weekStartsOn={1}
+              maxDate={new Date()}
+              value={
+                isoToDate(from) && isoToDate(to)
+                  ? { start: isoToDate(from)!, end: isoToDate(to)! }
+                  : null
               }
-              className="h-control-md rounded-sm border border-hairline-strong bg-transparent px-xs text-[length:var(--text-body-sm)] text-ink focus-visible:border-focus focus-visible:outline-2 focus-visible:outline-focus"
-            />
-            <span className="text-[length:var(--text-caption)] text-ink-tertiary">
-              to
-            </span>
-            <label className="sr-only" htmlFor="range-to">
-              To
-            </label>
-            <input
-              id="range-to"
-              type="date"
-              value={to}
-              min={from}
-              onChange={(event) =>
-                set({ from, to: event.target.value, preset: null })
+              // Applying a range deselects every chip, because the range is
+              // no longer the preset's.
+              onChange={(range) =>
+                set({
+                  from: dateToIso(range.start),
+                  to: dateToIso(range.end),
+                  preset: null,
+                })
               }
-              className="h-control-md rounded-sm border border-hairline-strong bg-transparent px-xs text-[length:var(--text-body-sm)] text-ink focus-visible:border-focus focus-visible:outline-2 focus-visible:outline-focus"
             />
-          </div>
+          ) : (
+            <span aria-hidden className="block h-control-md w-60" />
+          )
         ) : null}
 
         {/* The product filters, on the same row as the dates they compose

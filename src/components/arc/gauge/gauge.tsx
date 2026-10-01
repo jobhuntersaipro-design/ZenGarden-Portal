@@ -44,8 +44,8 @@ export function Gauge({ value, min = 0, max = 100, label, detail, tone = "accent
   const sizer = useRef<HTMLSpanElement>(null);
   const inView = useInView(ref, { once: true, amount: .5 });
   const reduceMotion = !!useReducedMotion();
-  const sweep = useMotionValue(0);
-  const count = useMotionValue(0);
+  const sweep = useMotionValue(percentage);
+  const count = useMotionValue(percentage * 100);
   const digitsWidth = useMotionValue<number | "auto">("auto");
   const [filled, setFilled] = useState(false);
   const [live, setLive] = useState(band);

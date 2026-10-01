@@ -95,7 +95,38 @@ export const PATCHES: { file: RegExp; apply: (source: string) => string; why: st
     why:
       "A table ignores `width: 1px`, so each chart's screen-reader table spread to its content width and pushed a 390px page to 436. A div holding it clips; the table keeps its semantics.",
   },
+  {
+    file: /^gauge\/gauge\.tsx$/,
+    apply: (source) =>
+      replaceOnce(
+        source,
+        "const sweep = useMotionValue(0);\n  const count = useMotionValue(0);",
+        "const sweep = useMotionValue(percentage);\n  const count = useMotionValue(percentage * 100);",
+      ),
+    why: "A figure never renders zero on first paint (00-master §4). Arc's gauge fills from 0 when it scrolls into view; it starts at its value instead and still springs to every later one.",
+  },
+  {
+    file: /^password-field\/password-field\.tsx$/,
+    apply: (source) => replaceOnce(source, "\nfunction EyeMorph(", "\nexport function EyeMorph("),
+    why: "Our PasswordInput keeps its own label and per-field toggle names (\"Show current password\") and draws Arc's shell around them; it needs Arc's eye.",
+  },
+  {
+    file: /^phone-input\/phone-input\.tsx$/,
+    apply: (source) =>
+      replaceOnce(
+        source,
+        '  country("SG", "Singapore",',
+        '  country("MY", "Malaysia", "60", ["##-### ####", "##-#### ####"], "123456789"),\n  country("SG", "Singapore",',
+      ),
+    why: "Arc's country list has no Malaysia, and every buyer and contact here is Malaysian first: 012-345 6789 is +60 12-345 6789, and 011 numbers carry one digit more.",
+  },
 ];
+
+/** `source.replace` that refuses to do nothing, so an upstream change cannot silently drop a patch. */
+export function replaceOnce(source: string, from: string, to: string): string {
+  if (!source.includes(from)) throw new Error(`patch is stale: ${JSON.stringify(from.slice(0, 60))} not found`);
+  return source.replace(from, to);
+}
 
 /** `<table className={styles.srOnly}>…</table>` → `<div className={styles.srOnly}><table>…</table></div>`. */
 export function wrapScreenReaderTable(source: string): string {

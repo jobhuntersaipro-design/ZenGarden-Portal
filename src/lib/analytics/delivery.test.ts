@@ -58,6 +58,26 @@ describe("on-time delivery, per market", () => {
     expect(rate(result.rows, "Vietnam")).toBe(0);
     expect(rate(result.rows, "Mydin")).toBe(0);
     expect(result.counted).toBe(1);
+    expect(result.onTime).toBe(0);
+  });
+
+  it("counts on-time orders once each, however many markets they touch", () => {
+    const result = deliveryByMarket([
+      order({
+        id: "po-1",
+        markets: ["Vietnam", "Mydin"],
+        deliveryDate: "2026-09-10",
+        deliveredOn: ["2026-09-09T02:00:00Z"],
+      }),
+      order({
+        id: "po-2",
+        markets: ["Vietnam"],
+        deliveryDate: "2026-09-10",
+        deliveredOn: ["2026-09-12T02:00:00Z"],
+      }),
+    ]);
+    expect(result.counted).toBe(2);
+    expect(result.onTime).toBe(1);
   });
 
   it("counts delivery on the expected day itself as on time", () => {

@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { Gauge } from "@/components/arc/gauge/gauge";
 import type { DeliveryPerformance } from "@/lib/analytics/delivery";
 
 /**
@@ -24,6 +25,23 @@ export function DeliveryByMarket({ delivery }: { delivery: DeliveryPerformance }
       <p className="mt-xxs text-[length:var(--text-caption)] text-ink-tertiary">
         Reached Delivered on or before the date we promised
       </p>
+
+      {delivery.counted > 0 ? (
+        // The business's own rate, over distinct orders — not an average of
+        // the rows below, which count an order once per market it touches.
+        <div className="mx-auto mt-md w-40">
+          <Gauge
+            value={(delivery.onTime / delivery.counted) * 100}
+            label="On time"
+            detail={`${delivery.onTime} of ${delivery.counted}`}
+            thresholds={[
+              { from: 0, tone: "danger", label: "Mostly late" },
+              { from: 50, tone: "warning", label: "Slipping" },
+              { from: 80, tone: "success", label: "On track" },
+            ]}
+          />
+        </div>
+      ) : null}
 
       {delivery.rows.length === 0 ? (
         <p className="mt-md text-[length:var(--text-body-sm)] text-ink-secondary">

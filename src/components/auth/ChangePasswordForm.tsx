@@ -7,7 +7,7 @@ import { useAwaitableRefresh } from "@/hooks/useAwaitableRefresh";
 import { signOut } from "next-auth/react";
 import { changePassword } from "@/actions/auth";
 import { Notice } from "@/components/auth/Notice";
-import { PASSWORD_HINT, PasswordField } from "@/components/auth/PasswordFields";
+import { PasswordField } from "@/components/auth/PasswordFields";
 import { Button } from "@/components/ui/button";
 
 export function ChangePasswordForm({ forced }: { forced: boolean }) {
@@ -71,7 +71,7 @@ export function ChangePasswordForm({ forced }: { forced: boolean }) {
         id="password"
         label="New password"
         autoComplete="new-password"
-        hint={PASSWORD_HINT}
+        strength
         value={password}
         onChange={setPassword}
       />

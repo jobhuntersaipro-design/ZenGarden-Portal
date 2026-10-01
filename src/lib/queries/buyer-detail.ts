@@ -1,3 +1,4 @@
+import { ordersPerDay } from "@/lib/analytics/activity";
 import { ExtractionStatus, WebOrderStatus } from "@/generated/prisma/enums";
 import { dateColumnRange, type Aggregation } from "@/lib/dates";
 import { prisma } from "@/lib/prisma";
@@ -45,6 +46,8 @@ export type BuyerDetail = {
   mix: ShareSlice[];
   productsInRange: { id: string; name: string; spend: number }[];
   trend: ReturnType<typeof seriesPerBucket>;
+  /** Orders per day over the year ending now, for the activity heatmap. */
+  activity: { date: string; count: number }[];
   reorder: ReorderSignals;
   intake: IntakeCounts;
 };
@@ -236,6 +239,8 @@ export async function loadBuyer(
       range.to,
       agg,
     ),
+    // The last year whatever the range: the heatmap is the rhythm at a glance.
+    activity: ordersPerDay(orders, now),
     // Full history on purpose: this predicts a rhythm, and the card says so.
     reorder: reorderSignals(orders, now),
     intake: {

@@ -2,7 +2,9 @@
 
 import { useState } from "react";
 import { usePathname, useSearchParams } from "next/navigation";
-import { ChevronsUpDown } from "lucide-react";
+import { ChevronDown } from "lucide-react";
+import { cn } from "cn";
+import multi from "@/components/arc/multi-select/multi-select.module.css";
 import {
   Popover,
   PopoverContent,
@@ -218,14 +220,14 @@ export function SeriesTrend({
         <div className="flex flex-wrap items-center gap-sm">
         {header}
         <Popover onOpenChange={(open) => !open && setCapWarning(false)}>
-          <PopoverTrigger className="flex h-control-md items-center gap-xs rounded-sm border border-hairline-strong bg-canvas px-sm text-[length:var(--text-body-sm)] text-ink focus-visible:border-focus focus-visible:outline-2 focus-visible:outline-focus">
+          {/* Arc's multi-select trigger and options, around our own list:
+              Arc's control has no ranked figure per option, no colour slots
+              and no cap, and those are what this picker is for. */}
+          <PopoverTrigger className={cn(multi.trigger, "w-auto text-ink")}>
             <span className="max-w-56 truncate" title={label}>
               {label}
             </span>
-            <ChevronsUpDown
-              className="size-4 shrink-0 text-ink-tertiary"
-              aria-hidden
-            />
+            <ChevronDown className={cn(multi.chevron, "size-4")} aria-hidden />
           </PopoverTrigger>
           <PopoverContent align="end" className="w-picker p-md shadow-md">
             <p
@@ -243,7 +245,11 @@ export function SeriesTrend({
                     <button
                       type="button"
                       onClick={() => toggle(product.id)}
-                      className={`flex w-full items-center gap-xs rounded-sm px-xs py-xxs text-left hover:bg-surface focus-visible:outline-2 focus-visible:outline-focus ${full ? "text-ink-disabled" : "text-ink"}`}
+                      className={cn(
+                        multi.option,
+                        "justify-start gap-xs text-left hover:bg-surface-soft focus-visible:bg-surface-soft focus-visible:outline-2 focus-visible:outline-focus max-sm:min-h-11",
+                        full ? "text-ink-disabled" : "text-ink",
+                      )}
                     >
                       <span
                         aria-hidden
