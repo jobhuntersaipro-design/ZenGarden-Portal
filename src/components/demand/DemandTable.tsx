@@ -74,7 +74,9 @@ export function DemandTable({ board }: { board: DemandBoard }) {
   return (
     <section className={arc.wrapper}>
       <Scroller>
-        <table className={arc.table}>
+        {/* `data-grid`: a day column is read down the board, so a phone
+            keeps the columns and scrolls rather than taking Arc's row cards. */}
+        <table data-grid className={arc.table}>
           <thead>
             <tr className="border-b border-hairline">
               <Th className={`sticky left-0 z-10 bg-canvas pl-xs sm:pl-lg ${PRODUCT_COLUMN}`}>Product</Th>

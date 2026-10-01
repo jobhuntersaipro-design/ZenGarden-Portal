@@ -1,6 +1,8 @@
 import { describe, expect, it } from "vitest";
 import {
   labelledIndices,
+  peakLabels,
+  pointLabelPicker,
   rotateSeriesLabels,
 } from "@/components/charts/labels";
 
@@ -141,5 +143,47 @@ describe("rotateSeriesLabels — the several-series charts", () => {
     expect(
       at(rotateSeriesLabels([{ key: "only", values }], 3), "only"),
     ).toEqual([...labelledIndices(values, 3)]);
+  });
+});
+
+describe("peakLabels", () => {
+  it("labels the biggest point first, then the next one far enough away", () => {
+    const picked = peakLabels([{ key: "a", values: [5, 0, 1, 9, 2, 0, 7, 3] }], 3);
+    expect([...picked.get("a")!].sort((x, y) => x - y)).toEqual([0, 3, 6]);
+  });
+
+  it("keeps the peak a left-to-right walk would skip", () => {
+    // A walk from the left takes index 0 and then cannot reach the 100 at 1.
+    const picked = peakLabels([{ key: "a", values: [2, 100, 0, 0] }], 2);
+    expect(picked.get("a")!.has(1)).toBe(true);
+    expect(picked.get("a")!.has(0)).toBe(false);
+  });
+
+  it("shares slots across series, one label per bucket", () => {
+    const picked = peakLabels(
+      [
+        { key: "big", values: [100, 90, 80, 70, 60, 50] },
+        { key: "small", values: [1, 2, 3, 4, 5, 6] },
+      ],
+      2,
+    );
+    const all = [...picked.get("big")!, ...picked.get("small")!].sort((x, y) => x - y);
+    expect(picked.get("small")!.size).toBeGreaterThan(0);
+    for (let i = 1; i < all.length; i += 1) expect(all[i] - all[i - 1]).toBeGreaterThanOrEqual(2);
+  });
+
+  it("never labels a zero, and draws nothing before a width is known", () => {
+    expect(peakLabels([{ key: "a", values: [0, 0, 0] }], 1).get("a")!.size).toBe(0);
+    expect(peakLabels([{ key: "a", values: [4, 5] }], 0).get("a")!.size).toBe(0);
+  });
+});
+
+describe("pointLabelPicker", () => {
+  it("prints fewer figures in a narrower plot, each formatted", () => {
+    const pick = pointLabelPicker([{ key: "v", values: [10, 20, 30, 40, 50, 60, 70, 80] }], (v) => `RM ${v}`);
+    const wide = pick(1000);
+    const narrow = pick(200);
+    expect(wide.length).toBeGreaterThan(narrow.length);
+    expect(narrow[0]).toEqual({ index: 7, series: "v", text: "RM 80" });
   });
 });

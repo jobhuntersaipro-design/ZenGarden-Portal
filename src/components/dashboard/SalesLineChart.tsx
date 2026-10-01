@@ -6,6 +6,7 @@ import {
   type SalesSeries,
 } from "@/lib/analytics/sales";
 import { LineChart } from "@/components/arc/line-chart/line-chart";
+import { pointLabelPicker } from "@/components/charts/labels";
 import { formatMYR } from "@/lib/money";
 import { formatUnits } from "@/lib/units";
 
@@ -14,6 +15,10 @@ const formatExact = (measure: SalesMeasure, value: number) =>
   measure === "sales"
     ? formatMYR(value.toFixed(2))
     : `${formatUnits(value)} units`;
+
+/** The figure printed beside a point: whole numbers, read at a glance. */
+const formatLabel = (measure: SalesMeasure, value: number) =>
+  measure === "sales" ? formatMYR(value, 0) : formatUnits(Math.round(value));
 
 /**
  * Sales or units over the range as Arc's line chart — a crosshair readout, a
@@ -53,6 +58,10 @@ export function SalesLineChart({
         values: { value: point.value },
       }))}
       formatValue={(value) => formatExact(measure, value)}
+      pointLabels={pointLabelPicker(
+        [{ key: "value", values: picked.points.map((point) => point.value) }],
+        (value) => formatLabel(measure, value),
+      )}
       formatTick={(value) =>
         measure === "sales"
           ? `RM ${Intl.NumberFormat("en", { notation: "compact" }).format(value)}`

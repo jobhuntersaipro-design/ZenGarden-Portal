@@ -1,3 +1,51 @@
+# Fix: every line chart prints its figures, and the Demand Board reads on a phone
+
+## Status
+
+**Built on `claude/intelligent-mccarthy-85u9gh`, pushed to `main`**
+(2026-10-01). Reported with two phone screenshots: "Always show the label on
+the charts, fix the one in dashboard tab" and "In demand tab, its very hard to
+see on mobile screen".
+
+- **Figures on the line charts.** Arc's line chart, which replaced the Recharts
+  charts on 1 Oct, prints no values, so Sales over time, the trend card, the
+  buyer's product trend, the price trend and the stock trend had lost theirs.
+  An import patch gives it `pointLabels`, and `pointLabelPicker` picks the
+  points: **biggest first**, spaced from the longest figure so none overlap,
+  one per bucket, lines taking turns. A left-to-right walk (what the bar
+  charts use) was tried first: on a phone it labelled the 1st and skipped the
+  month's RM 112,264 peak. Money prints whole (RM 107,368), a unit price keeps
+  its cents, the list-price line prints none. Figures dim while scrubbing.
+- **The Demand Board's tables were cards.** Arc's data table folds every row
+  into a card below 620px, which scrambled both tables: day figures wrapped
+  under headers that no longer lined up. The patch scopes that layout to
+  `.table:not([data-grid])`, and both tables carry `data-grid`, so they stay
+  tables and scroll sideways. The stage table's Product column on a phone is
+  now pinned at 176px with names wrapping to two lines (it was ~430px wide, so
+  every stage figure started off-screen), and its order sub-rows lost the 48px
+  indent that cut the PO number. Lessons §16.
+
+## Verified
+
+Production builds before and after, local Postgres, 390×844 touch, 768 and
+1440. Before: 0 figures on the dashboard charts; both Demand tables
+`display: block` with rows `flex` at 390. After: figures on the dashboard (6
+at 390, 9 at 768, 16 at 1440), product (3 / 6 / 12) and buyer pages (7 / 12 /
+18); both Demand tables `display: table`, Product column 176px, PO numbers on
+one line. The Demand page at 390 is 6,280px → 3,604px tall. No overflow at 390
+on 11 pages or at 768 and 1440 on the chart pages. 1804 tests (7 new; the
+peak-first guard watched failing against the left-to-right walk), `tsc` clean,
+lint unchanged (4 `ShopHeader` errors), build clean.
+
+## Not verified
+
+Production; a real phone. The stock trend's figures: the seed holds no stock
+counts, so that chart was not drawn. In a multi-line chart the figures are in
+one ink, so which line a figure belongs to is read from its position, as the
+2026-09-24 decision on colour contrast set.
+
+## Before that
+
 # Fix: phone form fields at 16px, so iPhone does not zoom
 
 ## Status

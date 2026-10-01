@@ -1,6 +1,7 @@
 "use client";
 
 import { LineChart } from "@/components/arc/line-chart/line-chart";
+import { pointLabelPicker } from "@/components/charts/labels";
 import { formatDate } from "@/lib/dates";
 import { stockTrend, type StockCountRow } from "@/lib/stock";
 import { plural } from "@/lib/plural";
@@ -47,6 +48,10 @@ export function StockTrend({ rows }: { rows: StockCountRow[] }) {
         values: { cartons: point.cartons },
       }))}
       formatValue={(value) => plural(value, "carton")}
+      pointLabels={pointLabelPicker(
+        [{ key: "cartons", values: points.map((point) => point.cartons) }],
+        (value) => Intl.NumberFormat("en").format(value),
+      )}
       formatTick={(value) => Intl.NumberFormat("en").format(Math.round(value))}
     />
   );

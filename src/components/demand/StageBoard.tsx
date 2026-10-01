@@ -375,14 +375,17 @@ export function StageBoard({
         {rows.length > 0 ? (
           <div className={`relative mt-sm ${arcTable.wrapper}`}>
             <div ref={ref} onScroll={measure} className="overflow-x-auto">
+              {/* `data-grid`: keep the columns on a phone and scroll, rather
+                  than Arc's folded row cards — a stage is read down its column. */}
               <table
+                data-grid
                 className={`${arcTable.table} min-w-stage-table`}
               >
                 <thead>
                   <tr className="border-b border-hairline text-left">
                     <th
                       scope="col"
-                      className="py-xs pr-sm font-medium text-ink-secondary"
+                      className={`py-xs pr-sm font-medium text-ink-secondary ${PRODUCT_COLUMN}`}
                     >
                       Product
                     </th>
@@ -484,7 +487,7 @@ function ProductRows({
       <tr className="border-b border-hairline">
         <th
           scope="row"
-          className="max-w-72 py-xs pr-sm text-left font-normal text-ink"
+          className={`py-xs pr-sm text-left font-normal text-ink ${PRODUCT_COLUMN}`}
         >
           <div className="flex items-center gap-xxs">
             <button
@@ -501,7 +504,7 @@ function ProductRows({
                 {row.total === 1 ? "" : "s"} behind {row.productName}
               </span>
             </button>
-            <span className="truncate" title={row.productName}>
+            <span className="line-clamp-2 whitespace-normal break-words sm:block sm:truncate sm:whitespace-nowrap" title={row.productName}>
               {named ? (
                 <Link href={`/products/${named}`} className="hover:underline">
                   {row.productName}
@@ -586,9 +589,11 @@ function OrderRow({
 
   return (
     <tr data-fold className="border-b border-hairline bg-surface-soft/40">
-      <th scope="row" className="max-w-72 py-0 pr-sm text-left font-normal">
+      <th scope="row" className={`py-0 pr-sm text-left font-normal ${PRODUCT_COLUMN}`}>
         <Reveal closing={closing} className="py-sm">
-        <div className="flex flex-col gap-0 pl-[calc(var(--spacing-xxs)+var(--spacing-control-md))] sm:pl-xl">
+        {/* No indent below `sm`: the 176px column has no room for one, and
+            the PO number line would be cut. */}
+        <div className="flex flex-col gap-0 sm:pl-xl">
           <span className="truncate text-ink" title={meta.buyerName}>
             {meta.buyerName}
           </span>
@@ -648,3 +653,13 @@ function OrderRow({
     </tr>
   );
 }
+
+/**
+ * The Product column on a phone: pinned and a fixed 176px, names wrapping to
+ * two lines, so the stage columns start inside the screen and scroll under
+ * it. At full width a long name held the column at ~430px and every stage
+ * figure began off-screen. Its padding drops to `xs` there, so a PO number
+ * fits on its line. From `sm` it sizes as before, up to `max-w-72`.
+ */
+const PRODUCT_COLUMN =
+  "max-sm:sticky max-sm:left-0 max-sm:z-10 max-sm:bg-canvas max-sm:px-xs w-44 min-w-44 max-w-44 sm:w-auto sm:min-w-0 sm:max-w-72";

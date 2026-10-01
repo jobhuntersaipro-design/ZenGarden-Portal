@@ -60,6 +60,8 @@ export interface LineChartProps {
   categoryLabel?: string;
   /** Smooth monotone curves that never swing past the data, or straight segments. */
   curve?: "smooth" | "linear";
+  /** Figures printed above points; called with the plot's width so the caller can space them. */
+  pointLabels?: (plotWidth: number) => { index: number; series: string; text: string }[];
   ref?: Ref<HTMLElement>;
   className?: string;
 }
@@ -174,7 +176,7 @@ function axisPicks(data: LineChartDatum[], width: number) {
   return labeled.reverse().filter((_, rank) => rank % stride === 0).reverse();
 }
 
-export function LineChart({ data, series, label, unit = "", height = 220, formatValue, formatTick = value => compact.format(value), hiddenSeries, defaultHiddenSeries, onHiddenSeriesChange, onActiveChange, loading = false, emptyLabel = "No data for this range", legend, categoryLabel = "Date", curve = "smooth", ref, className }: LineChartProps) {
+export function LineChart({ data, series, label, unit = "", height = 220, formatValue, formatTick = value => compact.format(value), hiddenSeries, defaultHiddenSeries, onHiddenSeriesChange, onActiveChange, loading = false, emptyLabel = "No data for this range", legend, categoryLabel = "Date", curve = "smooth", pointLabels, ref, className }: LineChartProps) {
   const reduced = useReducedMotionSafe();
   const figure = useRef<HTMLElement>(null);
   const plot = useRef<HTMLDivElement>(null);
@@ -383,7 +385,7 @@ export function LineChart({ data, series, label, unit = "", height = 220, format
         <span className={styles.toggleLabel}>{line.label}</span>
       </button>)}
     </div>}
-    <div className={styles.chart} data-scrubbing={scrubbing || undefined} data-loading={loading || undefined}>
+    <div className={styles.chart} data-labelled={pointLabels ? "" : undefined} data-scrubbing={scrubbing || undefined} data-loading={loading || undefined}>
       <div ref={plot} className={styles.plot} style={{ height }} role="slider" tabIndex={empty ? -1 : 0} aria-label={`${label}, explore by ${categoryLabel.toLowerCase()}`} aria-orientation="horizontal" aria-valuemin={1} aria-valuemax={Math.max(1, data.length)} aria-valuenow={(index ?? last) + 1} aria-valuetext={valueText}
         onPointerDown={onPointerDown} onPointerMove={onPointerMove} onPointerUp={event => { if (event.pointerType !== "mouse") setActive(null); }} onPointerCancel={() => setActive(null)} onPointerLeave={event => { if (event.pointerType === "mouse") setActive(null); }} onKeyDown={onKeyDown} onBlur={() => setActive(null)}
         onFocus={event => { if (event.currentTarget.matches(":focus-visible") && !empty) setActive(current => current ?? last); }}>
@@ -400,6 +402,7 @@ export function LineChart({ data, series, label, unit = "", height = 220, format
           </g>
           {series.map((line, at) => <circle key={line.key} ref={node => { if (node) dots.current.set(line.key, node); else dots.current.delete(line.key); }} className={styles.dot} r={4} data-hidden={hidden.includes(line.key) || undefined} style={{ "--series": colorOf(line, at) } as CSSProperties} />)}
         </svg>
+        {pointLabels && plotWidth > 0 && <div className={styles.pointLabels} aria-hidden="true">{pointLabels(plotWidth).filter(point => data[point.index] && !hidden.includes(point.series)).map(point => { const share = last > 0 ? point.index / last : .5; const shift = share < .15 ? share / .15 * 50 : share > .85 ? 50 + (share - .85) / .15 * 50 : 50; const value = data[point.index].values[point.series] ?? 0; const top = TOP + (1 - (value - steady.min) / (steady.max - steady.min || 1)) * (height - TOP); return <span key={`${point.series}:${point.index}`} className={styles.pointLabel} style={{ left: `${share * 100}%`, top, transform: `translate(${-shift}%, calc(-100% - 6px))` }}>{point.text}</span>; })}</div>}
         <motion.div ref={tip} className={styles.tooltip} style={{ x: tipX, y: tipY }} aria-hidden="true">
           <p className={styles.tipTitle}>{(reading ?? data[last])?.label ?? ""}</p>
           {visible.map(line => <p key={line.key} className={styles.tipRow} style={{ "--series": colorOf(line, series.indexOf(line)) } as CSSProperties}>

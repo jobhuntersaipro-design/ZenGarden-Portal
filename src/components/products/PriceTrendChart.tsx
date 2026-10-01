@@ -5,6 +5,7 @@ import type { PricePoint } from "@/lib/analytics/products";
 import { formatMYR } from "@/lib/money";
 import { formatUnits } from "@/lib/units";
 import { LineChart } from "@/components/arc/line-chart/line-chart";
+import { pointLabelPicker } from "@/components/charts/labels";
 import { ChoiceButton } from "@/components/portal/ChoiceButton";
 import { SegmentGroup } from "@/components/portal/SegmentGroup";
 import { usePendingChoice } from "@/hooks/usePendingChoice";
@@ -107,6 +108,12 @@ export function PriceTrendChart({
           }
           data={data}
           emptyLabel="No sales in the last 12 months"
+          // The list price is one figure, already named by its dashed line;
+          // only the billed line prints its points. A price keeps its cents.
+          pointLabels={pointLabelPicker(
+            [{ key: "value", values: data.map((point) => point.values.value) }],
+            (value) => (mode === "price" ? formatMYR(value.toFixed(2)) : formatUnits(value)),
+          )}
           formatValue={(value) =>
             mode === "price"
               ? formatMYR(value.toFixed(2))

@@ -15,6 +15,7 @@ import type { TrendPoint } from "@/lib/analytics/trend";
 import { Spinner } from "@/components/portal/Spinner";
 import { usePendingChoice } from "@/hooks/usePendingChoice";
 import { LineChart as ArcLineChart } from "@/components/arc/line-chart/line-chart";
+import { pointLabelPicker } from "@/components/charts/labels";
 import chip from "@/components/arc/chip-group/chip-group.module.css";
 
 /**
@@ -116,6 +117,7 @@ export function SeriesTrend({
   selectedLabel,
   param,
   formatValue,
+  formatLabel = formatValue,
   formatOption,
   yTickFormatter,
   header,
@@ -137,6 +139,8 @@ export function SeriesTrend({
   param: string;
   /** The tooltip's figure. */
   formatValue: (value: number) => string;
+  /** The figure printed beside a point; the tooltip's unless given. */
+  formatLabel?: (value: number) => string;
   /** The ranked figure in the picker's own rows. */
   formatOption: (value: number) => string;
   yTickFormatter?: (value: number) => string;
@@ -329,6 +333,15 @@ export function SeriesTrend({
               values: Object.fromEntries(selected.map((id) => [id, Number(point[id] ?? 0)])),
             }))}
             formatValue={(value) => formatValue(value)}
+            // One figure per bucket, shared out across the lines in slot
+            // order, so no two print at the same x (labels.tsx).
+            pointLabels={pointLabelPicker(
+              selected.map((id) => ({
+                key: id,
+                values: points.map((point) => Number(point[id] ?? 0)),
+              })),
+              formatLabel,
+            )}
             formatTick={yTickFormatter}
           />
 

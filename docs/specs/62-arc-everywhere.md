@@ -71,6 +71,14 @@ All through `PATCHES` with `replaceOnce`, which throws when its target is gone:
   was removed.
 - **tree-view** rows are 44px (46 with the gap, in the TSX too, since the row
   height is animated in JS).
+- **line-chart** gains `pointLabels(plotWidth)`: figures printed above chosen
+  points, centred on the point and leaning inward at the edges, dimmed while
+  scrubbing. Callers pick the points with `pointLabelPicker`
+  (`src/components/charts/labels.tsx`): biggest first, spaced from the longest
+  figure, shared across lines (1 Oct 2026).
+- **sortable-data-table**'s phone card layout (≤620px) is scoped to
+  `.table:not([data-grid])`. The Demand Board's two tables carry `data-grid`
+  and keep their columns, scrolling sideways (1 Oct 2026).
 
 ## 3. Found while driving
 

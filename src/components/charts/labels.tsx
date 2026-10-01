@@ -178,3 +178,76 @@ export function valueLabel(
     );
   };
 }
+
+/**
+ * Which points a line chart labels: the biggest first. A walk from the left
+ * (`rotateSeriesLabels`) spends its slots on whatever comes first, so on a
+ * phone a quiet day on the 1st took the slot the month's peak needed, and the
+ * one figure a reader looks for went unprinted. Here each series offers its
+ * points largest first and the series take turns, so every line gets its own
+ * peaks; a point is taken only if it is `step` buckets from every point
+ * already taken, which keeps one label per bucket and none overlapping.
+ * Zeros are never labelled — the baseline already says zero.
+ */
+export function peakLabels(
+  series: readonly {
+    key: string;
+    values: readonly (number | null | undefined)[];
+  }[],
+  step: number,
+): Map<string, Set<number>> {
+  const picked = new Map<string, Set<number>>(
+    series.map((one) => [one.key, new Set<number>()]),
+  );
+  if (step === 0) return picked;
+  const queues = series.map((one) =>
+    one.values
+      .map((value, index) => ({ index, value: value ?? 0 }))
+      .filter((point) => point.value !== 0)
+      .sort((a, b) => b.value - a.value || a.index - b.index),
+  );
+  const taken: number[] = [];
+  const free = (index: number) => taken.every((at) => Math.abs(at - index) >= step);
+  for (let progress = true; progress; ) {
+    progress = false;
+    queues.forEach((queue, at) => {
+      while (queue.length > 0 && !free(queue[0].index)) queue.shift();
+      const next = queue.shift();
+      if (!next) return;
+      taken.push(next.index);
+      picked.get(series[at].key)!.add(next.index);
+      progress = true;
+    });
+  }
+  return picked;
+}
+
+/**
+ * The `pointLabels` callback Arc's line chart takes: given the plot's width,
+ * which points print their figure, spaced from the longest figure so no two
+ * meet (the same measure `useLabelStep` uses for the bar charts).
+ */
+export function pointLabelPicker(
+  series: readonly { key: string; values: readonly number[] }[],
+  format: (value: number) => string,
+) {
+  return (plotWidth: number) => {
+    const buckets = series.reduce((max, one) => Math.max(max, one.values.length), 0);
+    if (buckets === 0 || plotWidth <= 0) return [];
+    const longest = series.reduce(
+      (max, one) =>
+        one.values.reduce((m, value) => (value ? Math.max(m, format(value).length) : m), max),
+      0,
+    );
+    const perBucket = plotWidth / Math.max(1, buckets - 1);
+    const step = Math.max(1, Math.ceil((longest * GLYPH_PX + GAP_PX) / perBucket));
+    const picked = peakLabels(series, step);
+    return series.flatMap((one) =>
+      [...(picked.get(one.key) ?? [])].map((index) => ({
+        index,
+        series: one.key,
+        text: format(one.values[index]),
+      })),
+    );
+  };
+}

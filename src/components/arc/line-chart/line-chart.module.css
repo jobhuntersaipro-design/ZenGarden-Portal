@@ -62,4 +62,5 @@
   .chart[data-loading] .series, .skeleton { animation: none; }
 }
 @media (max-width: 639.98px) { .toggle { min-height: 44px; } }
+.chart[data-labelled] { padding-top: 18px; } .pointLabels { position: absolute; inset: 0; pointer-events: none; transition: opacity var(--arc-duration-standard) var(--arc-ease-standard); } .chart[data-scrubbing] .pointLabels { opacity: .2; } .pointLabel { position: absolute; color: var(--arc-text-secondary); font-size: var(--arc-text-xs); font-variant-numeric: tabular-nums; line-height: 1; white-space: nowrap; text-shadow: 0 0 2px var(--arc-surface), 0 0 4px var(--arc-surface), 0 0 6px var(--arc-surface); }
 }

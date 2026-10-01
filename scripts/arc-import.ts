@@ -182,6 +182,25 @@ export const PATCHES: { file: RegExp; apply: (source: string) => string; why: st
     why: "The series toggles are 32px; below sm they are touch targets and take the 44px floor.",
   },
   {
+    file: /^line-chart\/line-chart\.tsx$/,
+    apply: addPointLabels,
+    why: "Arc's line chart prints no figures, only a crosshair readout; every chart here prints its values beside the points, so a reader gets the numbers without scrubbing. The caller picks which points from the plot's width, so labels never overlap; each figure centres on its point and only leans inward near the plot's edges.",
+  },
+  {
+    file: /^line-chart\/line-chart\.module\.css$/,
+    apply: (source) =>
+      appendInLayer(
+        source,
+        ".chart[data-labelled] { padding-top: 18px; } .pointLabels { position: absolute; inset: 0; pointer-events: none; transition: opacity var(--arc-duration-standard) var(--arc-ease-standard); } .chart[data-scrubbing] .pointLabels { opacity: .2; } .pointLabel { position: absolute; color: var(--arc-text-secondary); font-size: var(--arc-text-xs); font-variant-numeric: tabular-nums; line-height: 1; white-space: nowrap; text-shadow: 0 0 2px var(--arc-surface), 0 0 4px var(--arc-surface), 0 0 6px var(--arc-surface); }",
+      ),
+    why: "The figures sit 6px above their point in the secondary ink with a halo in the card's colour, so a line passing through one stays legible; they dim while scrubbing so the readout leads; the plot gains room above for the highest one.",
+  },
+  {
+    file: /^sortable-data-table\/sortable-data-table\.module\.css$/,
+    apply: scopePhoneCards,
+    why: "Below 620px Arc folds every row into a card. That is right for a list, and it scrambles a grid read across by column: on the Demand Board each row's day columns wrapped onto four lines under headers that no longer lined up. A table marked `data-grid` keeps its columns and scrolls sideways instead.",
+  },
+  {
     file: /^donut-chart\/donut-chart\.module\.css$/,
     apply: (source) =>
       appendInLayer(
@@ -241,6 +260,53 @@ export function wrapScreenReaderTable(source: string): string {
     "</table></div>" +
     source.slice(close + "</table>".length)
   );
+}
+
+/** A `pointLabels` prop on Arc's line chart: the caller names the points, the chart places them. */
+export function addPointLabels(source: string): string {
+  let out = replaceOnce(
+    source,
+    '  curve?: "smooth" | "linear";',
+    '  curve?: "smooth" | "linear";\n  /** Figures printed above points; called with the plot\'s width so the caller can space them. */\n  pointLabels?: (plotWidth: number) => { index: number; series: string; text: string }[];',
+  );
+  out = replaceOnce(out, 'curve = "smooth", ref, className }', 'curve = "smooth", pointLabels, ref, className }');
+  out = replaceOnce(
+    out,
+    "<div className={styles.chart} data-scrubbing={scrubbing || undefined}",
+    "<div className={styles.chart} data-labelled={pointLabels ? \"\" : undefined} data-scrubbing={scrubbing || undefined}",
+  );
+  return replaceOnce(
+    out,
+    "        </svg>\n        <motion.div ref={tip}",
+    "        </svg>\n" +
+      "        {pointLabels && plotWidth > 0 && <div className={styles.pointLabels} aria-hidden=\"true\">{pointLabels(plotWidth).filter(point => data[point.index] && !hidden.includes(point.series)).map(point => { const share = last > 0 ? point.index / last : .5; const shift = share < .15 ? share / .15 * 50 : share > .85 ? 50 + (share - .85) / .15 * 50 : 50; const value = data[point.index].values[point.series] ?? 0; const top = TOP + (1 - (value - steady.min) / (steady.max - steady.min || 1)) * (height - TOP); return <span key={`${point.series}:${point.index}`} className={styles.pointLabel} style={{ left: `${share * 100}%`, top, transform: `translate(${-shift}%, calc(-100% - 6px))` }}>{point.text}</span>; })}</div>}\n" +
+      "        <motion.div ref={tip}",
+  );
+}
+
+/**
+ * Scopes every rule inside Arc's `@media (max-width: 620px…)` blocks to
+ * `.table:not([data-grid])`, so a table can opt out of the phone card layout.
+ */
+export function scopePhoneCards(source: string): string {
+  const marker = "@media (max-width: 620px)";
+  let out = "";
+  let from = 0;
+  let found = 0;
+  for (let at = source.indexOf(marker); at !== -1; at = source.indexOf(marker, from)) {
+    const open = source.indexOf("{", at);
+    let depth = 0;
+    let end = open;
+    for (; end < source.length; end += 1) {
+      if (source[end] === "{") depth += 1;
+      else if (source[end] === "}" && --depth === 0) break;
+    }
+    out += source.slice(from, at) + source.slice(at, end + 1).replace(/\.table\b/g, ".table:not([data-grid])");
+    from = end + 1;
+    found += 1;
+  }
+  if (!found) throw new Error("scopePhoneCards: no phone block; the patch is stale");
+  return out + source.slice(from);
 }
 
 export function applyPatches(dest: string, source: string): string {

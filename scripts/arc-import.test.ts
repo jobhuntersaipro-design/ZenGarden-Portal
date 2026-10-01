@@ -7,6 +7,7 @@ import {
   foundationTokens,
   renameTokens,
   rewriteImports,
+  scopePhoneCards,
 } from "./arc-import";
 
 const TOKENS = foundationTokens(`
@@ -98,5 +99,22 @@ describe("layerCss", () => {
 
   it("orders arc above preflight and below the utilities a caller passes", () => {
     expect(LAYER_ORDER).toBe("@layer theme, base, arc, components, utilities;");
+  });
+});
+
+describe("scopePhoneCards", () => {
+  it("lets a data-grid table keep its columns on a phone and leaves wider rules alone", () => {
+    const css =
+      ".table { display: table; }\n@media (max-width: 620px) {\n  .table tbody tr { display: flex; }\n  .table[data-selectable] td { order: 2; }\n}\n@media (max-width: 620px) and (hover: hover) { .table tbody tr:hover { color: red; } }\n";
+    const out = scopePhoneCards(css);
+    expect(out.startsWith(".table { display: table; }")).toBe(true);
+    expect(out).toContain(".table:not([data-grid]) tbody tr { display: flex; }");
+    expect(out).toContain(".table:not([data-grid])[data-selectable] td");
+    expect(out).toContain(".table:not([data-grid]) tbody tr:hover");
+    expect(out).not.toMatch(/@media[^{]*\{[^}]*\.table tbody/);
+  });
+
+  it("refuses a stylesheet with no phone block, so an upstream change cannot drop it silently", () => {
+    expect(() => scopePhoneCards(".table { display: table; }")).toThrow(/stale/);
   });
 });

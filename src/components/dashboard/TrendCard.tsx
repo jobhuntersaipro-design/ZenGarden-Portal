@@ -87,6 +87,7 @@ export function TrendCard({
       // Whole numbers: a figure beside a point is read at a glance, and
       // `RM 85,231.47` over `RM 85,110.02` is two decimals of noise between
       // the only digits that differ.
+      formatLabel={(value) => (money ? formatMYR(value, 0) : formatUnits(Math.round(value)))}
       formatOption={(value) =>
         money ? formatMYR(value.toFixed(2)) : `${formatUnits(value)} ctn`
       }

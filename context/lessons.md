@@ -404,3 +404,21 @@ and fall back to one email each when the combined one is refused anyway
 "New order" email. Four `@example.com` test users held staff roles; the one
 send carrying all seven addresses got a 422; the buyer's own receipt, a
 separate send, arrived, which made the order look fine.
+
+---
+
+## 16. A vendored part's phone layout is a decision about your data
+
+**Rule.** A UI library's responsive mode was designed for its own demo data.
+Before putting a part on a screen, open it at 390 with *your* rows. A table
+that folds rows into cards suits a list read row by row and destroys a grid
+read down a column. Opt the grid out at the part, not by restyling every cell.
+
+**The case (2026-10-01, reported by the user).** Arc's data table turns every
+row into a card below 620px. On the Demand Board, a day-by-product grid, each
+row's day columns wrapped onto four lines under headers that no longer lined
+up — on both of the page's tables. It built, typechecked and passed every test,
+and the 2026-10-01 overflow scan measured no overflow, because a scrambled
+table is no wider than a tidy one. A `data-grid` opt-out in the import patch
+gave both tables their columns back.
+
