@@ -1,4 +1,6 @@
 /* Vendored from Arc (MIT) at cde1b40 by scripts/arc-import.ts. Tokens renamed --x → --arc-x; see src/app/arc-tokens.css. */
+@layer theme, base, arc, components, utilities;
+@layer arc {
 .figure { display: grid; justify-items: center; min-width: 0; gap: 10px; margin: 0; text-align: center; }.figure figcaption { display: grid; gap: 3px; min-width: 0; }.figure strong { font-size: var(--arc-text-sm); font-weight: 500; }.detail { color: var(--arc-text-muted); font-size: var(--arc-text-xs); font-variant-numeric: tabular-nums; }
 .accent { --gauge-color: var(--arc-accent); --gauge-text: var(--arc-accent-strong); }.success { --gauge-color: var(--arc-success); --gauge-text: var(--arc-success); }.warning { --gauge-color: var(--arc-warning); --gauge-text: var(--arc-warning); }.danger { --gauge-color: var(--arc-danger); --gauge-text: var(--arc-danger); }
 
@@ -21,3 +23,4 @@
 .swap { position: relative; display: block; }
 .swap > .text { display: inline-block; }
 @media (prefers-reduced-motion: reduce) { .track, .arc, .status { transition: none; } }
+}

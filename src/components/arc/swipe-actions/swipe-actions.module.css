@@ -1,4 +1,6 @@
 /* Vendored from Arc (MIT) at cde1b40 by scripts/arc-import.ts. Tokens renamed --x → --arc-x; see src/app/arc-tokens.css. */
+@layer theme, base, arc, components, utilities;
+@layer arc {
 /* The surface clips every row, so revealed actions never spill past its rounded corners. It hides once the last row has left. */
 .surface { overflow: hidden; border: 1px solid var(--arc-border); border-radius: var(--arc-radius-panel); background: var(--arc-surface); transition: border-color var(--arc-duration-standard) var(--arc-ease-standard), background-color var(--arc-duration-standard) var(--arc-ease-standard); }
 /* When the last row is on its way out, the frame fades with it instead of leaving a hairline behind. */
@@ -62,4 +64,5 @@
   .menu[data-state="open"] { animation: menu-fade-in var(--arc-duration-instant) linear both; }
   .menu[data-state="closed"] { animation: menu-fade-out 100ms linear both; }
   .menu[data-state="open"] .item { animation: none; }
+}
 }

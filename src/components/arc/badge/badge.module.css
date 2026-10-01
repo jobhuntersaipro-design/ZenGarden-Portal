@@ -1,4 +1,6 @@
 /* Vendored from Arc (MIT) at cde1b40 by scripts/arc-import.ts. Tokens renamed --x → --arc-x; see src/app/arc-tokens.css. */
+@layer theme, base, arc, components, utilities;
+@layer arc {
 .badge {
   display: inline-flex;
   min-height: 26px;
@@ -50,4 +52,5 @@
 
 @media (prefers-reduced-motion: reduce) {
   .badge { transition-duration: var(--arc-duration-instant); }
+}
 }

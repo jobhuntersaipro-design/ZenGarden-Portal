@@ -3,7 +3,7 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { beginRouteProgress } from "@/lib/route-progress";
-import { toast } from "sonner";
+import { toast } from "@/lib/toast";
 import { deletePurchaseOrder } from "@/actions/purchase-orders";
 import { RowDeleteButton } from "@/components/purchase-orders/RowDeleteButton";
 import { Button } from "@/components/ui/button";

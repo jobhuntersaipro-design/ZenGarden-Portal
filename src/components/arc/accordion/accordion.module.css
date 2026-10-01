@@ -1,4 +1,6 @@
 /* Vendored from Arc (MIT) at cde1b40 by scripts/arc-import.ts. Tokens renamed --x → --arc-x; see src/app/arc-tokens.css. */
+@layer theme, base, arc, components, utilities;
+@layer arc {
 .accordion { width: 100%; border-top: 1px solid var(--arc-border); }
 .item { border-bottom: 1px solid var(--arc-border); }
 .header { margin: 0; }
@@ -15,3 +17,4 @@
 .lg .panelInner { max-width: 62ch; padding: 0 var(--arc-space-12) var(--arc-space-6) 0; }
 @media (max-width: 520px) { .lg .trigger { min-height: 68px; font-size: var(--arc-text-base); } .lg .panel { font-size: var(--arc-text-sm); } .lg .panelInner { padding-right: var(--arc-space-6); } }
 @media (prefers-reduced-motion: reduce) { .trigger, .icon { transition: none; } }
+}

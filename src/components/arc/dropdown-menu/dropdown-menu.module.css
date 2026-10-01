@@ -1,4 +1,6 @@
 /* Vendored from Arc (MIT) at cde1b40 by scripts/arc-import.ts. Tokens renamed --x → --arc-x; see src/app/arc-tokens.css. */
+@layer theme, base, arc, components, utilities;
+@layer arc {
 .trigger { display: inline-flex; max-width: 100%; min-height: var(--arc-control-height-sm); align-items: center; gap: var(--arc-space-2); padding: 0 var(--arc-space-3); border: 1px solid var(--arc-border); border-radius: var(--arc-radius-control); background: var(--arc-surface); color: var(--arc-foreground); font: inherit; font-size: var(--arc-text-sm); font-weight: 500; cursor: pointer; transition: background-color var(--arc-duration-instant) var(--arc-ease-standard), border-color var(--arc-duration-fast) var(--arc-ease-standard), box-shadow var(--arc-duration-fast) var(--arc-ease-standard); }
 @media (hover: hover) and (pointer: fine) { .trigger:hover { border-color: var(--arc-border-strong); background: var(--arc-surface-muted); box-shadow: var(--arc-shadow-resting); } }
 /* The trigger anchors the menu, so press feedback stays in color. A scaled rect would be measured on pointerdown and shift the menu. */
@@ -37,4 +39,5 @@
 @media (prefers-reduced-motion: reduce) {
   .trigger, .chevron, .item, .highlight { transition: none; }
   .menu, .menu[data-state="closed"] { transform: none; transition: opacity var(--arc-duration-instant) linear; }
+}
 }

@@ -1,4 +1,6 @@
 /* Vendored from Arc (MIT) at cde1b40 by scripts/arc-import.ts. Tokens renamed --x → --arc-x; see src/app/arc-tokens.css. */
+@layer theme, base, arc, components, utilities;
+@layer arc {
 .root { position: relative; display: inline-flex; flex: none; vertical-align: middle; }
 
 /* The trigger anchors the menu, so it answers hover and press with color, never with scale. */
@@ -95,4 +97,5 @@
 @media (prefers-reduced-motion: reduce) {
   .trigger, .chevron, .dot, .dot::before, .dot::after, .segment, .thumb, .item, .icon { transition: none; }
   .spinner { animation-duration: 2.4s; }
+}
 }

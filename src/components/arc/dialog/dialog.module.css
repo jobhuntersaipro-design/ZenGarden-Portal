@@ -1,4 +1,6 @@
 /* Vendored from Arc (MIT) at cde1b40 by scripts/arc-import.ts. Tokens renamed --x → --arc-x; see src/app/arc-tokens.css. */
+@layer theme, base, arc, components, utilities;
+@layer arc {
 .overlay { position: fixed; inset: 0; z-index: 50; background: oklch(10% 0 0 / .46); backdrop-filter: blur(7px); }
 /* Centered with auto margins (like a native modal dialog) so transform stays free for the entrance spring. */
 .content { position: fixed; z-index: 51; inset: 0; width: min(calc(100vw - var(--arc-space-8)), 440px); height: fit-content; max-height: calc(100vh - var(--arc-space-8)); max-height: calc(100dvh - var(--arc-space-8)); margin: auto; overflow: auto; border: 1px solid var(--arc-border); border-radius: var(--arc-radius-surface); background: var(--arc-surface-raised); color: var(--arc-foreground); box-shadow: var(--arc-shadow-floating); }
@@ -33,4 +35,5 @@
   .keyframes.content[data-state="closed"] { animation: content-fade-out 100ms linear both; }
   .close, .close:active { transition: none; }
   .close:active { transform: none; }
+}
 }

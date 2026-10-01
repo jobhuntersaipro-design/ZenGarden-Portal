@@ -1,4 +1,6 @@
 /* Vendored from Arc (MIT) at cde1b40 by scripts/arc-import.ts. Tokens renamed --x → --arc-x; see src/app/arc-tokens.css. */
+@layer theme, base, arc, components, utilities;
+@layer arc {
 .toolbar { position: relative; display: flex; min-height: var(--arc-control-height-lg); align-items: flex-start; justify-content: space-between; gap: var(--arc-space-4); padding: var(--arc-space-3) var(--arc-space-4); border: 1px solid var(--arc-border); border-radius: var(--arc-radius-panel); background: var(--arc-surface); }
 /* The frame springs to the chip list height, so a new line of chips opens the toolbar instead of snapping it. */
 .frame { min-width: 0; flex: 1; }
@@ -73,3 +75,4 @@
 /* In a column the frame must size from its height, not a zero flex basis, or its spring is ignored and a new line of chips snaps. */
 @media (max-width: 520px) { .toolbar { align-items: stretch; flex-direction: column; } .frame { flex: none; } .actions { justify-content: flex-end; } }
 @media (prefers-reduced-motion: reduce) { .chip button, .clear, .surface, .back { transition: none; } .chip button:active, .clear:active { transform: none; } }
+}

@@ -1,4 +1,6 @@
 /* Vendored from Arc (MIT) at cde1b40 by scripts/arc-import.ts. Tokens renamed --x → --arc-x; see src/app/arc-tokens.css. */
+@layer theme, base, arc, components, utilities;
+@layer arc {
 .overlay {
   position: fixed;
   inset: 0;
@@ -93,4 +95,5 @@
   .keyframes.content[data-state="closed"] { animation: drawer-fade-out 100ms linear both; }
   .close, .close:active { transition: none; }
   .close:active { transform: none; }
+}
 }

@@ -1,8 +1,10 @@
 import type { PoStage } from "@/generated/prisma/enums";
 import { formatDate } from "@/lib/dates";
 import { StageBadge, type StageBadgeState } from "@/components/portal/StatusBadge";
-import { PO_STAGES, stageIndex } from "@/lib/po-stages";
+import { PO_STAGES, stageIndex, stageLabel } from "@/lib/po-stages";
 import { StageTick } from "@/components/purchase-orders/StageTick";
+import { Stepper } from "@/components/arc/stepper/stepper";
+import { ModeSwitch } from "@/components/ui-mode/ModeSwitch";
 
 export type StageEvent = {
   toStage: PoStage;
@@ -117,7 +119,27 @@ export function StageStepper({
         }`
       : formatDate(event.changedAt);
 
+  // Arc mode: Arc's stepper — markers that fill and tick as a stage
+  // completes, its own compact caption on a phone. Delivered is the last
+  // stage, so reaching it marks the whole flow complete.
+  const delivered = currentIndex === PO_STAGES.length - 1;
+  const arc = (
+    <div className="mt-lg">
+      <Stepper
+        label="Order stage"
+        completeLabel="Delivered"
+        current={delivered ? PO_STAGES.length : Math.max(0, currentIndex)}
+        steps={stages.map(({ stage, done, isCurrent, event }) => ({
+          id: stage,
+          label: stageLabel(stage),
+          description: event && (done || isCurrent) ? caption(event) : undefined,
+        }))}
+      />
+    </div>
+  );
+
   return (
+    <ModeSwitch arc={arc}>
     <div className="mt-lg">
       {/* Vertical, below `sm`. The connector runs from each node to the next,
           so the last row has none. */}
@@ -188,5 +210,6 @@ export function StageStepper({
         </ol>
       </div>
     </div>
+    </ModeSwitch>
   );
 }

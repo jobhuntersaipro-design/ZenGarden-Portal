@@ -1,4 +1,6 @@
 /* Vendored from Arc (MIT) at cde1b40 by scripts/arc-import.ts. Tokens renamed --x → --arc-x; see src/app/arc-tokens.css. */
+@layer theme, base, arc, components, utilities;
+@layer arc {
 .root { display: grid; width: 100%; min-width: 0; color: var(--arc-foreground); }
 .input { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; clip-path: inset(50%); }
 /* A full-width drop target: press feedback is color only, never a scale. */
@@ -49,3 +51,4 @@
 }
 .srOnly { position: absolute; width: 1px; height: 1px; padding: 0; overflow: hidden; clip: rect(0, 0, 0, 0); white-space: nowrap; border: 0; }
 @media (prefers-reduced-motion: reduce) { .dropzone, .uploadIcon, .remove, .retry { transition: none; } .dragging .uploadIcon, .remove:active, .retry:active { transform: none; } }
+}

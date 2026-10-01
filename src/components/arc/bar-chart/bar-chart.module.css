@@ -1,4 +1,6 @@
 /* Vendored from Arc (MIT) at cde1b40 by scripts/arc-import.ts. Tokens renamed --x → --arc-x; see src/app/arc-tokens.css. */
+@layer theme, base, arc, components, utilities;
+@layer arc {
 .figure { display: grid; min-width: 0; gap: var(--arc-space-5); margin: 0; color: var(--arc-foreground); }
 
 /* The headline is the readout: the average at rest, the scrubbed bar while exploring. Each line keeps its height, so swaps never move the plot. */
@@ -49,3 +51,4 @@
 @media (prefers-reduced-motion: reduce) { .bar { transition: none; } }
 .measure { position: absolute; top: 0; left: 0; display: flex; visibility: hidden; pointer-events: none; }
 .measure > span { flex: none; font-size: var(--arc-text-xs); line-height: 1; white-space: nowrap; font-variant-numeric: tabular-nums; }
+}

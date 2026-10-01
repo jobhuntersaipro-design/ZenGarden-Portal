@@ -2,7 +2,7 @@
 
 import { useTransition } from "react";
 import { useRouter } from "next/navigation";
-import { toast } from "sonner";
+import { toast } from "@/lib/toast";
 import type { ReorderResult } from "@/actions/reorder";
 import { reorderMessage } from "@/lib/reorder-message";
 import { shopHref } from "@/lib/shop-routes";

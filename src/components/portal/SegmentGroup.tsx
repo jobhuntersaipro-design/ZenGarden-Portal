@@ -1,4 +1,9 @@
-import type { ReactNode } from "react";
+"use client";
+
+import { LayoutGroup } from "motion/react";
+import { useId, type ReactNode } from "react";
+import segment from "@/components/arc/segmented-control/segmented-control.module.css";
+import { useIsArc } from "@/components/ui-mode/UiModeProvider";
 
 /**
  * The bordered strip that holds a row of `ChoiceButton look="segment"` cells.
@@ -30,7 +35,22 @@ export function SegmentGroup({
   className?: string;
   children: ReactNode;
 }) {
-  const strip = (
+  const isArc = useIsArc();
+  const id = useId();
+  // Arc mode: Arc's segmented-control frame and track, with one LayoutGroup
+  // per strip so the selection slides within it and never across strips.
+  const strip = isArc ? (
+    <div
+      role="group"
+      aria-label={label}
+      aria-busy={busy || undefined}
+      className={`${segment.root} ${hideLabel ? className : ""}`}
+    >
+      <LayoutGroup id={id}>
+        <div className={segment.track}>{children}</div>
+      </LayoutGroup>
+    </div>
+  ) : (
     <div
       role="group"
       aria-label={label}

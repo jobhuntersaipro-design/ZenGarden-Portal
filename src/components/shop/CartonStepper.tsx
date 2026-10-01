@@ -2,7 +2,7 @@
 
 import { useEffect, useOptimistic, useRef, useState, useTransition } from "react";
 import { Minus, Plus } from "lucide-react";
-import { toast } from "sonner";
+import { toast } from "@/lib/toast";
 import { Button } from "@/components/ui/button";
 import { piecesFor } from "@/lib/cartons";
 

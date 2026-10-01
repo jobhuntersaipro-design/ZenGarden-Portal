@@ -3,6 +3,8 @@
 import * as React from "react"
 import { cn } from "cn"
 import { Switch as SwitchPrimitive } from "radix-ui"
+import { Switch as ArcSwitch } from "@/components/arc/switch/switch"
+import { useIsArc } from "@/components/ui-mode/UiModeProvider"
 
 function Switch({
   className,
@@ -11,6 +13,9 @@ function Switch({
 }: React.ComponentProps<typeof SwitchPrimitive.Root> & {
   size?: "sm" | "default"
 }) {
+  // Arc mode: Arc's switch, whose thumb stretches as it travels.
+  const arc = useIsArc()
+  if (arc) return <ArcSwitch data-slot="switch" className={className} {...props} />
   return (
     <SwitchPrimitive.Root
       data-slot="switch"

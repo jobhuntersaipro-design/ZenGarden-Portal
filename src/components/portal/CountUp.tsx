@@ -1,5 +1,7 @@
 "use client";
 
+import { AnimatedCounter } from "@/components/arc/animated-counter/animated-counter";
+import { useIsArc } from "@/components/ui-mode/UiModeProvider";
 import { useCountUp } from "@/hooks/useCountUp";
 import { formatMYR } from "@/lib/money";
 import { formatUnits } from "@/lib/units";
@@ -47,6 +49,24 @@ export function CountUp({
   suffix?: string;
 }) {
   const shown = useCountUp(value);
+  const isArc = useIsArc();
+  if (isArc) {
+    // Arc mode: Arc's animated counter. It paints the real figure first and
+    // rolls each digit on a change, so a KPI still never reads zero on its
+    // first paint (00-master §4). It takes the tile's own type through
+    // `data-count-host` (arc-tokens.css).
+    const money = format === "money" || format === "money0";
+    return (
+      <span data-count-host>
+        <AnimatedCounter
+          value={value}
+          prefix={`${prefix}${money ? "RM\u00a0" : ""}`}
+          suffix={`${format === "percent" ? "%" : ""}${suffix}`}
+          decimals={format === "money" ? 2 : format === "money0" || format === "grouped" ? 0 : decimals}
+        />
+      </span>
+    );
+  }
   return (
     <>
       {prefix}

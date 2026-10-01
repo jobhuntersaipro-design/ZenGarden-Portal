@@ -16,6 +16,12 @@
  *   the TSX, and `src/app/arc-tokens.css` defines the `--arc-*` set from our
  *   ClickUp `@theme` tokens. So Arc's parts wear our look: ink pill, purple
  *   focus ring, indigo shadows, Plus Jakarta Sans over Inter, 44px controls.
+ * - Every CSS module is wrapped in `@layer arc`, declared between Tailwind's
+ *   `base` and `components` (globals.css). An unlayered rule beats every
+ *   layered one whatever its specificity, so left unlayered, Arc's
+ *   `display`, `width` and `padding` overrode the Tailwind utilities a caller
+ *   passes in `className` — `hidden sm:inline-flex` on a button stopped
+ *   hiding it. In the layer, a caller's utilities win and preflight does not.
  * - `@radix-ui/react-*` imports become the `radix-ui` package this project
  *   already depends on; `@/registry/...` and `@/lib/...` become
  *   `@/components/arc/...`.
@@ -171,8 +177,16 @@ export function destination(target: string): string | null {
 const HEADER_TS = `// Vendored from Arc (MIT, see ../LICENSE) at ${ARC_COMMIT.slice(0, 7)} by scripts/arc-import.ts. Do not edit; re-run the script.\n`;
 const HEADER_CSS = `/* Vendored from Arc (MIT) at ${ARC_COMMIT.slice(0, 7)} by scripts/arc-import.ts. Tokens renamed --x → --arc-x; see src/app/arc-tokens.css. */\n`;
 
+/** The cascade order globals.css declares; repeated in each module so whichever file loads first sets the same order. */
+export const LAYER_ORDER = "@layer theme, base, arc, components, utilities;";
+
+/** A module's rules inside `@layer arc`, so Tailwind utilities a caller passes still win. */
+export function layerCss(content: string): string {
+  return `${LAYER_ORDER}\n@layer arc {\n${content.replace(/\s+$/, "")}\n}\n`;
+}
+
 function withHeader(file: string, content: string): string {
-  if (file.endsWith(".css")) return HEADER_CSS + content;
+  if (file.endsWith(".css")) return HEADER_CSS + layerCss(content);
   // "use client" must stay the first statement.
   const m = content.match(/^(["']use client["'];?\s*\n)/);
   return m ? m[1] + HEADER_TS + content.slice(m[1].length) : HEADER_TS + content;

@@ -3,7 +3,7 @@
 import { useMemo, useReducer, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { beginRouteProgress } from "@/lib/route-progress";
-import { toast } from "sonner";
+import { toast } from "@/lib/toast";
 import { Field, ReadOnlyField } from "@/components/review/Field";
 import { TotalsBanner } from "@/components/review/TotalsBanner";
 import { Button } from "@/components/ui/button";

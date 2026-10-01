@@ -2,7 +2,7 @@
 
 import { useEffect, useRef, useState } from "react";
 import { useAwaitableRefresh } from "@/hooks/useAwaitableRefresh";
-import { toast } from "sonner";
+import { toast } from "@/lib/toast";
 import { advanceStage, revertStage } from "@/actions/stages";
 import type { PoStage } from "@/generated/prisma/enums";
 import { Button } from "@/components/ui/button";

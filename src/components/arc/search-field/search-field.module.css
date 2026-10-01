@@ -1,4 +1,6 @@
 /* Vendored from Arc (MIT) at cde1b40 by scripts/arc-import.ts. Tokens renamed --x → --arc-x; see src/app/arc-tokens.css. */
+@layer theme, base, arc, components, utilities;
+@layer arc {
 .field { display: grid; gap: var(--arc-space-2); min-width: 0; }
 .field label { font-size: var(--arc-text-sm); font-weight: 500; }
 /* The focus ring contracts onto the border while it fades in; the shell never changes size. */
@@ -17,3 +19,4 @@
 @media (hover: hover) and (pointer: fine) { .shell button:hover { background: var(--arc-surface-muted); color: var(--arc-foreground); } }
 .shell button:focus-visible { outline: 2px solid var(--arc-focus-ring); outline-offset: 2px; }
 @media (prefers-reduced-motion: reduce) { .shell, .shell > svg, .shell button { transition: none; } }
+}

@@ -2,7 +2,7 @@
 
 import { useMemo, useRef, useState } from "react";
 import { Download, FolderPlus, Upload } from "lucide-react";
-import { toast } from "sonner";
+import { toast } from "@/lib/toast";
 import { deleteBuyerDocument, moveBuyerDocument } from "@/actions/buyer-documents";
 import type { PresignBuyerDocumentsResponse } from "@/app/api/buyers/[id]/documents/presign/route";
 import {

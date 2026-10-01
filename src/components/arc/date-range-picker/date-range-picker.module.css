@@ -1,4 +1,6 @@
 /* Vendored from Arc (MIT) at cde1b40 by scripts/arc-import.ts. Tokens renamed --x → --arc-x; see src/app/arc-tokens.css. */
+@layer theme, base, arc, components, utilities;
+@layer arc {
 /* The root holds the trigger's place in the page. The surface floats above it and grows into the panel, so opening never pushes content. */
 .root {
   position: relative;
@@ -211,4 +213,5 @@
 
 @media (prefers-contrast: more) {
   .surface::after { border-color: var(--arc-border-strong); }
+}
 }

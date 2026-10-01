@@ -1,4 +1,6 @@
 /* Vendored from Arc (MIT) at cde1b40 by scripts/arc-import.ts. Tokens renamed --x → --arc-x; see src/app/arc-tokens.css. */
+@layer theme, base, arc, components, utilities;
+@layer arc {
 /* The root is the size container, so slide widths, centering padding, and the control row all share one measure. It needs a definite width. */
 .root { --carousel-gap: var(--arc-space-4); display: grid; width: 100%; grid-template-columns: minmax(0, 1fr); min-width: 0; gap: var(--arc-space-4); container-type: inline-size; }
 /* Only the horizontal axis clips, so focus rings inside the active slide are never cut off at the top or bottom. */
@@ -37,4 +39,5 @@
 
 @media (prefers-reduced-motion: reduce) {
   .dot, .control, .control:active:not([aria-disabled="true"]) { transition: none; transform: none; }
+}
 }

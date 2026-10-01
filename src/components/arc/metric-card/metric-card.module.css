@@ -1,4 +1,6 @@
 /* Vendored from Arc (MIT) at cde1b40 by scripts/arc-import.ts. Tokens renamed --x → --arc-x; see src/app/arc-tokens.css. */
+@layer theme, base, arc, components, utilities;
+@layer arc {
 .card { min-width: 0; border: 1px solid var(--arc-border); border-radius: var(--arc-radius-surface); padding: var(--arc-space-6); background: var(--arc-surface); box-shadow: var(--arc-shadow-resting); }
 .top { display: flex; align-items: center; justify-content: space-between; gap: var(--arc-space-3); margin-bottom: var(--arc-space-8); }
 .top span { color: var(--arc-text-secondary); font-size: var(--arc-text-sm); }
@@ -18,3 +20,4 @@
 .top small[data-trend] { border-color: transparent; transition: color var(--arc-duration-fast) var(--arc-ease-standard), background-color var(--arc-duration-fast) var(--arc-ease-standard); }
 .top small[data-trend="up"] { background: color-mix(in oklch, var(--arc-success) 11%, transparent); color: var(--arc-success); }
 .top small[data-trend="down"] { background: color-mix(in oklch, var(--arc-danger) 11%, transparent); color: var(--arc-danger); }
+}

@@ -1,4 +1,6 @@
 /* Vendored from Arc (MIT) at cde1b40 by scripts/arc-import.ts. Tokens renamed --x → --arc-x; see src/app/arc-tokens.css. */
+@layer theme, base, arc, components, utilities;
+@layer arc {
 /* Width never changes: the label cell reserves its widest state while icon and letters crossfade inside it. Press releases on the spring curve. */
 .button { display: inline-flex; width: max-content; max-width: 100%; min-height: var(--arc-control-height-sm); align-items: center; justify-content: center; gap: var(--arc-space-2); border: 1px solid var(--arc-border); border-radius: var(--arc-radius-control); padding: 0 var(--arc-space-3); background: var(--arc-surface); color: var(--arc-foreground); font: inherit; font-size: var(--arc-text-sm); font-weight: 500; cursor: pointer; -webkit-tap-highlight-color: transparent; transition: background-color var(--arc-duration-fast) var(--arc-ease-standard), border-color var(--arc-duration-fast) var(--arc-ease-standard), color var(--arc-duration-fast) var(--arc-ease-standard), transform var(--arc-duration-spring) var(--arc-ease-spring); }
 .button:active:not(:disabled) { transform: scale(.97); transition-duration: var(--arc-duration-fast), var(--arc-duration-fast), var(--arc-duration-fast), var(--arc-duration-instant); transition-timing-function: var(--arc-ease-standard); }
@@ -21,3 +23,4 @@
 .plain { border-color: transparent; background: transparent; color: var(--arc-text-secondary); }
 .srOnly { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0, 0, 0, 0); white-space: nowrap; }
 @media (prefers-reduced-motion: reduce) { .button { transition: none; } .button:active:not(:disabled) { transform: none; } }
+}

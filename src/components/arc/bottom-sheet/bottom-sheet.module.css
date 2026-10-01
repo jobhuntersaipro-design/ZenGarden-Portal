@@ -1,4 +1,6 @@
 /* Vendored from Arc (MIT) at cde1b40 by scripts/arc-import.ts. Tokens renamed --x → --arc-x; see src/app/arc-tokens.css. */
+@layer theme, base, arc, components, utilities;
+@layer arc {
 /* The dim follows the sheet's position in JS; only its color lives here. */
 .overlay { position: fixed; inset: 0; z-index: 50; background: oklch(16% 0 0 / .34); }
 :global(:root[data-theme="dark"]) .overlay { background: oklch(0% 0 0 / .52); }
@@ -69,4 +71,5 @@
 
 @media (prefers-reduced-motion: reduce) {
   .header::after, .grabberBar, .close { transition: none; }
+}
 }

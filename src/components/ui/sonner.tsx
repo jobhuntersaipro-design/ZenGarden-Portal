@@ -3,8 +3,42 @@
 import { useTheme } from "next-themes"
 import { Toaster as Sonner, type ToasterProps } from "sonner"
 import { CircleCheckIcon, InfoIcon, TriangleAlertIcon, OctagonXIcon, Loader2Icon } from "lucide-react"
+import { useEffect } from "react"
+import {
+  ToastStack,
+  ToastStackProvider,
+  useToastStack,
+} from "@/components/arc/toast-stack/toast-stack"
+import { useIsArc } from "@/components/ui-mode/UiModeProvider"
+import { registerArcToasts } from "@/lib/toast"
 
-const Toaster = ({ ...props }: ToasterProps) => {
+/** Hands Arc's stack to `@/lib/toast`, so `toast.success(…)` lands in it. */
+function ArcToastBridge() {
+  const { toast } = useToastStack()
+  useEffect(() => registerArcToasts((options) => void toast(options)), [toast])
+  return null
+}
+
+/**
+ * Arc mode's toaster: Arc's stack — toasts that pile and fan out on hover,
+ * with an undo that morphs in place. On a phone it sits above the tab bar and
+ * the preview switch.
+ */
+function ArcToaster() {
+  return (
+    <ToastStackProvider>
+      <ArcToastBridge />
+      <ToastStack className="max-lg:bottom-ui-toast" />
+    </ToastStackProvider>
+  )
+}
+
+const Toaster = (props: ToasterProps) => {
+  const isArc = useIsArc()
+  return isArc ? <ArcToaster /> : <SonnerToaster {...props} />
+}
+
+const SonnerToaster = ({ ...props }: ToasterProps) => {
   const { theme = "system" } = useTheme()
 
   return (

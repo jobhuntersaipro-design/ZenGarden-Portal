@@ -1,4 +1,6 @@
 /* Vendored from Arc (MIT) at cde1b40 by scripts/arc-import.ts. Tokens renamed --x → --arc-x; see src/app/arc-tokens.css. */
+@layer theme, base, arc, components, utilities;
+@layer arc {
 /* One pill, two actions. The whole pill presses in for the main action; the menu half answers in color only, because Radix measures it on pointerdown to place the menu. */
 .group { display: inline-flex; align-items: stretch; border: 1px solid var(--arc-foreground); border-radius: var(--arc-radius-button); background: var(--arc-foreground); transition: transform var(--arc-duration-spring) var(--arc-ease-spring); }
 .group:has(> .primary:active:not(:disabled)) { transform: scale(.97); transition-duration: var(--arc-duration-instant); transition-timing-function: var(--arc-ease-standard); }
@@ -53,4 +55,5 @@
   .group:has(> .primary:active:not(:disabled)) { transform: none; }
   .item { transition: none; }
   .menu, .menu[data-state="closed"] { transform: none; transition: opacity var(--arc-duration-instant) linear; }
+}
 }

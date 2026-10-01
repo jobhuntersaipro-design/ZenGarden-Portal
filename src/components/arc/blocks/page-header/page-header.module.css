@@ -1,4 +1,6 @@
 /* Vendored from Arc (MIT) at cde1b40 by scripts/arc-import.ts. Tokens renamed --x → --arc-x; see src/app/arc-tokens.css. */
+@layer theme, base, arc, components, utilities;
+@layer arc {
 /* The frame is the page: a fixed header over a scrolling body. Breakpoints follow the frame width, not the viewport. */
 .frame { --pad: 28px; position: relative; display: flex; width: min(100%, 980px); height: 640px; min-width: 0; flex-direction: column; margin-inline: auto; overflow: hidden; border: 1px solid var(--arc-border); border-radius: 16px; background: var(--arc-surface); color: var(--arc-foreground); font-family: var(--arc-font-body); font-size: var(--arc-text-sm); letter-spacing: var(--arc-tracking-body); line-height: var(--arc-leading-body); container: page-header / inline-size; }
 
@@ -159,4 +161,5 @@
 @media (prefers-reduced-motion: reduce) {
   .crumb, .compact, .tab, .tab::before, .check, .issueTitle { transition: none; }
   .menu, .menu[data-state="closed"] { transform: none; transition: opacity var(--arc-duration-instant) linear; }
+}
 }

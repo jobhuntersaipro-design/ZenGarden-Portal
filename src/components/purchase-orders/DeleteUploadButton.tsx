@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { toast } from "sonner";
+import { toast } from "@/lib/toast";
 import { deleteUpload } from "@/actions/purchase-orders";
 import { RowDeleteButton } from "@/components/purchase-orders/RowDeleteButton";
 import { Button } from "@/components/ui/button";

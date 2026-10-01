@@ -2,7 +2,7 @@
 
 import { useRef, useState } from "react";
 import { ImageIcon } from "lucide-react";
-import { toast } from "sonner";
+import { toast } from "@/lib/toast";
 import type { BuyerLogoUploadResponse } from "@/app/api/buyers/[id]/logo/route";
 import { Button } from "@/components/ui/button";
 import { useAwaitableRefresh } from "@/hooks/useAwaitableRefresh";

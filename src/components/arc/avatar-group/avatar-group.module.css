@@ -1,4 +1,6 @@
 /* Vendored from Arc (MIT) at cde1b40 by scripts/arc-import.ts. Tokens renamed --x → --arc-x; see src/app/arc-tokens.css. */
+@layer theme, base, arc, components, utilities;
+@layer arc {
 .group { --avatar-size: 36px; display: inline-flex; height: var(--avatar-size); align-items: center; padding-left: 6px; }
 .group.sm { --avatar-size: 28px; }
 .group.lg { --avatar-size: 48px; }
@@ -26,3 +28,4 @@
 }
 /* Reduced motion keeps the stack still; the ring and name still answer the pointer. */
 @media (prefers-reduced-motion: reduce) { .lift { transform: none !important; transition: none; } .tip { transform: translate(-50%, 0); transition: none; } }
+}

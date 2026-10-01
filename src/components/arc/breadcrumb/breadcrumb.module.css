@@ -1,4 +1,6 @@
 /* Vendored from Arc (MIT) at cde1b40 by scripts/arc-import.ts. Tokens renamed --x → --arc-x; see src/app/arc-tokens.css. */
+@layer theme, base, arc, components, utilities;
+@layer arc {
 /* The gap between crumbs matches the gap inside one, so every chevron sits centered between its two labels. */
 .list { position: relative; display: flex; flex-wrap: wrap; align-items: center; gap: 2px 6px; margin: 0; padding: 0; list-style: none; }
 .list li { display: inline-flex; align-items: center; gap: 6px; color: var(--arc-text-muted); font-size: var(--arc-text-sm); line-height: var(--arc-leading-body); white-space: nowrap; }
@@ -12,3 +14,4 @@
 .list [aria-current="page"] { color: var(--arc-accent-strong); font-weight: 500; transition: color var(--arc-duration-fast) var(--arc-ease-standard); }
 @media (hover: hover) and (pointer: fine) { .list a:hover, .list li > button:hover { color: var(--arc-accent-strong); text-decoration-color: color-mix(in oklch, currentColor 45%, transparent); } }
 @media (prefers-reduced-motion: reduce) { .list a, .list li > button, .list [aria-current="page"] { transition: none; } }
+}

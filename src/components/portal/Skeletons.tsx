@@ -19,6 +19,7 @@ export function Shimmer({ className = "" }: { className?: string }) {
   return (
     <div
       aria-hidden
+      data-shimmer
       className={`animate-pulse rounded-sm bg-surface-soft ${className}`}
     />
   );

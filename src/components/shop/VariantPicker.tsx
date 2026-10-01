@@ -1,4 +1,6 @@
 import Link from "next/link";
+import chip from "@/components/arc/chip-group/chip-group.module.css";
+import { ModeSwitch } from "@/components/ui-mode/ModeSwitch";
 import { formatMYR } from "@/lib/money";
 import { variantLabels } from "@/lib/product-groups";
 import { shopHref } from "@/lib/shop-routes";
@@ -50,6 +52,37 @@ export function VariantPicker({
         aria-labelledby="variant-picker"
         className="mt-xs flex flex-wrap gap-xs"
       >
+        <ModeSwitch arc={<>
+        {/* Arc mode: each variant is one of Arc's chips (arc/chip-group),
+            the current one tinted. */}
+        {variants.map((variant) => {
+          const isSelected = variant.id === selectedId;
+          const label = labels.get(variant.id) ?? variant.sku;
+          const priceSuffix = showPrices ? ` · ${formatMYR(Number(variant.listPrice))}` : "";
+          const body = (
+            <span className={`${chip.body} h-11`} data-selected={isSelected}>
+              <span className={`${chip.surface} right-0`} aria-hidden />
+              <span className={chip.label}>
+                {label}
+                {priceSuffix}
+              </span>
+            </span>
+          );
+          return (
+            <li key={variant.id}>
+              {isSelected ? (
+                <span aria-current="page" className={`${chip.chip} text-ink`}>
+                  {body}
+                </span>
+              ) : (
+                <Link href={shopHref.product(variant.id)} className={chip.chip}>
+                  {body}
+                </Link>
+              )}
+            </li>
+          );
+        })}
+        </>}>
         {variants.map((variant) => {
           const isSelected = variant.id === selectedId;
           const label = labels.get(variant.id) ?? variant.sku;
@@ -77,6 +110,7 @@ export function VariantPicker({
             </li>
           );
         })}
+        </ModeSwitch>
       </ul>
     </div>
   );

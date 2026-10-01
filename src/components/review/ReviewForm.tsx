@@ -13,7 +13,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { beginRouteProgress } from "@/lib/route-progress";
 import { useAwaitableRefresh } from "@/hooks/useAwaitableRefresh";
-import { toast } from "sonner";
+import { toast } from "@/lib/toast";
 import { ExtractionStatus } from "@/generated/prisma/enums";
 import {
   checkDuplicate,

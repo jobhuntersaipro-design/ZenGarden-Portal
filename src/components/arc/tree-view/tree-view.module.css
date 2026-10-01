@@ -1,4 +1,6 @@
 /* Vendored from Arc (MIT) at cde1b40 by scripts/arc-import.ts. Tokens renamed --x → --arc-x; see src/app/arc-tokens.css. */
+@layer theme, base, arc, components, utilities;
+@layer arc {
 .tree { display: block; width: 100%; min-width: 0; box-sizing: border-box; padding: 6px 8px 8px; border: 1px solid var(--arc-border); border-radius: 16px; background: var(--arc-surface); color: var(--arc-foreground); overflow: hidden; }
 /* Rows clip only while their height animates (Motion sets overflow), so the selection can glide between them unclipped. */
 .row { position: relative; display: flow-root; min-width: 0; height: 38px; }
@@ -22,3 +24,4 @@
 .label { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 @media (hover: hover) and (pointer: fine) { .item:hover { background: var(--arc-surface-muted); color: var(--arc-foreground); } }
 @media (prefers-reduced-motion: reduce) { .item, .icon { transition: none; } }
+}

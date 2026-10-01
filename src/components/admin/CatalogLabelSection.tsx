@@ -3,7 +3,7 @@
 import { useState } from "react";
 import Link from "next/link";
 import { Check, Pencil, Plus, Trash2, X } from "lucide-react";
-import { toast } from "sonner";
+import { toast } from "@/lib/toast";
 import { createLabel, removeLabel, renameLabel } from "@/actions/catalog-labels";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";

@@ -1,4 +1,6 @@
 /* Vendored from Arc (MIT) at cde1b40 by scripts/arc-import.ts. Tokens renamed --x → --arc-x; see src/app/arc-tokens.css. */
+@layer theme, base, arc, components, utilities;
+@layer arc {
 .tooltip { --tooltip-y: 3px; z-index: 90; max-width: 15rem; padding: var(--arc-space-3) var(--arc-space-4); border: 1px solid color-mix(in oklch, var(--arc-background) 14%, var(--arc-foreground)); border-radius: var(--arc-radius-control); background: var(--arc-foreground); color: var(--arc-background); box-shadow: var(--arc-shadow-raised); font-size: var(--arc-text-sm); font-weight: 400; line-height: var(--arc-leading-body); transform-origin: var(--radix-tooltip-content-transform-origin); transition: opacity var(--arc-duration-fast) var(--arc-ease-enter), transform var(--arc-duration-fast) var(--arc-ease-enter); }
 .tooltip[data-side="bottom"] { --tooltip-y: -3px; }
 /* The first tooltip waits, then rises a few pixels from its trigger. Within the skip window the next one only fades.
@@ -16,4 +18,5 @@
 @keyframes tooltip-exit { to { --tooltip-exit: 1; } }
 @media (prefers-reduced-motion: reduce) {
   .tooltip, .tooltip[data-state="closed"], .tooltip[data-instant][data-state$="-open"] { transform: none; transition: opacity 90ms linear; }
+}
 }

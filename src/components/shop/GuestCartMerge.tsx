@@ -2,7 +2,7 @@
 
 import { useEffect, useRef } from "react";
 import { useAwaitableRefresh } from "@/hooks/useAwaitableRefresh";
-import { toast } from "sonner";
+import { toast } from "@/lib/toast";
 import { mergeGuestCart } from "@/actions/cart";
 import { useGuestCart } from "@/components/shop/GuestCartProvider";
 import { useShopViewer } from "@/components/shop/ShopViewer";

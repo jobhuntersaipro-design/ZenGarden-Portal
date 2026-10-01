@@ -1,4 +1,6 @@
 /* Vendored from Arc (MIT) at cde1b40 by scripts/arc-import.ts. Tokens renamed --x → --arc-x; see src/app/arc-tokens.css. */
+@layer theme, base, arc, components, utilities;
+@layer arc {
 .calendar { width: min(100%, 328px); min-width: 0; color: var(--arc-foreground); }
 /* The header is its own size container: below 260px the title takes a full row and the controls sit under it, decided by width alone so a long month name never reflows it. */
 .header { container-type: inline-size; display: grid; min-height: 34px; grid-template-columns: minmax(0, 1fr) auto; align-items: center; gap: 4px 12px; margin-bottom: 14px; }
@@ -46,4 +48,5 @@
 @media (prefers-reduced-motion: reduce) {
   .navButton, .todayButton, .day, .day::before, .dayNumber, .highlight { transition: none; }
   .navButton:active, .todayButton:active, .day:active::before, .day:active .highlight, .day:active .dayNumber { scale: none; }
+}
 }

@@ -2,7 +2,7 @@
 
 import { useState, useTransition } from "react";
 import { Plus } from "lucide-react";
-import { toast } from "sonner";
+import { toast } from "@/lib/toast";
 import { addManyToCart } from "@/actions/cart";
 import { announceCartAdded } from "@/components/shop/cart-events";
 import { CartonStepper } from "@/components/shop/CartonStepper";

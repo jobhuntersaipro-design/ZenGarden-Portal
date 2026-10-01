@@ -1,4 +1,6 @@
 /* Vendored from Arc (MIT) at cde1b40 by scripts/arc-import.ts. Tokens renamed --x → --arc-x; see src/app/arc-tokens.css. */
+@layer theme, base, arc, components, utilities;
+@layer arc {
 .root { container-type: inline-size; width: 100%; color: var(--arc-foreground); font-family: var(--arc-font-body); letter-spacing: var(--arc-tracking-body); }
 
 .card { display: flex; flex-direction: column; align-items: center; gap: clamp(20px, 4cqi, 32px); padding: clamp(16px, 5cqi, 48px) clamp(16px, 4cqi, 40px); border: 1px solid var(--arc-border); border-radius: 20px; background: var(--arc-surface); }
@@ -50,4 +52,5 @@
 
 @media (prefers-reduced-motion: reduce) {
   .shape, .tab { transition: none; }
+}
 }

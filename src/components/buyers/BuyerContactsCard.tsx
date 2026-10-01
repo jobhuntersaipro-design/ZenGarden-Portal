@@ -1,7 +1,7 @@
 "use client";
 
 import { useId, useRef, useState, useTransition } from "react";
-import { toast } from "sonner";
+import { toast } from "@/lib/toast";
 import { KeyRound, MoreHorizontal } from "lucide-react";
 import { PersonChip } from "@/components/ui/person";
 import { Button } from "@/components/ui/button";

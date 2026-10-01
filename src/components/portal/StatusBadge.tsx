@@ -1,4 +1,6 @@
 import type { PoStage } from "@/generated/prisma/enums";
+import type { BadgeTone } from "@/components/arc/badge/badge";
+import { ModeBadge } from "@/components/portal/ModeBadge";
 import { stageColorVar, stageLabel } from "@/lib/po-stages";
 
 /**
@@ -79,9 +81,22 @@ const PILL_COMPACT = `${PILL_BASE} min-w-0 px-xs text-center`;
  * Coloured text on `surface-soft`, never a coloured fill, and the label is
  * always present — colour alone never carries meaning.
  */
+/** Arc mode's tone for each intake status (docs/specs/61-arc-preview-switch.md). */
+const INTAKE_TONE: Record<IntakeStatus, BadgeTone> = {
+  EXTRACTING: "info",
+  NEEDS_REVIEW: "warning",
+  RECEIVED: "info",
+  FAILED: "danger",
+  NOT_CONFIRMED: "neutral",
+};
+
 export function StatusBadge({ status }: { status: IntakeStatus }) {
   const { label, text } = INTAKE_STATUS[status];
-  return <span className={`${PILL} ${text}`}>{label}</span>;
+  return (
+    <ModeBadge tone={INTAKE_TONE[status]} classic={`${PILL} ${text}`}>
+      {label}
+    </ModeBadge>
+  );
 }
 
 /**
@@ -119,19 +134,26 @@ export function StageBadge({
   const delivered = stage === "DELIVERED";
   const text =
     state === "current" && delivered ? "text-accent-green" : STATE_TEXT[state];
+  // Arc mode keeps the stage's own colour on the dot; the pill is neutral
+  // except Delivered, which is the one stage that reads as done.
   return (
-    <span className={`${compact ? PILL_COMPACT : PILL} ${text}`}>
-      <span
-        aria-hidden
-        className="size-1.5 shrink-0 rounded-full"
-        style={{
-          backgroundColor:
-            state === "upcoming"
-              ? "var(--color-hairline-strong)"
-              : `var(${stageColorVar(stage)})`,
-        }}
-      />
+    <ModeBadge
+      tone={state === "current" && delivered ? "success" : "neutral"}
+      classic={`${compact ? PILL_COMPACT : PILL} ${text}`}
+      icon={
+        <span
+          aria-hidden
+          className="block size-1.5 shrink-0 rounded-full"
+          style={{
+            backgroundColor:
+              state === "upcoming"
+                ? "var(--color-hairline-strong)"
+                : `var(${stageColorVar(stage)})`,
+          }}
+        />
+      }
+    >
       {stageLabel(stage)}
-    </span>
+    </ModeBadge>
   );
 }

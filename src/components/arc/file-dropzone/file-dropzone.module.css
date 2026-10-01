@@ -1,4 +1,6 @@
 /* Vendored from Arc (MIT) at cde1b40 by scripts/arc-import.ts. Tokens renamed --x → --arc-x; see src/app/arc-tokens.css. */
+@layer theme, base, arc, components, utilities;
+@layer arc {
 /* No grid gap: the error row and the file list carry their own spacing, so each can open from a true zero height. */
 .wrapper { position: relative; display: grid; min-width: 0; color: var(--arc-foreground); }
 .dropzone { position: relative; display: grid; min-width: 0; border-radius: var(--arc-radius-surface); background: var(--arc-surface); transition: background-color var(--arc-duration-standard) var(--arc-ease-standard), border-radius var(--arc-duration-spring) var(--arc-ease-spring); }
@@ -116,3 +118,4 @@
 }
 .dropzone:has(.trigger:focus-visible) { box-shadow: 0 0 0 3px var(--arc-focus-ring); }
 .retry:focus-visible, .remove:focus-visible { outline: none; box-shadow: 0 0 0 2px var(--arc-focus-ring); }
+}

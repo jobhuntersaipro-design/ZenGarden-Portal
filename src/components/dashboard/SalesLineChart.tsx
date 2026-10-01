@@ -27,6 +27,8 @@ import {
   valueLabel,
 } from "@/components/charts/labels";
 import { ChartScroller } from "@/components/charts/ChartScroller";
+import { LineChart } from "@/components/arc/line-chart/line-chart";
+import { useIsArc } from "@/components/ui-mode/UiModeProvider";
 import { formatMYR } from "@/lib/money";
 import { formatUnits } from "@/lib/units";
 
@@ -89,6 +91,7 @@ export function SalesLineChart({
   /** The card behind the chart, so the scroll fade dissolves into it. */
   fade?: "canvas" | "surface";
 }) {
+  const isArc = useIsArc();
   const picked = pickMeasure(series, measure);
   const format = formatLabel(measure);
   const longest = picked.points.reduce(
@@ -106,6 +109,34 @@ export function SalesLineChart({
       <p className="py-xl text-center text-[length:var(--text-body-sm)] text-ink-secondary">
         No purchase orders in this range.
       </p>
+    );
+  }
+
+  if (isArc) {
+    // Arc mode: Arc's line chart — a crosshair readout, a morphing path when
+    // the range changes and a screen-reader table. One series, so no legend.
+    // The axis labels about eight buckets, whatever the range.
+    const every = Math.max(1, Math.ceil(picked.points.length / 8));
+    return (
+      <LineChart
+        label={measure === "sales" ? "Sales" : "Units"}
+        categoryLabel="Period"
+        height={288}
+        legend={false}
+        series={[{ key: "value", label: measure === "sales" ? "Sales" : "Units", area: true }]}
+        data={picked.points.map((point, index) => ({
+          key: point.key,
+          label: point.label,
+          axisLabel: index % every === 0 ? point.label : undefined,
+          values: { value: point.value },
+        }))}
+        formatValue={(value) => formatExact(measure, value)}
+        formatTick={(value) =>
+          measure === "sales"
+            ? `RM ${Intl.NumberFormat("en", { notation: "compact" }).format(value)}`
+            : Intl.NumberFormat("en", { notation: "compact" }).format(value)
+        }
+      />
     );
   }
 

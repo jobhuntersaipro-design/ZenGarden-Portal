@@ -6,6 +6,8 @@ import { BuyerForm } from "@/components/buyers/BuyerForm";
 import { listLabels } from "@/lib/queries/products";
 import { can } from "@/lib/permissions/require";
 import { withLoadingFloor } from "@/lib/loading-floor";
+import { Breadcrumb } from "@/components/arc/breadcrumb/breadcrumb";
+import { ModeSwitch } from "@/components/ui-mode/ModeSwitch";
 
 export const metadata: Metadata = {
   title: "New buyer · Zen Garden Portal",
@@ -30,18 +32,32 @@ async function NewBuyerPage() {
   return (
     <>
       <BackLink fallbackHref="/buyers" />
-      <nav aria-label="Breadcrumb" className="mb-xs">
-        <Link
-          href="/buyers"
-          className="inline-flex min-h-control-md items-center rounded-xxs text-[length:var(--text-body-sm)] text-brand-link underline-offset-2 hover:underline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-focus sm:min-h-0"
-        >
-          Buyers
-        </Link>
-        <span className="text-[length:var(--text-body-sm)] text-ink-tertiary">
-          {" / "}
-          New buyer
-        </span>
-      </nav>
+      {/* Arc mode: Arc's breadcrumb (docs/specs/61-arc-preview-switch.md). */}
+      <ModeSwitch
+        arc={
+          <div className="mb-xs">
+            <Breadcrumb
+              items={[
+                { label: "Buyers", href: "/buyers" },
+                { label: "New buyer" },
+              ]}
+            />
+          </div>
+        }
+      >
+        <nav aria-label="Breadcrumb" className="mb-xs">
+          <Link
+            href="/buyers"
+            className="inline-flex min-h-control-md items-center rounded-xxs text-[length:var(--text-body-sm)] text-brand-link underline-offset-2 hover:underline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-focus sm:min-h-0"
+          >
+            Buyers
+          </Link>
+          <span className="text-[length:var(--text-body-sm)] text-ink-tertiary">
+            {" / "}
+            New buyer
+          </span>
+        </nav>
+      </ModeSwitch>
 
       <BuyerForm markets={markets} afterCreate="/buyers" />
     </>

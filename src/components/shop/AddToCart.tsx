@@ -2,7 +2,7 @@
 
 import { useEffect, useState, useTransition } from "react";
 import { Check, Plus } from "lucide-react";
-import { toast } from "sonner";
+import { toast } from "@/lib/toast";
 import { cn } from "cn";
 import { Button } from "@/components/ui/button";
 import { addToCart } from "@/actions/cart";

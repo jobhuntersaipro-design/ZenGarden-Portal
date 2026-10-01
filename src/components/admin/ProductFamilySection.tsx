@@ -3,7 +3,7 @@
 import { useState } from "react";
 import Link from "next/link";
 import { Check, Pencil, Trash2, X } from "lucide-react";
-import { toast } from "sonner";
+import { toast } from "@/lib/toast";
 import { removeFamily, updateFamily } from "@/actions/product-families";
 import { Input } from "@/components/ui/input";
 import { Spinner } from "@/components/portal/Spinner";

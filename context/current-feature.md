@@ -1,3 +1,45 @@
+# Current feature: Current / Arc — every page, one switch
+
+## Status
+
+**Built and driven in a browser on `claude/modest-faraday-oh2ij9`, pushed for
+a Vercel preview, not merged** (2026-10-01). Asked for as "change every
+component in this page to using the arc preview … let me see the preview
+first, then I will decide". Asked which page: "every pages, including shop and
+portal". Asked how to compare: a toggle on the same URL. Spec:
+`docs/specs/61-arc-preview-switch.md`.
+
+- A **Current / Arc** switch on every page (cookie `zg-ui`, or `?ui=arc` on any
+  URL), read in the root layout. Off in production: `VERCEL_ENV=production`
+  always draws Current and shows no switch.
+- In Arc mode the shared primitives draw Arc's parts: button, fields,
+  checkbox, switch, dialog, drawer, menus, tooltip, select, avatar, toasts,
+  segments and chips, pagination, badges, table, KPI counter, sales line
+  chart, donuts, stage stepper, notices, breadcrumbs, shop search and variant
+  pills, skeletons. Spec §3 lists what stays ours in both modes.
+- Arc's CSS modules moved into `@layer arc`, under Tailwind's utilities, so a
+  caller's classes still apply (the import script does it; re-run, no
+  hand edits).
+
+## Verified
+
+Production build, local Postgres and the seed, super admin and a shop contact.
+- 21 pages × 1440 and 390 × both modes: no page overflow.
+- The same sub-44px set at 390 in both modes; Arc has fewer on the shop.
+- Drawer, dialog, menu and toast open at both widths in Arc.
+- Found while driving: the switch covered the sidebar's account menu at 1440.
+  It sits bottom-centre from `lg`.
+- 1784 tests pass (11 new; the `xlsx` stand-in file still fails to import),
+  `tsc` clean, lint unchanged (4 `ShopHeader` errors), build clean.
+
+## Not verified
+
+- The Vercel preview build; Safari, Firefox, a real phone, a screen reader.
+- A React #419 (a Suspense boundary switched to client rendering) was logged
+  once in a long drive, in both modes alike; not reproduced on its own.
+
+## Previous phase
+
 # Current feature: the portal rebuilt on Arc — phase 1, foundation
 
 ## Status

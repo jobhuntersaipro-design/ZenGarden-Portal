@@ -3,7 +3,7 @@
 import { useState } from "react";
 import { roleLabel } from "@/lib/permissions/roles";
 import { usePathname, useSearchParams } from "next/navigation";
-import { toast } from "sonner";
+import { toast } from "@/lib/toast";
 import { KeyRound, Mail } from "lucide-react";
 import { sendPasswordResetLink } from "@/actions/reset-links";
 import { UserStatusBadge } from "@/components/admin/RingBadge";

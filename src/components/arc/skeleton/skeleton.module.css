@@ -1,4 +1,6 @@
 /* Vendored from Arc (MIT) at cde1b40 by scripts/arc-import.ts. Tokens renamed --x → --arc-x; see src/app/arc-tokens.css. */
+@layer theme, base, arc, components, utilities;
+@layer arc {
 .root { display: flex; width: 100%; min-width: 0; align-items: flex-start; gap: var(--arc-space-4); }
 /* A calm, finite pulse: each block dims a beat after the one above it, then rests after about 20 seconds. */
 .avatar, .line { display: block; flex: 0 0 auto; border-radius: var(--arc-radius-control); background: color-mix(in oklch, var(--arc-border-strong) 38%, var(--arc-surface)); animation: skeleton-pulse 1.8s var(--arc-ease-in-out) calc(var(--index, 0) * 90ms) 11 both; }
@@ -10,3 +12,4 @@
 .frame { position: relative; display: flow-root; }
 @keyframes skeleton-pulse { 0%, 100% { opacity: 1; } 50% { opacity: .52; } }
 @media (prefers-reduced-motion: reduce) { .avatar, .line { animation: none; } }
+}

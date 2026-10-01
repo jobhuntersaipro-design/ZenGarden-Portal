@@ -1,4 +1,6 @@
 /* Vendored from Arc (MIT) at cde1b40 by scripts/arc-import.ts. Tokens renamed --x → --arc-x; see src/app/arc-tokens.css. */
+@layer theme, base, arc, components, utilities;
+@layer arc {
 .trigger { position: relative; display: grid; width: 42px; height: 42px; place-items: center; border: 1px solid var(--arc-border); border-radius: 12px; background: var(--arc-surface); color: var(--arc-foreground); cursor: pointer; transition: border-color var(--arc-duration-fast) var(--arc-ease-standard), background var(--arc-duration-fast) var(--arc-ease-standard); }
 .trigger[data-state="open"], .trigger:active { border-color: var(--arc-border-strong); background: var(--arc-surface-muted); }
 @media (hover: hover) and (pointer: fine) { .trigger:hover { border-color: var(--arc-border-strong); background: var(--arc-surface-muted); } }
@@ -79,3 +81,4 @@
 @keyframes item-in { from { opacity: 0; transform: translateY(4px); } }
 @media (max-width: 380px) { .header { padding: 20px 16px 16px; } .heading h2 { font-size: 18px; } .toolbar { align-items: flex-start; padding: 0 12px 12px; } .list { padding: 8px 5px; } .item { padding-inline: 7px; } .itemMain { gap: 7px; } .time { padding-top: 4px; font-size: 10px; } .details { padding-left: 31px; } .itemActions { gap: 5px; } .itemActions button { padding-inline: 7px; } .markAll span { display: none; } .footer { padding-inline: 16px; } }
 @media (prefers-reduced-motion: reduce) { .panel[data-state], .trigger, .close, .viewSwitch button, .markAll, .item, .itemActions button, .footer button { animation: none; transition-duration: 0ms; } .close:active, .markAll:active, .itemActions button:active, .footer button:active { transform: none; } }
+}

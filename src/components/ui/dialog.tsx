@@ -6,6 +6,8 @@ import { Dialog as DialogPrimitive } from "radix-ui"
 
 import { Button } from "@/components/ui/button"
 import { XIcon } from "lucide-react"
+import arc from "@/components/arc/dialog/dialog.module.css"
+import { useIsArc } from "@/components/ui-mode/UiModeProvider"
 
 function Dialog({
   ...props
@@ -55,6 +57,43 @@ function DialogContent({
 }: React.ComponentProps<typeof DialogPrimitive.Content> & {
   showCloseButton?: boolean
 }) {
+  // Arc mode: Arc's dialog surface, overlay and entrance (its keyframe path,
+  // the one Arc uses under a plain Radix root), on our header/body/footer
+  // composition. A caller's own max-width still widens it above `sm`.
+  const isArc = useIsArc()
+  if (isArc) {
+    const callerSetsWidth = /(?:^|\s)\S*max-w-/.test(className ?? "")
+    return (
+      <DialogPortal>
+        <DialogPrimitive.Overlay
+          data-slot="dialog-overlay"
+          className={cn(arc.overlay, arc.keyframes)}
+        />
+        <DialogPrimitive.Content
+          data-slot="dialog-content"
+          className={cn(
+            arc.content,
+            arc.keyframes,
+            "grid gap-md p-lg",
+            callerSetsWidth && "sm:w-full",
+            className
+          )}
+          {...props}
+        >
+          {children}
+          {showCloseButton && (
+            <DialogPrimitive.Close
+              data-slot="dialog-close"
+              className={cn(arc.close, "absolute top-md right-md max-sm:size-11")}
+              aria-label="Close dialog"
+            >
+              <XIcon className="size-4" aria-hidden />
+            </DialogPrimitive.Close>
+          )}
+        </DialogPrimitive.Content>
+      </DialogPortal>
+    )
+  }
   return (
     <DialogPortal>
       <DialogOverlay />
@@ -86,6 +125,16 @@ function DialogContent({
 }
 
 function DialogHeader({ className, ...props }: React.ComponentProps<"div">) {
+  const isArc = useIsArc()
+  if (isArc) {
+    return (
+      <div
+        data-slot="dialog-header"
+        className={cn("flex flex-col gap-xxs pr-xxl", className)}
+        {...props}
+      />
+    )
+  }
   return (
     <div
       data-slot="dialog-header"
@@ -103,11 +152,14 @@ function DialogFooter({
 }: React.ComponentProps<"div"> & {
   showCloseButton?: boolean
 }) {
+  const isArc = useIsArc()
   return (
     <div
       data-slot="dialog-footer"
       className={cn(
-        "-mx-4 -mb-4 flex flex-col-reverse gap-2 rounded-b-xl border-t bg-muted/50 p-4 sm:flex-row sm:justify-end",
+        isArc
+          ? "flex flex-col-reverse gap-xs pt-xs sm:flex-row sm:justify-end"
+          : "-mx-4 -mb-4 flex flex-col-reverse gap-2 rounded-b-xl border-t bg-muted/50 p-4 sm:flex-row sm:justify-end",
         className
       )}
       {...props}
@@ -126,6 +178,16 @@ function DialogTitle({
   className,
   ...props
 }: React.ComponentProps<typeof DialogPrimitive.Title>) {
+  const isArc = useIsArc()
+  if (isArc) {
+    return (
+      <DialogPrimitive.Title
+        data-slot="dialog-title"
+        className={cn(arc.title, className)}
+        {...props}
+      />
+    )
+  }
   return (
     <DialogPrimitive.Title
       data-slot="dialog-title"
@@ -142,6 +204,16 @@ function DialogDescription({
   className,
   ...props
 }: React.ComponentProps<typeof DialogPrimitive.Description>) {
+  const isArc = useIsArc()
+  if (isArc) {
+    return (
+      <DialogPrimitive.Description
+        data-slot="dialog-description"
+        className={cn(arc.description, "mt-0", className)}
+        {...props}
+      />
+    )
+  }
   return (
     <DialogPrimitive.Description
       data-slot="dialog-description"

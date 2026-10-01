@@ -3,7 +3,7 @@
 import { useState } from "react";
 import { OPS_ROLES, roleLabel } from "@/lib/permissions/roles";
 import { useAwaitableRefresh } from "@/hooks/useAwaitableRefresh";
-import { toast } from "sonner";
+import { toast } from "@/lib/toast";
 import {
   createUser,
   deleteUser,

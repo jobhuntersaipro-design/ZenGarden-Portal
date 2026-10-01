@@ -1,7 +1,7 @@
 "use client";
 
 import { Fragment, useMemo, useState } from "react";
-import { toast } from "sonner";
+import { toast } from "@/lib/toast";
 import { ChevronRight, Lock } from "lucide-react";
 import { Role } from "@/generated/prisma/enums";
 import {

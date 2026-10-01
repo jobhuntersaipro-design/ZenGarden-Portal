@@ -1,4 +1,6 @@
 /* Vendored from Arc (MIT) at cde1b40 by scripts/arc-import.ts. Tokens renamed --x → --arc-x; see src/app/arc-tokens.css. */
+@layer theme, base, arc, components, utilities;
+@layer arc {
 /* Levels are tints of the accent over a neutral empty square, so the grid follows the selected accent and both themes. */
 .root { --level-0: color-mix(in oklch, var(--arc-foreground) 6.5%, var(--arc-surface)); --level-1: color-mix(in oklch, var(--arc-accent) 26%, var(--level-0)); --level-2: color-mix(in oklch, var(--arc-accent) 50%, var(--level-0)); --level-3: color-mix(in oklch, var(--arc-accent) 76%, var(--level-0)); --level-4: var(--arc-accent); container-type: inline-size; position: relative; display: grid; min-width: 0; gap: var(--arc-space-4); color: var(--arc-foreground); }
 .header { display: flex; min-width: 0; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: var(--arc-space-3) var(--arc-space-4); }
@@ -84,4 +86,5 @@
   .grid[data-reveal="hidden"] .cell { transform: none; }
   .cell[data-empty], .grid[data-reveal="hidden"] .cell[data-empty] { opacity: 0; transform: none; }
   .month, .ring { transition: opacity 150ms linear; }
+}
 }

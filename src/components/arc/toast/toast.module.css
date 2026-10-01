@@ -1,4 +1,6 @@
 /* Vendored from Arc (MIT) at cde1b40 by scripts/arc-import.ts. Tokens renamed --x → --arc-x; see src/app/arc-tokens.css. */
+@layer theme, base, arc, components, utilities;
+@layer arc {
 .toast {
   display: flex;
   width: min(100%, 26rem);
@@ -101,4 +103,5 @@
 @media (prefers-reduced-motion: reduce) {
   .close { transition: none; }
   .close:active { transform: none; }
+}
 }

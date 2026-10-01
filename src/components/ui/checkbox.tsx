@@ -4,11 +4,17 @@ import * as React from "react"
 import { cn } from "cn"
 import { Checkbox as CheckboxPrimitive } from "radix-ui"
 import { CheckIcon } from "lucide-react"
+import { Checkbox as ArcCheckbox } from "@/components/arc/checkbox/checkbox"
+import { useIsArc } from "@/components/ui-mode/UiModeProvider"
 
 function Checkbox({
   className,
   ...props
 }: React.ComponentProps<typeof CheckboxPrimitive.Root>) {
+  // Arc mode: Arc's checkbox, a 44px target with a drawn tick. Unlabelled,
+  // because every caller here pairs it with its own label.
+  const arc = useIsArc()
+  if (arc) return <ArcCheckbox data-slot="checkbox" className={className} {...props} />
   return (
     <CheckboxPrimitive.Root
       data-slot="checkbox"

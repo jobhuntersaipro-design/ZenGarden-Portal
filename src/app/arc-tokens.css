@@ -167,3 +167,41 @@
     --arc-duration-spring: 0ms;
   }
 }
+
+/*
+ * Arc mode's loading tiles (docs/specs/61-arc-preview-switch.md). The
+ * skeletons are server components, so they cannot ask which set is on; they
+ * carry `data-shimmer` and this rule repaints them in Arc's skeleton: its
+ * fill, its radius and its calm, finite pulse (arc/skeleton). Unlayered on
+ * purpose, so it beats the classic utilities on the same element.
+ */
+[data-ui="arc"] [data-shimmer] {
+  border-radius: var(--arc-radius-control);
+  background: color-mix(in oklch, var(--arc-border-strong) 38%, var(--arc-surface));
+  animation: arc-skeleton-pulse 1.8s var(--arc-ease-in-out) 11 both;
+}
+@keyframes arc-skeleton-pulse { 0%, 100% { opacity: 1; } 50% { opacity: .52; } }
+@media (prefers-reduced-motion: reduce) { [data-ui="arc"] [data-shimmer] { animation: none; } }
+
+/* Arc's animated counter inside one of our KPI tiles takes the tile's type
+   (CountUp, Arc mode); the counter's own 3xl display size is for a page hero. */
+[data-count-host] > span { font: inherit; letter-spacing: inherit; color: inherit; }
+
+/* The toolbars' native selects, in Arc mode, take Arc's field look — its
+   border, 9px radius, hover and focus ring (arc/input `.input`). They stay
+   native on purpose: on a phone the OS picker is the better control. */
+[data-ui="arc"] select:not([multiple]) {
+  border: 1px solid var(--arc-border-strong);
+  border-radius: var(--arc-radius-control);
+  background-color: var(--arc-surface);
+  color: var(--arc-foreground);
+  transition: border-color var(--arc-duration-fast) var(--arc-ease-standard), box-shadow var(--arc-duration-standard) var(--arc-ease-standard);
+}
+@media (hover: hover) and (pointer: fine) {
+  [data-ui="arc"] select:not([multiple]):hover:not(:disabled) { border-color: var(--arc-foreground); }
+}
+[data-ui="arc"] select:not([multiple]):focus-visible {
+  border-color: var(--arc-foreground);
+  box-shadow: 0 0 0 3px var(--arc-focus-ring);
+  outline: 2px solid transparent;
+}

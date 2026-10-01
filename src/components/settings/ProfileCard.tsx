@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import { useSession } from "next-auth/react";
-import { toast } from "sonner";
+import { toast } from "@/lib/toast";
 import { updateProfile } from "@/actions/profile";
 import {
   AvatarPicker,

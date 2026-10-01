@@ -1,4 +1,6 @@
 /* Vendored from Arc (MIT) at cde1b40 by scripts/arc-import.ts. Tokens renamed --x → --arc-x; see src/app/arc-tokens.css. */
+@layer theme, base, arc, components, utilities;
+@layer arc {
 /* Cells are opaque so rows passing each other during a sort cover one another cleanly instead of blending text. */
 .wrapper { --column-tint: var(--arc-surface-muted); position: relative; width: 100%; min-width: 0; max-width: 100%; overflow: hidden; border: 1px solid var(--arc-border); border-radius: var(--arc-radius-control); background: var(--arc-surface); color: var(--arc-foreground); font-family: var(--arc-font-body); }
 .scroller { position: relative; overflow-x: auto; overscroll-behavior-x: contain; }
@@ -118,3 +120,4 @@
 }
 
 @keyframes stripFade { to { opacity: 1; } }
+}

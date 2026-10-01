@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import Link from "next/link";
-import { toast } from "sonner";
+import { toast } from "@/lib/toast";
 import { removeProductFromFamily } from "@/actions/product-families";
 import { setProductPublished } from "@/actions/products";
 import { Button } from "@/components/ui/button";

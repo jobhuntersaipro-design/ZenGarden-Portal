@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import { useAwaitableRefresh } from "@/hooks/useAwaitableRefresh";
-import { toast } from "sonner";
+import { toast } from "@/lib/toast";
 import { formatDate } from "@/lib/dates";
 import type { OrderIdentity } from "@/lib/order-identity";
 import { updatePurchaseOrder, type PurchaseOrderPatch } from "@/actions/stages";

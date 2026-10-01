@@ -1,4 +1,6 @@
 /* Vendored from Arc (MIT) at cde1b40 by scripts/arc-import.ts. Tokens renamed --x → --arc-x; see src/app/arc-tokens.css. */
+@layer theme, base, arc, components, utilities;
+@layer arc {
 /* No row gap: grid tracks clamp a negative margin at zero, so a closed message row would still pay the gap. Each row carries its own space instead. */
 .field { --pi-h: var(--arc-control-height-md); --pi-panel-w: 320px; position: relative; display: grid; min-width: 0; font-family: var(--arc-font-body); letter-spacing: var(--arc-tracking-body); }
 .field[data-open] { z-index: 30; }
@@ -96,3 +98,4 @@
   .shape, .shape::after, .check, .slot, .control { transition-duration: 0ms; }
 }
 @media (prefers-contrast: more) { .shape::after { border-color: var(--arc-border-strong); } }
+}

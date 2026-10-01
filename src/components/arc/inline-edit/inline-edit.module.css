@@ -1,4 +1,6 @@
 /* Vendored from Arc (MIT) at cde1b40 by scripts/arc-import.ts. Tokens renamed --x → --arc-x; see src/app/arc-tokens.css. */
+@layer theme, base, arc, components, utilities;
+@layer arc {
 /* The box sits a border and padding outside the text, so the text lines up with the content around it and the hover surface reaches past it. */
 .root { --pad-x: 8px; --pad-y: 3px; position: relative; display: grid; min-width: 0; margin-inline-start: calc(-1 * (var(--pad-x) + 1px)); font-family: var(--arc-font-body); letter-spacing: var(--arc-tracking-body); }
 /* Whole-pixel line heights: an input centres its text by rounding, so a fractional line would sit the field a pixel below the display. */
@@ -75,3 +77,4 @@ textarea.control { white-space: pre-wrap; overflow-wrap: break-word; }
 .srOnly { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; }
 @keyframes spin { to { transform: rotate(360deg); } }
 @media (prefers-reduced-motion: reduce) { .spinner { animation: none; border-right-color: var(--arc-text-muted); border-top-color: transparent; } .layer, .save, .cancel, .pencil { transition: none; } }
+}

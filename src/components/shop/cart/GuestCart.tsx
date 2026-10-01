@@ -1,6 +1,6 @@
 "use client";
 
-import { toast } from "sonner";
+import { toast } from "@/lib/toast";
 import Link from "next/link";
 import { Lock } from "lucide-react";
 import { Shimmer } from "@/components/portal/Skeletons";

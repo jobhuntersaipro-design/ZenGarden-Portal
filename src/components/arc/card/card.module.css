@@ -1,4 +1,6 @@
 /* Vendored from Arc (MIT) at cde1b40 by scripts/arc-import.ts. Tokens renamed --x → --arc-x; see src/app/arc-tokens.css. */
+@layer theme, base, arc, components, utilities;
+@layer arc {
 /* Isolation keeps the rounded clip on the media while the card lifts on its own layer (Safari drops it otherwise).
    Motion drives the lift and the quick look morph, so transform never gets a CSS transition here. */
 .card { position: relative; min-width: 0; overflow: hidden; isolation: isolate; border: 1px solid var(--arc-border); border-radius: var(--arc-radius-panel); background: var(--arc-surface); color: var(--arc-foreground); transition: border-color var(--arc-duration-fast) var(--arc-ease-standard), box-shadow var(--arc-duration-standard) var(--arc-ease-standard); }
@@ -50,4 +52,5 @@
 
 @media (prefers-reduced-motion: reduce) {
   .card, .close { transition-duration: var(--arc-duration-instant); }
+}
 }

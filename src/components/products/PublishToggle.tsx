@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { toast } from "sonner";
+import { toast } from "@/lib/toast";
 import { setProductPublished } from "@/actions/products";
 import { Button } from "@/components/ui/button";
 import { useAwaitableRefresh } from "@/hooks/useAwaitableRefresh";

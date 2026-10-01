@@ -1,4 +1,6 @@
 /* Vendored from Arc (MIT) at cde1b40 by scripts/arc-import.ts. Tokens renamed --x → --arc-x; see src/app/arc-tokens.css. */
+@layer theme, base, arc, components, utilities;
+@layer arc {
 /* Press scale is driven by Motion (whileTap) alone, so transform never gets a CSS transition here. */
 .button { position: relative; display: inline-flex; min-height: var(--arc-control-height-md); align-items: center; justify-content: center; gap: var(--arc-space-2); border: 1px solid transparent; border-radius: var(--arc-radius-button); padding: 0 var(--arc-space-4); font: inherit; font-size: var(--arc-text-sm); font-weight: 500; line-height: var(--arc-leading-body); white-space: nowrap; cursor: pointer; -webkit-tap-highlight-color: transparent; transition: color var(--arc-duration-fast) var(--arc-ease-standard), background var(--arc-duration-fast) var(--arc-ease-standard), border-color var(--arc-duration-fast) var(--arc-ease-standard), opacity var(--arc-duration-fast) var(--arc-ease-standard), box-shadow var(--arc-duration-fast) var(--arc-ease-standard); }
 .button:focus-visible { outline: 2px solid var(--arc-focus-ring); outline-offset: 3px; }
@@ -35,3 +37,4 @@
 .loadingLabel { opacity: 0; }
 @keyframes spin { to { transform: rotate(360deg); } }
 @media (prefers-reduced-motion: reduce) { .button { transition: none; } .labelSlot { transition: opacity var(--arc-duration-instant) linear; } .spinner { animation-duration: .01ms; animation-iteration-count: 1; } }
+}

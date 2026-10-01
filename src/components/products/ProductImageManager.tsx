@@ -3,7 +3,7 @@
 import { useState, useTransition } from "react";
 import Image from "next/image";
 import { ArrowLeft, ArrowRight, Star, Trash2 } from "lucide-react";
-import { toast } from "sonner";
+import { toast } from "@/lib/toast";
 import { ImageDropzone } from "@/components/products/ImageDropzone";
 import { Spinner } from "@/components/portal/Spinner";
 import { useImageUploadQueue } from "@/hooks/useImageUploadQueue";

@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { toast } from "sonner";
+import { toast } from "@/lib/toast";
 import type { DocumentUrlResponse } from "@/app/api/documents/[documentId]/url/route";
 import { Button } from "@/components/ui/button";
 

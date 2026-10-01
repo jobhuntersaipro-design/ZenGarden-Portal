@@ -1,4 +1,6 @@
 /* Vendored from Arc (MIT) at cde1b40 by scripts/arc-import.ts. Tokens renamed --x → --arc-x; see src/app/arc-tokens.css. */
+@layer theme, base, arc, components, utilities;
+@layer arc {
 .root { position: relative; display: flex; min-width: 0; min-height: 0; flex-direction: column; overflow: hidden; }
 
 /* Native scrolling with the platform scrollbars hidden; the overlay bars below replace them. */
@@ -79,3 +81,4 @@
   .track, .thumb::after { transition: none; }
 }
 .viewport:focus-visible { outline: 2px solid var(--arc-control-on); outline-offset: -2px; }
+}

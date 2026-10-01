@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import Link from "next/link";
-import { toast } from "sonner";
+import { toast } from "@/lib/toast";
 import { CartScreen } from "@/components/shop/cart/CartScreen";
 import { cartCaptions } from "@/components/shop/cart/CartLines";
 import { addToCart, removeFromCart, setCartons } from "@/actions/cart";

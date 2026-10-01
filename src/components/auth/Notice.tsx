@@ -3,6 +3,11 @@
 import { useState, type ReactNode } from "react";
 import Link from "next/link";
 import { CircleCheckIcon, InfoIcon, OctagonXIcon, XIcon } from "lucide-react";
+import arc from "@/components/arc/alert/alert.module.css";
+import { useIsArc } from "@/components/ui-mode/UiModeProvider";
+
+/** Arc mode's tone class on Arc's alert (arc/alert). */
+const ARC_TONE: Record<NoticeTone, string> = { error: arc.danger, success: arc.success, info: arc.info };
 
 export type NoticeTone = "error" | "success" | "info";
 
@@ -74,6 +79,7 @@ export function Notice({
   dismissHref?: string;
 }) {
   const [hidden, setHidden] = useState(false);
+  const isArc = useIsArc();
   const { border, icon, Icon } = TONE[tone];
   const dismissible = Boolean(onDismiss ?? dismissHref);
 
@@ -82,10 +88,20 @@ export function Notice({
   return (
     <div
       role={tone === "error" ? "alert" : "status"}
-      className={`flex items-start gap-xs rounded-sm border bg-surface-soft py-xs pl-sm text-[length:var(--text-body-sm)] text-ink ${border} ${dismissible ? "pr-xxs" : "pr-sm"}`}
+      className={
+        isArc
+          ? `${arc.alert} ${ARC_TONE[tone]} text-[length:var(--text-body-sm)] text-ink`
+          : `flex items-start gap-xs rounded-sm border bg-surface-soft py-xs pl-sm text-[length:var(--text-body-sm)] text-ink ${border} ${dismissible ? "pr-xxs" : "pr-sm"}`
+      }
     >
-      <Icon aria-hidden className={`mt-0.5 size-4 shrink-0 ${icon}`} />
-      <p className="min-w-0 flex-1 py-px">{children}</p>
+      {isArc ? (
+        <span className={arc.icon}>
+          <Icon aria-hidden className="size-4" />
+        </span>
+      ) : (
+        <Icon aria-hidden className={`mt-0.5 size-4 shrink-0 ${icon}`} />
+      )}
+      <p className={isArc ? `${arc.copy} ${arc.title}` : "min-w-0 flex-1 py-px"}>{children}</p>
       {dismissHref ? (
         <Link
           href={dismissHref}

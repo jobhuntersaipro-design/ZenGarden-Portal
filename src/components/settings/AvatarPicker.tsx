@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import { useSession } from "next-auth/react";
-import { toast } from "sonner";
+import { toast } from "@/lib/toast";
 import { removeAvatar, setGeneratedAvatar } from "@/actions/profile";
 import { announceAvatarChange } from "@/components/portal/AvatarBroadcast";
 import { useAvatarSaving } from "@/components/portal/AvatarSaving";

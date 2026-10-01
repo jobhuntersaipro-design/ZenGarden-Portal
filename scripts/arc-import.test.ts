@@ -1,6 +1,8 @@
 import { describe, expect, it } from "vitest";
 import {
   applyPatches,
+  LAYER_ORDER,
+  layerCss,
   destination,
   foundationTokens,
   renameTokens,
@@ -84,5 +86,17 @@ describe("applyPatches", () => {
     const css = ".b { border-radius: var(--arc-radius-control); }";
     expect(applyPatches("button/button.module.css", css)).toContain("--arc-radius-button");
     expect(applyPatches("input/input.module.css", css)).toBe(css);
+  });
+});
+
+describe("layerCss", () => {
+  it("puts a module's rules in the arc layer, under the order globals.css declares", () => {
+    const out = layerCss(".a { color: red; }\n@media (x) { .a { color: blue; } }\n");
+    expect(out.startsWith(`${LAYER_ORDER}\n@layer arc {\n`)).toBe(true);
+    expect(out).toContain("@media (x) { .a { color: blue; } }\n}\n");
+  });
+
+  it("orders arc above preflight and below the utilities a caller passes", () => {
+    expect(LAYER_ORDER).toBe("@layer theme, base, arc, components, utilities;");
   });
 });

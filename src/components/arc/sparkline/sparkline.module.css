@@ -1,4 +1,6 @@
 /* Vendored from Arc (MIT) at cde1b40 by scripts/arc-import.ts. Tokens renamed --x → --arc-x; see src/app/arc-tokens.css. */
+@layer theme, base, arc, components, utilities;
+@layer arc {
 .figure { display: grid; min-width: 0; gap: 12px; margin: 0; color: var(--arc-foreground); }.caption { display: flex; align-items: baseline; gap: 9px; min-width: 0; color: var(--arc-text-secondary); font-size: var(--arc-text-sm); }.label { min-width: 0; overflow: hidden; white-space: nowrap; }.caption strong { margin-left: auto; color: var(--arc-foreground); font-size: var(--arc-text-lg); font-weight: 500; letter-spacing: var(--arc-tracking-body); font-variant-numeric: tabular-nums; }.caption small { flex: none; font-size: var(--arc-text-xs); font-weight: 500; font-variant-numeric: tabular-nums; transition: color var(--arc-duration-standard) var(--arc-ease-standard); }
 .accent { color: var(--arc-accent-strong); stroke: var(--arc-accent); }.success { color: var(--arc-success); stroke: var(--arc-success); }.warning { color: var(--arc-warning); stroke: var(--arc-warning); }.danger { color: var(--arc-danger); stroke: var(--arc-danger); }
 /* The scrubbed date is context, not a change, so it stays neutral whatever the tone. */
@@ -25,3 +27,4 @@
 .cursor { stroke: var(--arc-border-strong); stroke-width: 1; }
 .end { transition: stroke var(--arc-duration-standard) var(--arc-ease-standard); }
 @media (prefers-reduced-motion: reduce) { .line, .end, .caption small { transition: none; } }
+}

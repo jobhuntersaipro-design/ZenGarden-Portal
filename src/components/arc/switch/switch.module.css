@@ -1,4 +1,6 @@
 /* Vendored from Arc (MIT) at cde1b40 by scripts/arc-import.ts. Tokens renamed --x → --arc-x; see src/app/arc-tokens.css. */
+@layer theme, base, arc, components, utilities;
+@layer arc {
 .switch { display: inline-flex; min-height: var(--arc-control-height-md); align-items: center; gap: var(--arc-space-3); padding: 0; border: 0; color: var(--arc-foreground); background: transparent; font: inherit; font-size: var(--arc-text-sm); cursor: pointer; -webkit-tap-highlight-color: transparent; }
 .switch:disabled { cursor: not-allowed; opacity: .5; }
 /* Fixed box: the thumb moves inside it with transforms, so nothing around the switch shifts. The track crossfades between the two fills. */
@@ -12,3 +14,4 @@
 .switch:focus-visible .track { box-shadow: 0 0 0 2px var(--arc-background), 0 0 0 4px var(--arc-focus-ring); }
 .label { line-height: var(--arc-leading-body); }
 @media (prefers-reduced-motion: reduce) { .track, .track::before, .thumb { transition: none; } }
+}

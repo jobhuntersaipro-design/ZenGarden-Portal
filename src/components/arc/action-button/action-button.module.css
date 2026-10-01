@@ -1,4 +1,6 @@
 /* Vendored from Arc (MIT) at cde1b40 by scripts/arc-import.ts. Tokens renamed --x → --arc-x; see src/app/arc-tokens.css. */
+@layer theme, base, arc, components, utilities;
+@layer arc {
 /* The button hugs its label: text morphs in place and the width follows on a spring, so no state ever snaps the layout. */
 .button { position: relative; display: inline-flex; min-height: var(--arc-control-height-md); align-items: center; justify-content: center; overflow: hidden; padding: 0 var(--arc-space-5); border: 1px solid var(--arc-foreground); border-radius: var(--arc-radius-button); background: var(--arc-foreground); color: var(--arc-background); font: inherit; font-size: var(--arc-text-sm); font-weight: 500; line-height: var(--arc-leading-body); cursor: pointer; -webkit-tap-highlight-color: transparent; transition: background var(--arc-duration-fast) var(--arc-ease-standard), border-color var(--arc-duration-fast) var(--arc-ease-standard), color var(--arc-duration-fast) var(--arc-ease-standard), box-shadow var(--arc-duration-fast) var(--arc-ease-standard), opacity var(--arc-duration-fast) var(--arc-ease-standard); }
 @media (hover: hover) and (pointer: fine) { .button:hover:not(:disabled) { box-shadow: var(--arc-shadow-resting); } }
@@ -19,3 +21,4 @@
 .visuallyHidden { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
 @keyframes spin { to { transform: rotate(360deg); } }
 @media (prefers-reduced-motion: reduce) { .button { transition: none; } .spinner { animation: none; } }
+}

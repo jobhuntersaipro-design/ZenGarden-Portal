@@ -1,4 +1,6 @@
 /* Vendored from Arc (MIT) at cde1b40 by scripts/arc-import.ts. Tokens renamed --x → --arc-x; see src/app/arc-tokens.css. */
+@layer theme, base, arc, components, utilities;
+@layer arc {
 .root { display: flex; width: 100%; flex-direction: column; align-items: center; padding: clamp(var(--arc-space-8), 8vw, var(--arc-space-12)) var(--arc-space-5); text-align: center; }
 .icon { position: relative; display: grid; width: var(--arc-space-12); height: var(--arc-space-12); place-items: center; border: 1px solid var(--arc-border); border-radius: var(--arc-radius-panel); background: var(--arc-surface-muted); color: var(--arc-text-secondary); animation: empty-state-icon var(--arc-duration-considered) var(--arc-ease-enter) both; }
 .glyph { display: grid; place-items: center; }
@@ -12,3 +14,4 @@
 /* The icon settles in once when the state first appears; later changes crossfade in place. */
 @keyframes empty-state-icon { from { opacity: 0; transform: scale(.92); } to { opacity: 1; transform: scale(1); } }
 @media (prefers-reduced-motion: reduce) { .icon { animation: none; } }
+}

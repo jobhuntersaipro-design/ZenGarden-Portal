@@ -42,6 +42,8 @@ import { listPurchaseOrders } from "@/lib/queries/purchase-orders";
 import { prisma } from "@/lib/prisma";
 import { can, requirePagePermission } from "@/lib/permissions/require";
 import { withLoadingFloor } from "@/lib/loading-floor";
+import { Breadcrumb } from "@/components/arc/breadcrumb/breadcrumb";
+import { ModeSwitch } from "@/components/ui-mode/ModeSwitch";
 
 export const dynamic = "force-dynamic";
 
@@ -131,18 +133,32 @@ async function BuyerPage({
   return (
     <>
       <BackLink fallbackHref="/buyers" />
-      <nav aria-label="Breadcrumb" className="mb-xs">
-        <Link
-          href="/buyers"
-          className="inline-flex min-h-control-md items-center rounded-xxs text-[length:var(--text-body-sm)] text-brand-link underline-offset-2 hover:underline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-focus sm:min-h-0"
-        >
-          Buyers
-        </Link>
-        <span className="text-[length:var(--text-body-sm)] text-ink-tertiary">
-          {" / "}
-          {data.buyer.name}
-        </span>
-      </nav>
+      {/* Arc mode: Arc's breadcrumb (docs/specs/61-arc-preview-switch.md). */}
+      <ModeSwitch
+        arc={
+          <div className="mb-xs">
+            <Breadcrumb
+              items={[
+                { label: "Buyers", href: "/buyers" },
+                { label: data.buyer.name },
+              ]}
+            />
+          </div>
+        }
+      >
+        <nav aria-label="Breadcrumb" className="mb-xs">
+          <Link
+            href="/buyers"
+            className="inline-flex min-h-control-md items-center rounded-xxs text-[length:var(--text-body-sm)] text-brand-link underline-offset-2 hover:underline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-focus sm:min-h-0"
+          >
+            Buyers
+          </Link>
+          <span className="text-[length:var(--text-body-sm)] text-ink-tertiary">
+            {" / "}
+            {data.buyer.name}
+          </span>
+        </nav>
+      </ModeSwitch>
 
       {/* Above the name, where a reader looks first (2026-09-24). */}
       {data.buyer.logoUrl ? (

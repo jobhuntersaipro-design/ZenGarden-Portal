@@ -1,4 +1,6 @@
 /* Vendored from Arc (MIT) at cde1b40 by scripts/arc-import.ts. Tokens renamed --x → --arc-x; see src/app/arc-tokens.css. */
+@layer theme, base, arc, components, utilities;
+@layer arc {
 .field { display: inline-flex; align-items: flex-start; gap: 0; min-width: 0; }
 .box { position: relative; flex: 0 0 auto; display: grid; place-items: center; width: var(--arc-control-height-md); height: var(--arc-control-height-md); border: 0; border-radius: var(--arc-radius-control); padding: 0; background: transparent; color: var(--arc-control-glyph); cursor: pointer; -webkit-tap-highlight-color: transparent; }
 /* The square is the only part that reacts to a press, so the hit area and label never move. */
@@ -17,3 +19,4 @@
 .copy label { color: var(--arc-foreground); font-size: var(--arc-text-sm); font-weight: 500; line-height: var(--arc-leading-body); cursor: pointer; }
 .copy span { color: var(--arc-text-muted); font-size: var(--arc-text-xs); line-height: var(--arc-leading-body); }
 @media (prefers-reduced-motion: reduce) { .visual, .box:active:not(:disabled) .visual { transition: none; transform: none; } }
+}

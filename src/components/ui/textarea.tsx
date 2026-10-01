@@ -1,7 +1,22 @@
+"use client"
+
 import * as React from "react"
 import { cn } from "cn"
+import arcStyles from "@/components/arc/textarea/textarea.module.css"
+import { useIsArc } from "@/components/ui-mode/UiModeProvider"
 
 function Textarea({ className, ...props }: React.ComponentProps<"textarea">) {
+  // Arc mode: Arc's control, without its label row (our forms label fields).
+  const arc = useIsArc()
+  if (arc) {
+    return (
+      <textarea
+        data-slot="textarea"
+        className={cn(arcStyles.control, className)}
+        {...props}
+      />
+    )
+  }
   return (
     <textarea
       data-slot="textarea"

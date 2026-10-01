@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { toast } from "sonner";
+import { toast } from "@/lib/toast";
 import { addProductToFamily } from "@/actions/product-families";
 import { Combobox } from "@/components/review/Combobox";
 import { useAwaitableRefresh } from "@/hooks/useAwaitableRefresh";

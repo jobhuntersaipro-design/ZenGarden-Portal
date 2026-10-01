@@ -1,4 +1,6 @@
 /* Vendored from Arc (MIT) at cde1b40 by scripts/arc-import.ts. Tokens renamed --x → --arc-x; see src/app/arc-tokens.css. */
+@layer theme, base, arc, components, utilities;
+@layer arc {
 .nav { position: relative; display: flex; flex-wrap: wrap; align-items: center; gap: var(--arc-space-1); }
 .nav button { position: relative; display: grid; width: var(--arc-control-height-sm); height: var(--arc-control-height-sm); place-items: center; border: 1px solid transparent; border-radius: var(--arc-radius-control); background: transparent; color: var(--arc-text-secondary); font: inherit; font-size: var(--arc-text-xs); font-variant-numeric: tabular-nums; cursor: pointer; transition: background-color var(--arc-duration-fast) var(--arc-ease-standard), color var(--arc-duration-fast) var(--arc-ease-standard); }
 .nav button[aria-current="page"] { color: var(--arc-foreground); }
@@ -16,3 +18,4 @@
   .nav[data-mark-ready] button[aria-current="page"]:hover { background: transparent; }
 }
 @media (prefers-reduced-motion: reduce) { .nav button, .nav .step { transition: none; } .nav .step:active:not(:disabled) { transform: none; } }
+}

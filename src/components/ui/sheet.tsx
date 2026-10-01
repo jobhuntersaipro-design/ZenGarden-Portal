@@ -3,6 +3,8 @@
 import * as React from "react";
 import { cn } from "cn";
 import { Dialog as SheetPrimitive } from "radix-ui";
+import arc from "@/components/arc/drawer/drawer.module.css";
+import { useIsArc } from "@/components/ui-mode/UiModeProvider";
 
 import { Button } from "@/components/ui/button";
 import { XIcon } from "lucide-react";
@@ -77,6 +79,43 @@ function SheetContent({
   showCloseButton?: boolean;
 }) {
   const callerSetsWidth = /(?:^|\s)\S*max-w-/.test(className ?? "");
+  const isArc = useIsArc();
+  if (isArc) {
+    // Arc mode: Arc's drawer — the rounded inner edge, floating shadow and
+    // its critically damped slide (the keyframe path Arc uses under a plain
+    // Radix root). It scrolls itself, so a tall form's Save stays reachable
+    // on a phone (context/lessons.md §9).
+    return (
+      <SheetPortal>
+        <SheetPrimitive.Overlay
+          data-slot="sheet-overlay"
+          className={cn(arc.overlay, arc.keyframes)}
+        />
+        <SheetPrimitive.Content
+          data-slot="sheet-content"
+          data-side={side}
+          className={cn(
+            arc.content,
+            arc.keyframes,
+            "gap-md overflow-y-auto",
+            className,
+          )}
+          {...props}
+        >
+          {children}
+          {showCloseButton && (
+            <SheetPrimitive.Close
+              data-slot="sheet-close"
+              className={cn(arc.close, "absolute top-md right-md max-sm:size-11")}
+              aria-label="Close"
+            >
+              <XIcon className="size-4" aria-hidden />
+            </SheetPrimitive.Close>
+          )}
+        </SheetPrimitive.Content>
+      </SheetPortal>
+    );
+  }
   return (
     <SheetPortal>
       <SheetOverlay />
@@ -109,20 +148,30 @@ function SheetContent({
 }
 
 function SheetHeader({ className, ...props }: React.ComponentProps<"div">) {
+  const isArc = useIsArc();
   return (
     <div
       data-slot="sheet-header"
-      className={cn("flex flex-col gap-0.5 p-4", className)}
+      className={cn(
+        isArc ? cn(arc.header, "flex-col gap-0 pr-xxl") : "flex flex-col gap-0.5 p-4",
+        className,
+      )}
       {...props}
     />
   );
 }
 
 function SheetFooter({ className, ...props }: React.ComponentProps<"div">) {
+  const isArc = useIsArc();
   return (
     <div
       data-slot="sheet-footer"
-      className={cn("mt-auto flex flex-col gap-2 p-4", className)}
+      className={cn(
+        isArc
+          ? "mt-auto flex flex-col gap-xs border-t border-hairline p-lg"
+          : "mt-auto flex flex-col gap-2 p-4",
+        className,
+      )}
       {...props}
     />
   );
@@ -132,11 +181,12 @@ function SheetTitle({
   className,
   ...props
 }: React.ComponentProps<typeof SheetPrimitive.Title>) {
+  const isArc = useIsArc();
   return (
     <SheetPrimitive.Title
       data-slot="sheet-title"
       className={cn(
-        "font-heading text-base font-medium text-foreground",
+        isArc ? arc.title : "font-heading text-base font-medium text-foreground",
         className,
       )}
       {...props}
@@ -148,10 +198,11 @@ function SheetDescription({
   className,
   ...props
 }: React.ComponentProps<typeof SheetPrimitive.Description>) {
+  const isArc = useIsArc();
   return (
     <SheetPrimitive.Description
       data-slot="sheet-description"
-      className={cn("text-sm text-muted-foreground", className)}
+      className={cn(isArc ? arc.description : "text-sm text-muted-foreground", className)}
       {...props}
     />
   );

@@ -1,4 +1,6 @@
 /* Vendored from Arc (MIT) at cde1b40 by scripts/arc-import.ts. Tokens renamed --x → --arc-x; see src/app/arc-tokens.css. */
+@layer theme, base, arc, components, utilities;
+@layer arc {
 /* No row gap: grid tracks clamp a negative margin at zero, so a closed message row would still pay the gap. Each row carries its own space instead. */
 .field { --nf-height: var(--arc-control-height-md); --nf-step: 34px; --nf-inset: 3px; --nf-text: var(--arc-text-base); --nf-width: var(--number-field-width, 196px); --nf-limit: color-mix(in oklch, var(--arc-warning) 72%, var(--arc-foreground)); display: grid; min-width: 0; }
 .field[data-size="sm"] { --nf-height: var(--arc-control-height-sm); --nf-step: 28px; --nf-inset: 3px; --nf-text: var(--arc-text-sm); --nf-width: var(--number-field-width, 164px); }
@@ -69,4 +71,5 @@
   .control, .step { transition: opacity var(--arc-duration-instant) linear, border-color var(--arc-duration-instant) linear, background-color var(--arc-duration-instant) linear; }
   .step:is(:active, [data-pressed]):not(:disabled, [aria-disabled="true"]) svg, .icon svg { transform: none; transition: none; }
   .control[data-strain] .value { color: var(--nf-limit); transition: none; }
+}
 }

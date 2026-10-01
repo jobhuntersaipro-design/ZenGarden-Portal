@@ -2,6 +2,8 @@
 
 import { useId, useState } from "react";
 import Link from "next/link";
+import { DonutChart } from "@/components/arc/donut-chart/donut-chart";
+import { useIsArc } from "@/components/ui-mode/UiModeProvider";
 import { ChevronDown } from "lucide-react";
 import type { ShareSlice } from "@/lib/analytics/share";
 import { OTHER_VAR, SHARE_VARS, cssVar } from "@/lib/analytics/palette";
@@ -53,6 +55,7 @@ export function DonutShare({
   bare?: boolean;
 }) {
   const [openOther, setOpenOther] = useState(false);
+  const isArc = useIsArc();
   // Two donuts sit side by side on the dashboard, so the panel id has to be
   // per instance or `aria-controls` points at the wrong card.
   const otherId = useId();
@@ -66,6 +69,42 @@ export function DonutShare({
         <p className="mt-md text-[length:var(--text-body-sm)] text-ink-secondary">
           Nothing sold in this range.
         </p>
+      </section>
+    );
+  }
+
+  if (isArc) {
+    // Arc mode: Arc's donut — arcs that morph between ranges, hover and focus
+    // that preview a slice in the centre, and its own synced legend. "Other"
+    // is handed over unfolded, so Arc does its own grouping. The legend's
+    // links to each buyer or product are ours and are not carried over.
+    const data = slices.flatMap((slice, index) =>
+      slice.isOther
+        ? (slice.members ?? []).map((member) => ({
+            key: member.id,
+            label: member.label,
+            value: member.value,
+          }))
+        : [{ key: slice.id, label: slice.label, value: slice.value, color: colorFor(index, false) }],
+    );
+    const chart = (
+      <DonutChart
+        label={eyebrow || "Share"}
+        data={data}
+        totalLabel={centreLabel}
+        formatValue={(value) => formatMYR(value.toFixed(2))}
+        maxSegments={6}
+        legend={!bare}
+        size={168}
+      />
+    );
+    if (bare) return chart;
+    return (
+      <section className="min-w-0 rounded-lg border border-hairline bg-canvas p-lg">
+        <p className="mb-md font-mono text-[length:var(--text-eyebrow)] text-ink-tertiary">
+          {eyebrow}
+        </p>
+        {chart}
       </section>
     );
   }

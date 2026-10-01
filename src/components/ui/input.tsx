@@ -1,7 +1,24 @@
+"use client"
+
 import * as React from "react"
 import { cn } from "cn"
+import arcStyles from "@/components/arc/input/input.module.css"
+import { useIsArc } from "@/components/ui-mode/UiModeProvider"
 
 function Input({ className, type, ...props }: React.ComponentProps<"input">) {
+  // Arc mode: Arc's field control. Our forms label their own fields, so the
+  // control is drawn without Arc's built-in label row.
+  const arc = useIsArc()
+  if (arc) {
+    return (
+      <input
+        type={type}
+        data-slot="input"
+        className={cn(arcStyles.input, className)}
+        {...props}
+      />
+    )
+  }
   return (
     <input
       type={type}

@@ -1,3 +1,7 @@
+/* Arc's CSS modules sit in `arc`, above preflight and below utilities, so a
+   caller's className beats a vendored rule (scripts/arc-import.ts). Declared
+   before the Tailwind import, which is the one place it can be. */
+@layer theme, base, arc, components, utilities;
 @import "tailwindcss";
 @import "tw-animate-css";
 @import "shadcn/tailwind.css";
@@ -197,6 +201,11 @@
   --spacing-picker: 360px;
   /* The admin shell's top bar (Phase 09), per design reference §3.7. */
   --spacing-topbar: 60px;
+  /* The Current / Arc preview switch clears the phone tab bar (56px) and the
+     shop's cart bar below `lg`; above it the switch sits at `bottom-lg`. */
+  --spacing-ui-switch: calc(env(safe-area-inset-bottom) + 76px);
+  /* Arc mode's toast stack sits above the switch on a phone. */
+  --spacing-ui-toast: calc(env(safe-area-inset-bottom) + 132px);
   /* The permissions matrix scrolls inside its card. Short of the viewport so
      the role header can stick to this box — a page-level sticky header cannot,
      because the horizontal scroller is already an overflow container. 36rem

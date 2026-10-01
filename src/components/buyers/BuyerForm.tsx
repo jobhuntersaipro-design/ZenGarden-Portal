@@ -2,7 +2,7 @@
 
 import { useId, useRef, useState } from "react";
 import { ChevronDown } from "lucide-react";
-import { toast } from "sonner";
+import { toast } from "@/lib/toast";
 import { createBuyer } from "@/actions/admin-buyers";
 import { Rise } from "@/components/portal/Rise";
 import { Button } from "@/components/ui/button";

@@ -1,4 +1,6 @@
 /* Vendored from Arc (MIT) at cde1b40 by scripts/arc-import.ts. Tokens renamed --x → --arc-x; see src/app/arc-tokens.css. */
+@layer theme, base, arc, components, utilities;
+@layer arc {
 .root { --marker: 1.75rem; --halo: 4px; min-width: 0; color: var(--arc-foreground); font-family: var(--arc-font-body); letter-spacing: var(--arc-tracking-body); }
 /* A horizontal stepper spans its container, so it can safely measure itself and fold into markers when space runs out. */
 .horizontal { width: 100%; container: stepper / inline-size; }
@@ -72,4 +74,5 @@
 @media (prefers-reduced-motion: reduce) {
   .disc, .ring, .label { transition: none; }
   .head[data-clickable]:active .disc { transform: none; }
+}
 }

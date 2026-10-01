@@ -1,4 +1,6 @@
 /* Vendored from Arc (MIT) at cde1b40 by scripts/arc-import.ts. Tokens renamed --x → --arc-x; see src/app/arc-tokens.css. */
+@layer theme, base, arc, components, utilities;
+@layer arc {
 /* Positioned so an outgoing panel pops out exactly where it was while the next one takes its place. */
 .root { position: relative; }
 .listShell { position: relative; display: inline-flex; max-width: 100%; min-width: 0; align-items: center; isolation: isolate; border: 1px solid var(--arc-border); border-radius: var(--arc-radius-control); background: var(--arc-surface-muted); }
@@ -27,3 +29,4 @@
 .content[data-state="inactive"] { pointer-events: none; }
 .content:focus-visible { outline: 2px solid var(--arc-focus-ring); outline-offset: 3px; border-radius: var(--arc-radius-control); }
 @media (prefers-reduced-motion: reduce) { .trigger { transition: none; } }
+}

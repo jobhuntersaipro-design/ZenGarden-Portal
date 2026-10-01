@@ -2,7 +2,7 @@ import { renderToStaticMarkup } from "react-dom/server";
 import { describe, expect, it, vi } from "vitest";
 import type { CartLine } from "@/lib/queries/cart";
 
-vi.mock("sonner", () => ({ toast: { error: vi.fn() } }));
+vi.mock("@/lib/toast", () => ({ toast: { error: vi.fn() } }));
 
 const { CartLines } = await import("@/components/shop/cart/CartLines");
 

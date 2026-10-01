@@ -3,7 +3,7 @@
 import { useState } from "react";
 import Link from "next/link";
 import { useAwaitableRefresh } from "@/hooks/useAwaitableRefresh";
-import { toast } from "sonner";
+import { toast } from "@/lib/toast";
 import { updateProduct } from "@/actions/products";
 import { FamilyPicker, type FamilyChoice } from "@/components/products/FamilyPicker";
 import { GrowingListPicker } from "@/components/products/GrowingListPicker";

@@ -1,4 +1,6 @@
 /* Vendored from Arc (MIT) at cde1b40 by scripts/arc-import.ts. Tokens renamed --x → --arc-x; see src/app/arc-tokens.css. */
+@layer theme, base, arc, components, utilities;
+@layer arc {
 .field { display: grid; gap: 7px; min-width: 0; }
 .label { color: var(--arc-foreground); font-size: var(--arc-text-sm); font-weight: 500; line-height: var(--arc-leading-body); }
 .anchor { position: relative; min-width: 0; }
@@ -33,3 +35,4 @@
 /* The open calendar covers the hint; fading it keeps its first letters from peeking past the popover's rounded corner. */
 .anchor:has(.popover) + .description { opacity: 0; }
 @media (prefers-reduced-motion: reduce) { .trigger, .chevron, .footer button, .description { transition: none; } .footer button:active:not(:disabled) { transform: none; } }
+}
