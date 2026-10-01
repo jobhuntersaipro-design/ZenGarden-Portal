@@ -1,5 +1,6 @@
 "use client";
 
+import { EmptyState } from "@/components/arc/empty-state/empty-state";
 import { Fragment, useState, type MouseEvent, type ReactNode } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
@@ -81,6 +82,7 @@ export function DataTable<Row extends { id: string }>({
   sort,
   onSortChange,
   emptyText,
+  emptyDescription = "Clear the search or a filter to see more.",
   rowHref,
   onRowOpen,
   renderCard,
@@ -92,6 +94,8 @@ export function DataTable<Row extends { id: string }>({
   /** Where the sort goes. `useTableSort` writes it to the URL. */
   onSortChange: (key: string, dir: SortDirection) => void;
   emptyText: string;
+  /** The line under the empty state's title: what to do about it. */
+  emptyDescription?: string;
   rowHref?: (row: Row) => string;
   /**
    * Told the moment a row is opened, before the navigation answers — so a
@@ -249,9 +253,11 @@ export function DataTable<Row extends { id: string }>({
         ) : null}
 
         {rows.length === 0 ? (
-          <p className="rounded-lg border border-hairline bg-canvas px-md py-xl text-center text-[length:var(--text-body-sm)] text-ink-secondary">
-            {emptyText}
-          </p>
+          <EmptyState
+            className="rounded-lg border border-hairline bg-canvas"
+            title={emptyText}
+            description={emptyDescription}
+          />
         ) : (
           <ul
             aria-busy={updating || undefined}
@@ -384,11 +390,8 @@ export function DataTable<Row extends { id: string }>({
             >
               {rows.length === 0 ? (
                 <tr>
-                  <td
-                    colSpan={columns.length}
-                    className="px-md py-xl text-center text-[length:var(--text-body-sm)] text-ink-secondary"
-                  >
-                    {emptyText}
+                  <td colSpan={columns.length}>
+                    <EmptyState title={emptyText} description={emptyDescription} />
                   </td>
                 </tr>
               ) : (

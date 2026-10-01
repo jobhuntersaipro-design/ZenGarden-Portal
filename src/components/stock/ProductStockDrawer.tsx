@@ -13,7 +13,7 @@ import {
   SheetHeader,
   SheetTitle,
 } from "@/components/ui/sheet";
-import { Shimmer } from "@/components/portal/Skeletons";
+import { Skeleton } from "@/components/arc/skeleton/skeleton";
 import { StockActivityFeed } from "@/components/stock/StockActivityFeed";
 import {
   setPendingStockProduct,
@@ -131,22 +131,15 @@ export function ProductStockDrawer({
           </SheetDescription>
         </SheetHeader>
 
-        {waiting ? (
-          <div className="flex flex-col gap-lg p-md" aria-busy="true">
-            <span className="sr-only">Loading this product&rsquo;s counts</span>
-            <div className="flex flex-col gap-xs">
-              <Shimmer className="h-3 w-20" />
-              <Shimmer className="h-8 w-40" />
-              <Shimmer className="h-3 w-56" />
-            </div>
-            <Shimmer className="h-40 w-full" />
-            <div className="flex flex-col gap-sm">
-              <Shimmer className="h-10 w-full" />
-              <Shimmer className="h-10 w-full" />
-            </div>
-          </div>
-        ) : (
-        <div className="flex flex-col gap-lg p-md">
+        {/* Arc's skeleton holds the drawer while the server answers, then
+            crossfades into the real body and springs to its height. */}
+        <Skeleton
+          className="p-md"
+          loading={waiting}
+          label="Loading this product's counts"
+          lines={5}
+        >
+        <div className="flex flex-col gap-lg">
           {/* What it reads now, which is the figure a counter is about to
               replace and which the form alone never showed. */}
           <div>
@@ -239,7 +232,7 @@ export function ProductStockDrawer({
             </div>
           </div>
         </div>
-        )}
+        </Skeleton>
       </SheetContent>
     </Sheet>
   );

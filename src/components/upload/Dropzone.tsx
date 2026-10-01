@@ -1,35 +1,38 @@
 "use client";
 
 import { useCallback, useEffect, useRef, useState } from "react";
-import { Camera, Upload } from "lucide-react";
+import { Camera } from "lucide-react";
+import { FileDropzone } from "@/components/arc/file-dropzone/file-dropzone";
 import { Button } from "@/components/ui/button";
-import {
-  ACCEPT_ATTRIBUTE,
-  formatBytes,
-  MAX_FILE_BYTES,
-} from "@/lib/validation/upload";
+import { formatBytes, MAX_FILE_BYTES } from "@/lib/validation/upload";
+
+/** Arc caps a drop at its own count; the queue takes any number. */
+const MAX_BATCH = 100;
 
 /**
- * Drop, browse, paste and the camera all funnel into the same `onFiles`
+ * Arc's file dropzone as the target. Drop, browse, paste and the camera all
+ * funnel into the same `onFiles`
  * (design reference §3.3). Paste matters more than it looks: a screenshot of a
  * PO is the most common thing an ops person has on the clipboard.
  *
  * The camera is the mobile answer. "Drop PO files here" is meaningless on a
  * phone, and photographing a PO is the native way to capture one on a product
  * whose whole intake is PO photographs (2026-09-06 review, B6) — so below `sm`
- * the heading changes and "Take a photo" leads.
+ * "Take a photo" sits under the target.
  */
 export function Dropzone({ onFiles }: { onFiles: (files: File[]) => void }) {
-  const [dragging, setDragging] = useState(false);
-  const input = useRef<HTMLInputElement>(null);
   /** A second input: `capture` cannot be toggled per click on one element. */
   const camera = useRef<HTMLInputElement>(null);
-  /** Drag events fire per child element; counting keeps the state from flickering. */
-  const depth = useRef(0);
+  /**
+   * Arc's dropzone keeps a list of its own; ours is the upload queue below,
+   * which validates, uploads and reports each file. So the target hands every
+   * batch over and is remounted empty, rather than showing a second list.
+   */
+  const [batch, setBatch] = useState(0);
 
   const handle = useCallback(
-    (list: FileList | null) => {
-      if (!list?.length) return;
+    (list: FileList | File[] | null) => {
+      if (!list || list.length === 0) return;
       onFiles(Array.from(list));
     },
     [onFiles],
@@ -37,6 +40,8 @@ export function Dropzone({ onFiles }: { onFiles: (files: File[]) => void }) {
 
   useEffect(() => {
     const onPaste = (event: ClipboardEvent) => {
+      // Arc's target takes a paste itself while it is hovered or focused.
+      if (event.defaultPrevented) return;
       const files = Array.from(event.clipboardData?.files ?? []);
       if (files.length > 0) onFiles(files);
     };
@@ -45,62 +50,33 @@ export function Dropzone({ onFiles }: { onFiles: (files: File[]) => void }) {
   }, [onFiles]);
 
   return (
-    <div
-      onDragEnter={(event) => {
-        event.preventDefault();
-        depth.current += 1;
-        setDragging(true);
-      }}
-      onDragOver={(event) => event.preventDefault()}
-      onDragLeave={(event) => {
-        event.preventDefault();
-        depth.current -= 1;
-        if (depth.current <= 0) setDragging(false);
-      }}
-      onDrop={(event) => {
-        event.preventDefault();
-        depth.current = 0;
-        setDragging(false);
-        handle(event.dataTransfer.files);
-      }}
-      className={`flex min-h-80 flex-col items-center justify-center gap-sm rounded-xxl border-2 border-dashed p-xl text-center transition-colors duration-[0.25s] ease-[cubic-bezier(0.5,0,0.5,1)] ${
-        dragging
-          ? "border-focus bg-surface"
-          : "border-hairline-strong bg-canvas"
-      }`}
-    >
-      <span
-        aria-hidden
-        className="flex size-10 items-center justify-center rounded-full bg-surface"
+    <div className="flex flex-col gap-sm">
+      {/* No `accept` and no size limit here: a refused file belongs in the
+          queue with its reason ("That image is 17.2 MB…"), where the rest of
+          the batch still uploads, not in a message the remount would erase. */}
+      <FileDropzone
+        key={batch}
+        multiple
+        maxFiles={MAX_BATCH}
+        label="Add purchase orders"
+        description="Drop files here, paste a screenshot, or choose from your device"
+        note={`PDF, PNG, JPG — up to ${formatBytes(MAX_FILE_BYTES)} each`}
+        dropLabel="Drop to upload"
+        onFilesChange={(files) => {
+          handle(files);
+          setBatch((n) => n + 1);
+        }}
+      />
+      {/* Phones only: `capture` is inert on a desktop browser, and the
+          button would be a dead end there. */}
+      <Button
+        type="button"
+        className="self-center sm:hidden"
+        onClick={() => camera.current?.click()}
       >
-        <Upload className="size-5 text-ink-secondary" strokeWidth={1.75} />
-      </span>
-      <h2 className="font-display text-[length:var(--text-heading-md)] font-[650] tracking-[-0.91px] text-ink">
-        <span className="sm:hidden">Add a purchase order</span>
-        <span className="hidden sm:inline">Drop PO files here</span>
-      </h2>
-      <p className="text-[length:var(--text-body-md)] text-ink-secondary">
-        PDF, PNG, JPG — up to {formatBytes(MAX_FILE_BYTES)} each
-      </p>
-      <div className="flex flex-col items-center gap-xs sm:flex-row">
-        {/* Phones only: `capture` is inert on a desktop browser, and the
-            button would be a dead end there. */}
-        <Button
-          type="button"
-          className="sm:hidden"
-          onClick={() => camera.current?.click()}
-        >
-          <Camera className="size-4" strokeWidth={1.75} aria-hidden />
-          Take a photo
-        </Button>
-        <Button
-          type="button"
-          variant="secondary"
-          onClick={() => input.current?.click()}
-        >
-          Browse files
-        </Button>
-      </div>
+        <Camera className="size-4" strokeWidth={1.75} aria-hidden />
+        Take a photo
+      </Button>
       <input
         ref={camera}
         type="file"
@@ -110,22 +86,6 @@ export function Dropzone({ onFiles }: { onFiles: (files: File[]) => void }) {
         tabIndex={-1}
         aria-hidden
         className="sr-only"
-        onChange={(event) => {
-          handle(event.target.files);
-          event.target.value = "";
-        }}
-      />
-      <input
-        ref={input}
-        type="file"
-        multiple
-        accept={ACCEPT_ATTRIBUTE}
-        // Driven entirely by the Browse button. Left in the tab order it would
-        // be a second, invisible stop announcing "Choose File".
-        tabIndex={-1}
-        aria-hidden
-        className="sr-only"
-        // Cleared so choosing the same file twice in a row still fires change.
         onChange={(event) => {
           handle(event.target.files);
           event.target.value = "";

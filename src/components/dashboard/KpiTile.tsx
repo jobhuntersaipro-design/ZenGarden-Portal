@@ -1,5 +1,6 @@
 import { isValidElement, type ReactNode } from "react";
 import { CountUp } from "@/components/portal/CountUp";
+import metric from "@/components/arc/metric-card/metric-card.module.css";
 
 /**
  * A KPI tile.
@@ -56,9 +57,12 @@ export function KpiTile({
       : "";
   return (
     <div
-      className={`rounded-md border border-hairline bg-canvas p-md ${fitsMoney ? "@container" : ""} ${span}`}
+      // Arc's metric card surface — its border, radius and resting shadow —
+      // around our figure: Arc's own card counts a bare number up from zero
+      // and has no room for money or a name, which these tiles carry.
+      className={`${metric.card} p-md ${fitsMoney ? "@container" : ""} ${span}`}
     >
-      <p className="font-mono text-[length:var(--text-eyebrow)] text-ink-tertiary">
+      <p className="mt-0 font-mono text-[length:var(--text-eyebrow)] text-ink-tertiary">
         {label}
       </p>
       {/* `break-words` because a KPI value is not always a number: "Northwind

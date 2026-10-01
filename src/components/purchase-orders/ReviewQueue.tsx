@@ -74,6 +74,7 @@ export function ReviewQueue({
         sort={NO_SORT}
         onSortChange={ignoreSort}
         emptyText="Nothing needs review."
+        emptyDescription="Shop orders and read uploads land here."
         rowHref={poRowHref}
         renderCard={poCard}
       />

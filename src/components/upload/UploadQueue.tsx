@@ -1,30 +1,49 @@
 "use client";
 
+import { Progress } from "@/components/arc/progress/progress";
+import arcProgress from "@/components/arc/progress/progress.module.css";
 import { FileText, Image as ImageIcon, X } from "lucide-react";
 import type { UploadRow, UploadStatus } from "@/components/upload/queue-types";
 import { formatBytes } from "@/lib/validation/upload";
 
 /**
- * One geometry for every bar: 4px, full width, `surface-soft` track, pill on
- * both track and fill. Only the fill colour and the row's label distinguish
- * the states — a taller or differently-rounded bar reads as a different kind
- * of progress (docs/specs/03-upload.md §2, design reference §3.3).
+ * One geometry for every bar: Arc's progress track, full width, pill on both
+ * track and fill. Only the fill colour and the row's label distinguish the
+ * states — a taller or differently-rounded bar reads as a different kind of
+ * progress (docs/specs/03-upload.md §2, design reference §3.3).
  */
+/**
+ * Arc's fill takes the status palette, so a row that needs a person stays
+ * amber when it lands rather than turning Arc's done-green. Static strings,
+ * because Tailwind only compiles classes it can read in the source.
+ */
+const ARC_FILL: Record<string, string> = {
+  "bg-ink": "",
+  "bg-surface-soft": "[&>div>span]:bg-surface-soft",
+  "bg-accent-blue": "[&>div>span]:bg-accent-blue",
+  "bg-brand-amber": "[&>div>span]:bg-brand-amber",
+  "bg-accent-red": "[&>div>span]:bg-accent-red",
+};
+
 export function ProgressBar({
   value,
   fill,
+  label,
   indeterminate = false,
 }: {
   value: number;
   fill: string;
+  /** Names the bar for assistive technology, such as the file it is for. */
+  label?: string;
   indeterminate?: boolean;
 }) {
-  // Extraction reports no fraction, so the bar reports motion instead. Same
-  // track, same height, same radius — only the fill differs (G2).
+  // Extraction reports no fraction, so the bar reports motion instead: Arc's
+  // track, with our sliding fill, since Arc's progress has no indeterminate
+  // state (G2).
   if (indeterminate) {
     return (
       <div
-        className="h-1 w-full overflow-hidden rounded-pill bg-surface-soft"
+        className={arcProgress.track}
         role="progressbar"
         aria-label="Reading the document"
       >
@@ -36,18 +55,11 @@ export function ProgressBar({
   }
 
   return (
-    <div
-      className="h-1 w-full overflow-hidden rounded-pill bg-surface-soft"
-      role="progressbar"
-      aria-valuenow={Math.round(value)}
-      aria-valuemin={0}
-      aria-valuemax={100}
-    >
-      <div
-        className={`h-full rounded-pill transition-[width] duration-[0.25s] ease-[cubic-bezier(0.5,0,0.5,1)] ${fill}`}
-        style={{ width: `${Math.min(100, Math.max(0, value))}%` }}
-      />
-    </div>
+    <Progress
+      value={Math.min(100, Math.max(0, value))}
+      aria-label={label ?? "Upload progress"}
+      className={ARC_FILL[fill] ?? ""}
+    />
   );
 }
 
@@ -164,6 +176,7 @@ export function UploadQueue({
             <ProgressBar
               value={row.status === "ready" ? 100 : row.progress}
               fill={FILL[row.status]}
+              label={`${row.name}: ${LABEL[row.status]}`}
               indeterminate={row.status === "extracting"}
             />
           </li>

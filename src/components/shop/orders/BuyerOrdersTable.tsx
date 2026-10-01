@@ -140,6 +140,7 @@ export function BuyerOrdersTable({
         sort={sort}
         onSortChange={onSortChange}
         emptyText="No orders match."
+        emptyDescription="Orders you send from the shop appear here."
         rowHref={(row) => shopHref.order(row.id)}
       />
       <TablePagination page={page} size={size} total={total} />

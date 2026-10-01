@@ -138,6 +138,7 @@ export function OrderHistoryTable({
         sort={sort}
         onSortChange={onSortChange}
         emptyText="No orders for this product in the last 12 months."
+        emptyDescription="Confirmed purchase orders that carry it appear here."
         rowHref={(row) => `/purchase-orders/${row.purchaseOrderId}`}
       />
       <TablePagination page={page} size={size} total={total} />

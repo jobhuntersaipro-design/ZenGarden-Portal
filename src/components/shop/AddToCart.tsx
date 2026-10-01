@@ -1,5 +1,6 @@
 "use client";
 
+import { TextMorph } from "@/components/arc/text-morph/text-morph";
 import { useEffect, useState, useTransition } from "react";
 import { Check, Plus } from "lucide-react";
 import { toast } from "@/lib/toast";
@@ -80,6 +81,7 @@ export function AddToCart({
   };
 
   const fullLabel = inCart > 0 ? `In cart (${inCart})` : "Add to cart";
+  const label = (idle: string) => (pending ? "Adding…" : added ? "Added" : idle);
 
   return (
     <Button
@@ -99,17 +101,19 @@ export function AddToCart({
       ) : (
         <Plus className="size-4 shrink-0" aria-hidden />
       )}
-      {pending ? (
-        <span>Adding…</span>
-      ) : added ? (
-        <span>Added</span>
-      ) : variant === "card" ? (
+      {/* Arc's text morph: "Add to cart" turns into "Added" letter by
+          letter and back, so the change reads as the same button answering. */}
+      {variant === "card" ? (
         <>
-          <span className="hidden sm:inline">{fullLabel}</span>
-          <span className="sm:hidden">Add</span>
+          <span className="hidden sm:inline">
+            <TextMorph>{label(fullLabel)}</TextMorph>
+          </span>
+          <span className="sm:hidden">
+            <TextMorph>{label("Add")}</TextMorph>
+          </span>
         </>
       ) : (
-        <span>{fullLabel}</span>
+        <TextMorph>{label(fullLabel)}</TextMorph>
       )}
     </Button>
   );

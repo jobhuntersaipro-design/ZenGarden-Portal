@@ -1,5 +1,6 @@
 "use client";
 
+import { TextShimmer } from "@/components/arc/text-shimmer/text-shimmer";
 import { useEffect, useState } from "react";
 import { useAwaitableRefresh } from "@/hooks/useAwaitableRefresh";
 import { getExtractionStatus } from "@/actions/purchase-orders";
@@ -68,7 +69,9 @@ export function RunningPoller({
       <div className="flex flex-col gap-md">
         <div aria-live="polite">
           <p className="text-[length:var(--text-body-md)] text-ink-secondary tabular-nums">
-            Reading the document…
+            {/* Arc's shimmer sweeps the line while Claude works, so the wait
+                reads as work in progress rather than a frozen label. */}
+            <TextShimmer>Reading the document…</TextShimmer>
             {/* A real space before the time, so a screen reader or a copy
                 reads "document… 0:42" rather than "document…0:42". */}
             {elapsed === null ? null : (
