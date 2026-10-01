@@ -1,5 +1,7 @@
 "use client";
 
+import { SearchButton } from "@/components/portal/CommandMenu";
+import { ReviewNotifications } from "@/components/portal/ReviewNotifications";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { LinkSpinner } from "@/components/portal/LinkSpinner";
@@ -59,6 +61,13 @@ export function Sidebar({
       >
         <Wordmark className="h-logo-badge-sm" />
       </Link>
+
+      {/* ⌘K search and the review queue's updates, above the nav they
+          shortcut. */}
+      <div className="flex items-center gap-xs">
+        <SearchButton className="min-w-0 flex-1" />
+        <ReviewNotifications />
+      </div>
 
       <nav
         className="isolate flex min-h-0 flex-1 flex-col gap-xxs overflow-y-auto"

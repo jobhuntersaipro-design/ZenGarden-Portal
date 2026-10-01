@@ -1,5 +1,7 @@
 "use client";
 
+import { SearchButton } from "@/components/portal/CommandMenu";
+import { ReviewNotifications } from "@/components/portal/ReviewNotifications";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { NavCount, withCountLabel } from "@/components/portal/NavCount";
@@ -53,7 +55,9 @@ export function MobileTopBar({
       </Link>
       {/* `collapsed` drops the name: the avatar alone is the whole control
           here, and the menu behind it carries Sign out. */}
-      <div className="shrink-0">
+      <div className="flex shrink-0 items-center gap-xs">
+        <SearchButton className="size-11 justify-center border-0 px-0" />
+        <ReviewNotifications />
         <UserMenu
           name={userName}
           email={userEmail}

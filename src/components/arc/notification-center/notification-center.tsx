@@ -21,6 +21,8 @@ export interface NotificationItem {
 }
 
 export interface NotificationCenterProps {
+  /** Adds Open to an expanded update, for one that leads somewhere. */
+  onOpenItem?: (notification: NotificationItem) => void;
   notifications: NotificationItem[];
   label?: string;
   onReadChange?: (notification: NotificationItem, read: boolean) => void;
@@ -106,7 +108,7 @@ function NotificationVisual({ item }: { item: NotificationItem }) {
   </span>;
 }
 
-export function NotificationCenter({ notifications: initial, label = "Notifications", onReadChange, onDismiss, open, onOpenChange, avoidCollisions = true }: NotificationCenterProps) {
+export function NotificationCenter({ notifications: initial, label = "Notifications", onReadChange, onDismiss, onOpenItem, open, onOpenChange, avoidCollisions = true }: NotificationCenterProps) {
   const reduce = useReducedMotion();
   const layoutId = useId();
   const [internalOpen, setInternalOpen] = useState(false);
@@ -212,7 +214,7 @@ export function NotificationCenter({ notifications: initial, label = "Notificati
                 <AnimatePresence initial={false}>
                   {expandedId === item.id && <motion.div className={styles.details} initial={reduce ? { opacity: 0 } : { height: 0, opacity: 0 }} animate={{ height: "auto", opacity: 1 }} exit={reduce ? fadeOut : { height: 0, opacity: 0, transition: { height: motionTokens.spring.smooth, opacity: exitFast } }} transition={height}>
                     <p>{item.description ?? (item.actor ? `${item.actor.name} shared an update with you.` : "This update is ready to review.")}</p>
-                    <div className={styles.itemActions}>
+                    <div className={styles.itemActions}>{onOpenItem && <button type="button" onClick={() => onOpenItem(item)}>Open</button>}
                       <button type="button" onClick={() => toggleRead(item)}><MorphWidth reduce={reduce} morphKey={item.read ? "read" : "unread"}>
                         <span className={styles.actionIcon}><AnimatePresence mode="popLayout" initial={false}><Swap key={item.read ? "unread" : "read"} className={styles.actionGlyph} initial={reduce ? { opacity: 0 } : iconIn} animate={shown} exit={reduce ? fadeOut : { ...iconIn, transition: exitFast }} transition={reduce ? instant : motionTokens.spring.snappy}>{item.read ? <CircleDot size={14} strokeWidth={1.75} aria-hidden="true" /> : <Check size={14} strokeWidth={1.75} aria-hidden="true" />}</Swap></AnimatePresence></span>
                         <SwapText reduce={reduce}>{item.read ? "Mark unread" : "Mark read"}</SwapText>

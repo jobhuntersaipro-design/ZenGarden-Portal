@@ -20,6 +20,7 @@ import { ReviewCountProvider } from "@/components/portal/ReviewCount";
 import { Sidebar } from "@/components/portal/Sidebar";
 import { PageTransition } from "@/components/portal/PageTransition";
 import { WelcomeCard } from "@/components/portal/WelcomeCard";
+import { CommandMenu } from "@/components/portal/CommandMenu";
 
 export default async function PortalLayout({
   children,
@@ -143,6 +144,8 @@ export default async function PortalLayout({
             </div>
           </div>
           <MobileTabBar allowed={allowedNav} />
+          {/* One palette for the shell; ⌘K and every Search button open it. */}
+          <CommandMenu allowed={allowedNav} />
           </ReviewCountProvider>
         </AvatarSavingProvider>
       </NavProgressProvider>

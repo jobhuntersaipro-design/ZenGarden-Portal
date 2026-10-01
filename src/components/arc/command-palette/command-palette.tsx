@@ -34,8 +34,8 @@ export function CommandPalette({ items, placeholder = "Search commands", onSelec
   const highlightOpacity = useMotionValue(0);
   const filtered = useMemo(() => {
     const normalized = query.trim().toLowerCase();
-    if (!normalized) return items;
-    return items.filter(item => [item.label, item.description, item.group, ...(item.keywords ?? [])].filter(Boolean).join(" ").toLowerCase().includes(normalized));
+    if (!normalized) return items.slice(0, 50);
+    return items.filter(item => [item.label, item.description, item.group, ...(item.keywords ?? [])].filter(Boolean).join(" ").toLowerCase().includes(normalized)).slice(0, 50);
   }, [items, query]);
   const groupedItems = useMemo(() => {
     const grouped = new Map<string, Array<{ item: CommandItem; index: number }>>();

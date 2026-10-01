@@ -120,6 +120,34 @@ export const PATCHES: { file: RegExp; apply: (source: string) => string; why: st
       ),
     why: "Arc's country list has no Malaysia, and every buyer and contact here is Malaysian first: 012-345 6789 is +60 12-345 6789, and 011 numbers carry one digit more.",
   },
+  {
+    file: /^command-palette\/command-palette\.tsx$/,
+    apply: (source) =>
+      replaceOnce(
+        replaceOnce(source, "if (!normalized) return items;", "if (!normalized) return items.slice(0, 50);"),
+        '.toLowerCase().includes(normalized));',
+        ".toLowerCase().includes(normalized)).slice(0, 50);",
+      ),
+    why: "Our palette indexes hundreds of purchase orders, buyers and products, and Arc animates every row it lists; past fifty rows, typing narrows faster than scrolling.",
+  },
+  {
+    file: /^notification-center\/notification-center\.tsx$/,
+    apply: (source) =>
+      replaceOnce(
+        replaceOnce(
+          replaceOnce(
+            source,
+            "export interface NotificationCenterProps {",
+            "export interface NotificationCenterProps {\n  /** Adds Open to an expanded update, for one that leads somewhere. */\n  onOpenItem?: (notification: NotificationItem) => void;",
+          ),
+          "onReadChange, onDismiss, open,",
+          "onReadChange, onDismiss, onOpenItem, open,",
+        ),
+        "<div className={styles.itemActions}>",
+        "<div className={styles.itemActions}>{onOpenItem && <button type=\"button\" onClick={() => onOpenItem(item)}>Open</button>}",
+      ),
+    why: "Arc's updates can be read and dismissed but lead nowhere; ours are orders waiting on the team, and each one needs a way to its review screen.",
+  },
 ];
 
 /** `source.replace` that refuses to do nothing, so an upstream change cannot silently drop a patch. */
