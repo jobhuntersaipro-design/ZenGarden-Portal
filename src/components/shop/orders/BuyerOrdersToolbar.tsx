@@ -87,7 +87,7 @@ export function BuyerOrdersToolbar({
           type="search"
           defaultValue={q}
           placeholder="PO number or Order ID"
-          className="min-w-0 flex-1 border-0 bg-transparent text-[length:var(--text-body-sm)] text-ink outline-none placeholder:text-ink-tertiary [&::-webkit-search-cancel-button]:hidden"
+          className="min-w-0 flex-1 border-0 bg-transparent text-[length:var(--text-body-md)] text-ink outline-none sm:text-[length:var(--text-body-sm)] placeholder:text-ink-tertiary [&::-webkit-search-cancel-button]:hidden"
         />
         {q ? (
           <button

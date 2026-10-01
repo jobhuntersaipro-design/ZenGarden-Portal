@@ -85,7 +85,7 @@ export function PendingRequests({ requests }: { requests: PendingRequest[] }) {
                   [request.id]: event.target.value as Role,
                 }))
               }
-              className="h-control-md sm:h-control-sm rounded-sm border border-hairline-strong bg-transparent px-xs text-[length:var(--text-body-sm)] text-ink focus-visible:border-focus focus-visible:outline-2 focus-visible:outline-focus"
+              className="h-control-md sm:h-control-sm rounded-sm border border-hairline-strong bg-transparent px-xs text-[length:var(--text-body-md)] sm:text-[length:var(--text-body-sm)] text-ink focus-visible:border-focus focus-visible:outline-2 focus-visible:outline-focus"
             >
               {OPS_ROLES.map((role) => (
                 <option key={role} value={role}>

@@ -187,7 +187,7 @@ export function BuyersTable({
             onChange={(event) =>
               replace(hrefWith({ market: event.target.value || null }))
             }
-            className="h-control-md rounded-sm border border-hairline-strong bg-transparent px-xs text-[length:var(--text-body-sm)] text-ink focus-visible:border-focus focus-visible:outline-2 focus-visible:outline-focus sm:h-control-sm"
+            className="h-control-md rounded-sm border border-hairline-strong bg-transparent px-xs text-[length:var(--text-body-md)] sm:text-[length:var(--text-body-sm)] text-ink focus-visible:border-focus focus-visible:outline-2 focus-visible:outline-focus sm:h-control-sm"
           >
             <option value="">All markets</option>
             {markets.map((value) => (

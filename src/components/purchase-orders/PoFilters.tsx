@@ -104,7 +104,7 @@ export function PoFilters({
   );
 
   const select =
-    "h-control-md sm:h-control-sm rounded-sm border border-hairline-strong bg-transparent px-xs text-[length:var(--text-body-sm)] text-ink focus-visible:border-focus focus-visible:outline-2 focus-visible:outline-focus disabled:text-ink-disabled";
+    "h-control-md sm:h-control-sm rounded-sm border border-hairline-strong bg-transparent px-xs text-[length:var(--text-body-md)] sm:text-[length:var(--text-body-sm)] text-ink focus-visible:border-focus focus-visible:outline-2 focus-visible:outline-focus disabled:text-ink-disabled";
 
   return (
     <div className="mb-md flex flex-col gap-sm">

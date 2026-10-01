@@ -23,7 +23,7 @@ const SEARCH_DEBOUNCE_MS = 200;
 
 /** The select's own styling, three times over rather than three near-copies. */
 const SELECT =
-  "h-control-md sm:h-control-sm max-w-56 rounded-sm border border-hairline-strong bg-transparent px-xs text-[length:var(--text-body-sm)] text-ink focus-visible:border-focus focus-visible:outline-2 focus-visible:outline-focus";
+  "h-control-md sm:h-control-sm max-w-56 rounded-sm border border-hairline-strong bg-transparent px-xs text-[length:var(--text-body-md)] sm:text-[length:var(--text-body-sm)] text-ink focus-visible:border-focus focus-visible:outline-2 focus-visible:outline-focus";
 
 /**
  * What the board is showing, and of what.

@@ -905,6 +905,26 @@
 }
 
 /*
+  A typed field reads at least 16px on a phone. iPhone Safari zooms the page
+  into any focused field under 16px and leaves it zoomed, so a 14px field
+  costs the reader a pinch on every form. In `components`, above Arc's layer
+  (whose fields read `--arc-text-sm`, 14px) and below `utilities`, so a title
+  field that sets its own larger size keeps it. Checkboxes and radios carry
+  no text.
+*/
+@layer components {
+  @media (width < 40rem) {
+    :where(
+      input:not([type="checkbox"], [type="radio"], [type="range"], [type="color"]),
+      textarea,
+      select
+    ) {
+      font-size: var(--text-body-md);
+    }
+  }
+}
+
+/*
  ---break---
  */
 

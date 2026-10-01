@@ -215,7 +215,7 @@ function VariantChips({
         aria-label={`Variant — ${group.name}`}
         value={selectedId}
         onChange={(event) => onSelect(event.target.value)}
-        className="mt-xs h-11 w-full rounded-sm border border-hairline-strong bg-canvas px-xs text-[length:var(--text-caption)] text-ink focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-focus sm:hidden"
+        className="mt-xs h-11 w-full rounded-sm border border-hairline-strong bg-canvas px-xs text-[length:var(--text-body-md)] text-ink focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-focus sm:hidden"
       >
         {group.variants.map((variant: ShopProduct) => (
           <option key={variant.id} value={variant.id}>

@@ -6,7 +6,7 @@ import { useUrlNavigation } from "@/hooks/useUrlNavigation";
 
 /** The same styling the catalog's three selects share. */
 const SELECT =
-  "h-control-md sm:h-control-sm rounded-sm border border-hairline-strong bg-transparent px-xs text-[length:var(--text-body-sm)] text-ink focus-visible:border-focus focus-visible:outline-2 focus-visible:outline-focus";
+  "h-control-md sm:h-control-sm rounded-sm border border-hairline-strong bg-transparent px-xs text-[length:var(--text-body-md)] sm:text-[length:var(--text-body-sm)] text-ink focus-visible:border-focus focus-visible:outline-2 focus-visible:outline-focus";
 
 /**
  * Market, brand and category — the three columns a product carries, and so

@@ -1,3 +1,46 @@
+# Fix: phone form fields at 16px, so iPhone does not zoom
+
+## Status
+
+**Built on `claude/intelligent-mccarthy-85u9gh`, pushed to `main`**
+(2026-10-01). Asked for as "Ok do it", on the finding the density pass left
+open: on a phone 2–6 fields per page rendered at 14px, and iPhone Safari zooms
+the page into a focused field under 16px and leaves it zoomed.
+
+- **One rule in `globals.css`**: below `sm`, every text input, textarea and
+  select reads `--text-body-md` (16px). It sits in `@layer components` —
+  above Arc's layer, whose fields read `--arc-text-sm` (14px), and below
+  `utilities`, so a field that sets its own larger size keeps it. The first
+  cut was unlayered and shrank the 24px title field on `/buyers/new` and
+  `/products/new` to 16px; caught by measuring, moved into the layer.
+- **Eight fields set their own small size with a utility**, which the layer
+  rule cannot beat: the native filter selects on the dashboard, Purchase
+  Orders, the Demand Board, both buyer rosters and the access-request role
+  picker, and the shop's order search, now
+  `text-[length:var(--text-body-md)] sm:text-[length:var(--text-body-sm)]`;
+  and the phone-only flavour select on a shop card, 12px before, now 16px.
+- Desktop and tablet are untouched: fields still read 14px at 768 and 1440.
+
+## Verified
+
+Production build, local Postgres, 390×844 touch, as the super admin and a
+shop contact. Fields under 16px per page, before → after: dashboard 5 → 0,
+Purchase Orders 6 → 0, Demand Board 2 → 0, Buyers 4 → 0, Products 2 → 0,
+Stock 3 → 0, a buyer 2 → 0, a product 2 → 0, Settings 2 → 0; sign-in on both
+hosts, `/buyers/new`, `/products/new` and the shop home, catalogue, cart and
+orders all 16px, the title fields keeping their own 20/24px. Page heights at
+390 unchanged, no overflow at 390 / 768 / 1440, sub-44px counts unchanged.
+1797 tests (the `xlsx` stand-in file still fails to import), `tsc` clean,
+lint unchanged (4 `ShopHeader` errors), build clean.
+
+## Not verified
+
+Production; a real iPhone. Custom triggers that are buttons (Arc's select and
+date-picker triggers) still read 14px: iOS does not zoom into a button, so
+they were left alone.
+
+## Before that
+
 # Phones are denser: smaller headings, less padding, chips on one row
 
 ## Status
@@ -40,7 +83,8 @@ Production; a real phone. **Short of the 30% asked for**: the rest of each
 page is body text, 44px controls and content, which were kept on purpose.
 More would mean hiding content behind taps per screen. **Found, not fixed:**
 on a phone 2–6 form fields per page render at 14px, under the 16px at which
-iPhone Safari stops zooming into a focused field; this predates the change.
+iPhone Safari stops zooming into a focused field; this predates the change
+(fixed the same day, above).
 
 ## Before that
 
