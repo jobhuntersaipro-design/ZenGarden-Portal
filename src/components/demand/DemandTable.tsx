@@ -8,6 +8,8 @@ import { Reveal } from "@/components/portal/Reveal";
 import { StageBadge } from "@/components/portal/StatusBadge";
 import { usePresence } from "@/hooks/usePresence";
 import type { DemandBoard, DemandLine, DemandRow } from "@/lib/queries/demand";
+import arc from "@/components/arc/sortable-data-table/sortable-data-table.module.css";
+import { useIsArc } from "@/components/ui-mode/UiModeProvider";
 
 const num = (value: number) => value.toLocaleString("en-MY");
 
@@ -44,6 +46,9 @@ function Cell({ value }: { value: number | undefined }) {
  * column quietly missing would not say that it is missing.
  */
 export function DemandTable({ board }: { board: DemandBoard }) {
+  // Arc mode: Arc's data-table frame and cells (its header weight, row
+  // height and hairlines) around the same rows, pins and folds.
+  const isArc = useIsArc();
   const [open, setOpen] = useState<ReadonlySet<string>>(new Set());
 
   const toggle = (productId: string) =>
@@ -68,9 +73,9 @@ export function DemandTable({ board }: { board: DemandBoard }) {
   }
 
   return (
-    <section className="rounded-lg border border-hairline bg-canvas">
+    <section className={isArc ? arc.wrapper : "rounded-lg border border-hairline bg-canvas"}>
       <Scroller>
-        <table className="w-full border-collapse text-left">
+        <table className={isArc ? arc.table : "w-full border-collapse text-left"}>
           <thead>
             <tr className="border-b border-hairline">
               <Th className={`sticky left-0 z-10 bg-canvas pl-xs sm:pl-lg ${PRODUCT_COLUMN}`}>Product</Th>
@@ -104,25 +109,25 @@ export function DemandTable({ board }: { board: DemandBoard }) {
           </tbody>
           <tfoot>
             <tr className="border-t-2 border-ink">
-              <Th className={`sticky left-0 z-10 bg-canvas pl-xs sm:pl-lg ${PRODUCT_COLUMN}`}>Total cartons</Th>
+              <Th foot className={`sticky left-0 z-10 bg-canvas pl-xs sm:pl-lg ${PRODUCT_COLUMN}`}>Total cartons</Th>
               {board.anyOverdue ? (
-                <Td numeric>
+                <Td foot numeric>
                   <span className="font-semibold text-ink">{num(board.totals.overdue)}</span>
                 </Td>
               ) : null}
               {board.columns.map((column) => (
-                <Td key={column.key} numeric>
+                <Td foot key={column.key} numeric>
                   <span className="font-semibold text-ink">
                     <Cell value={board.totals.byColumn[column.key]} />
                   </span>
                 </Td>
               ))}
-              <Td numeric>
+              <Td foot numeric>
                 <span className="font-semibold text-ink">{num(board.totals.committed)}</span>
               </Td>
-              <Td numeric />
-              <Td numeric />
-              <Td numeric className="pr-lg" />
+              <Td foot numeric />
+              <Td foot numeric />
+              <Td foot numeric className="pr-lg" />
             </tr>
           </tfoot>
         </table>
@@ -294,6 +299,7 @@ export function OrderRow({
    */
   reveal?: { closing: boolean };
 }) {
+  const isArc = useIsArc();
   const first = (
         <div className="sm:pl-[calc(var(--spacing-xs)+1.5rem)]">
           <p
@@ -350,7 +356,7 @@ export function OrderRow({
   return (
     <tr className="border-b border-hairline bg-surface-soft/40 last:border-0">
       {reveal ? (
-        <td className={`sticky left-0 z-10 bg-canvas py-0 pl-xs pr-xs sm:pl-lg sm:pr-md ${PRODUCT_COLUMN}`}>
+        <td className={`sticky left-0 z-10 bg-canvas py-0 pl-xs pr-xs sm:pl-lg sm:pr-md ${PRODUCT_COLUMN} ${isArc ? "h-auto" : ""}`}>
           <Reveal closing={reveal.closing} className="py-sm">
             {first}
           </Reveal>
@@ -396,12 +402,27 @@ const PRODUCT_COLUMN = "w-44 min-w-44 max-w-44 sm:w-auto sm:min-w-0 sm:max-w-72"
 function Th({
   children,
   numeric = false,
+  foot = false,
   className = "",
 }: {
   children?: React.ReactNode;
   numeric?: boolean;
+  /** The totals row, whose top rule is the cells' own in Arc's table. */
+  foot?: boolean;
   className?: string;
 }) {
+  const isArc = useIsArc();
+  if (isArc) {
+    return (
+      <th
+        scope="col"
+        data-numeric={numeric ? "" : undefined}
+        className={`whitespace-nowrap pr-md ${foot ? "border-t border-b-0 border-hairline-strong text-ink" : ""} ${className}`}
+      >
+        {children}
+      </th>
+    );
+  }
   return (
     <th
       scope="col"
@@ -415,6 +436,7 @@ function Th({
 type TdProps = {
   children?: React.ReactNode;
   numeric?: boolean;
+  foot?: boolean;
   className?: string;
 };
 
@@ -426,9 +448,29 @@ type TdProps = {
 function Td({
   children,
   numeric = false,
+  foot = false,
   className = "",
   reveal,
 }: TdProps & { reveal?: { closing: boolean } }) {
+  const isArc = useIsArc();
+  if (isArc) {
+    // Arc's cell; an order row's cell drops Arc's fixed height so it can
+    // fold to nothing, and keeps the sub-row tint Arc's cell fill would hide.
+    const cell = `whitespace-nowrap pr-md ${foot ? "border-t border-hairline-strong" : ""} ${
+      reveal ? "h-auto py-0 bg-surface-soft/40" : ""
+    } ${className}`;
+    return (
+      <td data-numeric={numeric ? "" : undefined} className={cell}>
+        {reveal ? (
+          <Reveal closing={reveal.closing} className="py-sm">
+            {children}
+          </Reveal>
+        ) : (
+          children
+        )}
+      </td>
+    );
+  }
   if (reveal) {
     return (
       <td

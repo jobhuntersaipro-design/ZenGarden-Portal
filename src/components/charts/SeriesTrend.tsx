@@ -31,6 +31,9 @@ import { SHARE_VARS, cssVar } from "@/lib/analytics/palette";
 import type { TrendPoint } from "@/lib/analytics/trend";
 import { Spinner } from "@/components/portal/Spinner";
 import { usePendingChoice } from "@/hooks/usePendingChoice";
+import { LineChart as ArcLineChart } from "@/components/arc/line-chart/line-chart";
+import chip from "@/components/arc/chip-group/chip-group.module.css";
+import { useIsArc } from "@/components/ui-mode/UiModeProvider";
 
 /**
  * Six, because `SHARE_VARS` holds six hues the dataviz validator signed off
@@ -163,6 +166,7 @@ export function SeriesTrend({
   /** An extra control in the header — the dashboard's subject switch. */
   header?: React.ReactNode;
 }) {
+  const isArc = useIsArc();
   const selected = slots.filter(Boolean);
   // Which row was toggled, so it alone spins until the chart has caught up.
   const picks = usePendingChoice<string>("");
@@ -336,6 +340,41 @@ export function SeriesTrend({
           <p className="py-xl text-center text-[length:var(--text-body-sm)] text-ink-secondary">
             {emptyText}
           </p>
+        ) : isArc ? (
+          // Arc mode: Arc's line chart, one line per drawn series in its own
+          // slot's hue, with Arc's crosshair readout naming every series at
+          // the hovered bucket. Arc's legend is off: the chips below are the
+          // chart's switch and stay. About eight axis labels, whatever the
+          // range.
+          <ArcLineChart
+            label={heading}
+            categoryLabel="Period"
+            height={288}
+            legend={false}
+            series={slots.flatMap((id, index) =>
+              id === ""
+                ? []
+                : [
+                    {
+                      key: id,
+                      label: options.find((option) => option.id === id)?.name ?? id,
+                      color: colorFor(index),
+                      // Arc tints the first line's area by default; among
+                      // six peers that reads as the one that matters.
+                      area: false,
+                    },
+                  ],
+            )}
+            data={points.map((point, index) => ({
+              key: point.key,
+              label: point.label,
+              axisLabel:
+                index % Math.max(1, Math.ceil(points.length / 8)) === 0 ? point.label : undefined,
+              values: Object.fromEntries(selected.map((id) => [id, Number(point[id] ?? 0)])),
+            }))}
+            formatValue={(value) => formatValue(value)}
+            formatTick={yTickFormatter}
+          />
         ) : (
           <ChartScroller
             buckets={points.length}
@@ -478,25 +517,35 @@ export function SeriesTrend({
                             ? capWarningText
                             : `Show ${option.name}`
                     }
-                    className={`flex min-h-11 items-center gap-xxs rounded-pill border px-sm text-[length:var(--text-caption)] transition-colors focus-visible:outline-2 focus-visible:outline-focus sm:min-h-0 sm:py-xxs ${
-                      on
-                        ? "border-transparent bg-surface-soft text-ink"
-                        : full
-                          ? "border-hairline bg-canvas text-ink-disabled"
-                          : "border-hairline-strong bg-canvas text-ink-tertiary hover:text-ink-secondary"
-                    } ${picks.pending && !busy ? "opacity-60" : ""}`}
+                    className={
+                      isArc
+                        ? `${chip.chip} ${on ? "text-ink" : full ? "text-ink-disabled" : ""} ${picks.pending && !busy ? "opacity-60" : ""}`
+                        : `flex min-h-11 items-center gap-xxs rounded-pill border px-sm text-[length:var(--text-caption)] transition-colors focus-visible:outline-2 focus-visible:outline-focus sm:min-h-0 sm:py-xxs ${
+                            on
+                              ? "border-transparent bg-surface-soft text-ink"
+                              : full
+                                ? "border-hairline bg-canvas text-ink-disabled"
+                                : "border-hairline-strong bg-canvas text-ink-tertiary hover:text-ink-secondary"
+                          } ${picks.pending && !busy ? "opacity-60" : ""}`
+                    }
                   >
+                    {/* Arc mode: Arc's chip body and surface around the same
+                        swatch, name and spinner. */}
                     <span
-                      aria-hidden
-                      className={`size-2.5 shrink-0 rounded-xxs ${on ? "" : "border border-current"}`}
-                      style={
-                        on ? { backgroundColor: colorFor(slot) } : undefined
-                      }
-                    />
-                    <span className="max-w-64 truncate">{option.name}</span>
-                    {busy ? (
-                      <Spinner className="size-3 shrink-0 text-ink-tertiary" />
-                    ) : null}
+                      className={isArc ? `${chip.body} max-sm:h-11` : "contents"}
+                      data-selected={isArc ? on : undefined}
+                    >
+                      {isArc ? <span className={`${chip.surface} right-0`} aria-hidden /> : null}
+                      <span className={isArc ? "inline-flex items-center gap-xxs" : "contents"}>
+                        <span
+                          aria-hidden
+                          className={`size-2.5 shrink-0 rounded-xxs ${on ? "" : "border border-current"}`}
+                          style={on ? { backgroundColor: colorFor(slot) } : undefined}
+                        />
+                        <span className="max-w-64 truncate">{option.name}</span>
+                        {busy ? <Spinner className="size-3 shrink-0 text-ink-tertiary" /> : null}
+                      </span>
+                    </span>
                   </button>
                 </li>
               );

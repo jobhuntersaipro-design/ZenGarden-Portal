@@ -16,7 +16,14 @@ portal". Asked how to compare: a toggle on the same URL. Spec:
   checkbox, switch, dialog, drawer, menus, tooltip, select, avatar, toasts,
   segments and chips, pagination, badges, table, KPI counter, sales line
   chart, donuts, stage stepper, notices, breadcrumbs, shop search and variant
-  pills, skeletons. Spec §3 lists what stays ours in both modes.
+  pills, skeletons.
+- **Second pass, the same day** ("convert the remaining parts to Arc too"):
+  sidebar and tab bar (Arc's gliding pill), account menu (Arc user menu),
+  welcome card, admin tabs, shop header, category row and chips, product
+  cards, carton stepper, admin chips and badges, permission grid checkboxes,
+  the Demand Board's table, the stage breakdown table and the trend card
+  (Arc line chart). Only the stage board's stacked bars stay ours: Arc's bar
+  chart cannot stack. Spec §3.
 - Arc's CSS modules moved into `@layer arc`, under Tailwind's utilities, so a
   caller's classes still apply (the import script does it; re-run, no
   hand edits).
@@ -31,6 +38,11 @@ Production build, local Postgres and the seed, super admin and a shop contact.
   It sits bottom-centre from `lg`.
 - 1784 tests pass (11 new; the `xlsx` stand-in file still fails to import),
   `tsc` clean, lint unchanged (4 `ShopHeader` errors), build clean.
+- Second pass: 13 portal, admin and shop pages × 1440 and 390 × both modes,
+  no overflow. Found and fixed while driving: Arc's account trigger was 40px
+  at 390 (now 44); Arc's admin tabs cut a label at the 390 edge with no cue
+  (now Arc's edge mask). The permission grid's 17 sub-44px checkboxes at 390
+  are 0 in Arc mode. 1786 tests (2 new), `tsc`, lint unchanged, build clean.
 
 ## Not verified
 

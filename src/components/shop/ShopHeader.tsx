@@ -15,6 +15,9 @@ import { useReorder } from "@/components/shop/useReorder";
 import type { CartSummary } from "@/lib/queries/cart";
 import { useEdgeFades } from "@/hooks/useEdgeFades";
 import { shopHref } from "@/lib/shop-routes";
+import { cn } from "cn";
+import arcButton from "@/components/arc/button/button.module.css";
+import { useIsArc } from "@/components/ui-mode/UiModeProvider";
 
 /**
  * Every href here is browser-relative — `/cart`, never `/shop/cart`. The shop
@@ -71,6 +74,10 @@ export function ShopHeader({
           ...ACCOUNT_ROWS,
         ]
       : [];
+  // Arc mode: the cart pill and the phone's icon links take Arc's button
+  // (primary pill, ghost icon) on the same links.
+  const isArc = useIsArc();
+  const arcIcon = cn(arcButton.button, arcButton.ghost, arcButton.md, "relative size-11 rounded-full px-0");
   const chips = useEdgeFades<HTMLDivElement>();
   // The hook measures in an effect, after paint. Measure in layout so the
   // first frame already fades the side that is clipped.
@@ -94,7 +101,11 @@ export function ShopHeader({
         <div className="flex shrink-0 items-center gap-md whitespace-nowrap">
           <Link
             href={shopHref.cart()}
-            className="flex h-control-md items-center gap-xs pressable rounded-pill bg-ink px-md text-[length:var(--text-body-sm)] font-semibold text-canvas hover:bg-ink-deep focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-focus"
+            className={
+              isArc
+                ? cn(arcButton.button, arcButton.primary, arcButton.md, "gap-xs")
+                : "flex h-control-md items-center gap-xs pressable rounded-pill bg-ink px-md text-[length:var(--text-body-sm)] font-semibold text-canvas hover:bg-ink-deep focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-focus"
+            }
           >
             <ShoppingCart className="size-4" aria-hidden />
             <span>Cart</span>
@@ -137,7 +148,11 @@ export function ShopHeader({
           {/* Cart before the account, as on the desktop row. */}
           <Link
             href={shopHref.cart()}
-            className="relative flex size-11 items-center justify-center rounded-full text-ink focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-focus"
+            className={
+              isArc
+                ? arcIcon
+                : "relative flex size-11 items-center justify-center rounded-full text-ink focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-focus"
+            }
           >
             {/* No `aria-label` here: it would hide `CartBadge`'s own
                 sr-only count from the accessible name, since aria-label
@@ -158,7 +173,11 @@ export function ShopHeader({
             <Link
               href={shopHref.signIn()}
               aria-label="Sign in"
-              className="flex size-11 items-center justify-center rounded-full text-ink focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-focus"
+              className={
+                isArc
+                  ? arcIcon
+                  : "flex size-11 items-center justify-center rounded-full text-ink focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-focus"
+              }
             >
               <User className="size-5" aria-hidden />
             </Link>

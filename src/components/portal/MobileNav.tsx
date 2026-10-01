@@ -5,6 +5,8 @@ import { usePathname } from "next/navigation";
 import { NavCount, withCountLabel } from "@/components/portal/NavCount";
 import { useReviewCount } from "@/components/portal/ReviewCount";
 import { UserMenu } from "@/components/portal/UserMenu";
+import { ArcSelection } from "@/components/ui-mode/ArcSelection";
+import { useIsArc } from "@/components/ui-mode/UiModeProvider";
 import { Wordmark } from "@/components/portal/Wordmark";
 import {
   REVIEW_QUEUE_HREF,
@@ -76,6 +78,7 @@ export function MobileTabBar({ allowed }: { allowed: readonly string[] }) {
   // Orders waiting on the team, on the Orders tab (Phase 46).
   const { count: reviewCount } = useReviewCount();
   const tabs = navFor(allowed);
+  const isArc = useIsArc();
 
   // A role with no destination at all has no bar to draw. It cannot happen
   // with the shipped defaults — every ops role holds all four view keys — but
@@ -91,7 +94,7 @@ export function MobileTabBar({ allowed }: { allowed: readonly string[] }) {
       // a class built at runtime is no class at all and the bar wraps onto
       // two rows. Six tabs is 65px each at 390, still clear of the 44px
       // floor; a filtered bar only ever has fewer, and wider.
-      className={`fixed inset-x-0 bottom-0 z-30 grid ${TAB_BAR_COLUMNS[tabs.length]} border-t border-hairline bg-surface lg:hidden`}
+      className={`fixed inset-x-0 bottom-0 z-30 isolate grid ${TAB_BAR_COLUMNS[tabs.length]} border-t border-hairline bg-surface lg:hidden ${isArc ? "px-xxs pt-xxs" : ""}`}
       style={{ paddingBottom: "env(safe-area-inset-bottom)" }}
     >
       {tabs.map(({ href, short, label, icon: Icon }) => {
@@ -106,10 +109,12 @@ export function MobileTabBar({ allowed }: { allowed: readonly string[] }) {
             // full one, so "Orders" does not become the only thing a screen
             // reader ever hears for Purchase Orders.
             aria-label={withCountLabel(label, count)}
-            className={`flex h-14 flex-col items-center justify-center gap-xxs px-xxs transition-colors duration-[0.25s] focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-focus ${
-              active ? "text-ink" : "text-ink-tertiary"
-            }`}
+            className={`relative flex h-14 flex-col items-center justify-center gap-xxs px-xxs transition-colors duration-[0.25s] focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-focus ${
+              isArc ? "rounded-sm" : ""
+            } ${active ? "text-ink" : "text-ink-tertiary"}`}
           >
+            {/* Arc mode: Arc's selection pill glides between tabs. */}
+            {isArc && active ? <ArcSelection id="tabbar-selection" /> : null}
             <span className="relative">
               <Icon
                 className="size-5 shrink-0"

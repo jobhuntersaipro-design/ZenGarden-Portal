@@ -3,6 +3,8 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { StatusBadge } from "@/components/portal/StatusBadge";
+import { UserStatusBadge } from "@/components/admin/RingBadge";
+import { CartonStepper } from "@/components/shop/CartonStepper";
 import { UiModeProvider } from "./UiModeProvider";
 import type { UiMode } from "@/lib/ui-mode";
 
@@ -38,6 +40,37 @@ describe("the preview switch draws one set at a time", () => {
   it("swaps the status pill for Arc's badge", () => {
     expect(render("classic", <StatusBadge status="FAILED" />)).toContain("text-accent-red");
     expect(render("arc", <StatusBadge status="FAILED" />)).not.toContain("text-accent-red");
+  });
+});
+
+describe("the parts converted second", () => {
+  const stepper = (
+    <CartonStepper
+      size="card"
+      live
+      value={3}
+      packSize={6}
+      unit="carton"
+      label="Lemon"
+      onChange={async () => ({ success: true })}
+    />
+  );
+
+  it("keeps both carton steps labelled and 44px on a phone in Arc's field", () => {
+    const html = render("arc", stepper);
+    expect(html).toContain('aria-label="One fewer carton — Lemon"');
+    expect(html).toContain('aria-label="One more carton — Lemon"');
+    expect(html).toContain('value="3"');
+    expect((html.match(/max-sm:size-11/g) ?? []).length).toBe(2);
+    expect(html).not.toContain("sm:size-control-sm");
+    expect(render("classic", stepper)).toContain("sm:size-control-sm");
+  });
+
+  it("draws the admin user status as Arc's badge", () => {
+    expect(render("classic", <UserStatusBadge status="Active" />)).toContain("text-accent-green");
+    const html = render("arc", <UserStatusBadge status="Active" />);
+    expect(html).not.toContain("text-accent-green");
+    expect(html).toContain("Active");
   });
 });
 

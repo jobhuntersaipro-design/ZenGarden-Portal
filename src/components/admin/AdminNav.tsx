@@ -3,6 +3,10 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { LinkSpinner } from "@/components/portal/LinkSpinner";
+import tabs from "@/components/arc/tabs/tabs.module.css";
+import { ArcSelection } from "@/components/ui-mode/ArcSelection";
+import { useIsArc } from "@/components/ui-mode/UiModeProvider";
+import { useEdgeFades } from "@/hooks/useEdgeFades";
 
 const TABS = [
   { href: "/admin", label: "User management" },
@@ -24,6 +28,11 @@ const TABS = [
  */
 export function AdminNav() {
   const pathname = usePathname();
+  const isArc = useIsArc();
+  const isActive = (href: string) =>
+    href === "/admin" ? pathname === "/admin" : pathname.startsWith(href);
+
+  if (isArc) return <ArcAdminTabs isActive={isActive} />;
 
   return (
     <nav
@@ -36,8 +45,7 @@ export function AdminNav() {
       className="mb-lg flex gap-xs overflow-x-auto border-b border-hairline [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
     >
       {TABS.map((tab) => {
-        const active =
-          tab.href === "/admin" ? pathname === "/admin" : pathname.startsWith(tab.href);
+        const active = isActive(tab.href);
         return (
           <Link
             key={tab.href}
@@ -54,6 +62,50 @@ export function AdminNav() {
           </Link>
         );
       })}
+    </nav>
+  );
+}
+
+/**
+ * Arc mode: Arc's tab list — a muted track with the white selection pill
+ * gliding between rooms. Links rather than Radix tabs, because each tab is a
+ * page. At 390 the track scrolls inside itself, and the side that still has
+ * tabs fades through Arc's own mask (`data-left` / `data-right`), so a cut
+ * label reads as "more this way" rather than broken (lessons §4). Its own
+ * component so the fade measures from mount when the switch flips.
+ */
+function ArcAdminTabs({ isActive }: { isActive: (href: string) => boolean }) {
+  const { ref, clipped, measure } = useEdgeFades<HTMLDivElement>();
+  return (
+    <nav aria-label="Admin sections" className="mb-lg flex">
+      <div
+        className={tabs.listShell}
+        data-left={clipped.left}
+        data-right={clipped.right}
+      >
+        <div ref={ref} onScroll={measure} className={tabs.viewport}>
+          <div className={tabs.list}>
+            {TABS.map((tab) => {
+              const active = isActive(tab.href);
+              return (
+                <Link
+                  key={tab.href}
+                  href={tab.href}
+                  aria-current={active ? "page" : undefined}
+                  data-state={active ? "active" : "inactive"}
+                  className={tabs.trigger}
+                >
+                  {active ? <ArcSelection id="admin-tab-selection" /> : null}
+                  <span className={`${tabs.triggerLabel} inline-flex items-center gap-xxs`}>
+                    <LinkSpinner />
+                    {tab.label}
+                  </span>
+                </Link>
+              );
+            })}
+          </div>
+        </div>
+      </div>
     </nav>
   );
 }

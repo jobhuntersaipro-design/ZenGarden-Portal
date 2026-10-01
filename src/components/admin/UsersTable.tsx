@@ -25,6 +25,8 @@ import { formatDateTime } from "@/lib/dates";
 import type { AdminUserRow, UserStatusFilter } from "@/lib/queries/users";
 import type { SortDirection } from "@/lib/queries/pagination";
 import { useUrlNavigation } from "@/hooks/useUrlNavigation";
+import { ChoiceButton } from "@/components/portal/ChoiceButton";
+import { useIsArc } from "@/components/ui-mode/UiModeProvider";
 
 const STATUSES: { value: UserStatusFilter; label: string }[] = [
   { value: "all", label: "All" },
@@ -50,6 +52,7 @@ export function UsersTable({
   status: UserStatusFilter;
   openUserId: string | null;
 }) {
+  const isArc = useIsArc();
   const onSortChange = useTableSort();
   const { replace } = useUrlNavigation();
   const pathname = usePathname();
@@ -185,7 +188,18 @@ export function UsersTable({
             className="h-control-md sm:h-control-sm w-64"
           />
           <div className="flex flex-wrap items-center gap-xxs">
-            {STATUSES.map((option) => (
+            {STATUSES.map((option) =>
+              isArc ? (
+                // Arc mode: Arc's chips, as on every other filter row.
+                <ChoiceButton
+                  key={option.value}
+                  look="chip"
+                  selected={status === option.value}
+                  onClick={() => write({ status: option.value === "all" ? null : option.value })}
+                >
+                  {option.label}
+                </ChoiceButton>
+              ) : (
               <button
                 key={option.value}
                 type="button"
@@ -203,7 +217,8 @@ export function UsersTable({
               >
                 {option.label}
               </button>
-            ))}
+              ),
+            )}
           </div>
         </div>
         <Button onClick={() => openDrawer("new")}>+ New user</Button>

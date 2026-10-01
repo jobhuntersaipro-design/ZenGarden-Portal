@@ -205,3 +205,12 @@
   box-shadow: 0 0 0 3px var(--arc-focus-ring);
   outline: 2px solid transparent;
 }
+
+/* An order row folding under a product in one of our tables drawn in Arc's
+   data-table frame (the stage board's breakdown): Arc's fixed cell height
+   would hold the row open while its content folds, and its cell fill would
+   hide the sub-row tint. */
+[data-ui="arc"] tr[data-fold] > * {
+  height: auto;
+  --cell-base: color-mix(in oklch, var(--color-surface-soft) 40%, var(--arc-surface));
+}

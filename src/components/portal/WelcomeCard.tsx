@@ -2,6 +2,8 @@
 
 import { useEffect, useState } from "react";
 import { Sparkles, XIcon } from "lucide-react";
+import arc from "@/components/arc/alert/alert.module.css";
+import { useIsArc } from "@/components/ui-mode/UiModeProvider";
 import {
   WELCOME_MESSAGES,
   greetingFor,
@@ -63,6 +65,7 @@ export function WelcomeCard({
   loginId: string;
 }) {
   const [shown, setShown] = useState<Shown | null>(null);
+  const isArc = useIsArc();
 
   useEffect(() => {
     if (read(DISMISSED_KEY) === loginId) return;
@@ -104,6 +107,37 @@ export function WelcomeCard({
 
   if (!shown) return null;
 
+  const dismiss = () => {
+    write(DISMISSED_KEY, loginId);
+    setShown(null);
+  };
+
+  // Arc mode: Arc's alert — its surface, resting shadow, tinted icon and
+  // round dismiss — carrying the same greeting and line.
+  if (isArc) {
+    return (
+      <section aria-label="Welcome" className={`${arc.alert} ${arc.info} mb-lg animate-rise`}>
+        <span aria-hidden className={`${arc.icon} text-brand-pink`}>
+          <Sparkles className="size-4" />
+        </span>
+        <div className={arc.copy}>
+          <p className={`${arc.title} text-[length:var(--text-body-md)] text-ink`}>
+            {shown.greeting}, {firstName}
+          </p>
+          <p className={`${arc.description} text-[length:var(--text-body-sm)]`}>{shown.message}</p>
+        </div>
+        <button
+          type="button"
+          aria-label="Close the welcome message"
+          onClick={dismiss}
+          className={`${arc.dismiss} max-sm:size-11`}
+        >
+          <XIcon aria-hidden className="size-4" />
+        </button>
+      </section>
+    );
+  }
+
   return (
     <section
       aria-label="Welcome"
@@ -129,10 +163,7 @@ export function WelcomeCard({
       <button
         type="button"
         aria-label="Close the welcome message"
-        onClick={() => {
-          write(DISMISSED_KEY, loginId);
-          setShown(null);
-        }}
+        onClick={dismiss}
         className="-mt-xxs grid size-11 shrink-0 place-items-center rounded-sm text-ink-secondary hover:bg-surface hover:text-ink focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-focus sm:size-8"
       >
         <XIcon aria-hidden className="size-4" />

@@ -1,3 +1,5 @@
+import { ModeBadge } from "@/components/portal/ModeBadge";
+
 /**
  * Neutral text inside an amber ring, and deliberately not the amber-*text*
  * badge the PO queue uses for "Needs review" (00-master.md §4).
@@ -8,10 +10,14 @@
  * list.
  */
 export function RingBadge({ children }: { children: React.ReactNode }) {
+  // Arc mode: Arc's warning badge, the nearest of its tones to the ring.
   return (
-    <span className="inline-flex shrink-0 items-center rounded-full bg-surface-soft px-sm py-xxs text-[length:var(--text-caption)] text-ink-secondary ring-1 ring-brand-amber">
+    <ModeBadge
+      tone="warning"
+      classic="inline-flex shrink-0 items-center rounded-full bg-surface-soft px-sm py-xxs text-[length:var(--text-caption)] text-ink-secondary ring-1 ring-brand-amber"
+    >
       {children}
-    </span>
+    </ModeBadge>
   );
 }
 
@@ -27,11 +33,12 @@ export function UserStatusBadge({
 }) {
   if (status === "Invited") return <RingBadge>Invited</RingBadge>;
   return (
-    <span
-      className={`inline-flex shrink-0 items-center rounded-full bg-surface-soft px-sm py-xxs text-[length:var(--text-caption)] ${TONE[status]}`}
+    <ModeBadge
+      tone={status === "Active" ? "success" : "neutral"}
+      classic={`inline-flex shrink-0 items-center rounded-full bg-surface-soft px-sm py-xxs text-[length:var(--text-caption)] ${TONE[status]}`}
     >
       {status}
-    </span>
+    </ModeBadge>
   );
 }
 

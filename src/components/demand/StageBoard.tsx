@@ -12,6 +12,9 @@ import { StageBadge } from "@/components/portal/StatusBadge";
 import { usePendingChoice } from "@/hooks/usePendingChoice";
 import { usePresence } from "@/hooks/usePresence";
 import { useEdgeFades } from "@/hooks/useEdgeFades";
+import arcTable from "@/components/arc/sortable-data-table/sortable-data-table.module.css";
+import { Button } from "@/components/ui/button";
+import { useIsArc } from "@/components/ui-mode/UiModeProvider";
 import { PoStage } from "@/generated/prisma/enums";
 import { PO_STAGES, stageLabel } from "@/lib/po-stages";
 import { STAGE_VARS, cssVar } from "@/lib/analytics/palette";
@@ -203,6 +206,10 @@ export function StageBoard({
   }, [pinned]);
 
   const columns = OPEN_STAGES.length + (anyOverdue ? 2 : 1) + 1;
+  // Arc mode: the breakdown sits in Arc's data-table frame and "Back to
+  // today" is Arc's ghost button. The stacked chart stays ours in both
+  // modes — Arc's bar chart cannot stack (docs/specs/61 §3).
+  const isArc = useIsArc();
 
   return (
     <section className="mb-lg rounded-xl bg-surface p-lg sm:p-xl">
@@ -354,7 +361,11 @@ export function StageBoard({
               </span>
             ) : null}
           </h3>
-          {pinned ? (
+          {pinned && isArc ? (
+            <Button variant="ghost" size="sm" onClick={() => setPinned(null)}>
+              Back to today
+            </Button>
+          ) : pinned ? (
             <button
               type="button"
               onClick={() => setPinned(null)}
@@ -373,9 +384,15 @@ export function StageBoard({
         </p>
 
         {rows.length > 0 ? (
-          <div className="relative mt-sm">
+          <div className={`relative mt-sm ${isArc ? arcTable.wrapper : ""}`}>
             <div ref={ref} onScroll={measure} className="overflow-x-auto">
-              <table className="w-full min-w-stage-table border-collapse text-[length:var(--text-body-sm)]">
+              <table
+                className={
+                  isArc
+                    ? `${arcTable.table} min-w-stage-table`
+                    : "w-full min-w-stage-table border-collapse text-[length:var(--text-body-sm)]"
+                }
+              >
                 <thead>
                   <tr className="border-b border-hairline text-left">
                     <th
@@ -583,7 +600,7 @@ function OrderRow({
     meta.deliveryIso && day ? dueCaption(meta.deliveryIso, day) : null;
 
   return (
-    <tr className="border-b border-hairline bg-surface-soft/40">
+    <tr data-fold className="border-b border-hairline bg-surface-soft/40">
       <th scope="row" className="max-w-72 py-0 pr-sm text-left font-normal">
         <Reveal closing={closing} className="py-sm">
         <div className="flex flex-col gap-0 pl-[calc(var(--spacing-xxs)+var(--spacing-control-md))] sm:pl-xl">
