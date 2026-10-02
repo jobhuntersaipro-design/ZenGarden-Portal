@@ -41,7 +41,8 @@ This is the common workflow that we will use for every single feature/fix:
 9. **Review** - Review AI-generated code periodically and on demand.
 10. Mark as completed in @context/current-feature.md and add to history
 
-Do NOT commit without permission and until the build passes. If build fails, fix the issues first.
+Do NOT commit until the build passes. If build fails, fix the issues first. When
+confident, commit and merge to main without asking (`CLAUDE.md` "How work ships").
 
 ## Branching
 
@@ -49,7 +50,7 @@ We will create a new branch for every feature/fix. Name branch **feature/[featur
 
 ## Commits
 
-- Ask before committing (don't auto-commit)
+- Commit without asking when confident; otherwise say what is unverified (`CLAUDE.md` "How work ships")
 - Use conventional commit messages (feat:, fix:, chore:, etc.)
 - Keep commits focused (one feature/fix per commit)
 - Never put "Generated With Claude" in the commit messages

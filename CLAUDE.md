@@ -21,6 +21,23 @@ earned by defects the **user** found, written as rules rather than history.
 Read it before building or changing a screen, and add to it when a shipped
 defect turns out to be an instance of something general.
 
+## How work ships (standing instruction, 2026-10-02)
+
+- **Load the `ponytail` skill** (`anthropic-skills:ponytail`) at the start of every
+  coding task, before writing anything.
+- **Test it as a real user, in a browser.** Sign in as the role that uses the screen and
+  click, type and tap through the change at 390 and 1440. Tests, `tsc`, lint and build
+  are the floor, not the proof.
+- **A screenshot is the proof, always.** Send it with the reply: before and after where
+  something changed, cropped to the change, the phone too (`context/ai-interaction.md`
+  "Always show a screenshot"). An email, PDF or export is shown rendered. A claim with no
+  screenshot is unverified.
+- **Confident → merge to `main` without asking.** When the browser drive and the checks
+  are clean, merge to `main` and push; no permission needed. Once Vercel has deployed,
+  open the change on production and send screenshots from production as the proof.
+  Do not create test data on production unless asked. Not confident → push the branch
+  and say exactly what is unverified.
+
 ## Commands
 - `npm run dev` — dev server (port 3000; the storefront needs a second hostname, below)
 - `npm run build` — `prisma generate && next build`
@@ -31,7 +48,7 @@ defect turns out to be an instance of something general.
 - `npm run db:migrate` / `db:deploy` / `db:seed` / `db:studio`
 
 Before committing: tests, `tsc --noEmit`, lint and `npm run build` all clean.
-Ask before committing (`context/ai-interaction.md`).
+No permission needed to commit or merge when confident — see "How work ships".
 
 ## Architecture
 
