@@ -1,3 +1,42 @@
+# Admin: Test data and Arc preview removed
+
+## Status
+
+**Built on `claude/keen-meitner-h3by91`, merged to `main`** (2026-10-03).
+Asked for as "remove test data and arc preview from admin. Remove all the
+relevant codes too."
+
+- The admin tabs are **User management · Buyer management · Catalogue**.
+  `/admin/test-data` and `/admin/arc` are gone and answer 404.
+- **Test data:** the page, `TestDataCard`, `src/actions/test-data.ts`,
+  `src/lib/test-data.ts`, its shape module and its test.
+- **Arc preview:** the page and `src/components/arc-gallery/`, plus the
+  vendored Arc parts only the gallery drew: bar-chart, bottom-sheet,
+  date-picker, file-upload, notification-center, radio-group, toast and the
+  page-header / empty-states blocks. They left `ARC_ITEMS` in
+  `scripts/arc-import.ts` too, with the notification-center patch, so a
+  re-import does not bring them back. Spec 62 §2 says so.
+
+## Verified
+
+Production builds before and after, local Postgres and the seed, signed in
+as a super admin. Before: 5 tabs, both pages rendering. After: 3 tabs;
+clicking each lands on its page with the pill on it at 1440, and tapping
+works at 390; both removed URLs answer **404** with "Page not found"; the New
+user drawer still opens. No overflow at 390 or 1440. The only console error,
+before and after, is `/_vercel/speed-insights/script.js` (served only on
+Vercel). 1817 tests, `tsc` clean, lint unchanged (4 `ShopHeader` errors),
+build clean.
+
+## Not verified
+
+Production. **Rows the tool generated (ids starting `tst`) have no delete
+button now.** If any were generated on production they stay until removed by
+hand, in the order the tool used: `WebOrder`, `PurchaseOrder`, `Document`,
+`Product`, `CatalogLabel`, `User`, `Buyer`, each `WHERE id LIKE 'tst%'`.
+
+## Before that
+
 # Fix: every line chart prints its figures, and the Demand Board reads on a phone
 
 ## Status

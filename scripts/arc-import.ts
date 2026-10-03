@@ -46,25 +46,24 @@ export const ARC_ITEMS = [
   // inputs
   "input", "textarea", "password-field", "password-strength", "search-field",
   "inline-edit", "number-field", "phone-input", "select", "combobox",
-  "multi-select", "chip-group", "checkbox", "radio-group", "radio-cards",
-  "switch", "segmented-control", "calendar", "date-picker", "date-range-picker",
+  "multi-select", "chip-group", "checkbox", "radio-cards",
+  "switch", "segmented-control", "calendar", "date-range-picker",
   "file-dropzone",
   // navigation and overlays
   "tabs", "breadcrumb", "pagination", "scroll-area", "accordion",
-  "resizable-panels", "dialog", "drawer", "bottom-sheet", "popover",
+  "resizable-panels", "dialog", "drawer", "popover",
   "hover-card", "tooltip",
   // feedback
-  "alert", "toast", "toast-stack", "progress", "skeleton", "stepper",
+  "alert", "toast-stack", "progress", "skeleton", "stepper",
   // data
   "avatar", "avatar-group", "badge", "card", "metric-card", "empty-state",
-  "line-chart", "bar-chart", "donut-chart", "slope-chart", "sparkline", "gauge",
+  "line-chart", "donut-chart", "slope-chart", "sparkline", "gauge",
   "activity-heatmap", "animated-counter", "sortable-data-table", "tree-view",
   "filter-toolbar", "timeline", "carousel",
   // text
   "text-morph", "text-shimmer",
   // blocks
-  "page-header", "command-palette", "notification-center", "empty-states",
-  "file-upload",
+  "command-palette",
 ] as const;
 
 const RADIX: Record<string, string> = {
@@ -90,7 +89,7 @@ export const PATCHES: { file: RegExp; apply: (source: string) => string; why: st
     why: "A button is the 20px pill; Arc gives buttons and inputs one radius, ours are 20px and 9px.",
   },
   {
-    file: /^(line-chart|bar-chart|donut-chart)\/[\w-]+\.tsx$/,
+    file: /^(line-chart|donut-chart)\/[\w-]+\.tsx$/,
     apply: wrapScreenReaderTable,
     why:
       "A table ignores `width: 1px`, so each chart's screen-reader table spread to its content width and pushed a 390px page to 436. A div holding it clips; the table keeps its semantics.",
@@ -129,24 +128,6 @@ export const PATCHES: { file: RegExp; apply: (source: string) => string; why: st
         ".toLowerCase().includes(normalized)).slice(0, 50);",
       ),
     why: "Our palette indexes hundreds of purchase orders, buyers and products, and Arc animates every row it lists; past fifty rows, typing narrows faster than scrolling.",
-  },
-  {
-    file: /^notification-center\/notification-center\.tsx$/,
-    apply: (source) =>
-      replaceOnce(
-        replaceOnce(
-          replaceOnce(
-            source,
-            "export interface NotificationCenterProps {",
-            "export interface NotificationCenterProps {\n  /** Adds Open to an expanded update, for one that leads somewhere. */\n  onOpenItem?: (notification: NotificationItem) => void;",
-          ),
-          "onReadChange, onDismiss, open,",
-          "onReadChange, onDismiss, onOpenItem, open,",
-        ),
-        "<div className={styles.itemActions}>",
-        "<div className={styles.itemActions}>{onOpenItem && <button type=\"button\" onClick={() => onOpenItem(item)}>Open</button>}",
-      ),
-    why: "Arc's updates can be read and dismissed but lead nowhere; ours are orders waiting on the team, and each one needs a way to its review screen.",
   },
   {
     file: /^tree-view\/tree-view\.tsx$/,

@@ -66,9 +66,10 @@ All through `PATCHES` with `replaceOnce`, which throws when its target is gone:
 - **password-field** exports `EyeMorph`.
 - **phone-input** gains Malaysia (`+60`, 9–10 national digits).
 - **command-palette** lists at most 50 rows, so hundreds of indexed rows stay fast.
-- **notification-center** gains `onOpenItem` (an Open action). Kept in the
-  import for the `/admin/arc` gallery; no real screen uses it since the bell
-  was removed.
+- ~~**notification-center** gains `onOpenItem`~~ — removed with the
+  `/admin/arc` gallery on 3 Oct 2026, along with the other parts only the
+  gallery drew: bar-chart, bottom-sheet, date-picker, file-upload,
+  radio-group, toast and the page-header / empty-states blocks.
 - **tree-view** rows are 44px (46 with the gap, in the TSX too, since the row
   height is animated in JS).
 - **line-chart** gains `pointLabels(plotWidth)`: figures printed above chosen
