@@ -1,3 +1,37 @@
+# Vercel Web Analytics installed; the favicon was already there
+
+## Status
+
+**Built on `claude/exciting-lamport-qz0xso`** (2026-10-03). Asked for as
+"install web analytic and change the favicon in vercel if no favicon use the
+existing one".
+
+- **Web Analytics:** `@vercel/analytics` 2.0.1, `<Analytics />` in the root
+  layout beside `<SpeedInsights />`, so the portal, the admin room and both
+  hosts are counted. Inert outside a Vercel deployment. No other file moved.
+- **Favicon: no code change.** The site already ships one — `src/app/favicon.ico`,
+  `icon.png`, `apple-icon.png`, the "zen" tile — and production answers 200 for
+  `/favicon.ico` and `/icon.png` on `www.lovinghandsportal.com` and
+  `zen-garden-portal.vercel.app`. The Vercel project has no favicon field the
+  API can set. The dashboard's black triangle is Vercel's own default; the
+  `*.vercel.app` deployment URLs answer 302 to Vercel SSO (`ssoProtection:
+  all_except_custom_domains`), which is the likely reason it cannot read one.
+
+## Verified
+
+Production build on placeholder env, Chromium at 1440 and 390. `/signin`
+injects `/_vercel/insights/script.js` beside the existing speed-insights one,
+`window.va` is defined, and no page overflows (1440/1440, 390/390). 1817 tests,
+`tsc`, lint and build clean. (`/_vercel/*` 404s locally; Vercel serves it.)
+
+## Not verified
+
+Production: a visitor actually being counted. Web Analytics has to be on for
+the project in the Vercel dashboard (the Analytics tab showed "Get Started").
+The dashboard icon, which Vercel sets, not us.
+
+## Before that
+
 # Admin: Test data and Arc preview removed
 
 ## Status
