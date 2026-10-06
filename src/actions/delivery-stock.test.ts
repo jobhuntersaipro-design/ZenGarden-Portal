@@ -83,7 +83,9 @@ const restore = (saved: ReturnType<typeof snapshot>) => {
 let chain: Promise<unknown> = Promise.resolve();
 
 const tx = {
-  $queryRaw: vi.fn(async () => []),
+  $queryRaw: vi.fn<(query: TemplateStringsArray, ...values: unknown[]) => Promise<unknown[]>>(
+    async () => [],
+  ),
   purchaseOrder: {
     findUnique: vi.fn(async (args: { where: { id: string }; select?: { lineItems?: unknown } }) => {
       const po = pos.get(args.where.id);
@@ -410,9 +412,10 @@ describe("advance to Delivering deducts stock once", () => {
     ]);
     await advanceStage("po-1");
     const productLock = tx.$queryRaw.mock.calls.find((call) => Array.isArray(call[1]));
-    expect(productLock?.[0].join(" ")).toContain('ORDER BY "id"');
-    expect(productLock?.[0].join(" ")).toContain("FOR UPDATE");
-    expect(productLock?.[1]).toEqual(["p-goat", "p-lav"]);
+    if (!productLock) throw new Error("products were not locked");
+    expect(productLock[0].join(" ")).toContain('ORDER BY "id"');
+    expect(productLock[0].join(" ")).toContain("FOR UPDATE");
+    expect(productLock[1]).toEqual(["p-goat", "p-lav"]);
   });
 
   it("does not deduct when a different stage is advanced", async () => {

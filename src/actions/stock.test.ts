@@ -21,7 +21,9 @@ const day = (iso: string) => new Date(`${iso}T00:00:00.000Z`);
 const at = (iso: string) => new Date(iso);
 const sameInstant = (a: Date, b: Date) => a.getTime() === b.getTime();
 
-const queryRaw = vi.fn(async () => []);
+const queryRaw = vi.fn<(query: TemplateStringsArray, ...values: unknown[]) => Promise<unknown[]>>(
+  async () => [],
+);
 const productUpdate = vi.fn();
 const requirePermission = vi.fn();
 
@@ -317,7 +319,9 @@ describe("saveStockCounts", () => {
         { productId: "p1", cartons: 2 },
       ],
     });
-    const [strings, ids] = queryRaw.mock.calls[0];
+    const call = queryRaw.mock.calls[0];
+    if (!call) throw new Error("products were not locked");
+    const [strings, ids] = call;
     expect(strings.join(" ")).toContain("ANY");
     expect(strings.join(" ")).toContain('ORDER BY "id"');
     expect(strings.join(" ")).toContain("FOR UPDATE");
