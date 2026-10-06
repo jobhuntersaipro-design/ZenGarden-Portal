@@ -48,6 +48,11 @@ export default function PurchaseOrderLoading() {
           ))}
         </div>
       </div>
+
+      <section className="mt-lg rounded-lg border border-hairline bg-canvas p-lg">
+        <Shimmer className="h-4 w-24" />
+        <Shimmer className="mt-sm h-10 w-full" />
+      </section>
     </PageSkeleton>
   );
 }

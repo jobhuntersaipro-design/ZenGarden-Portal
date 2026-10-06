@@ -9,12 +9,12 @@ import { OPS_ROLES, roleLabel } from "@/lib/permissions/roles";
 import { defaultGranted, defaultRows } from "@/lib/permissions/defaults";
 
 describe("the registry", () => {
-  // Nineteen since 2026-09-18: `org.settings` went with the supplier record
-  // it was the only gate on.
-  it("holds nineteen actions with unique keys", () => {
-    expect(PERMISSION_ACTIONS).toHaveLength(19);
+  // Twenty since the per-order document upload: `po.document` sits beside
+  // `po.upload`. Nineteen since 2026-09-18, when `org.settings` left.
+  it("holds twenty actions with unique keys", () => {
+    expect(PERMISSION_ACTIONS).toHaveLength(20);
     const keys = PERMISSION_ACTIONS.map((action) => action.key);
-    expect(new Set(keys).size).toBe(19);
+    expect(new Set(keys).size).toBe(20);
   });
 
   it("gives every action a label and a one-line description", () => {
@@ -134,8 +134,10 @@ describe("the default grants", () => {
       Role.WAREHOUSE,
     ] as const) {
       expect(defaultGranted(role, "po.upload")).toBe(true);
+      expect(defaultGranted(role, "po.document")).toBe(true);
     }
     expect(defaultGranted(Role.MEMBER, "po.upload")).toBe(false);
+    expect(defaultGranted(Role.MEMBER, "po.document")).toBe(false);
     for (const key of [
       "dashboard.view",
       "po.view",

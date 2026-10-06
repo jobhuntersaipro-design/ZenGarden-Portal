@@ -611,6 +611,14 @@ export async function deletePurchaseOrder(input: {
       };
     }
 
+    // Files kept on the order cascade with the row. Their objects do not, so
+    // they are collected once the delete is going to happen, and removed after
+    // it succeeds. The original scan is still kept, on purpose, for a re-review.
+    const attachments = await prisma.purchaseOrderDocument.findMany({
+      where: { purchaseOrderId: po.id },
+      select: { r2Key: true },
+    });
+
     await prisma.$transaction(async (tx) => {
       // The mirror of the extraction going back to SUCCEEDED: a deleted order
       // returns to the queue rather than stranding its web order in CONFIRMED.
@@ -639,6 +647,14 @@ export async function deletePurchaseOrder(input: {
         });
       }
     });
+
+    for (const file of attachments) {
+      try {
+        await deleteObject(file.r2Key);
+      } catch (cause) {
+        console.error("[po] deletePurchaseOrder could not remove an attachment", cause);
+      }
+    }
 
     revalidatePath("/purchase-orders");
     revalidatePath("/", "layout");

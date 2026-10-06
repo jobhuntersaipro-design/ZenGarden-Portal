@@ -1,3 +1,42 @@
+# Per-order document upload (staff)
+
+## Status
+
+**Built on `cursor/po-document-upload-0508`** (2026-10-06). ClickUp
+[z8v9xnh5g9](https://app.clickup.com/t/z8v9xnh5g9). A file can be uploaded
+against one purchase order. Account-level `BuyerDocument` is unchanged.
+
+- New table `PurchaseOrderDocument`, keyed by the order. Category reuses the
+  free-text folder vocabulary of `BuyerDocument.folder`. It is a label, not an
+  access flag: no category is internal-only.
+- Storage is the existing R2 bucket. Read URLs are presigned for ten minutes
+  and only minted after `po.view`.
+- Allowed types PDF, JPG, PNG, checked from the leading bytes. Size limit
+  25 MB, the account-level limit.
+- Upload and delete need `po.document` (planner, QC, warehouse, super admin).
+  A member can look. A buyer cannot. There is no `admin` role. There is no
+  organisation on the model; the order id is the boundary.
+- The upload is a browser PUT to the same presigned URL account documents
+  already use (`presignPut` on the existing bucket). The documented CORS
+  already allows that PUT.
+
+## Verified
+
+1842 tests, `tsc`, lint and build clean. The documents section rendered in the
+app at 1440 and 390 with no page overflow: empty, a listed file, a type error,
+a contents mismatch, a size error, and the delete confirm. The category select
+is 12rem wide (192px at 1440, 221px at 390) on one row with Upload and a gap;
+it does not collapse to the chevron. Access tests: buyer upload 403, signed-out
+fetch 401, another order's file 404.
+
+## Not verified
+
+A signed-in order on Neon and a real PUT to R2. This environment has no
+database or bucket credentials, and production was not written to. The buyer
+read-only view is the follow-up ticket.
+
+## Before that
+
 # Vercel Web Analytics installed; the favicon was already there
 
 ## Status

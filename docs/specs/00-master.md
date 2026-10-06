@@ -389,12 +389,32 @@ model PurchaseOrder {
   stageChangedAt DateTime  @default(now())
   stageEvents    PoStageEvent[]
   lineItems      LineItem[]
+  orderDocuments PurchaseOrderDocument[]
   createdAt      DateTime  @default(now())
   updatedAt      DateTime  @updatedAt
   @@unique([buyerId, poNumber, revision])
   @@index([poDate])
   @@index([stage])
   @@index([buyerId, poDate])
+}
+
+// Files kept on one order (a buyer spec, artwork). Not the original scan
+// (`Document`) and not the account-level `BuyerDocument`. `category` reuses
+// that table's free-text folder vocabulary and is not an access flag.
+model PurchaseOrderDocument {
+  id              String        @id @default(cuid())
+  purchaseOrderId String
+  purchaseOrder   PurchaseOrder @relation(fields: [purchaseOrderId], references: [id], onDelete: Cascade)
+  category        String
+  r2Key           String        @unique
+  originalName    String
+  mimeType        String
+  sizeBytes       Int
+  uploadedById    String
+  uploadedBy      User          @relation("poDocumentsUploaded", fields: [uploadedById], references: [id])
+  uploadedByName  String
+  createdAt       DateTime      @default(now())
+  @@index([purchaseOrderId, createdAt])
 }
 
 // Ordered. Add future stages by appending here AND in src/lib/po-stages.ts.
