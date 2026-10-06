@@ -28,7 +28,6 @@ import {
 } from "@/lib/po-stages";
 import { PO_STAGES } from "@/lib/po-stages";
 import { ORDER_IDENTITY_SELECT, orderIdentity, orderLabel } from "@/lib/order-identity";
-import { listDocumentFolders } from "@/lib/queries/buyer-documents";
 import { listPurchaseOrderDocuments } from "@/lib/queries/purchase-order-documents";
 import { prisma } from "@/lib/prisma";
 import { PersonChip } from "@/components/ui/person";
@@ -129,10 +128,7 @@ async function PurchaseOrderPage({
       ? `${owners.map(roleLabel).join(" or ")} advances this stage.`
       : "Only a super admin advances this stage.";
   }
-  const [orderDocuments, documentCategories] = await Promise.all([
-    listPurchaseOrderDocuments(po.id),
-    canAttachDocument ? listDocumentFolders() : Promise.resolve([]),
-  ]);
+  const orderDocuments = await listPurchaseOrderDocuments(po.id);
 
   const daysFromOrder = Math.max(
     0,
@@ -587,7 +583,6 @@ async function PurchaseOrderPage({
       <PoDocumentsCard
         purchaseOrderId={po.id}
         documents={orderDocuments}
-        categories={documentCategories}
         canManage={canAttachDocument}
       />
 

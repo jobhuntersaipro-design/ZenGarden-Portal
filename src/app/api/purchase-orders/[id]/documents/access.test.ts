@@ -84,7 +84,7 @@ const presignRequest = (purchaseOrderId: string, name = "spec.pdf", type = "appl
   new Request(`http://localhost/api/purchase-orders/${purchaseOrderId}/documents/presign`, {
     method: "POST",
     headers: { "content-type": "application/json" },
-    body: JSON.stringify({ category: "Specification", files: [{ name, type, size }] }),
+    body: JSON.stringify({ files: [{ name, type, size }] }),
   });
 
 const completeRequest = (
@@ -96,7 +96,6 @@ const completeRequest = (
     method: "POST",
     headers: { "content-type": "application/json" },
     body: JSON.stringify({
-      category: "Specification",
       key,
       name: extra.name ?? "spec.pdf",
       type: extra.type ?? "application/pdf",
@@ -254,7 +253,6 @@ describe("purchase order document access", () => {
   it("saves a real PDF on this order only, not on the buyer account", async () => {
     signIn(Role.SUPER_ADMIN);
     poFindUnique.mockResolvedValue({ id: "po-x" });
-    folderFindMany.mockResolvedValue([{ folder: "contracts" }]);
     const key = purchaseOrderDocumentKey("po-x", UUID, "pdf");
     const response = await complete(completeRequest("po-x", key), {
       params: Promise.resolve({ id: "po-x" }),
@@ -263,7 +261,7 @@ describe("purchase order document access", () => {
     expect(docCreate).toHaveBeenCalledExactlyOnceWith({
       data: {
         purchaseOrderId: "po-x",
-        category: "Specification",
+        category: "Document",
         r2Key: key,
         originalName: "spec.pdf",
         mimeType: "application/pdf",

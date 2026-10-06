@@ -29,7 +29,6 @@ describe("listBuyerOrderDocuments", () => {
         id: "doc-1",
         originalName: "spec.pdf",
         mimeType: "application/pdf",
-        category: "Specification",
         createdAt: new Date("2026-10-06T02:00:00.000Z"),
       },
     ]);
@@ -43,7 +42,6 @@ describe("listBuyerOrderDocuments", () => {
         id: true,
         originalName: true,
         mimeType: true,
-        category: true,
         createdAt: true,
       },
     });
@@ -54,7 +52,6 @@ describe("listBuyerOrderDocuments", () => {
         name: "spec.pdf",
         mimeType: "application/pdf",
         preview: "pdf",
-        category: "Specification",
         createdAt: "2026-10-06T02:00:00.000Z",
       },
     ]);

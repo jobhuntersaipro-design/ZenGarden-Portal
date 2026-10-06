@@ -31,7 +31,6 @@ import {
   PO_DOCUMENT_ACCEPT,
   PO_DOCUMENT_CONTENTS,
   PO_DOCUMENT_SIGNATURE_BYTES,
-  poDocumentCategoryOptions,
   poDocumentContentsReason,
   poDocumentRejectionReason,
   resolvePoDocumentType,
@@ -39,9 +38,6 @@ import {
 
 const ACTION =
   "h-control-md min-w-11 gap-xxs px-sm text-[length:var(--text-caption)] sm:h-control-sm sm:min-w-0";
-
-const SELECT =
-  "h-control-md w-full min-w-48 rounded-sm border border-hairline-strong bg-transparent px-xs text-[length:var(--text-body-md)] text-ink focus-visible:border-focus focus-visible:outline-2 focus-visible:outline-focus sm:h-control-sm sm:text-[length:var(--text-body-sm)]";
 
 const downloadHref = (purchaseOrderId: string, documentId: string) =>
   `/api/purchase-orders/${purchaseOrderId}/documents/${documentId}/url?download=1`;
@@ -61,20 +57,14 @@ const readPrefix = async (file: File): Promise<Uint8Array> =>
 export function PoDocumentsCard({
   purchaseOrderId,
   documents,
-  categories,
   canManage,
 }: {
   purchaseOrderId: string;
   documents: PurchaseOrderDocumentRow[];
-  categories: string[];
   canManage: boolean;
 }) {
   const refresh = useAwaitableRefresh();
   const fileInput = useRef<HTMLInputElement>(null);
-  const options = poDocumentCategoryOptions(categories);
-  const [category, setCategory] = useState(
-    () => options.find((name) => name.toLowerCase() === "specification") ?? options[0] ?? "Specification",
-  );
   const [error, setError] = useState<string | null>(null);
   const [uploading, setUploading] = useState(false);
   const [previewing, setPreviewing] = useState<PurchaseOrderDocumentRow | null>(null);
@@ -100,7 +90,6 @@ export function PoDocumentsCard({
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          category,
           files: [{ name: file.name, type: file.type, size: file.size }],
         }),
       });
@@ -124,7 +113,6 @@ export function PoDocumentsCard({
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          category,
           key: signed.key,
           name: file.name,
           type: file.type,
@@ -154,24 +142,7 @@ export function PoDocumentsCard({
       </p>
 
       {canManage ? (
-        <div className="mt-sm flex min-w-0 flex-wrap items-end gap-sm">
-          <label className="flex min-w-48 flex-1 flex-col gap-xxs sm:max-w-xs">
-            <span className="font-mono text-[length:var(--text-eyebrow)] text-ink-tertiary">
-              Category
-            </span>
-            <select
-              className={SELECT}
-              value={category}
-              disabled={uploading}
-              onChange={(event) => setCategory(event.target.value)}
-            >
-              {options.map((name) => (
-                <option key={name} value={name}>
-                  {name}
-                </option>
-              ))}
-            </select>
-          </label>
+        <div className="mt-sm">
           <Button
             type="button"
             className={`${ACTION} shrink-0`}
@@ -223,7 +194,7 @@ export function PoDocumentsCard({
                   {document.name}
                 </p>
                 <p className="truncate text-[length:var(--text-caption)] text-ink-tertiary">
-                  {document.uploadedBy} · {formatDate(document.createdAt)} · {document.category}
+                  {document.uploadedBy} · {formatDate(document.createdAt)}
                 </p>
               </div>
               <div className="flex flex-wrap gap-xs">
@@ -265,7 +236,7 @@ export function PoDocumentsCard({
             </SheetTitle>
             <SheetDescription>
               {previewing
-                ? `${previewing.category} · ${formatBytes(previewing.sizeBytes)} · ${formatDate(previewing.createdAt)} · ${previewing.uploadedBy}`
+                ? `${formatBytes(previewing.sizeBytes)} · ${formatDate(previewing.createdAt)} · ${previewing.uploadedBy}`
                 : null}
             </SheetDescription>
           </SheetHeader>

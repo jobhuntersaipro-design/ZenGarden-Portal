@@ -2,14 +2,13 @@ import { NextResponse } from "next/server";
 import { revalidatePath } from "next/cache";
 import { Prisma } from "@/generated/prisma/client";
 import { guardOrderDocumentWrite } from "@/lib/purchase-order-document-guard";
-import { listDocumentFolders } from "@/lib/queries/buyer-documents";
 import { prisma } from "@/lib/prisma";
 import { deleteObject, getObjectPrefix, headObject } from "@/lib/r2";
 import {
+  PO_DOCUMENT_CATEGORY,
   PO_DOCUMENT_CONTENTS,
   PO_DOCUMENT_SIGNATURE_BYTES,
   PO_DOCUMENT_TYPES,
-  canonicalPoDocumentCategory,
   isPurchaseOrderDocumentKey,
   poDocumentCompleteSchema,
   poDocumentContentsReason,
@@ -85,12 +84,11 @@ export async function POST(
     return NextResponse.json({ error: PO_DOCUMENT_CONTENTS }, { status: 400 });
   }
 
-  const category = canonicalPoDocumentCategory(parsed.data.category, await listDocumentFolders());
   try {
     const document = await prisma.purchaseOrderDocument.create({
       data: {
         purchaseOrderId,
-        category,
+        category: PO_DOCUMENT_CATEGORY,
         r2Key: key,
         originalName: name,
         mimeType: type,
@@ -101,7 +99,7 @@ export async function POST(
       select: { id: true },
     });
     revalidatePath(`/purchase-orders/${purchaseOrderId}`);
-    return NextResponse.json({ id: document.id, category });
+    return NextResponse.json({ id: document.id });
   } catch (cause) {
     if (cause instanceof Prisma.PrismaClientKnownRequestError) {
       if (cause.code === "P2002") return NextResponse.json({ error: "Already saved." }, { status: 409 });

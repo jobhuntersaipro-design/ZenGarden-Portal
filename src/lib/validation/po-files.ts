@@ -1,11 +1,6 @@
 import { z } from "zod";
 import { formatBytes } from "@/lib/validation/upload";
-import {
-  MAX_BUYER_DOCUMENT_BYTES,
-  MAX_DOCUMENT_NAME_LENGTH,
-  canonicalFolder,
-  folderSchema,
-} from "@/lib/validation/buyer-files";
+import { MAX_BUYER_DOCUMENT_BYTES, MAX_DOCUMENT_NAME_LENGTH } from "@/lib/validation/buyer-files";
 
 /**
  * Files staff keep on one purchase order. The size limit is the account-level
@@ -32,17 +27,12 @@ export const PO_DOCUMENT_SIGNATURE_BYTES = 16;
 export const MAX_PO_DOCUMENT_BYTES = MAX_BUYER_DOCUMENT_BYTES;
 
 /**
- * Suggested categories. Account documents have no enum — `BuyerDocument.folder`
- * is free text — so these are the names that table's own comment already uses,
- * plus Specification for a buyer spec filed on an order. The form also offers
- * every folder already in use, and `canonicalFolder` keeps one spelling.
+ * Files on an order are not filed by category any more: staff upload what
+ * they need. `PurchaseOrderDocument.category` is still NOT NULL, so every new
+ * row carries this one value and no screen reads it.
  */
-export const SUGGESTED_PO_DOCUMENT_CATEGORIES = [
-  "Specification",
-  "Contracts",
-  "Price lists",
-  "SSM",
-] as const;
+// ponytail: dead column kept to avoid a migration; drop it when one is due anyway.
+export const PO_DOCUMENT_CATEGORY = "Document";
 
 const BY_EXTENSION: Record<string, PoDocumentMimeType> = {
   pdf: "application/pdf",
@@ -120,34 +110,6 @@ export function poDocumentContentsReason(
   return sniffPoDocumentMime(bytes) === declared ? null : PO_DOCUMENT_CONTENTS;
 }
 
-/**
- * The picker: folders already in use on buyer accounts, plus the suggestions
- * that are not already spelled another way. An existing spelling wins, so
- * "contracts" is not offered again as "Contracts".
- */
-export function poDocumentCategoryOptions(existing: readonly string[]): string[] {
-  const byKey = new Map<string, string>();
-  for (const name of existing) {
-    const trimmed = name.trim();
-    if (trimmed) byKey.set(trimmed.toLowerCase(), trimmed);
-  }
-  for (const name of SUGGESTED_PO_DOCUMENT_CATEGORIES) {
-    const key = name.toLowerCase();
-    if (!byKey.has(key)) byKey.set(key, name);
-  }
-  return [...byKey.values()].sort((a, b) =>
-    a.localeCompare(b, undefined, { sensitivity: "base" }),
-  );
-}
-
-/** One spelling, shared with account folders. A new name is kept as typed. */
-export function canonicalPoDocumentCategory(
-  category: string,
-  existing: readonly string[],
-): string {
-  return canonicalFolder(category, poDocumentCategoryOptions(existing));
-}
-
 const fileSchema = z.object({
   name: z.string().min(1).max(1000),
   type: z.string().max(200),
@@ -155,13 +117,11 @@ const fileSchema = z.object({
 });
 
 export const poDocumentPresignSchema = z.object({
-  category: folderSchema,
   files: z.array(fileSchema).min(1).max(1),
 });
 
 /** What `complete` is told. Every field is checked again against R2 and the bytes. */
 export const poDocumentCompleteSchema = z.object({
-  category: folderSchema,
   key: z.string().min(1).max(300),
   name: z.string().min(1).max(MAX_DOCUMENT_NAME_LENGTH),
   type: z.string().max(200),

@@ -4,9 +4,7 @@ import {
   MAX_PO_DOCUMENT_BYTES,
   PO_DOCUMENT_CONTENTS,
   PO_DOCUMENT_WRONG_TYPE,
-  canonicalPoDocumentCategory,
   isPurchaseOrderDocumentKey,
-  poDocumentCategoryOptions,
   poDocumentContentsReason,
   poDocumentRejectionReason,
   purchaseOrderDocumentKey,
@@ -75,22 +73,6 @@ describe("poDocumentRejectionReason", () => {
       /empty/,
     );
     expect(poDocumentRejectionReason({ name: "a.pdf", type: "application/pdf", size: 12 })).toBeNull();
-  });
-});
-
-describe("categories", () => {
-  it("offers account folders and the suggestions, one spelling each", () => {
-    expect(poDocumentCategoryOptions(["contracts", "Price lists"])).toEqual([
-      "contracts",
-      "Price lists",
-      "Specification",
-      "SSM",
-    ]);
-  });
-
-  it("keeps an account folder's spelling", () => {
-    expect(canonicalPoDocumentCategory("specification", ["Specification"])).toBe("Specification");
-    expect(canonicalPoDocumentCategory("Contracts", ["contracts"])).toBe("contracts");
   });
 });
 

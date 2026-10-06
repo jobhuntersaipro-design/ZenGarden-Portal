@@ -1,3 +1,35 @@
+# Order documents have no category
+
+## Status
+
+**Built on `claude/vibrant-davinci-o2ncv7`** (2026-10-06). Asked for as
+"remove category here, just allow users from ops team upload the files they
+want", against a screenshot of the order's Documents card.
+
+- The Category picker is gone. The card is the caption, **Upload**, and the
+  list. A file row reads `uploader · date`; the buyer's list reads the date.
+- Presign and complete no longer take a category. `complete` writes
+  `PO_DOCUMENT_CATEGORY` ("Document") into the column, which is still
+  `NOT NULL`. No migration: no screen or query reads the column now, and old
+  rows keep their value. Drop it when a migration is due anyway.
+- Who can upload is unchanged: `po.document` (planner, QC, warehouse, super
+  admin).
+
+## Verified
+
+1846 tests, `tsc`, lint (the same 4 `ShopHeader` errors) and `npm run build`
+clean. The real card in a dev server (a temporary page, removed) at 1440 and
+390, before and after: 0 selects after, no page overflow, every control 44px.
+Choosing a file sent `{"files":[{"name":"t.pdf",…}]}` to presign, with no
+category.
+
+## Not verified
+
+A real upload against Neon and R2: no credentials here. The shop's buyer list
+was changed and unit-tested, not opened in a browser.
+
+## Before that
+
 # Buyers view documents on their own orders
 
 ## Status

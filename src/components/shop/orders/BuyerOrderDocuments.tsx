@@ -56,7 +56,7 @@ export function BuyerOrderDocuments({
                   {document.name}
                 </p>
                 <p className="truncate text-[length:var(--text-caption)] text-ink-tertiary">
-                  {document.category} · {formatDate(document.createdAt)}
+                  {formatDate(document.createdAt)}
                 </p>
               </div>
               <div className="flex flex-wrap gap-xs">
@@ -89,7 +89,7 @@ export function BuyerOrderDocuments({
               {previewing?.name}
             </SheetTitle>
             <SheetDescription>
-              {previewing ? `${previewing.category} · ${formatDate(previewing.createdAt)}` : null}
+              {previewing ? formatDate(previewing.createdAt) : null}
             </SheetDescription>
           </SheetHeader>
           {previewing && purchaseOrderId ? (

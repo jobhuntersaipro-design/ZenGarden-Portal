@@ -16,7 +16,6 @@ export type PurchaseOrderDocumentRow = {
   mimeType: string;
   preview: DocumentPreviewKind;
   sizeBytes: number;
-  category: string;
   createdAt: string;
   uploadedBy: string;
 };
@@ -36,7 +35,6 @@ export async function listPurchaseOrderDocuments(
       originalName: true,
       mimeType: true,
       sizeBytes: true,
-      category: true,
       createdAt: true,
       uploadedByName: true,
       uploadedBy: { select: { name: true } },
@@ -48,7 +46,6 @@ export async function listPurchaseOrderDocuments(
     mimeType: row.mimeType,
     preview: previewKind(row.mimeType),
     sizeBytes: row.sizeBytes,
-    category: row.category,
     createdAt: row.createdAt.toISOString(),
     uploadedBy: row.uploadedBy.name || row.uploadedByName,
   }));
@@ -60,7 +57,6 @@ export type BuyerOrderDocumentRow = {
   name: string;
   mimeType: string;
   preview: DocumentPreviewKind;
-  category: string;
   createdAt: string;
 };
 
@@ -68,7 +64,6 @@ const BUYER_ORDER_DOCUMENT_SELECT = {
   id: true,
   originalName: true,
   mimeType: true,
-  category: true,
   createdAt: true,
 } as const;
 
@@ -91,7 +86,6 @@ export async function listBuyerOrderDocuments(
     name: row.originalName,
     mimeType: row.mimeType,
     preview: previewKind(row.mimeType),
-    category: row.category,
     createdAt: row.createdAt.toISOString(),
   }));
 }
