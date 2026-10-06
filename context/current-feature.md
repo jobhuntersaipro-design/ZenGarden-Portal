@@ -20,13 +20,20 @@ Read-only. `BuyerDocument` stays staff-only.
 
 ## Verified
 
-See the test run recorded with the pull request. The documents section is on
-the shop order detail page.
+1852 tests, `tsc --noEmit`, eslint on the touched files, and `npm run build`
+are clean. The documents section rendered in the app shell at 1440 and 390
+with no page overflow: two files (name, category, date, Open, Download) and
+the empty state. The staff delete confirmation reads
+`eng-smoke-g9.pdf will be removed`. Access tests: buyer A on buyer B's file
+404, signed out 401, buyer on their own file 200 and a download 302, buyer
+presign/complete/staff URL 403.
 
 ## Not verified
 
 A signed-in buyer against Neon, and a real download from R2. This environment
-has no database or bucket credentials. Production was not written to.
+has no database or bucket credentials, so the shots are the real documents
+section, not a live order. Production was not written to. The orders list was
+left unchanged.
 
 ## Before that
 
