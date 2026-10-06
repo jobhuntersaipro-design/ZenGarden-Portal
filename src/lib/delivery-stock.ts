@@ -80,18 +80,19 @@ type Problem = {
 
 /**
  * The sentence a person sees when the move is refused. Every short product,
- * uncounted product, unlinked line and fractional quantity is named; nothing
- * has been written when this returns.
+ * uncounted product and fractional quantity is named; nothing has been
+ * written when this returns. A line with no product (freight, a service,
+ * "Not a product") is not a problem: it is skipped.
  */
 export function deliveryStockError(problems: string[]): string {
   return `Not enough stock to mark this order out for delivery. ${problems.join(". ")}.`;
 }
 
 /**
- * Sum each product's lines, then refuse the whole order if any line cannot
- * be taken. A second line of the same product counts against what the first
- * line already needs, so 6 and 6 against 10 is short even though each line
- * alone would pass.
+ * Sum each product's lines, then refuse the whole order if any linked line
+ * cannot be taken. A second line of the same product counts against what the
+ * first line already needs, so 6 and 6 against 10 is short even though each
+ * line alone would pass. A line with no product is ignored, fraction and all.
  */
 export function planDeliveryDeduction(
   lines: DeliveryLine[],
@@ -106,6 +107,9 @@ export function planDeliveryDeduction(
   >();
 
   for (const line of ordered) {
+    // "Not a product" is saved with a null productId. It is not stock.
+    if (!line.productId) continue;
+
     const parsed = wholeCartons(line.quantity);
     if (!parsed.ok) {
       const label = line.productName
@@ -119,7 +123,7 @@ export function planDeliveryDeduction(
     }
     if (parsed.cartons === 0) continue;
 
-    if (!line.productId || !onHand.has(line.productId)) {
+    if (!onHand.has(line.productId)) {
       problems.push({
         position: line.position,
         text: `"${line.description}" isn't linked to a product`,
@@ -185,9 +189,31 @@ export function planDeliveryDeduction(
   return { ok: true, movements, products };
 }
 
-/** Latest stocktake minus cartons sent out after that count was typed. */
+/** Latest stocktake minus cartons sent out after that count's cutoff. */
 export function onHandAfterDeliveries(cartons: number, deliveredSince: number): number {
   return cartons - deliveredSince;
+}
+
+/**
+ * When a delivery still counts against a stocktake.
+ *
+ * `countedOn` is a `@db.Date`: the Kuala Lumpur calendar day, stored as UTC
+ * midnight (`2026-10-01` → `2026-10-01T00:00:00.000Z`). KL is UTC+8 all year,
+ * so that day ends at `countedOn` + 16 hours (`2026-10-01T16:00:00.000Z`,
+ * which is 2 Oct 00:00 in KL).
+ *
+ * The cutoff is the earlier of that end and the earliest `createdAt` among
+ * every stock-count row for the day (a correction included). A count typed
+ * on the day itself keeps deliveries after it was typed. A count typed later,
+ * or a correction of the latest day, still sees deliveries that happened
+ * after the day — or after the original count — rather than only those after
+ * the new row was saved.
+ */
+export function movementCutoff(countedOn: Date, earliestCreatedAt: Date): Date {
+  const endOfCountedDay = new Date(countedOn.getTime() + 16 * 60 * 60 * 1000);
+  return earliestCreatedAt.getTime() < endOfCountedDay.getTime()
+    ? earliestCreatedAt
+    : endOfCountedDay;
 }
 
 /** How the stock history reads one deduction. */

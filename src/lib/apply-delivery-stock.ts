@@ -5,6 +5,7 @@ import {
   planDeliveryDeduction,
   type DeliveryLine,
 } from "@/lib/delivery-stock";
+import { lockProductsInIdOrder } from "@/lib/product-lock";
 
 /**
  * Raised after a compare-and-set loses, so the surrounding transaction rolls
@@ -89,14 +90,7 @@ export async function applyOutForDeliveryDeduction(
     ),
   ].sort();
 
-  if (productIds.length > 0) {
-    await tx.$queryRaw`
-      SELECT "id" FROM "Product"
-      WHERE "id" IN (${Prisma.join(productIds)})
-      ORDER BY "id"
-      FOR UPDATE
-    `;
-  }
+  await lockProductsInIdOrder(tx, productIds);
 
   const stock = await tx.product.findMany({
     where: { id: { in: productIds } },

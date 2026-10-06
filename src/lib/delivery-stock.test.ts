@@ -4,6 +4,7 @@ import {
   deliveryProductName,
   deliveryStockError,
   describeStockMovement,
+  movementCutoff,
   onHandAfterDeliveries,
   planDeliveryDeduction,
   wholeCartons,
@@ -160,14 +161,53 @@ describe("planDeliveryDeduction", () => {
     );
   });
 
-  it("refuses a line that is not linked to a product", () => {
+  it("skips an unlinked line", () => {
     const plan = planDeliveryDeduction(
       [line({ id: "l1", quantity: "2", productId: null, productName: null, description: "Loose cream" })],
       [goat],
     );
-    expect(plan.ok).toBe(false);
-    if (plan.ok) return;
-    expect(plan.error).toContain(`"Loose cream" isn't linked to a product`);
+    expect(plan).toEqual({ ok: true, movements: [], products: [] });
+  });
+
+  it("skips a fractional unlinked line and still deducts the linked one", () => {
+    const plan = planDeliveryDeduction(
+      [
+        line({
+          id: "freight",
+          position: 0,
+          quantity: "2.5",
+          productId: null,
+          productName: null,
+          description: "Freight",
+        }),
+        line({ id: "l1", position: 1, quantity: "3" }),
+      ],
+      [goat],
+    );
+    expect(plan.ok).toBe(true);
+    if (!plan.ok) return;
+    expect(plan.movements).toEqual([
+      {
+        lineItemId: "l1",
+        productId: "p-goat",
+        productName: "ZEN 2.1L — Goat's Milk",
+        quantity: 3,
+        beforeCartons: 10,
+        afterCartons: 7,
+      },
+    ]);
+    expect(plan.products).toEqual([
+      { productId: "p-goat", beforeCartons: 10, afterCartons: 7 },
+    ]);
+  });
+
+  it("refuses a linked line whose quantity is not a whole number of cartons", () => {
+    const plan = planDeliveryDeduction([line({ id: "l1", quantity: "2.5" })], [goat]);
+    expect(plan).toEqual({
+      ok: false,
+      error:
+        "Not enough stock to mark this order out for delivery. ZEN 2.1L — Goat's Milk is ordered as 2.5 cartons, and stock is whole cartons.",
+    });
   });
 });
 
@@ -180,6 +220,27 @@ describe("wholeCartons", () => {
 
   it("rejects a fraction", () => {
     expect(wholeCartons("2.5")).toEqual({ ok: false });
+  });
+});
+
+describe("movementCutoff", () => {
+  it("is the typing time when the count was typed on that Kuala Lumpur day", () => {
+    expect(
+      movementCutoff(
+        new Date("2026-10-05T00:00:00.000Z"),
+        new Date("2026-10-05T02:00:00.000Z"),
+      ).toISOString(),
+    ).toBe("2026-10-05T02:00:00.000Z");
+  });
+
+  it("is the end of the counted day when the row was typed later", () => {
+    // 2 Oct stored as UTC midnight ends at 2 Oct 16:00 UTC, which is 3 Oct 00:00 in KL.
+    expect(
+      movementCutoff(
+        new Date("2026-10-02T00:00:00.000Z"),
+        new Date("2026-10-05T02:00:00.000Z"),
+      ).toISOString(),
+    ).toBe("2026-10-02T16:00:00.000Z");
   });
 });
 

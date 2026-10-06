@@ -252,6 +252,7 @@ beforeEach(() => {
   movements.splice(0, movements.length);
   events.splice(0, events.length);
   chain = Promise.resolve();
+  tx.$queryRaw.mockClear();
   products.set("p-goat", product("p-goat", "ZEN 2.1L — Goat's Milk", 10, "Goat's Milk"));
   products.set("p-lav", product("p-lav", "ZEN 2.1L — Lavender", 8, "Lavender"));
 });
@@ -358,6 +359,31 @@ describe("advance to Delivering deducts stock once", () => {
     );
     expect(pos.get("po-1")?.stage).toBe("IN_WAREHOUSE");
     expect(movements).toHaveLength(0);
+  });
+
+  it("advances past a Not-a-product line and deducts only the product", async () => {
+    seedOrder([
+      poLine("l-fee", null, "2.5", 0, "Freight"),
+      poLine("l1", "p-goat", "3", 1),
+    ]);
+    const result = await advanceStage("po-1");
+    expect(result).toEqual({ success: true, data: { stage: "DELIVERING" } });
+    expect(products.get("p-goat")?.stockCartons).toBe(7);
+    expect(movements).toHaveLength(1);
+    expect(movements[0]).toMatchObject({ lineItemId: "l1", quantity: 3, productId: "p-goat" });
+    expect(pos.get("po-1")?.stage).toBe("DELIVERING");
+  });
+
+  it("locks products in id order", async () => {
+    seedOrder([
+      poLine("l1", "p-lav", "1", 0, "ZEN 2.1L — Lavender"),
+      poLine("l2", "p-goat", "1", 1),
+    ]);
+    await advanceStage("po-1");
+    const productLock = tx.$queryRaw.mock.calls.find((call) => Array.isArray(call[1]));
+    expect(productLock?.[0].join(" ")).toContain('ORDER BY "id"');
+    expect(productLock?.[0].join(" ")).toContain("FOR UPDATE");
+    expect(productLock?.[1]).toEqual(["p-goat", "p-lav"]);
   });
 
   it("does not deduct when a different stage is advanced", async () => {
