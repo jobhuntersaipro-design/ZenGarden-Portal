@@ -134,6 +134,30 @@ describe("purchase order document access", () => {
     expect(presignPut).not.toHaveBeenCalled();
   });
 
+  it("refuses a buyer reading the staff file URL with 403", async () => {
+    signIn(Role.CLIENT);
+    const response = await readUrl(
+      new Request("http://localhost/api/purchase-orders/po-x/documents/doc-1/url"),
+      { params: Promise.resolve({ id: "po-x", documentId: "doc-1" }) },
+    );
+    expect(response.status).toBe(403);
+    expect(await response.json()).toMatchObject({ error: "This is not a portal account." });
+    expect(docFindFirst).not.toHaveBeenCalled();
+    expect(presignGet).not.toHaveBeenCalled();
+  });
+
+  it("refuses a buyer completing an upload with 403 and writes nothing", async () => {
+    signIn(Role.CLIENT);
+    const response = await complete(
+      completeRequest("po-x", purchaseOrderDocumentKey("po-x", UUID, "pdf")),
+      { params: Promise.resolve({ id: "po-x" }) },
+    );
+    expect(response.status).toBe(403);
+    expect(await response.json()).toMatchObject({ error: "This is not a portal account." });
+    expect(docCreate).not.toHaveBeenCalled();
+    expect(headObject).not.toHaveBeenCalled();
+  });
+
   it("refuses a buyer upload with 403 and writes nothing", async () => {
     signIn(Role.CLIENT);
     const response = await presign(presignRequest("po-x"), {

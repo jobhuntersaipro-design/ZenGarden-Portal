@@ -292,8 +292,9 @@ export function PoDocumentsCard({
           <DialogHeader>
             <DialogTitle>Delete this file?</DialogTitle>
             <DialogDescription className="break-words">
-              {deleting?.name} will be removed from this order. The buyer&apos;s account documents
-              are not affected. This cannot be undone.
+              {deleting
+                ? `${deleting.name} will be removed from this order. The buyer's account documents are not affected. This cannot be undone.`
+                : null}
             </DialogDescription>
           </DialogHeader>
           <DialogFooter>

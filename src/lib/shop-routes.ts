@@ -45,6 +45,16 @@ export const shopHref = {
    */
   documentDownload: (documentId: string) =>
     `/api/shop/documents/${documentId}/url?download=1&redirect=1`,
+  /**
+   * A file staff attached to this purchase order. Same idea as
+   * `documentDownload`: a plain link, a 302 to a short-lived URL, and the
+   * route refuses any order that is not this buyer's.
+   */
+  orderDocumentDownload: (orderId: string, documentId: string) =>
+    `/api/shop/orders/${orderId}/documents/${documentId}/url?download=1`,
+  /** JSON `{ url, mimeType }` for the in-page preview. Not a storage key. */
+  orderDocumentUrl: (orderId: string, documentId: string) =>
+    `/api/shop/orders/${orderId}/documents/${documentId}/url`,
 } as const;
 
 /** What Next resolved. Use for every `revalidatePath` in storefront actions. */

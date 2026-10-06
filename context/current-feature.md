@@ -1,3 +1,35 @@
+# Buyers view documents on their own orders
+
+## Status
+
+**Built on `cursor/buyer-order-documents-0508`** (2026-10-06). ClickUp
+[z8v9xnh5g8](https://app.clickup.com/t/z8v9xnh5g8). A signed-in buyer can open
+and download `PurchaseOrderDocument` files on their own purchase orders.
+Read-only. `BuyerDocument` stays staff-only.
+
+- A confirmed order on the shop **is** the purchase order. `loadBuyerOrder`
+  returns `PurchaseOrder.id` when `buyerId` matches, and `WebOrder.purchaseOrderId`
+  is the same link the other way. A shop order that is not confirmed yet has
+  no purchase order, so it has no attached files.
+- The file URL is `/api/shop/orders/[id]/documents/[documentId]/url`. It uses
+  `requireClient()` and then requires `purchaseOrder.buyerId` to be that
+  buyer. It does not use `po.view`. The staff URL is unchanged and still
+  refuses a buyer with 403.
+- No category is internal-only. The list shows name, category and date, plus
+  Open and Download. No upload, rename or delete.
+
+## Verified
+
+See the test run recorded with the pull request. The documents section is on
+the shop order detail page.
+
+## Not verified
+
+A signed-in buyer against Neon, and a real download from R2. This environment
+has no database or bucket credentials. Production was not written to.
+
+## Before that
+
 # Per-order document upload (staff)
 
 ## Status
