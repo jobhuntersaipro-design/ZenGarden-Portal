@@ -1,3 +1,42 @@
+# Buyers view documents on their own orders
+
+## Status
+
+**Built on `cursor/buyer-order-documents-0508`** (2026-10-06). ClickUp
+[z8v9xnh5g8](https://app.clickup.com/t/z8v9xnh5g8). A signed-in buyer can open
+and download `PurchaseOrderDocument` files on their own purchase orders.
+Read-only. `BuyerDocument` stays staff-only.
+
+- A confirmed order on the shop **is** the purchase order. `loadBuyerOrder`
+  returns `PurchaseOrder.id` when `buyerId` matches, and `WebOrder.purchaseOrderId`
+  is the same link the other way. A shop order that is not confirmed yet has
+  no purchase order, so it has no attached files.
+- The file URL is `/api/shop/orders/[id]/documents/[documentId]/url`. It uses
+  `requireClient()` and then requires `purchaseOrder.buyerId` to be that
+  buyer. It does not use `po.view`. The staff URL is unchanged and still
+  refuses a buyer with 403.
+- No category is internal-only. The list shows name, category and date, plus
+  Open and Download. No upload, rename or delete.
+
+## Verified
+
+1852 tests, `tsc --noEmit`, eslint on the touched files, and `npm run build`
+are clean. The documents section rendered in the app shell at 1440 and 390
+with no page overflow: two files (name, category, date, Open, Download) and
+the empty state. The staff delete confirmation reads
+`eng-smoke-g9.pdf will be removed`. Access tests: buyer A on buyer B's file
+404, signed out 401, buyer on their own file 200 and a download 302, buyer
+presign/complete/staff URL 403.
+
+## Not verified
+
+A signed-in buyer against Neon, and a real download from R2. This environment
+has no database or bucket credentials, so the shots are the real documents
+section, not a live order. Production was not written to. The orders list was
+left unchanged.
+
+## Before that
+
 # Per-order document upload (staff)
 
 ## Status

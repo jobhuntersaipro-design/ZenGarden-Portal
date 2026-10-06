@@ -307,10 +307,11 @@ model PurchaseOrder {
  * note — rather than against the buyer account (`BuyerDocument`) or as the
  * original scan (`Document`).
  *
- * Staff upload these. A later ticket lets the buyer read the rows for their
- * own orders, which is why this table is keyed by the order and not folded
- * into `BuyerDocument`: that table is staff-only and no shop query may read
- * it. `category` reuses the free-text folder vocabulary of
+ * Staff upload these. A buyer may read the rows on their own purchase order
+ * (`PurchaseOrder.buyerId`) through the shop route, which is why this table
+ * is keyed by the order and not folded into `BuyerDocument`: that table is
+ * staff-only and no shop query may read it. `category` reuses the free-text
+ * folder vocabulary of
  * `BuyerDocument.folder`. It is a label, not an access flag: no category is
  * internal-only, and every row here is the same visibility class.
  */

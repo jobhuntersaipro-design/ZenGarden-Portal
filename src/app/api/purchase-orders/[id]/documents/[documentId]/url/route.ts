@@ -11,8 +11,10 @@ export type PurchaseOrderDocumentUrlResponse = { url: string; mimeType: string }
  * The link expires (ten minutes, the same as every other read URL) and is
  * only minted after `po.view`. There is no public object URL.
  *
- * Buyers do not use this route. A later ticket can add a shop route scoped
- * to `requireClient().buyerId` rather than widening this one.
+ * Buyers do not use this route. Their copy is
+ * `/api/shop/orders/[id]/documents/[documentId]/url`, which checks the order
+ * belongs to `requireClient().buyerId`. Do not widen this one to clients:
+ * `po.view` is not an ownership check.
  */
 export async function GET(
   request: Request,

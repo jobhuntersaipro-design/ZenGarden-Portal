@@ -4,6 +4,7 @@ import Link from "next/link";
 import { ArrowLeft, Download } from "lucide-react";
 import { CheckoutSteps } from "@/components/shop/checkout/CheckoutSteps";
 import { PurchaseOrderPreview } from "@/components/shop/checkout/PurchaseOrderPreview";
+import { BuyerOrderDocuments } from "@/components/shop/orders/BuyerOrderDocuments";
 import { ReorderButton } from "@/components/shop/orders/ReorderButton";
 import { StageStepper } from "@/components/purchase-orders/StageStepper";
 import { requireClient } from "@/lib/auth-guards";
@@ -15,6 +16,7 @@ import {
   documentAgreesWithOrder,
 } from "@/lib/purchase-order-document";
 import { orderLabel } from "@/lib/order-identity";
+import { listBuyerOrderDocuments } from "@/lib/queries/purchase-order-documents";
 import { loadBuyerOrder } from "@/lib/queries/web-orders";
 import { shopHref } from "@/lib/shop-routes";
 import { withLoadingFloor } from "@/lib/loading-floor";
@@ -50,6 +52,12 @@ async function OrderDetailPage({
   const order = await loadBuyerOrder(buyerId, id);
   // Scoped to the caller's buyer, so another buyer's id is simply not found.
   if (!order) notFound();
+
+  // Confirmed rows on this page *are* purchase orders (`loadBuyerOrder` returns
+  // the purchase-order id). A shop order still waiting on the team has no
+  // purchase order yet, so it has no attached files — an empty list, not an error.
+  const documents =
+    order.kind === "confirmed" ? await listBuyerOrderDocuments(buyerId, order.id) : [];
 
   // The same document the buyer read before confirming, drawn from the order
   // as it now stands. One builder and one `PurchaseOrderPreview` serve both
@@ -243,6 +251,10 @@ async function OrderDetailPage({
         </div>
       </section>
 
+      <BuyerOrderDocuments
+        purchaseOrderId={order.kind === "confirmed" ? order.id : null}
+        documents={documents}
+      />
     </div>
   );
 }
