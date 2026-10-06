@@ -14,15 +14,20 @@ against one purchase order. Account-level `BuyerDocument` is unchanged.
 - Allowed types PDF, JPG, PNG, checked from the leading bytes. Size limit
   25 MB, the account-level limit.
 - Upload and delete need `po.document` (planner, QC, warehouse, super admin).
-  A member can look. A buyer cannot. There is no organisation on the model;
-  the order id is the boundary.
+  A member can look. A buyer cannot. There is no `admin` role. There is no
+  organisation on the model; the order id is the boundary.
+- The upload is a browser PUT to the same presigned URL account documents
+  already use (`presignPut` on the existing bucket). The documented CORS
+  already allows that PUT.
 
 ## Verified
 
 1842 tests, `tsc`, lint and build clean. The documents section rendered in the
 app at 1440 and 390 with no page overflow: empty, a listed file, a type error,
-a contents mismatch, a size error, and the delete confirm. Access tests: buyer
-upload 403, signed-out fetch 401, another order's file 404.
+a contents mismatch, a size error, and the delete confirm. The category select
+is 12rem wide (192px at 1440, 221px at 390) on one row with Upload and a gap;
+it does not collapse to the chevron. Access tests: buyer upload 403, signed-out
+fetch 401, another order's file 404.
 
 ## Not verified
 

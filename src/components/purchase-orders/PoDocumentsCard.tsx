@@ -41,7 +41,7 @@ const ACTION =
   "h-control-md min-w-11 gap-xxs px-sm text-[length:var(--text-caption)] sm:h-control-sm sm:min-w-0";
 
 const SELECT =
-  "h-control-md w-full min-w-0 rounded-sm border border-hairline-strong bg-transparent px-xs text-[length:var(--text-body-md)] text-ink focus-visible:border-focus focus-visible:outline-2 focus-visible:outline-focus sm:h-control-sm sm:w-auto sm:text-[length:var(--text-body-sm)]";
+  "h-control-md w-full min-w-48 rounded-sm border border-hairline-strong bg-transparent px-xs text-[length:var(--text-body-md)] text-ink focus-visible:border-focus focus-visible:outline-2 focus-visible:outline-focus sm:h-control-sm sm:text-[length:var(--text-body-sm)]";
 
 const downloadHref = (purchaseOrderId: string, documentId: string) =>
   `/api/purchase-orders/${purchaseOrderId}/documents/${documentId}/url?download=1`;
@@ -154,8 +154,8 @@ export function PoDocumentsCard({
       </p>
 
       {canManage ? (
-        <div className="mt-sm flex min-w-0 flex-col gap-sm sm:flex-row sm:flex-wrap sm:items-end">
-          <label className="flex min-w-0 flex-col gap-xxs sm:max-w-xs">
+        <div className="mt-sm flex min-w-0 flex-wrap items-end gap-sm">
+          <label className="flex min-w-48 flex-1 flex-col gap-xxs sm:max-w-xs">
             <span className="font-mono text-[length:var(--text-eyebrow)] text-ink-tertiary">
               Category
             </span>
@@ -174,7 +174,7 @@ export function PoDocumentsCard({
           </label>
           <Button
             type="button"
-            className={ACTION}
+            className={`${ACTION} shrink-0`}
             disabled={uploading}
             pending={uploading}
             onClick={() => fileInput.current?.click()}
