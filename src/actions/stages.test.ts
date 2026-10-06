@@ -5,9 +5,16 @@ const poFindUnique = vi.fn();
 const poUpdateMany = vi.fn();
 const eventCreate = vi.fn();
 
+const txFindUnique = vi.fn();
 const tx = {
-  purchaseOrder: { updateMany: poUpdateMany },
+  $queryRaw: vi.fn().mockResolvedValue([]),
+  purchaseOrder: { updateMany: poUpdateMany, findUnique: txFindUnique },
   poStageEvent: { create: eventCreate },
+  product: {
+    findMany: vi.fn().mockResolvedValue([]),
+    updateMany: vi.fn().mockResolvedValue({ count: 1 }),
+  },
+  stockMovement: { createMany: vi.fn() },
 };
 
 vi.mock("@/lib/prisma", () => ({
@@ -108,6 +115,19 @@ beforeEach(() => {
   poFindUnique.mockResolvedValue({ stage: "IN_PRODUCTION" });
   poUpdateMany.mockResolvedValue({ count: 1 });
   eventCreate.mockResolvedValue({});
+  // Already deducted, so the IN_WAREHOUSE case in the permission table does
+  // not try to take stock. The deduction itself is covered in
+  // delivery-stock.test.ts.
+  txFindUnique.mockImplementation(async () => {
+    const outer = (await poFindUnique()) as { stage: string };
+    return {
+      id: "po-1",
+      poNumber: "PO-1",
+      stage: outer.stage,
+      stockDeductedAt: new Date("2026-01-01T00:00:00.000Z"),
+      lineItems: [],
+    };
+  });
 });
 
 describe("advanceStage", () => {

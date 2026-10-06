@@ -4,6 +4,7 @@ const stockFindMany = vi.fn();
 const stockFindFirst = vi.fn();
 const stockCreate = vi.fn();
 const productUpdate = vi.fn();
+const movementAggregate = vi.fn();
 const requirePermission = vi.fn();
 
 vi.mock("@/lib/prisma", () => ({
@@ -11,6 +12,7 @@ vi.mock("@/lib/prisma", () => ({
     $transaction: async (fn: (tx: unknown) => unknown) =>
       fn({
         stockCount: { findMany: stockFindMany, findFirst: stockFindFirst, create: stockCreate },
+        stockMovement: { aggregate: movementAggregate },
         product: { update: productUpdate },
       }),
   },
@@ -27,7 +29,11 @@ beforeEach(() => {
   vi.resetAllMocks();
   requirePermission.mockResolvedValue({ id: "usr1" });
   stockFindMany.mockResolvedValue([]);
-  stockFindFirst.mockResolvedValue({ cartons: 12 });
+  stockFindFirst.mockResolvedValue({
+    cartons: 12,
+    createdAt: new Date("2026-09-12T00:00:00.000Z"),
+  });
+  movementAggregate.mockResolvedValue({ _sum: { quantity: null } });
 });
 
 const input = {
@@ -69,12 +75,25 @@ describe("saveStockCounts", () => {
    * correcting a past day must leave the current figure alone.
    */
   it("rewrites Product.stockCartons from the ledger, not from the entry", async () => {
-    stockFindFirst.mockResolvedValue({ cartons: 80 });
+    stockFindFirst.mockResolvedValue({
+      cartons: 80,
+      createdAt: new Date("2026-09-01T00:00:00.000Z"),
+    });
     await saveStockCounts(input);
     expect(productUpdate.mock.calls[0][0]).toEqual({
       where: { id: "p1" },
       data: { stockCartons: 80 },
     });
+  });
+
+  it("keeps cartons already sent out for delivery after that count", async () => {
+    stockFindFirst.mockResolvedValue({
+      cartons: 80,
+      createdAt: new Date("2026-09-01T00:00:00.000Z"),
+    });
+    movementAggregate.mockResolvedValue({ _sum: { quantity: 3 } });
+    await saveStockCounts(input);
+    expect(productUpdate.mock.calls[0][0].data).toEqual({ stockCartons: 77 });
   });
 
   it("refuses a negative count, and writes nothing", async () => {

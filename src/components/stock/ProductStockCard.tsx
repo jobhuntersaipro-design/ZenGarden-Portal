@@ -1,8 +1,10 @@
 import Link from "next/link";
 import { StockActivityFeed } from "@/components/stock/StockActivityFeed";
+import { StockMovementFeed } from "@/components/stock/StockMovementFeed";
 import { StockTrend } from "@/components/stock/StockTrend";
 import { formatDate } from "@/lib/dates";
 import { latestCount, type StockCountRow } from "@/lib/stock";
+import type { StockMovementRow } from "@/lib/queries/stock";
 import { plural } from "@/lib/plural";
 
 const label = "font-mono text-[length:var(--text-eyebrow)] text-ink-tertiary";
@@ -15,12 +17,21 @@ const caption = "text-[length:var(--text-caption)] text-ink-tertiary";
  */
 export function ProductStockCard({
   productId,
+  onHand,
   rows,
+  movements = [],
 }: {
   productId: string;
+  /** `Product.stockCartons`: the count, minus cartons sent out for delivery. */
+  onHand: number | null;
   rows: StockCountRow[];
+  movements?: StockMovementRow[];
 }) {
   const latest = latestCount(rows);
+  // The cache is the on-hand figure once a delivery has moved it. A product
+  // whose cache was never written still reads as its last count.
+  const figure = onHand ?? latest?.cartons ?? null;
+  const sentOut = latest !== null && onHand !== null && onHand !== latest.cartons;
 
   return (
     <section className="rounded-lg border border-hairline bg-canvas p-lg">
@@ -28,16 +39,16 @@ export function ProductStockCard({
         <div>
           <p className={label}>Stock</p>
           <p className="font-display text-[length:var(--text-heading-md)] font-[650] text-ink">
-            {latest === null
-              ? "Not counted yet"
-              : plural(latest.cartons, "carton")}
+            {figure === null ? "Not counted yet" : plural(figure, "carton")}
           </p>
           <p className={caption}>
             {latest === null
               ? "Nobody has counted this product."
-              : `Counted ${formatDate(latest.countedOn)}${
-                  latest.countedByName ? ` by ${latest.countedByName}` : ""
-                }`}
+              : sentOut
+                ? `On hand, after deliveries. Last counted ${formatDate(latest.countedOn)} at ${plural(latest.cartons, "carton")}.`
+                : `Counted ${formatDate(latest.countedOn)}${
+                    latest.countedByName ? ` by ${latest.countedByName}` : ""
+                  }`}
           </p>
         </div>
         <Link
@@ -58,6 +69,12 @@ export function ProductStockCard({
           rows={rows}
           emptyText="No counts yet. Count it from the Stock page."
         />
+        {movements.length > 0 ? (
+          <div className="mt-sm">
+            <p className={label}>Out for delivery</p>
+            <StockMovementFeed rows={movements} />
+          </div>
+        ) : null}
       </div>
     </section>
   );

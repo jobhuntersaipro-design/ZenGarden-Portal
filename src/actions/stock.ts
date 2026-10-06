@@ -3,6 +3,7 @@
 import { revalidatePath } from "next/cache";
 import { UnauthorizedError } from "@/lib/auth-guards";
 import { requirePermission } from "@/lib/permissions/require";
+import { onHandAfterDeliveries } from "@/lib/delivery-stock";
 import { prisma } from "@/lib/prisma";
 import {
   saveStockCountsSchema,
@@ -80,16 +81,32 @@ export async function saveStockCounts(
 
       // Rewrite the cache on `Product`, per product, from the ledger itself
       // rather than from what was just typed: correcting a past day must not
-      // move the current figure (spec §6, criterion 4).
+      // move the current figure (spec §6, criterion 4). Cartons already sent
+      // out for delivery after that count stay deducted, or the rewrite would
+      // put them back on the shelf.
       for (const entry of entries) {
         const latest = await tx.stockCount.findFirst({
           where: { productId: entry.productId, supersededBy: { is: null } },
           orderBy: [{ countedOn: "desc" }, { createdAt: "desc" }],
-          select: { cartons: true },
+          select: { cartons: true, createdAt: true },
         });
+        const delivered = latest
+          ? await tx.stockMovement.aggregate({
+              where: {
+                productId: entry.productId,
+                createdAt: { gt: latest.createdAt },
+              },
+              _sum: { quantity: true },
+            })
+          : null;
         await tx.product.update({
           where: { id: entry.productId },
-          data: { stockCartons: latest?.cartons ?? null },
+          data: {
+            stockCartons:
+              latest === null
+                ? null
+                : onHandAfterDeliveries(latest.cartons, delivered?._sum.quantity ?? 0),
+          },
         });
       }
 
