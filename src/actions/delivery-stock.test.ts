@@ -46,6 +46,8 @@ type Movement = {
 
 const pos = new Map<string, Po>();
 const products = new Map<string, ProductRow>();
+/** Products that have at least one StockCount row. A legacy figure is not in here. */
+const countedIds = new Set<string>();
 const movements: Movement[] = [];
 const events: { fromStage: string; toStage: string; changedById: string }[] = [];
 
@@ -110,6 +112,13 @@ const tx = {
         if (args.data.stage) po.stage = args.data.stage;
         return { count: 1 };
       },
+    ),
+  },
+  stockCount: {
+    findMany: vi.fn(async (args: { where: { productId: { in: string[] } } }) =>
+      args.where.productId.in
+        .filter((id) => countedIds.has(id))
+        .map((productId) => ({ productId })),
     ),
   },
   product: {
@@ -253,6 +262,9 @@ beforeEach(() => {
   events.splice(0, events.length);
   chain = Promise.resolve();
   tx.$queryRaw.mockClear();
+  countedIds.clear();
+  countedIds.add("p-goat");
+  countedIds.add("p-lav");
   products.set("p-goat", product("p-goat", "ZEN 2.1L — Goat's Milk", 10, "Goat's Milk"));
   products.set("p-lav", product("p-lav", "ZEN 2.1L — Lavender", 8, "Lavender"));
 });
@@ -372,6 +384,23 @@ describe("advance to Delivering deducts stock once", () => {
     expect(movements).toHaveLength(1);
     expect(movements[0]).toMatchObject({ lineItemId: "l1", quantity: 3, productId: "p-goat" });
     expect(pos.get("po-1")?.stage).toBe("DELIVERING");
+  });
+
+  it("refuses a legacy stock figure that has no stocktake", async () => {
+    countedIds.delete("p-goat");
+    products.get("p-goat")!.stockCartons = 40;
+    seedOrder([poLine("l1", "p-goat", "3")]);
+    const result = await advanceStage("po-1");
+    expect(result).toEqual({
+      success: false,
+      error:
+        "Not enough stock to mark this order out for delivery. ZEN 2.1L — Goat's Milk needs 3 cartons, none counted.",
+    });
+    expect(pos.get("po-1")?.stage).toBe("IN_WAREHOUSE");
+    expect(pos.get("po-1")?.stockDeductedAt).toBeNull();
+    expect(products.get("p-goat")?.stockCartons).toBe(40);
+    expect(movements).toHaveLength(0);
+    expect(events).toHaveLength(0);
   });
 
   it("locks products in id order", async () => {

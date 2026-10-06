@@ -58,4 +58,13 @@ describe("ProductStockCard", () => {
     expect(html).toContain("On hand, after deliveries");
     expect(html).toContain("Out for Delivery");
   });
+
+  it("shows a legacy figure with no stocktake as not counted", () => {
+    const html = renderToStaticMarkup(
+      <ProductStockCard productId="p-goat" onHand={40} rows={[]} />,
+    );
+    expect(html).toContain("Not counted yet");
+    expect(html).toContain("Nobody has counted this product.");
+    expect(html).not.toContain("40 cartons");
+  });
 });

@@ -92,10 +92,22 @@ export async function applyOutForDeliveryDeduction(
 
   await lockProductsInIdOrder(tx, productIds);
 
-  const stock = await tx.product.findMany({
+  const rows = await tx.product.findMany({
     where: { id: { in: productIds } },
     select: { id: true, name: true, variant: true, stockCartons: true },
   });
+  // A number on Product.stockCartons with no stocktake row is a legacy
+  // figure. It is uncounted, the same as a blank.
+  const countedRows =
+    productIds.length === 0
+      ? []
+      : await tx.stockCount.findMany({
+          where: { productId: { in: productIds } },
+          distinct: ["productId"],
+          select: { productId: true },
+        });
+  const counted = new Set(countedRows.map((row) => row.productId));
+  const stock = rows.map((row) => ({ ...row, counted: counted.has(row.id) }));
 
   const plan = planDeliveryDeduction(toLines(order), stock);
   if (!plan.ok) return { status: "short", error: plan.error };

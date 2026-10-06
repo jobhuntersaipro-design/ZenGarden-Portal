@@ -3,7 +3,7 @@ import { StockActivityFeed } from "@/components/stock/StockActivityFeed";
 import { StockMovementFeed } from "@/components/stock/StockMovementFeed";
 import { StockTrend } from "@/components/stock/StockTrend";
 import { formatDate } from "@/lib/dates";
-import { latestCount, type StockCountRow } from "@/lib/stock";
+import { displayedOnHand, latestCount, type StockCountRow } from "@/lib/stock";
 import type { StockMovementRow } from "@/lib/queries/stock";
 import { plural } from "@/lib/plural";
 
@@ -22,15 +22,13 @@ export function ProductStockCard({
   movements = [],
 }: {
   productId: string;
-  /** `Product.stockCartons`: the count, minus cartons sent out for delivery. */
+  /** `Product.stockCartons`: the count, minus cartons sent out for delivery. Ignored when `rows` is empty. */
   onHand: number | null;
   rows: StockCountRow[];
   movements?: StockMovementRow[];
 }) {
   const latest = latestCount(rows);
-  // The cache is the on-hand figure once a delivery has moved it. A product
-  // whose cache was never written still reads as its last count.
-  const figure = onHand ?? latest?.cartons ?? null;
+  const figure = displayedOnHand(latest, onHand);
   const sentOut = latest !== null && onHand !== null && onHand !== latest.cartons;
 
   return (

@@ -150,6 +150,28 @@ describe("planDeliveryDeduction", () => {
     expect(plan.error).toContain("ZEN 2.1L — Lavender needs 4 cartons, 2 available");
   });
 
+  it("treats a legacy stock figure with no stocktake as uncounted", () => {
+    const plan = planDeliveryDeduction([line({ id: "l1", quantity: "3" })], [
+      { ...goat, stockCartons: 40, counted: false },
+    ]);
+    expect(plan).toEqual({
+      ok: false,
+      error:
+        "Not enough stock to mark this order out for delivery. ZEN 2.1L — Goat's Milk needs 3 cartons, none counted.",
+    });
+  });
+
+  it("deducts a counted product from its on-hand cache", () => {
+    const plan = planDeliveryDeduction([line({ id: "l1", quantity: "3" })], [
+      { ...goat, stockCartons: 7, counted: true },
+    ]);
+    expect(plan.ok).toBe(true);
+    if (!plan.ok) return;
+    expect(plan.products).toEqual([
+      { productId: "p-goat", beforeCartons: 7, afterCartons: 4 },
+    ]);
+  });
+
   it("treats an uncounted product as unavailable, not as zero", () => {
     const plan = planDeliveryDeduction([line({ id: "l1", quantity: "3" })], [
       { ...goat, stockCartons: null },

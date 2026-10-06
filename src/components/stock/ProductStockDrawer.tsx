@@ -25,7 +25,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { useAwaitableRefresh } from "@/hooks/useAwaitableRefresh";
 import { useUrlNavigation } from "@/hooks/useUrlNavigation";
 import { formatDate } from "@/lib/dates";
-import { latestCount, type StockCountRow } from "@/lib/stock";
+import { displayedOnHand, latestCount, type StockCountRow } from "@/lib/stock";
 import type { StockMovementRow, StockSheetRow } from "@/lib/queries/stock";
 import { plural } from "@/lib/plural";
 
@@ -99,7 +99,7 @@ export function ProductStockDrawer({
   const valid = value !== "" && Number.isInteger(Number(value)) && Number(value) >= 0;
   const latest = latestCount(counts);
   const cached = shown?.stockCartons ?? null;
-  const onHand = cached ?? latest?.cartons ?? null;
+  const onHand = displayedOnHand(latest, cached);
   const sentOut = latest !== null && cached !== null && cached !== latest.cartons;
 
   const save = async () => {

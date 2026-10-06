@@ -24,7 +24,19 @@ export type StockOnHand = {
   name: string;
   variant: string | null;
   stockCartons: number | null;
+  /**
+   * False when the product has no `StockCount` rows. A `stockCartons` value
+   * typed before the stocktake ledger is not a count. Omitted means the
+   * figure is a count.
+   */
+  counted?: boolean;
 };
+
+/** A legacy figure with no stocktake is uncounted, not zero and not on hand. */
+function availableCartons(product: StockOnHand): number | null {
+  if (product.counted === false) return null;
+  return product.stockCartons;
+}
 
 export type PlannedMovement = {
   lineItemId: string;
@@ -140,7 +152,8 @@ export function planDeliveryDeduction(
   }
 
   for (const [productId, group] of wanted) {
-    const available = onHand.get(productId)?.stockCartons ?? null;
+    const product = onHand.get(productId);
+    const available = product ? availableCartons(product) : null;
     if (available === null) {
       problems.push({
         position: group.lines[0] ? ordered.find((line) => line.id === group.lines[0].id)?.position ?? 0 : 0,
@@ -167,7 +180,7 @@ export function planDeliveryDeduction(
     const parsed = wholeCartons(line.quantity);
     if (!parsed.ok || parsed.cartons === 0 || !line.productId) continue;
     const product = onHand.get(line.productId)!;
-    const before = running.get(line.productId) ?? product.stockCartons!;
+    const before = running.get(line.productId) ?? availableCartons(product)!;
     const after = before - parsed.cartons;
     running.set(line.productId, after);
     movements.push({
@@ -182,7 +195,7 @@ export function planDeliveryDeduction(
 
   const products: PlannedProduct[] = [...running.entries()].map(([productId, afterCartons]) => ({
     productId,
-    beforeCartons: onHand.get(productId)!.stockCartons!,
+    beforeCartons: availableCartons(onHand.get(productId)!)!,
     afterCartons,
   }));
 

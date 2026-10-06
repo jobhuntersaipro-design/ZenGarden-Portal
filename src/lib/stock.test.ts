@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import {
   currentCounts,
   describeStockCount,
+  displayedOnHand,
   latestCount,
   stockActivity,
   stockTrend,
@@ -41,6 +42,21 @@ describe("a correction never destroys what it corrects", () => {
     expect(describeStockCount(feed[0])).toBe("corrected 40 to 46 cartons");
     expect(feed[1].superseded).toBe(true);
     expect(describeStockCount(feed[1])).toBe("counted 40 cartons");
+  });
+});
+
+describe("displayedOnHand — card and drawer", () => {
+  const counted = { cartons: 10 };
+
+  it("shows a legacy figure with no stocktake as uncounted", () => {
+    expect(displayedOnHand(null, 40)).toBeNull();
+    expect(displayedOnHand(null, 0)).toBeNull();
+  });
+
+  it("shows the cache once a stocktake exists", () => {
+    expect(displayedOnHand(counted, 7)).toBe(7);
+    expect(displayedOnHand(counted, 10)).toBe(10);
+    expect(displayedOnHand(counted, null)).toBe(10);
   });
 });
 
