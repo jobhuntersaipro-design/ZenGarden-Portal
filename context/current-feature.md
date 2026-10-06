@@ -2,7 +2,8 @@
 
 ## Status
 
-**Built on `claude/vibrant-davinci-o2ncv7`** (2026-10-06). Asked for as
+**Built on `claude/vibrant-davinci-o2ncv7`, pushed to `main` and live** (2026-10-06,
+`dpl_7F4QifAeK8aHkeMsPfNz5FNArhK6`). Asked for as
 "remove category here, just allow users from ops team upload the files they
 want", against a screenshot of the order's Documents card.
 
