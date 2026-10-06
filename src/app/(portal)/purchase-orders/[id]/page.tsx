@@ -8,6 +8,7 @@ import { PageHeader } from "@/components/portal/PageHeader";
 import { CopyButton } from "@/components/arc/copy-button/copy-button";
 import { AvatarGroup } from "@/components/arc/avatar-group/avatar-group";
 import { StageBadge } from "@/components/portal/StatusBadge";
+import { PoDocumentsCard } from "@/components/purchase-orders/PoDocumentsCard";
 import { LifecycleFeed } from "@/components/purchase-orders/LifecycleFeed";
 import { DownloadOriginal } from "@/components/purchase-orders/DownloadOriginal";
 import { DeletePoDialog } from "@/components/purchase-orders/DeletePoDialog";
@@ -27,6 +28,8 @@ import {
 } from "@/lib/po-stages";
 import { PO_STAGES } from "@/lib/po-stages";
 import { ORDER_IDENTITY_SELECT, orderIdentity, orderLabel } from "@/lib/order-identity";
+import { listDocumentFolders } from "@/lib/queries/buyer-documents";
+import { listPurchaseOrderDocuments } from "@/lib/queries/purchase-order-documents";
 import { prisma } from "@/lib/prisma";
 import { PersonChip } from "@/components/ui/person";
 import { withLoadingFloor } from "@/lib/loading-floor";
@@ -116,6 +119,7 @@ async function PurchaseOrderPage({
   const canAdvance = advanceKey ? await can(advanceKey) : false;
   const canDeleteOrder = await can("po.delete");
   const canEditOrder = await can("po.edit");
+  const canAttachDocument = await can("po.document");
   let advanceBlockedReason: string | null = null;
   if (advanceKey && !canAdvance) {
     const owners = (await rolesWithPermission(advanceKey)).filter(
@@ -125,6 +129,11 @@ async function PurchaseOrderPage({
       ? `${owners.map(roleLabel).join(" or ")} advances this stage.`
       : "Only a super admin advances this stage.";
   }
+  const [orderDocuments, documentCategories] = await Promise.all([
+    listPurchaseOrderDocuments(po.id),
+    canAttachDocument ? listDocumentFolders() : Promise.resolve([]),
+  ]);
+
   const daysFromOrder = Math.max(
     0,
     Math.round(
@@ -574,6 +583,13 @@ async function PurchaseOrderPage({
           </section>
         </div>
       </div>
+
+      <PoDocumentsCard
+        purchaseOrderId={po.id}
+        documents={orderDocuments}
+        categories={documentCategories}
+        canManage={canAttachDocument}
+      />
 
     </>
   );

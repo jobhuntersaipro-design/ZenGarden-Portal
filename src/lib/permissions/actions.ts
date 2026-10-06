@@ -42,6 +42,12 @@ const RAW_ACTIONS = [
     group: "Purchase orders",
   },
   {
+    key: "po.document",
+    label: "Attach documents to an order",
+    description: "Upload and delete files kept against one purchase order.",
+    group: "Purchase orders",
+  },
+  {
     key: "po.review",
     label: "Review an extracted order",
     description: "Correct value on the review screen and save a draft.",

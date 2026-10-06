@@ -130,6 +130,22 @@ export async function getObjectBytes(key: string): Promise<Uint8Array> {
   return new Uint8Array(await result.Body.transformToByteArray());
 }
 
+/**
+ * The first `byteCount` bytes, for a signature check. A 25 MB file does not
+ * need to come down whole to tell a PDF from a renamed executable.
+ */
+export async function getObjectPrefix(key: string, byteCount: number): Promise<Uint8Array> {
+  const result = await r2.send(
+    new GetObjectCommand({
+      Bucket: env.R2_BUCKET,
+      Key: key,
+      Range: `bytes=0-${Math.max(0, byteCount - 1)}`,
+    }),
+  );
+  if (!result.Body) throw new Error(`Empty object at ${key}`);
+  return new Uint8Array(await result.Body.transformToByteArray());
+}
+
 export function deleteObject(key: string) {
   return r2.send(new DeleteObjectCommand({ Bucket: env.R2_BUCKET, Key: key }));
 }

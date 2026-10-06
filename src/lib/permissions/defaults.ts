@@ -26,12 +26,14 @@ export const DEFAULT_GRANTS: Readonly<
   [Role.PRODUCTION_PLANNER]: [
     ...VIEW_EVERYWHERE,
     "po.upload",
+    "po.document",
     "po.advance.order_placed",
   ],
-  [Role.QC]: [...VIEW_EVERYWHERE, "po.upload", "po.advance.in_production"],
+  [Role.QC]: [...VIEW_EVERYWHERE, "po.upload", "po.document", "po.advance.in_production"],
   [Role.WAREHOUSE]: [
     ...VIEW_EVERYWHERE,
     "po.upload",
+    "po.document",
     "po.advance.qc_passed",
     "po.advance.in_warehouse",
     "po.advance.delivering",

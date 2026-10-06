@@ -56,6 +56,7 @@ model User {
   auditSubjects      AuditEvent[]         @relation("auditSubject")
   permissionEdits    PermissionGrant[]    @relation("permissionEdits")
   buyerDocuments     BuyerDocument[]      @relation("buyerDocumentsUploaded")
+  purchaseOrderDocuments PurchaseOrderDocument[] @relation("poDocumentsUploaded")
   buyer              Buyer?               @relation(fields: [buyerId], references: [id])
 
   @@index([buyerId])
@@ -291,6 +292,7 @@ model PurchaseOrder {
   stageEvents    PoStageEvent[]
   lineItems      LineItem[]
   webOrder       WebOrder?
+  orderDocuments PurchaseOrderDocument[]
   createdAt      DateTime       @default(now())
   updatedAt      DateTime       @updatedAt
 
@@ -298,6 +300,38 @@ model PurchaseOrder {
   @@index([poDate])
   @@index([stage])
   @@index([buyerId, poDate])
+}
+
+/**
+ * A file kept against one purchase order — a buyer spec, artwork, a packing
+ * note — rather than against the buyer account (`BuyerDocument`) or as the
+ * original scan (`Document`).
+ *
+ * Staff upload these. A later ticket lets the buyer read the rows for their
+ * own orders, which is why this table is keyed by the order and not folded
+ * into `BuyerDocument`: that table is staff-only and no shop query may read
+ * it. `category` reuses the free-text folder vocabulary of
+ * `BuyerDocument.folder`. It is a label, not an access flag: no category is
+ * internal-only, and every row here is the same visibility class.
+ */
+model PurchaseOrderDocument {
+  id              String        @id @default(cuid())
+  purchaseOrderId String
+  purchaseOrder   PurchaseOrder @relation(fields: [purchaseOrderId], references: [id], onDelete: Cascade)
+  /// Same free-text domain as `BuyerDocument.folder`. Not a visibility boundary.
+  category        String
+  r2Key           String        @unique // orders/{purchaseOrderId}/documents/{uuid}.{ext}
+  originalName    String
+  mimeType        String
+  sizeBytes       Int
+  uploadedById    String
+  uploadedBy      User          @relation("poDocumentsUploaded", fields: [uploadedById], references: [id])
+  /// The uploader's name when the file was saved, so a later read still has
+  /// one if the account is renamed. The live name is `uploadedBy.name`.
+  uploadedByName  String
+  createdAt       DateTime      @default(now())
+
+  @@index([purchaseOrderId, createdAt])
 }
 
 // Ordered. Add future stages by appending here AND in src/lib/po-stages.ts.

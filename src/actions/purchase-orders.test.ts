@@ -10,6 +10,7 @@ const poDelete = vi.fn();
 const extractionUpdateMany = vi.fn();
 
 const webOrderUpdateMany = vi.fn();
+const attachmentFindMany = vi.fn();
 
 const tx = {
   purchaseOrder: { delete: poDelete },
@@ -27,6 +28,7 @@ vi.mock("@/lib/prisma", () => ({
       deleteMany: extractionDeleteMany,
     },
     document: { delete: documentDelete },
+    purchaseOrderDocument: { findMany: attachmentFindMany },
     $transaction: (arg: unknown) =>
       typeof arg === "function"
         ? (arg as (client: typeof tx) => unknown)(tx)
@@ -86,6 +88,7 @@ beforeEach(() => {
   });
   poDelete.mockResolvedValue({});
   extractionUpdateMany.mockResolvedValue({ count: 1 });
+  attachmentFindMany.mockResolvedValue([]);
 });
 
 describe("deletePurchaseOrder", () => {
@@ -125,6 +128,16 @@ describe("deletePurchaseOrder", () => {
       where: { documentId: "doc1", status: "CONFIRMED" },
       data: { status: "SUCCEEDED" },
     });
+  });
+
+  it("removes files kept on the order and leaves the original scan", async () => {
+    attachmentFindMany.mockResolvedValue([
+      { r2Key: "orders/po1/documents/spec.pdf" },
+    ]);
+    const result = await deletePurchaseOrder({ id: "po1", typedReference: "PO-2026-0063" });
+    expect(result.success).toBe(true);
+    expect(deleteObject).toHaveBeenCalledExactlyOnceWith("orders/po1/documents/spec.pdf");
+    expect(documentDelete).not.toHaveBeenCalled();
   });
 
   it("fails cleanly when the order is already gone", async () => {
