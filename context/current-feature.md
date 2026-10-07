@@ -1,3 +1,40 @@
+# Order documents accept ZIP
+
+## Status
+
+**Built on `claude/vibrant-noether-w5e1h4`, merged to `main`** (2026-10-07).
+Asked for as "for the uploaded file can also include .zip files?", against the
+order Documents card refusing a file with "use PDF, JPG or PNG".
+
+- The order's Documents card takes `.zip` beside PDF, JPG and PNG, same 25 MB
+  limit. Windows' `application/x-zip-compressed` is read as `application/zip`.
+- The bytes are still checked: a zip must start with a local file header
+  (`PK\x03\x04`). An empty archive is refused.
+- A zip is stored as one opaque file. Nothing opens, previews, extracts or
+  scans it, so its row has **Download** and no **Open**, on the staff card and
+  on the buyer's order page alike.
+- **What's inside is not checked.** Whatever is in the zip — the PO, unrelated
+  papers, internal files — is visible to the buyer, since order documents are
+  shared with them (2026-10-06). It does not touch extraction: only the PO
+  intake upload is read by Claude, and it still takes PDF/JPG/PNG only.
+
+## Verified
+
+The real card on a temporary page (removed), Chromium at 1440 and 390, the
+upload routes stubbed. Before: choosing a zip printed "That file type isn't
+supported — use PDF, JPG or PNG" and sent nothing. After: presign received
+`application/zip`, the PUT carried it, complete was called; the zip row reads
+Download/Delete (staff) and Download (buyer); an empty zip is refused; no
+overflow, no control under 44px at 390. 1848 tests pass (the shop URL access
+file fails to import without a full env, as on HEAD), `tsc`, eslint on the
+touched files and `npm run build` clean.
+
+## Not verified
+
+A real upload to R2 and download back: no credentials here.
+
+## Before that
+
 # Order documents have no category
 
 ## Status

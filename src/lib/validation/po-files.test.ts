@@ -16,6 +16,7 @@ const UUID = "0f8fad5b-d9cb-469f-a165-70867728950e";
 const PDF = new Uint8Array([0x25, 0x50, 0x44, 0x46, 0x2d, 0x31, 0x2e, 0x34]);
 const PNG = new Uint8Array([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a]);
 const JPEG = new Uint8Array([0xff, 0xd8, 0xff, 0xe0]);
+const ZIP = new Uint8Array([0x50, 0x4b, 0x03, 0x04, 0x14, 0x00]);
 
 describe("resolvePoDocumentType", () => {
   it("accepts PDF, JPG and PNG from the browser", () => {
@@ -34,6 +35,23 @@ describe("resolvePoDocumentType", () => {
     expect(resolvePoDocumentType("prices.xlsx", "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet")).toBeNull();
     expect(resolvePoDocumentType("run.exe", "application/pdf")).toBe("application/pdf");
     expect(resolvePoDocumentType("page.html", "text/html")).toBeNull();
+  });
+});
+
+describe("zip", () => {
+  it("takes every name a browser gives a zip", () => {
+    expect(resolvePoDocumentType("docs.zip", "application/zip")).toBe("application/zip");
+    expect(resolvePoDocumentType("docs.zip", "application/x-zip-compressed")).toBe("application/zip");
+    expect(resolvePoDocumentType("docs.ZIP", "")).toBe("application/zip");
+  });
+
+  it("checks the bytes are an archive with something in it", () => {
+    expect(poDocumentContentsReason("application/zip", ZIP)).toBeNull();
+    expect(poDocumentContentsReason("application/zip", PDF)).toBe(PO_DOCUMENT_CONTENTS);
+    // An empty archive's end-of-directory record.
+    expect(poDocumentContentsReason("application/zip", new Uint8Array([0x50, 0x4b, 0x05, 0x06]))).toBe(
+      PO_DOCUMENT_CONTENTS,
+    );
   });
 });
 
@@ -59,7 +77,7 @@ describe("poDocumentRejectionReason", () => {
   });
 
   it("names the type and the size", () => {
-    expect(poDocumentRejectionReason({ name: "a.zip", type: "application/zip", size: 10 })).toBe(
+    expect(poDocumentRejectionReason({ name: "a.exe", type: "application/x-msdownload", size: 10 })).toBe(
       PO_DOCUMENT_WRONG_TYPE,
     );
     expect(

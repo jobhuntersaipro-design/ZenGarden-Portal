@@ -5,20 +5,22 @@ import { MAX_BUYER_DOCUMENT_BYTES, MAX_DOCUMENT_NAME_LENGTH } from "@/lib/valida
 /**
  * Files staff keep on one purchase order. The size limit is the account-level
  * document limit, so the two uploads cannot disagree about "too big". The
- * types are the ones whose bytes identify them on their own: PDF, JPG, PNG.
- * Account-level documents also accept Word, Excel and WebP; those are not
- * accepted here, because a zip or an OLE blob does not say which of them it is.
+ * types are the ones whose bytes identify them on their own: PDF, JPG, PNG,
+ * and ZIP. Word and Excel are not accepted: a .docx is a zip and an .xls an
+ * OLE blob, so the bytes cannot tell them apart. A zip is stored as one
+ * opaque file: nothing opens it, previews it or reads what is inside.
  */
 
 export const PO_DOCUMENT_TYPES = {
   "application/pdf": { ext: "pdf" },
   "image/png": { ext: "png" },
   "image/jpeg": { ext: "jpg" },
+  "application/zip": { ext: "zip" },
 } as const;
 
 export type PoDocumentMimeType = keyof typeof PO_DOCUMENT_TYPES;
 
-export const PO_DOCUMENT_ACCEPT = ".pdf,.png,.jpg,.jpeg";
+export const PO_DOCUMENT_ACCEPT = ".pdf,.png,.jpg,.jpeg,.zip";
 
 /** How many leading bytes `sniffPoDocumentMime` needs. PNG's signature is 8. */
 export const PO_DOCUMENT_SIGNATURE_BYTES = 16;
@@ -39,7 +41,11 @@ const BY_EXTENSION: Record<string, PoDocumentMimeType> = {
   png: "image/png",
   jpg: "image/jpeg",
   jpeg: "image/jpeg",
+  zip: "application/zip",
 };
+
+/** Windows names a zip `application/x-zip-compressed`; some browsers `x-zip`. */
+const ZIP_ALIASES = new Set(["application/x-zip-compressed", "application/x-zip"]);
 
 export const isPoDocumentMimeType = (value: string): value is PoDocumentMimeType =>
   Object.prototype.hasOwnProperty.call(PO_DOCUMENT_TYPES, value);
@@ -49,6 +55,7 @@ export const isPoDocumentMimeType = (value: string): value is PoDocumentMimeType
  * browser said nothing. What the browser *did* say still has to be on the list.
  */
 export function resolvePoDocumentType(name: string, type: string): PoDocumentMimeType | null {
+  if (ZIP_ALIASES.has(type)) return "application/zip";
   if (type && type !== "application/octet-stream") {
     return isPoDocumentMimeType(type) ? type : null;
   }
@@ -69,11 +76,13 @@ export function sniffPoDocumentMime(bytes: Uint8Array): PoDocumentMimeType | nul
   if (startsWith(bytes, [0x25, 0x50, 0x44, 0x46, 0x2d])) return "application/pdf";
   if (startsWith(bytes, [0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a])) return "image/png";
   if (startsWith(bytes, [0xff, 0xd8, 0xff])) return "image/jpeg";
+  // A local file header. An empty archive (PK\x05\x06) holds nothing to keep.
+  if (startsWith(bytes, [0x50, 0x4b, 0x03, 0x04])) return "application/zip";
   return null;
 }
 
 export const PO_DOCUMENT_WRONG_TYPE =
-  "That file type isn't supported — use PDF, JPG or PNG";
+  "That file type isn't supported — use PDF, JPG, PNG or ZIP";
 export const PO_DOCUMENT_TOO_LARGE = (bytes: number) => {
   const shown = formatBytes(bytes);
   const limit = formatBytes(MAX_PO_DOCUMENT_BYTES);
@@ -84,7 +93,7 @@ export const PO_DOCUMENT_TOO_LARGE = (bytes: number) => {
 export const PO_DOCUMENT_EMPTY = "That file is empty";
 export const PO_DOCUMENT_NAME_TOO_LONG = `That filename is too long — ${MAX_DOCUMENT_NAME_LENGTH} characters at most`;
 export const PO_DOCUMENT_CONTENTS =
-  "That file isn't a PDF, JPG or PNG — the contents don't match the type";
+  "That file isn't a PDF, JPG, PNG or ZIP — the contents don't match the type";
 
 /** Name, declared type and size. The bytes are checked separately, once they exist. */
 export function poDocumentRejectionReason(file: {

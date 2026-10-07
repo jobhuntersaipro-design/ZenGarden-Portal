@@ -60,14 +60,16 @@ export function BuyerOrderDocuments({
                 </p>
               </div>
               <div className="flex flex-wrap gap-xs">
-                <Button
-                  type="button"
-                  variant="secondary"
-                  className={ACTION}
-                  onClick={() => setPreviewing(document)}
-                >
-                  Open
-                </Button>
+                {document.preview ? (
+                  <Button
+                    type="button"
+                    variant="secondary"
+                    className={ACTION}
+                    onClick={() => setPreviewing(document)}
+                  >
+                    Open
+                  </Button>
+                ) : null}
                 {purchaseOrderId ? (
                   <Button variant="secondary" className={ACTION} asChild>
                     <a href={shopHref.orderDocumentDownload(purchaseOrderId, document.id)}>

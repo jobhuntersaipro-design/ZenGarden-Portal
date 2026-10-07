@@ -128,7 +128,7 @@ describe("purchase order document access", () => {
     );
     expect(response.status).toBe(400);
     expect(await response.json()).toMatchObject({
-      error: "That file type isn't supported — use PDF, JPG or PNG",
+      error: "That file type isn't supported — use PDF, JPG, PNG or ZIP",
     });
     expect(presignPut).not.toHaveBeenCalled();
   });
@@ -244,7 +244,7 @@ describe("purchase order document access", () => {
     );
     expect(response.status).toBe(400);
     expect(await response.json()).toMatchObject({
-      error: "That file isn't a PDF, JPG or PNG — the contents don't match the type",
+      error: "That file isn't a PDF, JPG, PNG or ZIP — the contents don't match the type",
     });
     expect(deleteObject).toHaveBeenCalledWith(key);
     expect(docCreate).not.toHaveBeenCalled();

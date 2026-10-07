@@ -138,7 +138,7 @@ export function PoDocumentsCard({
       <h2 className="font-mono text-[length:var(--text-eyebrow)] text-ink-tertiary">Documents</h2>
       <p className="mt-xxs text-[length:var(--text-caption)] text-ink-tertiary">
         Files kept on this order, separate from the original purchase order and from the
-        buyer&apos;s account. PDF, JPG or PNG, up to {formatBytes(MAX_PO_DOCUMENT_BYTES)}.
+        buyer&apos;s account. PDF, JPG, PNG or ZIP, up to {formatBytes(MAX_PO_DOCUMENT_BYTES)}.
       </p>
 
       {canManage ? (
@@ -198,14 +198,16 @@ export function PoDocumentsCard({
                 </p>
               </div>
               <div className="flex flex-wrap gap-xs">
-                <Button
-                  type="button"
-                  variant="secondary"
-                  className={ACTION}
-                  onClick={() => setPreviewing(document)}
-                >
-                  Open
-                </Button>
+                {document.preview ? (
+                  <Button
+                    type="button"
+                    variant="secondary"
+                    className={ACTION}
+                    onClick={() => setPreviewing(document)}
+                  >
+                    Open
+                  </Button>
+                ) : null}
                 <Button variant="secondary" className={ACTION} asChild>
                   <a href={downloadHref(purchaseOrderId, document.id)}>
                     <Download aria-hidden className="size-3.5" />

@@ -5,6 +5,7 @@ import { prisma } from "@/lib/prisma";
 import { presignPut } from "@/lib/r2";
 import {
   PO_DOCUMENT_TYPES,
+  PO_DOCUMENT_WRONG_TYPE,
   poDocumentPresignSchema,
   poDocumentRejectionReason,
   purchaseOrderDocumentKey,
@@ -57,7 +58,7 @@ export async function POST(
   const type = resolvePoDocumentType(file.name, file.type);
   if (reason || !type) {
     return NextResponse.json(
-      { error: reason ?? "That file type isn't supported — use PDF, JPG or PNG" },
+      { error: reason ?? PO_DOCUMENT_WRONG_TYPE },
       { status: 400 },
     );
   }

@@ -9,6 +9,7 @@ import {
   PO_DOCUMENT_CONTENTS,
   PO_DOCUMENT_SIGNATURE_BYTES,
   PO_DOCUMENT_TYPES,
+  PO_DOCUMENT_WRONG_TYPE,
   isPurchaseOrderDocumentKey,
   poDocumentCompleteSchema,
   poDocumentContentsReason,
@@ -47,7 +48,7 @@ export async function POST(
   const reason = poDocumentRejectionReason({ name, type: parsed.data.type, size });
   if (!type || reason) {
     return NextResponse.json(
-      { error: reason ?? "That file type isn't supported — use PDF, JPG or PNG" },
+      { error: reason ?? PO_DOCUMENT_WRONG_TYPE },
       { status: 400 },
     );
   }
