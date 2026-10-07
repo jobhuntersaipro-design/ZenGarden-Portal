@@ -60,7 +60,7 @@ export function Dropzone({ onFiles }: { onFiles: (files: File[]) => void }) {
         maxFiles={MAX_BATCH}
         label="Add purchase orders"
         description="Drop files here, paste a screenshot, or choose from your device"
-        note={`PDF, PNG, JPG — up to ${formatBytes(MAX_FILE_BYTES)} each`}
+        note={`PDF, PNG, JPG or a ZIP of them — up to ${formatBytes(MAX_FILE_BYTES)} each`}
         dropLabel="Drop to upload"
         onFilesChange={(files) => {
           handle(files);

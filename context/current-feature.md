@@ -1,3 +1,49 @@
+# Upload PO takes a ZIP, and refuses what isn't a PO
+
+## Status
+
+**Built on `claude/vibrant-noether-w5e1h4`, merged to `main`** (2026-10-07).
+Asked for as "user want to upload PO with zip files", then option 1 of two:
+skip the non-PO files in a zip and say so.
+
+- **The Upload PO screen takes a `.zip`.** It is opened in the browser
+  (`src/lib/upload/expand-zips.ts`, `fflate`, now a direct dependency) and
+  each PDF/JPG/PNG inside becomes its own row, upload and draft, exactly as if
+  dropped. Anything else inside (Excel, Word, nested zips) is a failed row
+  with "That file type isn't supported". Folders, `__MACOSX/` and dotfiles are
+  ignored. Limits: zip 100 MB, 50 files, 200 MB unpacked; each file inside
+  still 20 MB. A damaged or password-protected zip is one failed row.
+- **Claude says what the document is before reading it as a PO.**
+  `documentKind` is the first field of the extraction schema (purchase order,
+  invoice, delivery order, packing list, quotation, other). Anything but a PO
+  fails with "This looks like an invoice, not a purchase order — attach it on
+  the order's Documents card instead", so no draft reaches the review queue.
+  This applies to every upload, not only zips. The failed upload still sits
+  under the Failed chip until removed, like any failed read, and can be
+  entered by hand from there.
+- Non-PO files are **not kept** (option 2, holding them against the draft,
+  was not chosen).
+
+## Verified
+
+The real `UploadWorkspace` in the portal shell's wrappers on a temporary page
+(removed), Chromium at 1440 and 390, the upload routes stubbed and the
+invoice's stub answering with the refusal text. Before: the zip was one failed
+row, "That file type isn't supported — PDF, PNG or JPG", nothing sent. After:
+`PO-LHM-1001.pdf` and `PO-LHM-1002.jpg` uploaded as `application/pdf` and
+`image/jpeg` and read "Ready to review"; the invoice showed the refusal; the
+`.xlsx` was refused by type; `__MACOSX` ignored; "Review 2 files". No overflow
+at either width. 1851 tests (5 new; the not-a-PO guard watched failing with
+the check disabled), `tsc`, eslint on touched files, `npm run build` clean.
+
+## Not verified
+
+**Claude's classification on real documents** — no API key here, so whether
+it calls every real PO format a PO is unproven. A real PO refused by mistake
+can still be entered by hand from the Failed row. A real R2 upload.
+
+## Before that
+
 # Order documents accept ZIP
 
 ## Status

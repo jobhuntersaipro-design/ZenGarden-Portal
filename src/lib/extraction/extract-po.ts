@@ -2,7 +2,11 @@ import Anthropic from "@anthropic-ai/sdk";
 import { zodOutputFormat } from "@anthropic-ai/sdk/helpers/zod";
 import { env } from "@/lib/env";
 import { EXTRACTION_SYSTEM_PROMPT } from "@/lib/extraction/prompt";
-import { PoExtractionSchema, type PoExtraction } from "@/lib/extraction/schema";
+import {
+  PoExtractionSchema,
+  notAPurchaseOrder,
+  type PoExtraction,
+} from "@/lib/extraction/schema";
 
 /** Everything that can go wrong here reaches the caller as this. */
 export class ExtractionError extends Error {
@@ -97,6 +101,11 @@ export async function extractPurchaseOrder(
     throw new ExtractionError(
       "The document didn't come back as a purchase order — it may be a scan with no readable text",
     );
+  }
+
+  // Refused here, before any draft exists, so it never reaches the review queue.
+  if (message.parsed_output.documentKind !== "purchase_order") {
+    throw new ExtractionError(notAPurchaseOrder(message.parsed_output.documentKind));
   }
 
   return {

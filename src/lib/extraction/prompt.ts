@@ -6,6 +6,15 @@
  */
 export const EXTRACTION_SYSTEM_PROMPT = `You read purchase orders and return structured data.
 
+What it is. Decide documentKind first. A purchase order is the buyer's request
+to buy: it is issued by the buyer, usually headed "Purchase Order" or "PO",
+and lists what they are ordering. A buyer's order under another heading
+(Order form, Local order, Purchase requisition) is still one. An invoice, delivery order, packing list or
+quotation from the seller is not one, even when it quotes the PO number. Use
+"other" for anything else. When documentKind is not purchase_order, fill the
+remaining fields with whatever the page shows and score every one of them 0;
+nothing you return will be used.
+
 Who is who. Zen Garden — trading as "Loving Hands" on documents written before
 the rebrand — is the seller, the company receiving this order. The buyer is the
 party issuing the purchase order. Never put "Zen Garden" or "Loving Hands" in

@@ -44,7 +44,41 @@ export const PoLineItemSchema = z.object({
  * Decimal strings the moment it becomes a draft, so a value is never rounded
  * through a float twice (docs/specs/04-extraction-review.md §1).
  */
+/**
+ * What the document is. A batch of uploads (a zip especially) can carry the
+ * invoice, the packing list and the delivery order beside the PO; anything but
+ * a purchase order is refused before it becomes a draft.
+ */
+export const DOCUMENT_KINDS = [
+  "purchase_order",
+  "invoice",
+  "delivery_order",
+  "packing_list",
+  "quotation",
+  "other",
+] as const;
+
+export type DocumentKind = (typeof DOCUMENT_KINDS)[number];
+
+const KIND_LABEL: Record<Exclude<DocumentKind, "purchase_order" | "other">, string> = {
+  invoice: "an invoice",
+  delivery_order: "a delivery order",
+  packing_list: "a packing list",
+  quotation: "a quotation",
+};
+
+/** The reason a refused upload shows. Points at where such a file does belong. */
+export const notAPurchaseOrder = (kind: DocumentKind) => {
+  const what =
+    kind === "purchase_order" || kind === "other"
+      ? "This doesn't look like a purchase order"
+      : `This looks like ${KIND_LABEL[kind]}, not a purchase order`;
+  return `${what} — attach it on the order's Documents card instead`;
+};
+
 export const PoExtractionSchema = z.object({
+  /** First, so the model decides what it is reading before it fills a PO in. */
+  documentKind: z.enum(DOCUMENT_KINDS),
   poNumber: z.string().min(1),
   buyerName: z.string().min(1),
   poDate: isoDate,

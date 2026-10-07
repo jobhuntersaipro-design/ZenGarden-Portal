@@ -9,6 +9,7 @@ const { ExtractionError, extractPurchaseOrder } = await import(
 );
 
 const parsedOutput = {
+  documentKind: "purchase_order",
   poNumber: "PO-2026-0917",
   buyerName: "Acme Industrial Sdn Bhd",
   poDate: "2026-09-17",
@@ -115,6 +116,17 @@ describe("extractPurchaseOrder", () => {
     await expect(
       extractPurchaseOrder(bytes, "application/pdf", client),
     ).rejects.toThrow(/scan with no readable text/);
+  });
+
+  it("refuses a document that is not a purchase order, naming what it is", async () => {
+    const { client } = clientReturning({
+      parsed_output: { ...parsedOutput, documentKind: "packing_list" },
+      model: "m",
+      usage: { input_tokens: 1, output_tokens: 1 },
+    });
+    await expect(extractPurchaseOrder(bytes, "application/pdf", client)).rejects.toThrow(
+      "This looks like a packing list, not a purchase order — attach it on the order's Documents card instead",
+    );
   });
 
   it("names a timeout as a timeout", async () => {

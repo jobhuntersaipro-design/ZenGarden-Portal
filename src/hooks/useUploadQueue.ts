@@ -7,6 +7,7 @@ import type {
 } from "@/app/api/upload/presign/route";
 import type { CompleteResponse } from "@/app/api/upload/complete/route";
 import { retryExtraction } from "@/actions/purchase-orders";
+import { expandZips } from "@/lib/upload/expand-zips";
 import { MAX_FILES_PER_CALL, rejectionReason } from "@/lib/validation/upload";
 import {
   READY_STATUS,
@@ -208,30 +209,37 @@ export function useUploadQueue(hintBuyerId?: string) {
 
   const add = useCallback(
     (incoming: File[]) => {
-      commit((current) => [
-        ...current,
-        ...incoming
-          .slice(0, Math.max(0, MAX_ROWS - current.length))
-          .map<UploadRow>((file) => {
-            // Checked here so an obviously wrong file gets its reason without
-            // a round trip (docs/specs/03-upload.md §2).
-            const reason = rejectionReason({
-              name: file.name,
-              type: file.type,
-              size: file.size,
-            });
-            return {
-              id: nextId(),
-              file: reason ? null : file,
-              name: file.name,
-              size: file.size,
-              status: reason ? "failed" : "queued",
-              progress: 0,
-              ...(reason ? { reason } : {}),
-            };
-          }),
-      ]);
-      pump();
+      // A zip is opened here, in the browser, so each PO inside it is its own
+      // row, its own upload and its own draft — exactly as if it were dropped.
+      void expandZips(incoming).then((items) => {
+        commit((current) => [
+          ...current,
+          ...items
+            .slice(0, Math.max(0, MAX_ROWS - current.length))
+            .map<UploadRow>((item) => {
+              if (!(item instanceof File)) {
+                return { id: nextId(), file: null, ...item, status: "failed", progress: 0 };
+              }
+              // Checked here so an obviously wrong file gets its reason without
+              // a round trip (docs/specs/03-upload.md §2).
+              const reason = rejectionReason({
+                name: item.name,
+                type: item.type,
+                size: item.size,
+              });
+              return {
+                id: nextId(),
+                file: reason ? null : item,
+                name: item.name,
+                size: item.size,
+                status: reason ? "failed" : "queued",
+                progress: 0,
+                ...(reason ? { reason } : {}),
+              };
+            }),
+        ]);
+        pump();
+      });
     },
     [commit, pump],
   );

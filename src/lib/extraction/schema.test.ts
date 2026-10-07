@@ -7,6 +7,7 @@ const fullConfidence = Object.fromEntries(
 );
 
 const sample = {
+  documentKind: "purchase_order",
   poNumber: "PO-2026-0917",
   buyerName: "Acme Industrial Sdn Bhd",
   poDate: "2026-09-17",
