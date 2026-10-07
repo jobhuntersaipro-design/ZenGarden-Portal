@@ -3,7 +3,9 @@
 import { revalidatePath } from "next/cache";
 import { UnauthorizedError } from "@/lib/auth-guards";
 import { requirePermission } from "@/lib/permissions/require";
+import { movementCutoff, onHandAfterDeliveries } from "@/lib/delivery-stock";
 import { prisma } from "@/lib/prisma";
+import { lockProductsInIdOrder } from "@/lib/product-lock";
 import {
   saveStockCountsSchema,
   type SaveStockCountsInput,
@@ -50,6 +52,14 @@ export async function saveStockCounts(
 
   try {
     const result = await prisma.$transaction(async (tx) => {
+      // Same id order as the delivery deduction, and held until this
+      // transaction commits, so a delivery cannot land between the movement
+      // read below and the cache write.
+      await lockProductsInIdOrder(
+        tx,
+        entries.map((entry) => entry.productId),
+      );
+
       // Read inside the transaction: two people counting the same product at
       // once must not both write a row that supersedes nothing.
       const existing = await tx.stockCount.findMany({
@@ -80,16 +90,45 @@ export async function saveStockCounts(
 
       // Rewrite the cache on `Product`, per product, from the ledger itself
       // rather than from what was just typed: correcting a past day must not
-      // move the current figure (spec §6, criterion 4).
+      // move the current figure (spec §6, criterion 4). Deliveries after the
+      // count's cutoff stay deducted. Using the new row's own `createdAt`
+      // would put them back when somebody corrects that day, or types a
+      // backdated count, after the cartons have already left.
       for (const entry of entries) {
         const latest = await tx.stockCount.findFirst({
           where: { productId: entry.productId, supersededBy: { is: null } },
           orderBy: [{ countedOn: "desc" }, { createdAt: "desc" }],
-          select: { cartons: true },
+          select: { cartons: true, createdAt: true, countedOn: true },
         });
+        const earliest = latest
+          ? await tx.stockCount.findFirst({
+              where: { productId: entry.productId, countedOn: latest.countedOn },
+              orderBy: { createdAt: "asc" },
+              select: { createdAt: true },
+            })
+          : null;
+        const delivered = latest
+          ? await tx.stockMovement.aggregate({
+              where: {
+                productId: entry.productId,
+                createdAt: {
+                  gt: movementCutoff(
+                    latest.countedOn,
+                    earliest?.createdAt ?? latest.createdAt,
+                  ),
+                },
+              },
+              _sum: { quantity: true },
+            })
+          : null;
         await tx.product.update({
           where: { id: entry.productId },
-          data: { stockCartons: latest?.cartons ?? null },
+          data: {
+            stockCartons:
+              latest === null
+                ? null
+                : onHandAfterDeliveries(latest.cartons, delivered?._sum.quantity ?? 0),
+          },
         });
       }
 

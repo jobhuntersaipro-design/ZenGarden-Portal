@@ -49,6 +49,7 @@ model User {
   passwordResets     PasswordResetToken[]
   productPrices      ProductPrice[]
   stockCounts        StockCount[]
+  stockMovements     StockMovement[]
   webOrdersPlaced    WebOrder[]           @relation("webOrdersPlaced")
   webOrdersReviewed  WebOrder[]           @relation("webOrdersReviewed")
   webOrdersReceived  WebOrder[]           @relation("webOrdersReceived")
@@ -289,8 +290,13 @@ model PurchaseOrder {
   confirmedAt    DateTime       @default(now())
   stage          PoStage        @default(ORDER_PLACED)
   stageChangedAt DateTime       @default(now())
+  /// Set in the same transaction as the stock deduction, the first time this
+  /// order reaches Delivering. Moving back and forward again sees it and does
+  /// not deduct a second time. Null means stock has not been taken for it.
+  stockDeductedAt DateTime?
   stageEvents    PoStageEvent[]
   lineItems      LineItem[]
+  stockMovements StockMovement[]
   webOrder       WebOrder?
   orderDocuments PurchaseOrderDocument[]
   createdAt      DateTime       @default(now())
@@ -404,10 +410,11 @@ model Product {
   market           String? // country or customer the formulation is made for; free-growing list, see listMarkets()
   listPrice        Decimal        @db.Decimal(14, 2)
   /**
-   * Pieces on hand, as the team counts them — typed and corrected in the
-   * portal, never derived from orders and never shown on the shop. Null means
-   * nobody has counted this product yet, which is not the same as zero: zero
-   * is a count, and the low-stock flag reads it as one.
+   * Cartons on hand. Null means nobody has counted this product yet, which
+   * is not the same as zero: zero is a count, and the low-stock flag reads
+   * it as one. A stocktake (`StockCount`) is the figure somebody typed;
+   * this column caches that count minus cartons sent out for delivery after
+   * it (`StockMovement`). Never shown on the shop.
    */
   stockCartons      Int?
   description      String?
@@ -418,6 +425,7 @@ model Product {
   lineItems        LineItem[]
   webOrderLines    WebOrderLine[]
   stockCounts      StockCount[]
+  stockMovements   StockMovement[]
   createdAt        DateTime       @default(now())
   updatedAt        DateTime       @updatedAt
 
@@ -491,6 +499,7 @@ model LineItem {
   unit            String?
   unitPrice       Decimal       @db.Decimal(14, 4)
   amount          Decimal       @db.Decimal(14, 2)
+  stockMovements  StockMovement[]
 
   @@unique([purchaseOrderId, position])
   @@index([productId])
@@ -648,7 +657,10 @@ model PermissionGrant {
 /// is its own log and nothing a person entered is ever destroyed.
 ///
 /// `Product.stockCartons` caches the current count with the greatest
-/// `countedOn`. This table is the truth; nothing else may write that column.
+/// `countedOn`, minus delivery deductions recorded after that count
+/// (`StockMovement`). `saveStockCounts` rewrites the cache from this ledger.
+/// The move to Delivering writes the cache itself, in the same transaction
+/// as its movement rows; a later count replaces that figure.
 model StockCount {
   id           String      @id @default(cuid())
   productId    String
@@ -669,4 +681,35 @@ model StockCount {
 
   @@index([productId, countedOn])
   @@index([countedOn])
+}
+
+/// Cartons taken off a product the first time a purchase order reaches
+/// Delivering (the stage the team calls out for delivery). One row per line.
+/// The unique pair is the idempotency lock together with
+/// `PurchaseOrder.stockDeductedAt`: a second save, a double click, or a move
+/// back and forward again cannot insert another row for the same line.
+model StockMovement {
+  id              String        @id @default(cuid())
+  productId       String
+  product         Product       @relation(fields: [productId], references: [id], onDelete: Restrict)
+  purchaseOrderId String
+  purchaseOrder   PurchaseOrder @relation(fields: [purchaseOrderId], references: [id], onDelete: Cascade)
+  lineItemId      String
+  lineItem        LineItem      @relation(fields: [lineItemId], references: [id], onDelete: Cascade)
+  /// Cartons deducted. Always positive.
+  quantity        Int
+  beforeCartons   Int
+  afterCartons    Int
+  /// The buyer's PO number when the order has one. Shop orders often have none;
+  /// `purchaseOrderId` is the stable identity.
+  poNumber        String?
+  /// Always "Out for Delivery" for rows this table holds today.
+  reason          String
+  actorId         String?
+  actor           User?         @relation(fields: [actorId], references: [id], onDelete: SetNull)
+  createdAt       DateTime      @default(now())
+
+  @@unique([purchaseOrderId, lineItemId])
+  @@index([productId, createdAt])
+  @@index([createdAt])
 }

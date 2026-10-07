@@ -102,6 +102,82 @@ export async function loadStockSheet(query?: string): Promise<StockSheetRow[]> {
   }));
 }
 
+export type StockMovementRow = {
+  id: string;
+  productId: string;
+  productName: string;
+  quantity: number;
+  beforeCartons: number;
+  afterCartons: number;
+  purchaseOrderId: string;
+  poNumber: string | null;
+  reason: string;
+  actorName: string | null;
+  createdAt: string;
+};
+
+const MOVEMENT_SELECT = {
+  id: true,
+  productId: true,
+  quantity: true,
+  beforeCartons: true,
+  afterCartons: true,
+  purchaseOrderId: true,
+  poNumber: true,
+  reason: true,
+  createdAt: true,
+  actor: { select: { name: true } },
+  product: { select: { name: true } },
+} as const;
+
+type RawMovement = {
+  id: string;
+  productId: string;
+  quantity: number;
+  beforeCartons: number;
+  afterCartons: number;
+  purchaseOrderId: string;
+  poNumber: string | null;
+  reason: string;
+  createdAt: Date;
+  actor: { name: string } | null;
+  product: { name: string };
+};
+
+const toMovement = (row: RawMovement): StockMovementRow => ({
+  id: row.id,
+  productId: row.productId,
+  productName: row.product.name,
+  quantity: row.quantity,
+  beforeCartons: row.beforeCartons,
+  afterCartons: row.afterCartons,
+  purchaseOrderId: row.purchaseOrderId,
+  poNumber: row.poNumber,
+  reason: row.reason,
+  actorName: row.actor?.name ?? null,
+  createdAt: row.createdAt.toISOString(),
+});
+
+/** Deductions for one product, newest first. The stocktake feed does not include these. */
+export async function loadProductMovements(productId: string): Promise<StockMovementRow[]> {
+  const rows = await prisma.stockMovement.findMany({
+    where: { productId },
+    select: MOVEMENT_SELECT,
+    orderBy: { createdAt: "desc" },
+  });
+  return rows.map(toMovement);
+}
+
+/** Recent deductions across the catalogue, newest first. */
+export async function loadRecentMovements(take = 20): Promise<StockMovementRow[]> {
+  const rows = await prisma.stockMovement.findMany({
+    select: MOVEMENT_SELECT,
+    orderBy: { createdAt: "desc" },
+    take,
+  });
+  return rows.map(toMovement);
+}
+
 export type StockFeedEntry = StockCountRow & { productId: string; productName: string };
 
 /** Recent counting across the whole catalogue, newest work first. */

@@ -10,7 +10,7 @@ import { FamilyCard } from "@/components/products/FamilyCard";
 import { OpenShopOrders } from "@/components/products/OpenShopOrders";
 import { OrderHistoryTable } from "@/components/products/OrderHistoryTable";
 import { ProductStockCard } from "@/components/stock/ProductStockCard";
-import { loadProductStock } from "@/lib/queries/stock";
+import { loadProductMovements, loadProductStock } from "@/lib/queries/stock";
 import {
   PriceTrendChart,
   type TrendMode,
@@ -84,12 +84,13 @@ async function ProductPage({
   const { id } = await params;
   const query = await searchParams;
 
-  const [data, user, labels, families, stock] = await Promise.all([
+  const [data, user, labels, families, stock, movements] = await Promise.all([
     loadProduct(id, presignGet),
     getSessionUser(),
     listAllLabels(),
     listFamilies(),
     loadProductStock(id),
+    loadProductMovements(id),
   ]);
   if (!data) notFound();
 
@@ -385,7 +386,12 @@ async function ProductPage({
       </div>
 
       <div className="mt-lg">
-        <ProductStockCard productId={data.product.id} rows={stock} />
+        <ProductStockCard
+          productId={data.product.id}
+          onHand={data.product.stockCartons}
+          rows={stock}
+          movements={movements}
+        />
       </div>
 
       <div className="mt-lg">

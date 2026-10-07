@@ -28,6 +28,21 @@ export const currentCounts = (rows: StockCountRow[]): StockCountRow[] =>
   rows.filter((row) => row.supersededById === null);
 
 /**
+ * What the stock card and the stock drawer show.
+ *
+ * No `StockCount` rows means uncounted, even when `stockCartons` still holds
+ * a number typed before the ledger. A product that has been counted shows
+ * the cache — the count, minus cartons sent out for delivery after it.
+ */
+export function displayedOnHand(
+  latest: { cartons: number } | null,
+  stockCartons: number | null,
+): number | null {
+  if (latest === null) return null;
+  return stockCartons ?? latest.cartons;
+}
+
+/**
  * The count that `Product.stockCartons` caches: the current row with the
  * latest `countedOn`. Ties break on `createdAt`, so two counts entered for the
  * same day resolve to the one typed last — which, being a correction, is the

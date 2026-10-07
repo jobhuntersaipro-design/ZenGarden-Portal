@@ -15,6 +15,7 @@ import {
 } from "@/components/ui/sheet";
 import { Skeleton } from "@/components/arc/skeleton/skeleton";
 import { StockActivityFeed } from "@/components/stock/StockActivityFeed";
+import { StockMovementFeed } from "@/components/stock/StockMovementFeed";
 import {
   setPendingStockProduct,
   usePendingStockProduct,
@@ -24,8 +25,8 @@ import { Textarea } from "@/components/ui/textarea";
 import { useAwaitableRefresh } from "@/hooks/useAwaitableRefresh";
 import { useUrlNavigation } from "@/hooks/useUrlNavigation";
 import { formatDate } from "@/lib/dates";
-import { latestCount, type StockCountRow } from "@/lib/stock";
-import type { StockSheetRow } from "@/lib/queries/stock";
+import { displayedOnHand, latestCount, type StockCountRow } from "@/lib/stock";
+import type { StockMovementRow, StockSheetRow } from "@/lib/queries/stock";
 import { plural } from "@/lib/plural";
 
 const label = "font-mono text-[length:var(--text-eyebrow)] text-ink-tertiary";
@@ -59,11 +60,14 @@ const caption = "text-[length:var(--text-caption)] text-ink-tertiary";
 export function ProductStockDrawer({
   product,
   counts,
+  movements = [],
   today,
 }: {
   product: StockSheetRow | null;
   /** Every count for the open product, oldest first. Empty when none is open. */
   counts: StockCountRow[];
+  /** Deductions for the open product. Empty when none is open. */
+  movements?: StockMovementRow[];
   today: string;
 }) {
   const refresh = useAwaitableRefresh();
@@ -94,6 +98,9 @@ export function ProductStockDrawer({
   const value = cartons.trim();
   const valid = value !== "" && Number.isInteger(Number(value)) && Number(value) >= 0;
   const latest = latestCount(counts);
+  const cached = shown?.stockCartons ?? null;
+  const onHand = displayedOnHand(latest, cached);
+  const sentOut = latest !== null && cached !== null && cached !== latest.cartons;
 
   const save = async () => {
     if (!product || !valid) return;
@@ -145,14 +152,16 @@ export function ProductStockDrawer({
           <div>
             <p className={label}>On hand</p>
             <p className="font-display text-[length:var(--text-heading-md)] font-[650] text-ink">
-              {latest === null ? "Not counted yet" : plural(latest.cartons, "carton")}
+              {onHand === null ? "Not counted yet" : plural(onHand, "carton")}
             </p>
             <p className={caption}>
               {latest === null
                 ? "Nobody has counted this product."
-                : `Counted ${formatDate(latest.countedOn)}${
-                    latest.countedByName ? ` by ${latest.countedByName}` : ""
-                  }`}
+                : sentOut
+                  ? `On hand, after deliveries. Last counted ${formatDate(latest.countedOn)} at ${plural(latest.cartons, "carton")}.`
+                  : `Counted ${formatDate(latest.countedOn)}${
+                      latest.countedByName ? ` by ${latest.countedByName}` : ""
+                    }`}
             </p>
           </div>
 
@@ -167,6 +176,12 @@ export function ProductStockDrawer({
               rows={counts}
               emptyText="No counts yet. The first one goes in below."
             />
+            {movements.length > 0 ? (
+              <div className="mt-sm">
+                <p className={label}>Out for delivery</p>
+                <StockMovementFeed rows={movements} />
+              </div>
+            ) : null}
           </div>
 
           <div className="flex flex-col gap-md border-t border-hairline pt-lg">

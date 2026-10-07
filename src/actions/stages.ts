@@ -24,6 +24,10 @@ import { formatDate } from "@/lib/dates";
 import { formatMYR } from "@/lib/money";
 import { attachWebOrderDocument } from "@/lib/web-order-document";
 import { preparePoEmail } from "@/lib/po-email";
+import {
+  applyOutForDeliveryDeduction,
+  StockChangedError,
+} from "@/lib/apply-delivery-stock";
 
 export type ActionResult<T = undefined> =
   | { success: true; data: T }
@@ -100,10 +104,15 @@ async function advanceDeniedMessage(key: PermissionKey): Promise<string> {
   return `${owners.map(roleLabel).join(" or ")} advances this stage.`;
 }
 
-function revalidate(poId: string) {
+function revalidate(poId: string, productIds: string[] = []) {
   revalidatePath(`/purchase-orders/${poId}`);
   revalidatePath("/purchase-orders");
   revalidatePath("/");
+  if (productIds.length === 0) return;
+  revalidatePath("/stock");
+  revalidatePath("/products");
+  revalidatePath("/demand");
+  for (const id of productIds) revalidatePath(`/products/${id}`);
 }
 
 /**
@@ -142,11 +151,38 @@ export async function advanceStage(
     if (!user) return { success: false, error: error! };
 
     const moved = await prisma.$transaction(async (tx) => {
+      // Delivering is "Out for Delivery". Stock leaves the shelf in this
+      // same transaction, once. Every other stage is the write it always was.
+      let productIds: string[] = [];
+      let deducted = false;
+      if (target === PoStage.DELIVERING) {
+        const stock = await applyOutForDeliveryDeduction(tx, {
+          poId,
+          expectedStage: po.stage,
+          actorId: user.id,
+        });
+        if (stock.status === "short") return { ok: false as const, error: stock.error };
+        if (stock.status === "missing") {
+          return { ok: false as const, error: "That order is gone." };
+        }
+        if (stock.status === "race") return { ok: false as const, error: RACE_LOST };
+        if (stock.status === "deducted") {
+          deducted = true;
+          productIds = stock.productIds;
+        }
+      }
+
       const { count } = await tx.purchaseOrder.updateMany({
         where: { id: poId, stage: po.stage },
         data: { stage: target, stageChangedAt: new Date() },
       });
-      if (count === 0) return false;
+      // A deduction already written has to come back with the stage. Throwing
+      // rolls the transaction back; returning would commit the stock move
+      // without the stage.
+      if (count === 0) {
+        if (deducted) throw new StockChangedError();
+        return { ok: false as const, error: RACE_LOST };
+      }
 
       await tx.poStageEvent.create({
         data: {
@@ -158,14 +194,17 @@ export async function advanceStage(
           changedById: user.id,
         },
       });
-      return true;
+      return { ok: true as const, productIds };
     });
 
-    if (!moved) return { success: false, error: RACE_LOST };
+    if (!moved.ok) return { success: false, error: moved.error };
 
-    revalidate(poId);
+    revalidate(poId, moved.productIds);
     return { success: true, data: { stage: target } };
   } catch (cause) {
+    if (cause instanceof StockChangedError) {
+      return { success: false, error: cause.message };
+    }
     console.error("[stages] advanceStage", cause);
     return { success: false, error: "We couldn't move that order." };
   }

@@ -3,6 +3,7 @@ import { PageHeader } from "@/components/portal/PageHeader";
 import { TablePagination } from "@/components/portal/TablePagination";
 import { ProductStockDrawer } from "@/components/stock/ProductStockDrawer";
 import { StockActivityFeed } from "@/components/stock/StockActivityFeed";
+import { StockMovementFeed } from "@/components/stock/StockMovementFeed";
 import { StockSearch } from "@/components/stock/StockSearch";
 import { StockTable } from "@/components/stock/StockTable";
 import { requirePagePermission } from "@/lib/permissions/require";
@@ -13,7 +14,9 @@ import {
   type SearchParams,
 } from "@/lib/queries/pagination";
 import {
+  loadProductMovements,
   loadProductStock,
+  loadRecentMovements,
   loadStockFeed,
   loadStockSheet,
   type StockSheetRow,
@@ -66,10 +69,12 @@ async function StockPage({
   // The open product's own counts are fetched beside the sheet rather than
   // after it: one round of queries whether or not a panel is open, and the
   // panel is never rendered mid-fetch with an empty trend under a real name.
-  const [rows, feed, counts] = await Promise.all([
+  const [rows, feed, counts, movements, deliveries] = await Promise.all([
     loadStockSheet(q),
     loadStockFeed(20),
     openId ? loadProductStock(openId) : Promise.resolve([]),
+    openId ? loadProductMovements(openId) : Promise.resolve([]),
+    loadRecentMovements(20),
   ]);
 
   const sort = parseSort(params, SORT_KEYS, { key: "lastCountedOn", dir: "asc" });
@@ -96,7 +101,12 @@ async function StockPage({
       <StockTable rows={paged} sort={sort} />
       <TablePagination page={page} size={size} total={selected.length} />
 
-      <ProductStockDrawer product={open} counts={counts} today={todayKL()} />
+      <ProductStockDrawer
+        product={open}
+        counts={counts}
+        movements={movements}
+        today={todayKL()}
+      />
 
       <section className="mt-xl rounded-lg border border-hairline bg-canvas p-lg">
         <p className="font-mono text-[length:var(--text-eyebrow)] text-ink-tertiary">
@@ -106,6 +116,14 @@ async function StockPage({
           Recent counts
         </h2>
         <StockActivityFeed rows={feed} productHref />
+        {deliveries.length > 0 ? (
+          <div className="mt-lg">
+            <h2 className="mb-xs font-display text-[length:var(--text-heading-md)] font-[650] text-ink">
+              Out for delivery
+            </h2>
+            <StockMovementFeed rows={deliveries} productHref />
+          </div>
+        ) : null}
       </section>
     </>
   );
