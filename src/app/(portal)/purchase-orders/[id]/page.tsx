@@ -15,6 +15,7 @@ import { DeletePoDialog } from "@/components/purchase-orders/DeletePoDialog";
 import { EditPurchaseOrderSheet } from "@/components/purchase-orders/EditPurchaseOrderSheet";
 import { LifecycleActions } from "@/components/purchase-orders/LifecycleActions";
 import { StageStepper } from "@/components/purchase-orders/StageStepper";
+import { OrderStockCard } from "@/components/purchase-orders/OrderStockCard";
 import { advanceKeyFor } from "@/lib/permissions/actions";
 import { can, requirePagePermission, rolesWithPermission } from "@/lib/permissions/require";
 import { roleLabel } from "@/lib/permissions/roles";
@@ -84,6 +85,19 @@ async function PurchaseOrderPage({
         // roles own different stage moves (Phase 48), so the job is part of
         // reading the history.
         include: { changedBy: { select: { name: true, image: true, role: true } } },
+      },
+      stockMoves: {
+        where: { fromCartons: { not: null } },
+        orderBy: { createdAt: "asc" },
+        select: {
+          id: true,
+          productId: true,
+          fromCartons: true,
+          cartons: true,
+          createdAt: true,
+          product: { select: { name: true } },
+          countedBy: { select: { name: true } },
+        },
       },
       supersededBy: { select: { id: true, revision: true } },
       revisionOf: {
@@ -577,6 +591,34 @@ async function PurchaseOrderPage({
               ))}
             </dl>
           </section>
+
+          <OrderStockCard
+            outForDelivery={stageIndex(current) >= stageIndex("DELIVERING")}
+            moves={po.stockMoves.map((move) => ({
+              id: move.id,
+              productId: move.productId,
+              productName: move.product.name,
+              fromCartons: move.fromCartons!,
+              cartons: move.cartons,
+              createdAt: move.createdAt.toISOString(),
+              byName: move.countedBy?.name ?? null,
+            }))}
+            products={Object.values(
+              po.lineItems.reduce<Record<string, { id: string; name: string; cartons: number }>>(
+                (byProduct, line) => {
+                  if (!line.productId || !line.product) return byProduct;
+                  const entry = (byProduct[line.productId] ??= {
+                    id: line.productId,
+                    name: line.product.name,
+                    cartons: 0,
+                  });
+                  entry.cartons += Math.round(line.quantity.toNumber());
+                  return byProduct;
+                },
+                {},
+              ),
+            )}
+          />
         </div>
       </div>
 

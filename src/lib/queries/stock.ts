@@ -12,6 +12,7 @@ const COUNT_SELECT = {
   note: true,
   createdAt: true,
   supersedesId: true,
+  fromCartons: true,
   supersededBy: { select: { id: true } },
   countedBy: { select: { name: true, image: true } },
 } as const;
@@ -23,6 +24,7 @@ type Raw = {
   note: string | null;
   createdAt: Date;
   supersedesId: string | null;
+  fromCartons: number | null;
   supersededBy: { id: string } | null;
   countedBy: { name: string; image: string | null } | null;
 };
@@ -37,6 +39,7 @@ const toRow = (row: Raw): StockCountRow => ({
   createdAt: row.createdAt.toISOString(),
   supersedesId: row.supersedesId,
   supersededById: row.supersededBy?.id ?? null,
+  fromCartons: row.fromCartons,
 });
 
 /** Every count for one product — its trend, its history and its corrections. */

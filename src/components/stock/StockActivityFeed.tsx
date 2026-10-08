@@ -55,9 +55,11 @@ export function StockActivityFeed({
               ) : null}
             </p>
 
+            {/* An order's move carries the system's own line, which is not
+                quoted: nobody said it. */}
             {entry.note ? (
               <p className="text-[length:var(--text-body-sm)] text-ink-secondary">
-                &ldquo;{entry.note}&rdquo;
+                {entry.fromCartons != null ? entry.note : <>&ldquo;{entry.note}&rdquo;</>}
               </p>
             ) : null}
 

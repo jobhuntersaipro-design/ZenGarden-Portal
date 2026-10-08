@@ -1,6 +1,8 @@
 import { describe, expect, it } from "vitest";
 import {
   currentCounts,
+  deliveryDeductions,
+  deliveryReturns,
   describeStockCount,
   latestCount,
   stockActivity,
@@ -98,5 +100,51 @@ describe("stockTrend", () => {
       row({ id: "b", countedOn: "2026-09-30" }),
     ];
     expect(stockTrend(rows)).toHaveLength(2);
+  });
+});
+
+describe("stock moved by delivery", () => {
+  const stock = new Map<string, number | null>([
+    ["a", 50],
+    ["b", 5],
+    ["c", null],
+  ]);
+
+  it("takes each product's cartons off, summed across lines, never below zero", () => {
+    expect(
+      deliveryDeductions(
+        [
+          { productId: "a", quantity: 6 },
+          { productId: "a", quantity: 4 },
+          { productId: "b", quantity: 8 },
+          { productId: "c", quantity: 3 },
+          { productId: null, quantity: 9 },
+        ],
+        stock,
+      ),
+    ).toEqual([
+      { productId: "a", from: 50, to: 40 },
+      { productId: "b", from: 5, to: 0 },
+    ]);
+  });
+
+  it("puts back what the order still has out, not what it asked for", () => {
+    const out = [
+      { productId: "a", from: 50, to: 40 },
+      { productId: "b", from: 5, to: 0 },
+    ];
+    const now = new Map<string, number | null>([["a", 38], ["b", 0]]);
+    expect(deliveryReturns(out, now)).toEqual([
+      { productId: "a", from: 38, to: 48 },
+      { productId: "b", from: 0, to: 5 },
+    ]);
+    // Out, back, out again: only the last trip is still out.
+    const cycled = [...out, { productId: "a", from: 40, to: 50 }, { productId: "b", from: 0, to: 5 }];
+    expect(deliveryReturns(cycled, now)).toEqual([]);
+  });
+
+  it("describes a move as from what to what", () => {
+    const feed = stockActivity([row({ id: "m", cartons: 40, fromCartons: 50 })]);
+    expect(describeStockCount(feed[0])).toBe("moved 50 to 40 cartons");
   });
 });
