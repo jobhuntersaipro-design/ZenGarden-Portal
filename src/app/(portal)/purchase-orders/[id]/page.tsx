@@ -16,6 +16,7 @@ import { EditPurchaseOrderSheet } from "@/components/purchase-orders/EditPurchas
 import { LifecycleActions } from "@/components/purchase-orders/LifecycleActions";
 import { StageStepper } from "@/components/purchase-orders/StageStepper";
 import { OrderStockCard } from "@/components/purchase-orders/OrderStockCard";
+import { deliveryDeductions, stockShortfall } from "@/lib/stock";
 import { advanceKeyFor } from "@/lib/permissions/actions";
 import { can, requirePagePermission, rolesWithPermission } from "@/lib/permissions/require";
 import { roleLabel } from "@/lib/permissions/roles";
@@ -76,7 +77,7 @@ async function PurchaseOrderPage({
       confirmedBy: { select: { name: true, image: true, role: true } },
       lineItems: {
         orderBy: { position: "asc" },
-        include: { product: { select: { name: true, sku: true } } },
+        include: { product: { select: { name: true, sku: true, stockCartons: true } } },
       },
       stageEvents: {
         orderBy: { changedAt: "desc" },
@@ -130,6 +131,33 @@ async function PurchaseOrderPage({
   // "not you" sends someone to ask an admin instead of a colleague.
   const advanceKey = advanceKeyFor(current);
   const canAdvance = advanceKey ? await can(advanceKey) : false;
+
+  // Going out for delivery takes stock off; a product the count cannot cover
+  // still goes, below zero, and the Advance popover says so first.
+  const deliveryShort =
+    nextStage(current) === "DELIVERING"
+      ? deliveryDeductions(
+          po.lineItems.map((line) => ({
+            productId: line.productId,
+            quantity: line.quantity.toNumber(),
+          })),
+          new Map(
+            po.lineItems.flatMap((line) =>
+              line.productId ? [[line.productId, line.product?.stockCartons ?? null] as const] : [],
+            ),
+          ),
+        ).filter((move) => stockShortfall(move) > 0)
+      : [];
+  const productName = new Map(
+    po.lineItems.flatMap((line) =>
+      line.productId && line.product ? [[line.productId, line.product.name] as const] : [],
+    ),
+  );
+  const deliveryShortWarning = deliveryShort.length
+    ? `Not enough stock for ${deliveryShort
+        .map((move) => `${productName.get(move.productId)} (${stockShortfall(move).toLocaleString("en-MY")} short)`)
+        .join(", ")}. It still goes out, and stock goes below zero.`
+    : null;
   const canDeleteOrder = await can("po.delete");
   const canEditOrder = await can("po.edit");
   const canAttachDocument = await can("po.document");
@@ -325,6 +353,7 @@ async function PurchaseOrderPage({
             next={nextStage(current)}
             previous={prevStage(current)}
             canAdvance={canAdvance}
+            advanceWarning={deliveryShortWarning}
             advanceBlockedReason={advanceBlockedReason}
             canMoveBack={await can("po.revert")}
           />
@@ -603,21 +632,15 @@ async function PurchaseOrderPage({
               createdAt: move.createdAt.toISOString(),
               byName: move.countedBy?.name ?? null,
             }))}
-            products={Object.values(
-              po.lineItems.reduce<Record<string, { id: string; name: string; cartons: number }>>(
-                (byProduct, line) => {
-                  if (!line.productId || !line.product) return byProduct;
-                  const entry = (byProduct[line.productId] ??= {
-                    id: line.productId,
-                    name: line.product.name,
-                    cartons: 0,
-                  });
-                  entry.cartons += Math.round(line.quantity.toNumber());
-                  return byProduct;
-                },
-                {},
-              ),
-            )}
+            products={[
+              ...new Map(
+                po.lineItems.flatMap((line) =>
+                  line.productId && line.product
+                    ? [[line.productId, { id: line.productId, name: line.product.name }] as const]
+                    : [],
+                ),
+              ).values(),
+            ]}
           />
         </div>
       </div>

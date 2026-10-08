@@ -114,9 +114,9 @@ export type StockMove = { productId: string; from: number; to: number };
 /**
  * What an order going out for delivery takes off stock (2026-10-08): its
  * cartons per product, summed across lines. A product nobody has counted is
- * left alone — there is no figure to take from. Stock never goes below zero;
- * an order larger than the count leaves it at zero, and the move records the
- * cartons it actually took so moving back returns exactly those.
+ * left alone — there is no figure to take from. An order larger than the
+ * count still goes out and takes stock below zero (2026-10-08, the user's
+ * call): the negative figure is the shortfall, there to be seen on /stock.
  */
 export function deliveryDeductions(
   lines: { productId: string | null; quantity: number }[],
@@ -131,10 +131,18 @@ export function deliveryDeductions(
   for (const [productId, cartons] of wanted) {
     const from = stock.get(productId);
     if (from == null) continue;
-    moves.push({ productId, from, to: Math.max(0, from - Math.round(cartons)) });
+    moves.push({ productId, from, to: from - Math.round(cartons) });
   }
   return moves;
 }
+
+/**
+ * How many of a move's cartons the count did not cover: the part that took
+ * stock below zero. Zero for a move that stayed at or above zero, and never
+ * more than the move itself when stock was already negative.
+ */
+export const stockShortfall = (move: StockMove): number =>
+  move.to < 0 ? Math.min(-move.to, move.from - move.to) : 0;
 
 /**
  * Moving an order back from Delivering puts back what it still has out: the

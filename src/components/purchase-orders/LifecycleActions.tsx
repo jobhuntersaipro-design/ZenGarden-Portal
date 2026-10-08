@@ -37,6 +37,7 @@ export function LifecycleActions({
   canAdvance,
   advanceBlockedReason,
   canMoveBack,
+  advanceWarning = null,
 }: {
   poId: string;
   next: PoStage | null;
@@ -46,6 +47,9 @@ export function LifecycleActions({
   /** Who does advance this stage, when the viewer does not. */
   advanceBlockedReason: string | null;
   canMoveBack: boolean;
+  /** Said before confirming and again after: what this move will do to
+      stock that the count cannot cover. It warns; it does not block. */
+  advanceWarning?: string | null;
 }) {
   const refresh = useAwaitableRefresh();
   // Resolves when the page shows the move: `next` is the stage after the one
@@ -228,6 +232,14 @@ export function LifecycleActions({
               </PopoverTrigger>
             )}
             <PopoverContent align="end" className="w-80 p-md shadow-md">
+              {advanceWarning ? (
+                <p
+                  role="status"
+                  className="mb-sm text-[length:var(--text-body-sm)] text-brand-amber-strong"
+                >
+                  {advanceWarning}
+                </p>
+              ) : null}
               <Textarea
                 aria-label="Note for the timeline"
                 rows={2}
@@ -267,6 +279,7 @@ export function LifecycleActions({
                       setAdvanceOpen(false);
                       setNote("");
                       toast.success(`Moved to ${stageLabel(result.data.stage)}`);
+                      if (advanceWarning) toast.warning(advanceWarning);
                     } catch {
                       toast.error("We couldn't reach the server. Try again.");
                     } finally {

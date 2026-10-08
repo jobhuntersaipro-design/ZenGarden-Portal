@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { formatDate } from "@/lib/dates";
+import { stockShortfall } from "@/lib/stock";
 
 export type OrderStockMove = {
   id: string;
@@ -25,14 +26,12 @@ export function OrderStockCard({
   outForDelivery,
 }: {
   moves: OrderStockMove[];
-  /** The order's matched products and their cartons, to name the ones
-      nothing was taken from and the ones stock could not cover. */
-  products: { id: string; name: string; cartons: number }[];
+  /** The order's matched products, to name the ones nothing was taken from. */
+  products: { id: string; name: string }[];
   /** At Delivering or later. */
   outForDelivery: boolean;
 }) {
   const moved = new Set(moves.map((move) => move.productId));
-  const ordered = new Map(products.map((p) => [p.id, p.cartons]));
   const uncounted = outForDelivery ? products.filter((p) => !moved.has(p.id)) : [];
 
   return (
@@ -48,8 +47,11 @@ export function OrderStockCard({
       <ul className="flex flex-col">
         {moves.map((move) => {
           const delta = move.cartons - move.fromCartons;
-          // Stock stops at zero, so an order bigger than the count says so.
-          const wanted = ordered.get(move.productId) ?? 0;
+          const short = stockShortfall({
+            productId: move.productId,
+            from: move.fromCartons,
+            to: move.cartons,
+          });
           return (
             <li key={move.id} className="border-b border-hairline py-xs first:pt-0">
               <div className="flex items-baseline justify-between gap-sm">
@@ -68,15 +70,19 @@ export function OrderStockCard({
                   delta <= 0
                     ? `${cartons(-delta)} cartons taken off for delivery`
                     : `${cartons(delta)} cartons put back`,
-                  delta < 0 && -delta < wanted
-                    ? `order is for ${cartons(wanted)}, ${cartons(wanted + delta)} short`
-                    : null,
                   formatDate(move.createdAt),
                   move.byName,
                 ]
                   .filter(Boolean)
                   .join(" · ")}
               </p>
+              {/* Short stock does not stop a delivery (2026-10-08); it says
+                  so here, and the negative figure stays on /stock. */}
+              {short > 0 ? (
+                <p className="mt-xxs text-[length:var(--text-caption)] font-medium text-brand-amber-strong">
+                  {cartons(short)} cartons short — stock is now below zero
+                </p>
+              ) : null}
             </li>
           );
         })}
