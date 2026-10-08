@@ -61,12 +61,25 @@ API (`ANTHROPIC_BASE_URL`) answering canned BC fields, so the real routes,
   errors besides the `/_vercel` scripts (served only on Vercel).
 - 1858 tests (7 new), `tsc`, lint unchanged (4 `ShopHeader` errors), build clean.
 
+**The prompt was then rewritten against the user's two real BCs** (Oceanwave
+CNB0327810, The Ark SYS262370521), which arrived after the first merge:
+- a vessel the document labels Feeder stays the feeder, and a single
+  unlabelled vessel on a direct sailing is the feeder too (Oceanwave labels its
+  direct Port Klang → Jakarta vessel FEEDER, mother blank);
+- **vessel tracking is the SCN / Vessel ID** ("SCN 269IOC / Vessel ID
+  FCNA00834"), what both BCs print and Port Klang tracks a call by; a web link
+  only when one is printed instead;
+- booking number is the carrier's ref, not the forwarder's job no. or house
+  BL; carrier is the shipping line, null when none is named (The Ark names
+  none); "Port of Destination" is the POD; "ETA SANDAKAN" is ETA POD; a
+  vessel's ETA at POL is not ETD POL; "-", "TBA" mean blank; "Packages : 1 X
+  20'GP" is the containers.
+
 ## Not verified
 
-**Claude on real BCs** — no API key here; the extraction prompt is written for
-Maersk/CMA-style BCs (feeder vs mother vessel, day-first dates) and has never
-seen the customer's sample (the attachment did not come through). A real R2
-upload. An object PUT before the tab closed is not swept from R2 (the row is).
+**Claude on real BCs** — no API key here, so the two examples' readings above
+are what the prompt asks for, not what the model returned. A real R2 upload.
+An object PUT before the tab closed is not swept from R2 (the row is).
 
 ## Before that
 

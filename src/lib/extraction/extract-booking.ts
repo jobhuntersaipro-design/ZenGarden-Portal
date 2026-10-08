@@ -46,41 +46,63 @@ export type BookingExtraction = z.infer<typeof BookingExtractionSchema>;
 
 export const BOOKING_SYSTEM_PROMPT = `You read shipping booking confirmations and return structured data.
 
-What it is. Decide documentKind first. A booking confirmation is a shipping
-line's or freight forwarder's confirmation that space is booked on a vessel —
-headed "Booking Confirmation", "Booking Advice", "Booking Acknowledgement" or
-similar, carrying a booking number, ports and vessel details. A bill of lading,
-a purchase order or an invoice is not one. Use "other" for anything else.
+What it is. Decide documentKind first. A booking confirmation is a freight
+forwarder's or shipping line's confirmation that space is booked on a vessel —
+headed "Booking Confirmation", "Booking", "Booking Advice" or similar, carrying
+a booking reference, ports and vessel details. Most come from Malaysian
+forwarders (Oceanwave Logistics, The Ark Logistics and others) for Zen Garden,
+which also appears as Loving Hands. A bill of lading, a purchase order or an
+invoice is not one. Use "other" for anything else.
 
 Copy, never guess. Return each value as the document prints it. A field the
-document does not show is null; never derive one from another field.
+document leaves blank, or fills with "-", "TBA" or "N/A", is null. Never derive
+a value from another field.
+
+bookingNumber is the carrier's booking reference: "Carrier BKG Ref",
+"Booking Ref", "Booking No.", "BKG No.". Not the forwarder's job number and not
+a house or co-load BL reference.
+
+carrier is the shipping line, as printed ("Shipping Line: CMA CGM MALAYSIA SDN
+BHD"). Not the forwarder who issued the document, not a forwarding agent and
+not a shipping agent code. Null when no shipping line is named.
+
+containers is the equipment booked, as printed — under "No. of Container",
+"Container", "Equipment", or "Packages" when that line holds a container count
+and type, e.g. "1X40HC", "1 X 20'GP". Join several lines with ", ". Not the
+number of cartons.
 
 Ports. Port of loading (POL) is where the cargo is loaded. Port of discharge
-(POD) is where it comes off the last vessel. The transhipment port is where it
-changes vessel between the two; null for a direct sailing, and several in order
-joined by " / ". Final destination is the place of delivery when the document
-prints one — copy it even when it is the same as the POD. Keep a port's name
-as printed, with its country if printed.
+(POD) is where it comes off the vessel; a "Port of Destination" is the POD when
+the document prints no separate port of discharge. The transhipment port is
+where the cargo changes vessel; several in order joined by " / ". Final
+destination is only what the document labels "Final Destination" or "Place of
+Delivery" — copy it even when it is the same as the POD. Keep a port's name as
+printed, with its country or state if printed.
 
-Dates. Return every date as ISO, YYYY-MM-DD. Malaysian documents usually write
+Dates. Return every date as ISO, YYYY-MM-DD. These documents write dates
 day-first, so 03/09/2026 is 3 September 2026, not 9 March. etdPol is the
-estimated departure from the port of loading, etaPod the estimated arrival at
-the port of discharge, etaFinalDestination the estimated arrival at the final
-destination.
+estimated departure from the port of loading ("ETD POL", "ETD" beside the
+POL). etaPod is the estimated arrival at the port of discharge, including a
+date labelled with that port's name, e.g. "ETA SANDAKAN" when Sandakan is the
+POD. etaFinalDestination is the estimated arrival at the final destination.
+A vessel's ETA at the port of loading ("Vessel ETA POL", "ETA P/KLANG"), a
+closing time and a cut-off are not ETD POL; leave etdPol null if no departure
+date is printed.
 
-Vessels. Give a vessel as its name and voyage, as printed (e.g. "KOTA HALUAN
-0123N"). The feeder vessel carries the first leg, from the port of loading to
-the transhipment port; the mother vessel carries the main ocean leg to the port
-of discharge. When there is only one vessel, it is the mother vessel and
-feederVessel is null.
+Vessels. Give a vessel as its name and voyage, as printed ("HG SKYLINE V.
+CS10G0S89", "DANUM 172 / 72123W"). When the document labels a vessel "Feeder"
+or "Mother", use its label even when the other one is blank. When it prints
+vessels without those labels: with a transhipment, the vessel to the
+transhipment port is the feeder and the vessel on to the POD is the mother;
+with one vessel and no transhipment, that vessel is the feeder and
+motherVessel is null.
 
-vesselTracking is the link or reference the document gives for tracking the
-shipment or vessel — a web address, or a number it labels for tracking. Copy it
-exactly. Null when the document gives none.
-
-bookingNumber is the booking reference (Booking No., BKG No., Booking Ref.).
-carrier is the shipping line. containers is the equipment booked, as count and
-type, e.g. "2 x 40HC"; join several types with ", ".`;
+vesselTracking is what the vessel call is tracked by: the SCN (ship call
+number) and Vessel ID, written "SCN 269IOC / Vessel ID FCNA00834" from either
+"SCN No: 269IOC" and "Vessel ID: FCNA00834" or "SCN / Vessel ID: 269IOC /
+FCNA00834". If only one is printed, give just that one with its label. If the
+document instead gives a tracking web address, copy the address. Null when it
+gives neither.`;
 
 /** The reason a refused upload shows. */
 export const notABooking = (kind: BookingExtraction["documentKind"]) =>
