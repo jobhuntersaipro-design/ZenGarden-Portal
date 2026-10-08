@@ -12,11 +12,17 @@ import { summariseQueue } from "@/components/upload/summarise-queue";
  * reviewed is a broken promise (design reference §3.3), so whatever is being
  * left behind is named beside it instead.
  */
-export function UploadFooter({ rows }: { rows: UploadRow[] }) {
+export function UploadFooter({
+  rows,
+  reviewHref = (ids) => `/review/${ids[0]}?queue=${encodeURIComponent(ids.join(","))}`,
+}: {
+  rows: UploadRow[];
+  /** Where "Review N files" goes, given the ready rows' ids in order. */
+  reviewHref?: (readyIds: string[]) => string;
+}) {
   if (rows.length === 0) return null;
 
   const { ready, readyIds, excluded } = summariseQueue(rows);
-  const queue = readyIds.join(",");
 
   return (
     <div className="sticky bottom-0 z-10 mt-md flex items-center justify-end gap-md border-t border-hairline bg-canvas py-md">
@@ -32,9 +38,7 @@ export function UploadFooter({ rows }: { rows: UploadRow[] }) {
         </Button>
       ) : (
         <Button asChild>
-          <Link
-            href={`/review/${readyIds[0]}?queue=${encodeURIComponent(queue)}`}
-          >
+          <Link href={reviewHref(readyIds)}>
             <LinkSpinner />
             Review {ready} {ready === 1 ? "file" : "files"}
           </Link>

@@ -28,6 +28,7 @@ describe("the portal's destinations", () => {
   it("reads the way the sidebar reads", () => {
     expect(NAV.map((entry) => entry.label)).toEqual([
       "Dashboard",
+      "Booking Confirmations",
       "Purchase Orders",
       "Demand Board",
       "Buyers",
@@ -37,7 +38,7 @@ describe("the portal's destinations", () => {
   });
 
   /**
-   * The phone tab bar is six tabs at ~65px. A two-word label wraps to two
+   * The phone tab bar is seven tabs at ~55px. A two-word label wraps to two
    * lines there, which is why `short` exists — and why it has to stay one
    * word for the two labels that are not.
    */

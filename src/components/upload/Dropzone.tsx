@@ -20,7 +20,13 @@ const MAX_BATCH = 100;
  * whose whole intake is PO photographs (2026-09-06 review, B6) — so below `sm`
  * "Take a photo" sits under the target.
  */
-export function Dropzone({ onFiles }: { onFiles: (files: File[]) => void }) {
+export function Dropzone({
+  onFiles,
+  label = "Add purchase orders",
+}: {
+  onFiles: (files: File[]) => void;
+  label?: string;
+}) {
   /** A second input: `capture` cannot be toggled per click on one element. */
   const camera = useRef<HTMLInputElement>(null);
   /**
@@ -58,7 +64,7 @@ export function Dropzone({ onFiles }: { onFiles: (files: File[]) => void }) {
         key={batch}
         multiple
         maxFiles={MAX_BATCH}
-        label="Add purchase orders"
+        label={label}
         description="Drop files here, paste a screenshot, or choose from your device"
         note={`PDF, PNG, JPG or a ZIP of them — up to ${formatBytes(MAX_FILE_BYTES)} each`}
         dropLabel="Drop to upload"

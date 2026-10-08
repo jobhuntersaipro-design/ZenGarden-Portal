@@ -1,5 +1,6 @@
 import Anthropic from "@anthropic-ai/sdk";
 import { zodOutputFormat } from "@anthropic-ai/sdk/helpers/zod";
+import type { z } from "zod";
 import { env } from "@/lib/env";
 import { EXTRACTION_SYSTEM_PROMPT } from "@/lib/extraction/prompt";
 import {
@@ -60,27 +61,40 @@ function sourceBlock(
   }
 }
 
-export async function extractPurchaseOrder(
-  bytes: Uint8Array,
-  mimeType: string,
-  client: Anthropic = anthropic,
-): Promise<ExtractionResult> {
+/**
+ * One document, one structured-output call. Shared by the PO reader and the
+ * booking-confirmation reader (2026-10-08), so both time out, and word their
+ * failures, the same way.
+ */
+export async function readDocument<Schema extends z.ZodType>({
+  bytes,
+  mimeType,
+  system,
+  instruction,
+  format,
+  client = anthropic,
+}: {
+  bytes: Uint8Array;
+  mimeType: string;
+  system: string;
+  instruction: string;
+  format: Schema;
+  client?: Anthropic;
+}) {
   const block = sourceBlock(bytes, mimeType);
-
-  let message;
   try {
-    message = await client.messages.parse(
+    return await client.messages.parse(
       {
         model: env.EXTRACTION_MODEL,
         max_tokens: MAX_TOKENS,
-        system: EXTRACTION_SYSTEM_PROMPT,
+        system,
         messages: [
           {
             role: "user",
-            content: [block, { type: "text", text: "Extract this purchase order." }],
+            content: [block, { type: "text", text: instruction }],
           },
         ],
-        output_config: { format: zodOutputFormat(PoExtractionSchema) },
+        output_config: { format: zodOutputFormat(format) },
       },
       { signal: AbortSignal.timeout(TIMEOUT_MS) },
     );
@@ -95,6 +109,21 @@ export async function extractPurchaseOrder(
       cause,
     });
   }
+}
+
+export async function extractPurchaseOrder(
+  bytes: Uint8Array,
+  mimeType: string,
+  client: Anthropic = anthropic,
+): Promise<ExtractionResult> {
+  const message = await readDocument({
+    bytes,
+    mimeType,
+    system: EXTRACTION_SYSTEM_PROMPT,
+    instruction: "Extract this purchase order.",
+    format: PoExtractionSchema,
+    client,
+  });
 
   if (!message.parsed_output) {
     // A refusal or a stop before the JSON closed. Nothing usable came back.

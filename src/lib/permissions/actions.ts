@@ -2,6 +2,7 @@ import { PoStage } from "@/generated/prisma/enums";
 
 export const PERMISSION_GROUPS = [
   "Dashboard",
+  "Booking confirmations",
   "Purchase orders",
   "Fulfilment",
   "Catalogue",
@@ -27,6 +28,24 @@ const RAW_ACTIONS = [
     label: "Dashboard",
     description: "See sales, fulfilment and buyer trends on the home page.",
     group: "Dashboard",
+  },
+  {
+    key: "bc.view",
+    label: "Booking confirmations",
+    description: "Open the booking confirmation list and each one's file and fields.",
+    group: "Booking confirmations",
+  },
+  {
+    key: "bc.upload",
+    label: "Upload a booking confirmation",
+    description: "Upload a BC for auto extraction, and delete one not yet reviewed.",
+    group: "Booking confirmations",
+  },
+  {
+    key: "bc.review",
+    label: "Review a booking confirmation",
+    description: "Correct the extracted fields and mark the BC reviewed.",
+    group: "Booking confirmations",
   },
   {
     key: "po.view",

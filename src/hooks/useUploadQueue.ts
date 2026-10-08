@@ -7,6 +7,10 @@ import type {
 } from "@/app/api/upload/presign/route";
 import type { CompleteResponse } from "@/app/api/upload/complete/route";
 import { retryExtraction } from "@/actions/purchase-orders";
+import {
+  cancelBookingUpload,
+  retryBookingConfirmation,
+} from "@/actions/booking-confirmations";
 import { expandZips } from "@/lib/upload/expand-zips";
 import { MAX_FILES_PER_CALL, rejectionReason } from "@/lib/validation/upload";
 import {
@@ -27,7 +31,40 @@ const MAX_ROWS = MAX_FILES_PER_CALL * 10;
 let counter = 0;
 const nextId = () => `row-${Date.now()}-${counter++}`;
 
-export function useUploadQueue(hintBuyerId?: string) {
+/**
+ * Where a queue sends its files. Purchase orders and booking confirmations
+ * (2026-10-08) answer the same presign and complete shapes, so one queue
+ * drives both; only the endpoints differ.
+ */
+export type UploadTarget = {
+  presign: string;
+  complete: string;
+  /** A row removed before its file finished arriving. Best effort. */
+  cancel: (documentId: string) => Promise<unknown>;
+  /** Read a FAILED upload again; the bytes are already in R2. */
+  retry: (
+    id: string,
+  ) => Promise<
+    | { success: true; data: { status: string; error: string | null } }
+    | { success: false; error: string }
+  >;
+};
+
+export const PO_UPLOAD: UploadTarget = {
+  presign: "/api/upload/presign",
+  complete: "/api/upload/complete",
+  cancel: (documentId) => fetch(`/api/upload/${documentId}`, { method: "DELETE" }),
+  retry: retryExtraction,
+};
+
+export const BOOKING_UPLOAD: UploadTarget = {
+  presign: "/api/booking-confirmations/presign",
+  complete: "/api/booking-confirmations/complete",
+  cancel: cancelBookingUpload,
+  retry: retryBookingConfirmation,
+};
+
+export function useUploadQueue(hintBuyerId?: string, target: UploadTarget = PO_UPLOAD) {
   const [rows, setRows] = useState<UploadRow[]>([]);
 
   /**
@@ -105,7 +142,7 @@ export function useUploadQueue(hintBuyerId?: string) {
   const run = useCallback(
     async (row: UploadRow) => {
       try {
-        const presignResponse = await fetch("/api/upload/presign", {
+        const presignResponse = await fetch(target.presign, {
           method: "POST",
           headers: { "content-type": "application/json" },
           body: JSON.stringify({
@@ -131,7 +168,7 @@ export function useUploadQueue(hintBuyerId?: string) {
         await putToR2(row, presigned);
 
         patch(row.id, { status: "extracting", progress: 100 });
-        const completeResponse = await fetch("/api/upload/complete", {
+        const completeResponse = await fetch(target.complete, {
           method: "POST",
           headers: { "content-type": "application/json" },
           body: JSON.stringify({
@@ -174,7 +211,7 @@ export function useUploadQueue(hintBuyerId?: string) {
         pumpRef.current();
       }
     },
-    [fail, hintBuyerId, patch, putToR2],
+    [fail, hintBuyerId, patch, putToR2, target],
   );
 
   /**
@@ -253,13 +290,11 @@ export function useUploadQueue(hintBuyerId?: string) {
       // Best effort: the row is gone from the UI either way, and the orphan
       // sweep in `src/lib/queries/documents.ts` is the backstop.
       if (row?.documentId) {
-        void fetch(`/api/upload/${row.documentId}`, { method: "DELETE" }).catch(
-          () => {},
-        );
+        void target.cancel(row.documentId).catch(() => {});
       }
       pump();
     },
-    [commit, pump],
+    [commit, pump, target],
   );
 
   const retry = useCallback(
@@ -272,7 +307,7 @@ export function useUploadQueue(hintBuyerId?: string) {
       // arrived intact would waste the transfer and orphan the first document.
       if (row.extractionId) {
         patch(id, { status: "extracting", progress: 100, reason: undefined });
-        void retryExtraction(row.extractionId).then((result) => {
+        void target.retry(row.extractionId).then((result) => {
           if (!result.success) {
             fail(id, result.error);
             return;
@@ -295,7 +330,7 @@ export function useUploadQueue(hintBuyerId?: string) {
       patch(id, { status: "queued", progress: 0, reason: undefined });
       pump();
     },
-    [fail, patch, pump],
+    [fail, patch, pump, target],
   );
 
   const busy = rows.some(

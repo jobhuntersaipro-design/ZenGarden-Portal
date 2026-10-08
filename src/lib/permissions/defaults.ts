@@ -8,6 +8,7 @@ import { OPS_ROLES, type OpsRole } from "@/lib/permissions/roles";
 /** Looking at the portal is not a privilege; every ops role starts with it. */
 const VIEW_EVERYWHERE = [
   "dashboard.view",
+  "bc.view",
   "po.view",
   "product.view",
   "buyer.view",
@@ -25,13 +26,21 @@ export const DEFAULT_GRANTS: Readonly<
   [Role.SUPER_ADMIN]: PERMISSION_ACTIONS.map((action) => action.key),
   [Role.PRODUCTION_PLANNER]: [
     ...VIEW_EVERYWHERE,
+    "bc.upload",
     "po.upload",
     "po.document",
     "po.advance.order_placed",
   ],
-  [Role.QC]: [...VIEW_EVERYWHERE, "po.upload", "po.document", "po.advance.in_production"],
+  [Role.QC]: [
+    ...VIEW_EVERYWHERE,
+    "bc.upload",
+    "po.upload",
+    "po.document",
+    "po.advance.in_production",
+  ],
   [Role.WAREHOUSE]: [
     ...VIEW_EVERYWHERE,
+    "bc.upload",
     "po.upload",
     "po.document",
     "po.advance.qc_passed",

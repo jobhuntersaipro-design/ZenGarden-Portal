@@ -99,10 +99,13 @@ export function UploadQueue({
   rows,
   onRemove,
   onRetry,
+  noun = "PO",
 }: {
   rows: UploadRow[];
   onRemove: (id: string) => void;
   onRetry: (id: string) => void;
+  /** What is being uploaded, short: "PO" or "BC". */
+  noun?: string;
 }) {
   // The queue region exists before the first file, so choosing one fills a
   // space that is already there instead of pushing the footer down the page
@@ -112,8 +115,8 @@ export function UploadQueue({
     return (
       <p className="mt-md rounded-lg border border-dashed border-hairline bg-canvas p-md text-center text-[length:var(--text-body-sm)] text-ink-secondary">
         {/* "Drop" is desktop language; the phone's route in is the camera. */}
-        <span className="sm:hidden">No files yet — add a PO above</span>
-        <span className="hidden sm:inline">No files yet — drop POs above</span>
+        <span className="sm:hidden">No files yet — add a {noun} above</span>
+        <span className="hidden sm:inline">No files yet — drop {noun}s above</span>
       </p>
     );
   }

@@ -70,7 +70,7 @@ export function MobileTopBar({
 }
 
 /**
- * Six destinations across the bottom. Each tab is a 56px row plus the home
+ * Seven destinations across the bottom. Each tab is a 56px row plus the home
  * indicator inset, comfortably past the 44px touch minimum the review found 55
  * violations of.
  */
@@ -92,7 +92,7 @@ export function MobileTabBar({ allowed }: { allowed: readonly string[] }) {
       // The column count is a literal class from TAB_BAR_COLUMNS, never
       // `grid-cols-${n}`: Tailwind compiles what it can see in the source, so
       // a class built at runtime is no class at all and the bar wraps onto
-      // two rows. Six tabs is 65px each at 390, still clear of the 44px
+      // two rows. Seven tabs is 55px each at 390, still clear of the 44px
       // floor; a filtered bar only ever has fewer, and wider.
       className={`fixed inset-x-0 bottom-0 z-30 isolate grid ${TAB_BAR_COLUMNS[tabs.length]} border-t border-hairline bg-surface lg:hidden px-xxs pt-xxs`}
       style={{ paddingBottom: "env(safe-area-inset-bottom)" }}

@@ -1,4 +1,4 @@
-import { Boxes, CalendarClock, FileText, LayoutDashboard, Package, Users } from "lucide-react";
+import { Boxes, CalendarClock, FileText, LayoutDashboard, Package, Ship, Users } from "lucide-react";
 import type { PermissionKey } from "@/lib/permissions/actions";
 
 /**
@@ -34,9 +34,18 @@ export const NAV = [
   {
     href: "/",
     label: "Dashboard",
-    short: "Dashboard",
+    // "Dashboard" is 62px at caption size; a seventh tab (2026-10-08) left
+    // each one 55px at 390, so it ran off the screen and into its neighbour.
+    short: "Home",
     icon: LayoutDashboard,
     permission: "dashboard.view",
+  },
+  {
+    href: "/booking-confirmations",
+    label: "Booking Confirmations",
+    short: "Bookings",
+    icon: Ship,
+    permission: "bc.view",
   },
   {
     href: "/purchase-orders",
@@ -103,7 +112,7 @@ export function navFor(allowed: readonly string[]): typeof NAV[number][] {
  * at runtime is not a class — the note this replaces made that point about a
  * hardcoded `grid-cols-6`. The count is no longer fixed now that the bar
  * shows only what the reader may open, so every reachable width is spelled
- * out instead. Six tabs is 65px each at 390, still clear of the 44px floor,
+ * out instead. Seven tabs is 55px each at 390, still clear of the 44px floor,
  * and fewer tabs only ever makes them wider.
  */
 export const TAB_BAR_COLUMNS: Record<number, string> = {
@@ -113,4 +122,5 @@ export const TAB_BAR_COLUMNS: Record<number, string> = {
   4: "grid-cols-4",
   5: "grid-cols-5",
   6: "grid-cols-6",
+  7: "grid-cols-7",
 };

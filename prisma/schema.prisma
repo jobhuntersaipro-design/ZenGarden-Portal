@@ -57,6 +57,8 @@ model User {
   permissionEdits    PermissionGrant[]    @relation("permissionEdits")
   buyerDocuments     BuyerDocument[]      @relation("buyerDocumentsUploaded")
   purchaseOrderDocuments PurchaseOrderDocument[] @relation("poDocumentsUploaded")
+  bookingsUploaded   BookingConfirmation[] @relation("bookingsUploaded")
+  bookingsReviewed   BookingConfirmation[] @relation("bookingsReviewed")
   buyer              Buyer?               @relation(fields: [buyerId], references: [id])
 
   @@index([buyerId])
@@ -333,6 +335,62 @@ model PurchaseOrderDocument {
   createdAt       DateTime      @default(now())
 
   @@index([purchaseOrderId, createdAt])
+}
+
+/**
+ * A carrier's booking confirmation, uploaded and read by Claude like a PO scan
+ * but standalone: it is not linked to a purchase order or a buyer (2026-10-08).
+ *
+ * Its own table rather than a kind of `Document`, so nothing that reads the PO
+ * intake (the review queue, the orphan sweep, the document URL route) can ever
+ * pick one up. Every extracted field is nullable: a BC prints what it prints.
+ */
+model BookingConfirmation {
+  id                  String        @id @default(cuid())
+  r2Key               String        @unique // bookings/{yyyy}/{mm}/{id}.{ext}
+  originalName        String
+  mimeType            String
+  sizeBytes           Int
+  status              BookingStatus @default(UPLOADING)
+  /// Why the read failed, shown on the row and the review screen.
+  error               String?
+  /// What Claude returned, untouched.
+  rawJson             Json?
+  bookingNumber       String?
+  carrier             String?
+  /// As printed, e.g. "2 x 40HC".
+  containers          String?
+  portOfLoading       String?
+  transhipmentPort    String?
+  portOfDischarge     String?
+  etdPol              DateTime?     @db.Date
+  etaPod              DateTime?     @db.Date
+  finalDestination    String?
+  etaFinalDestination DateTime?     @db.Date
+  feederVessel        String?
+  motherVessel        String?
+  /// As printed; a web link is shown as one.
+  vesselTracking      String?
+  uploadedById        String
+  uploadedBy          User          @relation("bookingsUploaded", fields: [uploadedById], references: [id])
+  uploadedAt          DateTime      @default(now())
+  /// Whoever last saved the fields as reviewed.
+  reviewedById        String?
+  reviewedBy          User?         @relation("bookingsReviewed", fields: [reviewedById], references: [id], onDelete: SetNull)
+  reviewedAt          DateTime?
+  updatedAt           DateTime      @updatedAt
+
+  @@index([status])
+  @@index([uploadedAt])
+}
+
+/// UPLOADING until the bytes are verified in R2; such rows are never listed.
+enum BookingStatus {
+  UPLOADING
+  EXTRACTING
+  NEEDS_REVIEW
+  FAILED
+  REVIEWED
 }
 
 // Ordered. Add future stages by appending here AND in src/lib/po-stages.ts.

@@ -1,3 +1,75 @@
+# Booking Confirmations: upload a BC, Claude reads it, a person reviews it
+
+## Status
+
+**Built on `claude/booking-confirmation-sidetab-bdyxd9`** (2026-10-08). Asked
+for as a new side tab before Purchase Orders where a BC is uploaded like a PO,
+the shipping fields extracted, and listed in a filtered, paged, searchable
+table showing uploaded date, uploaded by and reviewed by. Four answers taken
+before building: also capture **booking number, carrier and containers**;
+**standalone** (no link to a PO or buyer); **vessel tracking as printed** (a
+web link becomes clickable); **access like PO**.
+
+- **`BookingConfirmation`**, its own table and `BookingStatus` enum
+  (UPLOADING → EXTRACTING → NEEDS_REVIEW / FAILED → REVIEWED), migration
+  `20261008090000_booking_confirmations`. Not a kind of `Document`, so the PO
+  review queue, orphan sweep and document route can never pick one up. Every
+  field nullable; ETD/ETA are `@db.Date`.
+- **Permissions** `bc.view` (every ops role), `bc.upload` (planner, QC,
+  warehouse, super admin), `bc.review` (super admin). The migration inserts the
+  grant rows, since `roleCan` reads stored grants only.
+- **Sidebar** "Booking Confirmations" before Purchase Orders. The phone bar is
+  seven tabs at 55px: "Dashboard" (62px) ran off the screen, so its phone label
+  is now **Home**; the sidebar and its accessible name are unchanged.
+- **Upload** reuses the PO queue (`useUploadQueue` takes a target; zips open
+  the same way). Routes `/api/booking-confirmations/{presign,complete,[id]/url}`.
+  Claude decides `documentKind` first: a PO, invoice or bill of lading is a
+  Failed row with the reason. `readDocument` in `extract-po.ts` is the one
+  Claude call both readers share.
+- **List** `/booking-confirmations`: search (booking no., carrier, ports,
+  vessels, tracking, file name), Uploaded-by select, status chips, sort, 10/30/50
+  pages. Columns Booking no. (carrier under it) · Route · ETD POL · ETA POD ·
+  Status · Uploaded (who + date) · Reviewed by (who + date) · delete. Seven
+  separate columns measured 1507px in a 1118px card and pushed exactly the
+  asked-for columns off; now Route and ETA/ETD drop with the card width.
+- **Detail** `/booking-confirmations/[id]`: the file beside the 13 fields.
+  Mark reviewed (or Save changes) records the reviewer; others read only.
+  Failed: Try again, or fill in by hand. Delete: `bc.upload` for an unreviewed
+  one, `bc.review` once reviewed.
+
+## Verified
+
+Local Postgres + the seed, moto for R2, and a local stand-in for the Messages
+API (`ANTHROPIC_BASE_URL`) answering canned BC fields, so the real routes,
+`readDocument`, Zod parse and writes all ran. Production build, Chromium.
+- A generated Maersk-style BC PDF: presign → PUT → complete; the stand-in
+  received a `document` block with the booking prompt; the row read
+  MYPKG2610457 / Port Klang → Singapore → Jebel Ali / ETD 14 Oct, ETA 2 Nov;
+  Carrier corrected and Mark reviewed → REVIEWED, reviewer Rina Tan.
+- A "purchase order" answer → Failed row "This looks like a purchase order —
+  upload it under Purchase Orders instead". Try again with a BC answer refilled
+  the fields (**found while driving**: the form kept its blank first copy; it is
+  keyed on status now).
+- Search emden / ho chi minh / PO-LHM → 1 row each, zzzz → 0; chips and the
+  search compose in the URL; delete removed the row.
+- Planner: Upload BC, delete only the unreviewed row, detail read-only. Member:
+  no upload, no delete, upload page 404. API: member presign 403, planner
+  completing another's upload 404, signed out 307. An UPLOADING row is never
+  listed.
+- No page overflow at 390 / 768 / 1024 / 1280 / 1440; the table fits its card
+  at every desktop width. Sub-44px at 390: the skip link only. No console
+  errors besides the `/_vercel` scripts (served only on Vercel).
+- 1858 tests (7 new), `tsc`, lint unchanged (4 `ShopHeader` errors), build clean.
+
+## Not verified
+
+**Claude on real BCs** — no API key here; the extraction prompt is written for
+Maersk/CMA-style BCs (feeder vs mother vessel, day-first dates) and has never
+seen the customer's sample (the attachment did not come through). A real R2
+upload. An object PUT before the tab closed is not swept from R2 (the row is).
+
+## Before that
+
 # Upload PO takes a ZIP, and refuses what isn't a PO
 
 ## Status

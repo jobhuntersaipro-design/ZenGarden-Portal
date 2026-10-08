@@ -1,4 +1,4 @@
-import type { PoStage } from "@/generated/prisma/enums";
+import type { BookingStatus, PoStage } from "@/generated/prisma/enums";
 import { Badge, type BadgeTone } from "@/components/arc/badge/badge";
 import { stageColorVar, stageLabel } from "@/lib/po-stages";
 
@@ -11,7 +11,9 @@ export type IntakeStatus =
   | "NEEDS_REVIEW"
   | "RECEIVED"
   | "FAILED"
-  | "NOT_CONFIRMED";
+  | "NOT_CONFIRMED"
+  /** A booking confirmation somebody has checked (2026-10-08). */
+  | "REVIEWED";
 
 export type StatusTone = {
   label: string;
@@ -54,6 +56,18 @@ export const INTAKE_STATUS: Record<IntakeStatus, StatusTone> = {
     text: "text-ink-disabled",
     dot: "bg-ink-disabled",
   },
+  // The PO list's Confirmed green: done, nothing left to do.
+  REVIEWED: { label: "Reviewed", text: "text-accent-green", dot: "bg-accent-green" },
+};
+
+/** A booking confirmation's status as the intake badge it reads as. */
+export const BOOKING_BADGE: Record<BookingStatus, IntakeStatus> = {
+  // Never listed or opened; mapped only so the record is total.
+  UPLOADING: "EXTRACTING",
+  EXTRACTING: "EXTRACTING",
+  NEEDS_REVIEW: "NEEDS_REVIEW",
+  FAILED: "FAILED",
+  REVIEWED: "REVIEWED",
 };
 
 /**
@@ -66,6 +80,7 @@ const INTAKE_TONE: Record<IntakeStatus, BadgeTone> = {
   RECEIVED: "info",
   FAILED: "danger",
   NOT_CONFIRMED: "neutral",
+  REVIEWED: "success",
 };
 
 export function StatusBadge({ status }: { status: IntakeStatus }) {

@@ -166,6 +166,11 @@ export function documentKey(documentId: string, ext: string): string {
   return `po/${format(now, "yyyy")}/${format(now, "MM")}/${documentId}.${clean}`;
 }
 
+/** `bookings/2026/10/{bookingId}.pdf` — a booking confirmation (2026-10-08). */
+export function bookingKey(bookingId: string, ext: string): string {
+  return documentKey(bookingId, ext).replace(/^po\//, "bookings/");
+}
+
 /**
  * `products/{productId}/{imageId}.jpg` — the original, exactly as uploaded.
  *

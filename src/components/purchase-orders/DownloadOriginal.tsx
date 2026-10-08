@@ -10,7 +10,14 @@ import { Button } from "@/components/ui/button";
  * it lives ten minutes, and a link minted at render time is often already
  * dead by the time someone uses it.
  */
-export function DownloadOriginal({ documentId }: { documentId: string }) {
+export function DownloadOriginal({
+  documentId,
+  endpoint = `/api/documents/${documentId}/url`,
+}: {
+  documentId: string;
+  /** The route answering `{ url }`; a booking confirmation has its own. */
+  endpoint?: string;
+}) {
   const [pending, setPending] = useState(false);
   return (
     <Button
@@ -19,9 +26,7 @@ export function DownloadOriginal({ documentId }: { documentId: string }) {
       onClick={async () => {
         setPending(true);
         try {
-          const response = await fetch(
-            `/api/documents/${documentId}/url?download=1`,
-          );
+          const response = await fetch(`${endpoint}?download=1`);
           if (!response.ok) throw new Error("no url");
           const { url } = (await response.json()) as DocumentUrlResponse;
           window.open(url, "_blank", "noopener");
