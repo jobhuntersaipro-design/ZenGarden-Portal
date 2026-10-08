@@ -35,7 +35,7 @@ export function ProductStockCard({
           <p className={caption}>
             {latest === null
               ? "Nobody has counted this product."
-              : `Counted ${formatDate(latest.countedOn)}${
+              : `${latest.fromCartons != null ? "Moved by delivery" : "Counted"} ${formatDate(latest.countedOn)}${
                   latest.countedByName ? ` by ${latest.countedByName}` : ""
                 }`}
           </p>

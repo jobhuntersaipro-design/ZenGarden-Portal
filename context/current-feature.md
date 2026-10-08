@@ -16,9 +16,18 @@ count to what count". It did not: stock was typed only (2026-09-20 decision).
   `Product.stockCartons`. Migration `20261008090000_stock_moved_by_orders`,
   additive and nullable. The /stock feed reads "moved 200 to 157 cartons ·
   Out for delivery · PO number …", unquoted.
-- **Stock stops at zero.** An order bigger than the count takes what is
-  there and its row says "order is for 44, 14 short". An uncounted product is
-  left alone and reads "Nothing taken off stock".
+- **Short stock goes below zero and warns, it never blocks** (asked the same
+  day: "keep going, show warning" / "yes allowed"). The Advance popover says
+  "Not enough stock for … (14 short). It still goes out, and stock goes below
+  zero." before Confirm and again as a warning toast after; the order's Stock
+  card reads `30 → -14` with "14 cartons short — stock is now below zero";
+  /stock prints −14 in amber. Migration
+  `20261008100000_stock_below_zero_on_delivery` relaxes the stock CHECK to
+  `cartons >= 0 OR fromCartons IS NOT NULL`, so a typed count is still never
+  negative. Moving back returns the full amount (−14 → 30). An uncounted
+  product is left alone and reads "Nothing taken off stock". The product's
+  stock heading reads "Moved by delivery …" rather than "Counted …" when the
+  latest figure came from an order.
 - The PO page has a **Stock** card under Line items: one row per move,
   `200 → 157`, what came off or went back, date and who.
 
@@ -27,7 +36,10 @@ count to what count". It did not: stock was typed only (2026-09-20 decision).
 Local Postgres and the seed, Chromium at 1440 and 390, as a super admin, on
 PO-2026-0035 (43 + 44 + 44 cartons; stock 200, 30, uncounted). Advance:
 200 → 157, 30 → 0 (14 short), the third untouched; database cache 157 / 0.
-Move back: 157 → 200, 0 → 30. No overflow at either width. 1854 tests (3 new,
+Move back: 157 → 200, 0 → 30. No overflow at either width. Below zero,
+re-driven: popover warning at 1440 and 390, warning toast, 30 → −14 in the
+database and on the card, −14 on /stock and on the product's trend (the chart
+draws under zero), Move back −14 → 30; a typed −1 refused by the CHECK. 1854 tests (3 new,
 two watched failing with the floor and the net-return removed), `tsc`, eslint
 on touched files, `npm run build` clean.
 

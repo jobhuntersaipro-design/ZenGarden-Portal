@@ -4,6 +4,7 @@ import {
   deliveryDeductions,
   deliveryReturns,
   describeStockCount,
+  stockShortfall,
   latestCount,
   stockActivity,
   stockTrend,
@@ -110,7 +111,7 @@ describe("stock moved by delivery", () => {
     ["c", null],
   ]);
 
-  it("takes each product's cartons off, summed across lines, never below zero", () => {
+  it("takes each product's cartons off, summed across lines, below zero when short", () => {
     expect(
       deliveryDeductions(
         [
@@ -124,22 +125,31 @@ describe("stock moved by delivery", () => {
       ),
     ).toEqual([
       { productId: "a", from: 50, to: 40 },
-      { productId: "b", from: 5, to: 0 },
+      { productId: "b", from: 5, to: -3 },
     ]);
+  });
+
+  it("counts as short only the cartons the count did not cover", () => {
+    expect(stockShortfall({ productId: "a", from: 50, to: 40 })).toBe(0);
+    expect(stockShortfall({ productId: "a", from: 30, to: -14 })).toBe(14);
+    // Already below zero: the whole move is short, and no more than it.
+    expect(stockShortfall({ productId: "a", from: -5, to: -15 })).toBe(10);
+    // Putting cartons back is never short.
+    expect(stockShortfall({ productId: "a", from: -14, to: 30 })).toBe(0);
   });
 
   it("puts back what the order still has out, not what it asked for", () => {
     const out = [
       { productId: "a", from: 50, to: 40 },
-      { productId: "b", from: 5, to: 0 },
+      { productId: "b", from: 5, to: -3 },
     ];
-    const now = new Map<string, number | null>([["a", 38], ["b", 0]]);
+    const now = new Map<string, number | null>([["a", 38], ["b", -3]]);
     expect(deliveryReturns(out, now)).toEqual([
       { productId: "a", from: 38, to: 48 },
-      { productId: "b", from: 0, to: 5 },
+      { productId: "b", from: -3, to: 5 },
     ]);
     // Out, back, out again: only the last trip is still out.
-    const cycled = [...out, { productId: "a", from: 40, to: 50 }, { productId: "b", from: 0, to: 5 }];
+    const cycled = [...out, { productId: "a", from: 40, to: 50 }, { productId: "b", from: -3, to: 5 }];
     expect(deliveryReturns(cycled, now)).toEqual([]);
   });
 
