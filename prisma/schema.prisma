@@ -291,6 +291,7 @@ model PurchaseOrder {
   stageChangedAt DateTime       @default(now())
   stageEvents    PoStageEvent[]
   lineItems      LineItem[]
+  stockMoves     StockCount[]
   webOrder       WebOrder?
   orderDocuments PurchaseOrderDocument[]
   createdAt      DateTime       @default(now())
@@ -404,8 +405,8 @@ model Product {
   market           String? // country or customer the formulation is made for; free-growing list, see listMarkets()
   listPrice        Decimal        @db.Decimal(14, 2)
   /**
-   * Pieces on hand, as the team counts them — typed and corrected in the
-   * portal, never derived from orders and never shown on the shop. Null means
+   * Cartons on hand: what the team counts, less what has gone out for
+   * delivery since (2026-10-08), never shown on the shop. Null means
    * nobody has counted this product yet, which is not the same as zero: zero
    * is a count, and the low-stock flag reads it as one.
    */
@@ -665,8 +666,15 @@ model StockCount {
   supersedesId String?     @unique
   supersedes   StockCount? @relation("corrections", fields: [supersedesId], references: [id], onDelete: SetNull)
   supersededBy StockCount? @relation("corrections")
+  /// Set when this row is not a count but an order moving stock (2026-10-08):
+  /// out for delivery takes its cartons off, moved back puts them back.
+  /// `fromCartons` is the figure before, `cartons` the figure after.
+  purchaseOrderId String?
+  purchaseOrder   PurchaseOrder? @relation(fields: [purchaseOrderId], references: [id], onDelete: SetNull)
+  fromCartons     Int?
   createdAt    DateTime    @default(now())
 
   @@index([productId, countedOn])
+  @@index([purchaseOrderId])
   @@index([countedOn])
 }

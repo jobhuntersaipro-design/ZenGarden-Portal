@@ -1,3 +1,45 @@
+# Stock comes off when an order goes out for delivery
+
+## Status
+
+**Built on `claude/stock-count-delivery-reduction-3ffngo`, merged to `main`**
+(2026-10-08). Asked for as "check if the stock count will reduce if the orders
+are on delivering … show in the order that stock count is deducted, from what
+count to what count". It did not: stock was typed only (2026-09-20 decision).
+
+- **Advancing In warehouse → Delivering takes the order's cartons off** each
+  counted product, summed across lines, in the stage move's own transaction.
+  **Moving back from Delivering puts back** what the order still has out.
+  Delivering → Delivered moves nothing.
+- Each move is a `StockCount` row for today (KL), carrying `purchaseOrderId`
+  and `fromCartons`; it supersedes today's row if there is one, and sets
+  `Product.stockCartons`. Migration `20261008090000_stock_moved_by_orders`,
+  additive and nullable. The /stock feed reads "moved 200 to 157 cartons ·
+  Out for delivery · PO number …", unquoted.
+- **Stock stops at zero.** An order bigger than the count takes what is
+  there and its row says "order is for 44, 14 short". An uncounted product is
+  left alone and reads "Nothing taken off stock".
+- The PO page has a **Stock** card under Line items: one row per move,
+  `200 → 157`, what came off or went back, date and who.
+
+## Verified
+
+Local Postgres and the seed, Chromium at 1440 and 390, as a super admin, on
+PO-2026-0035 (43 + 44 + 44 cartons; stock 200, 30, uncounted). Advance:
+200 → 157, 30 → 0 (14 short), the third untouched; database cache 157 / 0.
+Move back: 157 → 200, 0 → 30. No overflow at either width. 1854 tests (3 new,
+two watched failing with the floor and the net-return removed), `tsc`, eslint
+on touched files, `npm run build` clean.
+
+## Not verified
+
+Production (no sign-in here; nothing written there). **Orders already at
+Delivering or Delivered before this deploy were never deducted** and read
+"Nothing taken off stock". Deleting an order at Delivering does not put its
+stock back. A count dated after today would not be overridden by a move.
+
+## Before that
+
 # Upload PO takes a ZIP, and refuses what isn't a PO
 
 ## Status

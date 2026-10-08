@@ -21,6 +21,8 @@ export type StockCountRow = {
   supersedesId: string | null;
   /** Set when a later row corrects this one. */
   supersededById: string | null;
+  /** The figure before, when this row is an order moving stock, not a count. */
+  fromCartons?: number | null;
 };
 
 /** The rows that still stand — what the trend draws and the figures read. */
@@ -62,6 +64,8 @@ export type StockActivity = {
   cartons: number;
   /** What the corrected row said, when this row corrects one. */
   previous: number | null;
+  /** The figure before, when an order moved stock rather than a count. */
+  fromCartons: number | null;
   note: string | null;
   countedByName: string | null;
   countedByImage?: string | null;
@@ -84,6 +88,7 @@ export function stockActivity(rows: StockCountRow[]): StockActivity[] {
       previous: row.supersedesId
         ? (byId.get(row.supersedesId)?.cartons ?? null)
         : null,
+      fromCartons: row.fromCartons ?? null,
       note: row.note,
       countedByName: row.countedByName,
       countedByImage: row.countedByImage ?? null,
@@ -95,7 +100,60 @@ export function stockActivity(rows: StockCountRow[]): StockActivity[] {
 /** How the feed reads a row. Kept here so the screen cannot word it twice. */
 export function describeStockCount(entry: StockActivity): string {
   const cartons = `${entry.cartons.toLocaleString("en-MY")} cartons`;
+  if (entry.fromCartons != null) {
+    return `moved ${entry.fromCartons.toLocaleString("en-MY")} to ${cartons}`;
+  }
   return entry.previous === null
     ? `counted ${cartons}`
     : `corrected ${entry.previous.toLocaleString("en-MY")} to ${cartons}`;
+}
+
+/** One product's stock moved by an order: the figure before and after. */
+export type StockMove = { productId: string; from: number; to: number };
+
+/**
+ * What an order going out for delivery takes off stock (2026-10-08): its
+ * cartons per product, summed across lines. A product nobody has counted is
+ * left alone — there is no figure to take from. Stock never goes below zero;
+ * an order larger than the count leaves it at zero, and the move records the
+ * cartons it actually took so moving back returns exactly those.
+ */
+export function deliveryDeductions(
+  lines: { productId: string | null; quantity: number }[],
+  stock: Map<string, number | null>,
+): StockMove[] {
+  const wanted = new Map<string, number>();
+  for (const line of lines) {
+    if (!line.productId) continue;
+    wanted.set(line.productId, (wanted.get(line.productId) ?? 0) + line.quantity);
+  }
+  const moves: StockMove[] = [];
+  for (const [productId, cartons] of wanted) {
+    const from = stock.get(productId);
+    if (from == null) continue;
+    moves.push({ productId, from, to: Math.max(0, from - Math.round(cartons)) });
+  }
+  return moves;
+}
+
+/**
+ * Moving an order back from Delivering puts back what it still has out: the
+ * sum of its own moves, per product, so a second trip out and back nets to
+ * nothing rather than counting twice.
+ */
+export function deliveryReturns(
+  moves: StockMove[],
+  stock: Map<string, number | null>,
+): StockMove[] {
+  const out = new Map<string, number>();
+  for (const move of moves) {
+    out.set(move.productId, (out.get(move.productId) ?? 0) + move.from - move.to);
+  }
+  const returns: StockMove[] = [];
+  for (const [productId, cartons] of out) {
+    const from = stock.get(productId);
+    if (from == null || cartons <= 0) continue;
+    returns.push({ productId, from, to: from + cartons });
+  }
+  return returns;
 }

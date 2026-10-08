@@ -20,7 +20,9 @@ import {
 } from "@/emails/WebOrderConfirmed";
 import { sendEmail } from "@/lib/email";
 import { env } from "@/lib/env";
-import { formatDate } from "@/lib/dates";
+import { formatDate, todayISO } from "@/lib/dates";
+import { deliveryDeductions, deliveryReturns, type StockMove } from "@/lib/stock";
+import { ORDER_IDENTITY_SELECT, orderIdentity, orderLabel } from "@/lib/order-identity";
 import { formatMYR } from "@/lib/money";
 import { attachWebOrderDocument } from "@/lib/web-order-document";
 import { preparePoEmail } from "@/lib/po-email";
@@ -102,8 +104,84 @@ async function advanceDeniedMessage(key: PermissionKey): Promise<string> {
 
 function revalidate(poId: string) {
   revalidatePath(`/purchase-orders/${poId}`);
+  // Stock moves with Delivering, so its screens can be stale too.
+  revalidatePath("/stock");
+  revalidatePath("/products", "layout");
   revalidatePath("/purchase-orders");
   revalidatePath("/");
+}
+
+/**
+ * Out for delivery takes an order's cartons off stock; moving it back from
+ * Delivering puts them back (2026-10-08). Each move is a ledger row for today,
+ * like a count, carrying the order and the figure before — so the product's
+ * history and the order both say "from what to what". It runs inside the
+ * stage move's transaction: a stage that did not move moves no stock.
+ */
+async function moveStockForDelivery(
+  tx: Prisma.TransactionClient,
+  poId: string,
+  direction: "out" | "back",
+  userId: string,
+): Promise<StockMove[]> {
+  const lines = await tx.lineItem.findMany({
+    where: { purchaseOrderId: poId, productId: { not: null } },
+    select: { productId: true, quantity: true, product: { select: { stockCartons: true } } },
+  });
+  const stock = new Map(
+    lines.map((line) => [line.productId!, line.product?.stockCartons ?? null]),
+  );
+  const moves =
+    direction === "out"
+      ? deliveryDeductions(
+          lines.map((line) => ({ productId: line.productId, quantity: line.quantity.toNumber() })),
+          stock,
+        )
+      : deliveryReturns(
+          (
+            await tx.stockCount.findMany({
+              where: { purchaseOrderId: poId, fromCartons: { not: null } },
+              select: { productId: true, fromCartons: true, cartons: true },
+            })
+          ).map((row) => ({ productId: row.productId, from: row.fromCartons!, to: row.cartons })),
+          stock,
+        );
+  if (moves.length === 0) return moves;
+
+  const po = await tx.purchaseOrder.findUniqueOrThrow({
+    where: { id: poId },
+    select: ORDER_IDENTITY_SELECT,
+  });
+  const label = orderLabel(orderIdentity(po));
+  const note = direction === "out" ? `Out for delivery · ${label}` : `Moved back from Delivering · ${label}`;
+  // `@db.Date` truncates in UTC, so today in Kuala Lumpur is built there.
+  const day = new Date(`${todayISO()}T00:00:00.000Z`);
+
+  for (const move of moves) {
+    // Today's figure is superseded rather than sat beside, as a second count
+    // for the same day would be: the trend keeps one point a day.
+    const current = await tx.stockCount.findFirst({
+      where: { productId: move.productId, countedOn: day, supersededBy: { is: null } },
+      select: { id: true },
+    });
+    await tx.stockCount.create({
+      data: {
+        productId: move.productId,
+        countedOn: day,
+        cartons: move.to,
+        fromCartons: move.from,
+        purchaseOrderId: poId,
+        note,
+        countedById: userId,
+        supersedesId: current?.id ?? null,
+      },
+    });
+    await tx.product.update({
+      where: { id: move.productId },
+      data: { stockCartons: move.to },
+    });
+  }
+  return moves;
 }
 
 /**
@@ -158,6 +236,9 @@ export async function advanceStage(
           changedById: user.id,
         },
       });
+      if (target === PoStage.DELIVERING) {
+        await moveStockForDelivery(tx, poId, "out", user.id);
+      }
       return true;
     });
 
@@ -220,6 +301,9 @@ export async function revertStage(
           changedById: user.id,
         },
       });
+      if (po.stage === PoStage.DELIVERING) {
+        await moveStockForDelivery(tx, poId, "back", user.id);
+      }
       return true;
     });
 
