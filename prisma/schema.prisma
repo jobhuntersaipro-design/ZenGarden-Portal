@@ -714,7 +714,9 @@ model StockCount {
   product      Product     @relation(fields: [productId], references: [id], onDelete: Cascade)
   /// The day counted, in Kuala Lumpur, stored as a calendar date.
   countedOn    DateTime    @db.Date
-  /// Cartons on hand. Zero is a count; below zero is not a quantity.
+  /// Cartons on hand. A typed count is never below zero; an order going out
+  /// for delivery may take it below zero, which is the shortfall (2026-10-08).
+  /// A CHECK enforces both.
   cartons      Int
   note         String?
   /// Null means the seed or an import, never a person.

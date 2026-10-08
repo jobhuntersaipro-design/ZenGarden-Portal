@@ -57,7 +57,14 @@ export function StockTable({
         row.stockCartons === null ? (
           <span className="text-ink-tertiary">—</span>
         ) : (
-          <span className="tabular-nums">{row.stockCartons.toLocaleString("en-MY")}</span>
+          // Below zero is a shortfall: orders went out for more than was
+          // counted (2026-10-08).
+          <span
+            className={`tabular-nums ${row.stockCartons < 0 ? "font-medium text-brand-amber-strong" : ""}`}
+            title={row.stockCartons < 0 ? "Orders went out for more than was counted" : undefined}
+          >
+            {row.stockCartons.toLocaleString("en-MY")}
+          </span>
         ),
     },
     {
