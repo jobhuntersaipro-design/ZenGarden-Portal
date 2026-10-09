@@ -6,6 +6,8 @@ import {
   EXTRACTION_TIMEOUT_MS,
 } from "@/lib/extraction/expire";
 import type { SortDirection } from "@/lib/queries/pagination";
+import { ORDER_IDENTITY_SELECT, orderIdentity, orderLabel } from "@/lib/order-identity";
+import { formatDate } from "@/lib/dates";
 
 /** The list's status chips. Must stay in step with the chips on the page. */
 export const BOOKING_CHIPS = ["all", "needs-review", "reviewed", "extracting", "failed"] as const;
@@ -162,6 +164,48 @@ export async function loadBooking(id: string) {
   await expireStaleBookings();
   return prisma.bookingConfirmation.findFirst({
     where: { id, status: { not: BookingStatus.UPLOADING } },
-    include: { uploadedBy: PERSON, reviewedBy: PERSON },
+    include: {
+      uploadedBy: PERSON,
+      reviewedBy: PERSON,
+      purchaseOrder: { select: { id: true, ...ORDER_IDENTITY_SELECT } },
+    },
+  });
+}
+
+/**
+ * The purchase orders a booking can be linked to, newest first, each labelled
+ * the way the rest of the portal names it, with the buyer to tell them apart.
+ * ponytail: the newest 500 in one list; a server-side search past that.
+ */
+export async function bookingOrderOptions() {
+  const orders = await prisma.purchaseOrder.findMany({
+    where: { supersededBy: null },
+    orderBy: [{ poDate: "desc" }, { createdAt: "desc" }],
+    take: 500,
+    select: { id: true, poDate: true, buyer: { select: { name: true } }, ...ORDER_IDENTITY_SELECT },
+  });
+  return orders.map((po) => ({
+    id: po.id,
+    label: `${orderLabel(orderIdentity(po))} · ${po.buyer.name}`,
+    hint: formatDate(po.poDate),
+  }));
+}
+
+/** The bookings that ship one purchase order, for its Shipping card. */
+export function bookingsForOrder(purchaseOrderId: string) {
+  return prisma.bookingConfirmation.findMany({
+    where: { purchaseOrderId, status: { not: BookingStatus.UPLOADING } },
+    orderBy: { uploadedAt: "asc" },
+    select: {
+      id: true,
+      bookingNumber: true,
+      originalName: true,
+      portOfLoading: true,
+      portOfDischarge: true,
+      etdPol: true,
+      etaPod: true,
+      feederVessel: true,
+      motherVessel: true,
+    },
   });
 }

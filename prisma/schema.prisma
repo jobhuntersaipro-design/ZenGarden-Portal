@@ -299,6 +299,8 @@ model PurchaseOrder {
   createdAt      DateTime       @default(now())
   updatedAt      DateTime       @updatedAt
 
+  bookings       BookingConfirmation[]
+
   @@unique([buyerId, poNumber, revision])
   @@index([poDate])
   @@index([stage])
@@ -372,6 +374,9 @@ model BookingConfirmation {
   motherVessel        String?
   /// As printed; a web link is shown as one.
   vesselTracking      String?
+  /// The order this booking ships, chosen by a person; the PO page shows its vessels.
+  purchaseOrderId     String?
+  purchaseOrder       PurchaseOrder? @relation(fields: [purchaseOrderId], references: [id], onDelete: SetNull)
   uploadedById        String
   uploadedBy          User          @relation("bookingsUploaded", fields: [uploadedById], references: [id])
   uploadedAt          DateTime      @default(now())
@@ -383,6 +388,7 @@ model BookingConfirmation {
 
   @@index([status])
   @@index([uploadedAt])
+  @@index([purchaseOrderId])
 }
 
 /// UPLOADING until the bytes are verified in R2; such rows are never listed.

@@ -147,3 +147,38 @@ export async function cancelBookingUpload(id: string): Promise<ActionResult> {
   if (!isPendingKey(booking.r2Key)) await deleteObject(booking.r2Key).catch(() => {});
   return { success: true, data: undefined };
 }
+
+/**
+ * Names the purchase order a booking ships, or clears it with null. Not a
+ * review: the booking's status and reviewer stay as they are.
+ */
+export async function linkBookingToPurchaseOrder(
+  id: string,
+  purchaseOrderId: string | null,
+): Promise<ActionResult> {
+  const { user, error } = await guard("bc.review");
+  if (!user) return { success: false, error };
+  try {
+    if (purchaseOrderId) {
+      const po = await prisma.purchaseOrder.findUnique({
+        where: { id: purchaseOrderId },
+        select: { id: true },
+      });
+      if (!po) return { success: false, error: "That purchase order is gone." };
+    }
+    const before = await prisma.bookingConfirmation.findUnique({
+      where: { id },
+      select: { purchaseOrderId: true },
+    });
+    if (!before) return { success: false, error: "That booking confirmation is gone." };
+    await prisma.bookingConfirmation.update({ where: { id }, data: { purchaseOrderId } });
+    revalidatePath(`${LIST}/${id}`);
+    for (const poId of [before.purchaseOrderId, purchaseOrderId]) {
+      if (poId) revalidatePath(`/purchase-orders/${poId}`);
+    }
+    return { success: true, data: undefined };
+  } catch (cause) {
+    console.error("[booking] link", cause);
+    return { success: false, error: "We couldn't link that purchase order." };
+  }
+}

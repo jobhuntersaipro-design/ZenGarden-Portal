@@ -1,3 +1,47 @@
+# Vessel tracking: a booking names its order, each vessel links to VesselFinder
+
+## Status
+
+**Built on `claude/vibrant-archimedes-8e0c36`** (2026-10-09). ClickUp
+[z8v9xnh89d](https://app.clickup.com/t/z8v9xnh89d), "Show vessel real-time
+location on shipment/order". The ticket's own open questions (provider, budget,
+API key) were unanswered and no provider account exists, so the user chose
+**the tracking-link cut** and **linking a BC to its PO** over a paid AIS API.
+
+- `BookingConfirmation.purchaseOrderId`, nullable, `ON DELETE SET NULL`
+  (migration `20261009100000_booking_purchase_order`, additive).
+- BC detail: a **Purchase order** picker (`bc.review`), saved on choice by
+  `linkBookingToPurchaseOrder`. It is not a review: status and reviewer stay.
+  Everyone else sees "Open PO number …". The picker offers the newest 500
+  current orders, labelled `orderLabel · buyer`.
+- Under Feeder and Mother vessel: **Track on VesselFinder**, which opens
+  VesselFinder's search for the ship's name with the voyage cut off
+  (`vesselName`: "HG SKYLINE V. CS10G0S89" → "HG SKYLINE", "DANUM 172 /
+  72123W" → "DANUM 172"). No key, no cost, no server call.
+- PO detail: a **Shipping** card (`bc.view`) listing each linked booking,
+  route, ETD/ETA, and both vessels with their links; "No vessel set" when none.
+
+## Verified
+
+Local Postgres and the seed, production build, Chromium at 1440 and 390, as a
+super admin. Linking MYPKG2610457 to PO-2026-0057 toasted "Purchase order
+linked", wrote the row and left it NEEDS_REVIEW; the PO page's Shipping card
+read both vessels with links `…/vessels?name=HG%20SKYLINE` and
+`…?name=MAERSK%20EMDEN`; an unlinked PO read "No vessel set". A production
+planner sees the link and no picker. No overflow at either width; the links
+are 44px at 390. VesselFinder's search for HG SKYLINE answered 200 with the
+ship in its results. 1875 tests (9 new), `tsc`, eslint on touched files, build
+clean.
+
+## Not verified
+
+Production. A map pin, position time, speed or staleness inside the portal:
+not built, so the ticket's acceptance criteria 1, 4–7 do not apply to this
+cut. A name the heuristic cuts wrongly (a vessel named "… V 2") — the search
+still finds near matches.
+
+## Before that
+
 # Booking Confirmations: upload a BC, Claude reads it, a person reviews it
 
 ## Status

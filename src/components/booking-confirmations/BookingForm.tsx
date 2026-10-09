@@ -12,6 +12,7 @@ import { ReviewSplit } from "@/components/review/ReviewSplit";
 import { Button } from "@/components/ui/button";
 import { PersonChip } from "@/components/ui/person";
 import { formatDateTime } from "@/lib/dates";
+import { TRACKING_LINK, VesselLink } from "@/components/booking-confirmations/VesselLink";
 import {
   BOOKING_FIELDS,
   type BookingFields,
@@ -37,6 +38,7 @@ export function BookingForm({
   canReview,
   canRetry,
   reviewedBy,
+  linkedOrder,
 }: {
   id: string;
   document: ReactNode;
@@ -46,6 +48,8 @@ export function BookingForm({
   canReview: boolean;
   canRetry: boolean;
   reviewedBy: { name: string; image: string | null; at: string } | null;
+  /** The purchase order this booking ships, or the picker that chooses it. */
+  linkedOrder: ReactNode;
 }) {
   const [values, setValues] = useState(initial);
   const [saving, setSaving] = useState(false);
@@ -135,15 +139,22 @@ export function BookingForm({
                   href={values.vesselTracking.trim()}
                   target="_blank"
                   rel="noopener noreferrer"
-                  className="mt-xxs inline-flex min-h-control-md items-center gap-xxs text-[length:var(--text-body-sm)] text-brand-link underline-offset-2 hover:underline sm:min-h-0"
+                  className={`mt-xxs ${TRACKING_LINK}`}
                 >
                   Open tracking link
                   <ExternalLink className="size-3.5" aria-hidden />
                 </a>
               ) : null}
+              {key === "feederVessel" || key === "motherVessel" ? (
+                <div className="mt-xxs">
+                  <VesselLink vessel={values[key]} />
+                </div>
+              ) : null}
             </div>
           ))}
         </div>
+
+        {linkedOrder}
 
         <div className="flex flex-wrap items-center justify-between gap-sm border-t border-hairline pt-md">
           <div className="min-w-0 text-[length:var(--text-body-sm)] text-ink-secondary">
