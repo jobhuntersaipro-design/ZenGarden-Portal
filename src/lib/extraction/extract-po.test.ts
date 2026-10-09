@@ -3,6 +3,14 @@ import { describe, expect, it, vi } from "vitest";
 vi.mock("@/lib/env", () => ({
   env: { ANTHROPIC_API_KEY: "test-key", EXTRACTION_MODEL: "claude-sonnet-5" },
 }));
+const stored = { value: null as string | null };
+vi.mock("@/lib/prisma", () => ({
+  prisma: {
+    appSetting: {
+      findUnique: async () => (stored.value ? { value: stored.value } : null),
+    },
+  },
+}));
 
 const { ExtractionError, extractPurchaseOrder } = await import(
   "@/lib/extraction/extract-po"
@@ -98,6 +106,18 @@ describe("extractPurchaseOrder", () => {
     expect(params.system).toContain("Zen Garden");
     expect(params.system).toContain("Loving Hands");
     expect(params.system).toContain("is the seller");
+  });
+
+  it("sends the model chosen in Settings over EXTRACTION_MODEL", async () => {
+    stored.value = "claude-opus-5-5";
+    const { client, parse } = clientReturning({
+      parsed_output: parsedOutput,
+      model: "m",
+      usage: { input_tokens: 1, output_tokens: 1 },
+    });
+    await extractPurchaseOrder(bytes, "application/pdf", client);
+    stored.value = null;
+    expect(parse.mock.calls[0][0].model).toBe("claude-opus-5-5");
   });
 
   it("refuses a file type it cannot read", async () => {

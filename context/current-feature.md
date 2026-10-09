@@ -5924,6 +5924,23 @@ file: generating a PDF remains Phase 19, still unbuilt.
   purchase-order file, is also unbuilt.
 
 ## History
+- 2026-10-09: The extraction model is chosen in Settings, by the owner only.
+  Asked for as "let me configure easily to change the model, only when I sign
+  in as jobhunters.ai.pro@gmail.com". A "Document reading" card on `/settings`
+  (a select of Sonnet 5.5, Opus 5.5, Haiku 5.5, Fable 5.1, Sonnet 5, and Save)
+  renders only for that address, and `setExtractionModel` refuses anyone else
+  and any model not on the list — another super admin cannot change it.
+  Stored in a new `AppSetting` key/value table (migration
+  `20261009090000_app_setting`, additive); `readDocument` reads it on every
+  call, so the next PO or BC upload uses it with no redeploy, and falls back to
+  `EXTRACTION_MODEL` until something is saved. Verified on local Postgres, a
+  production build, Chromium: the card absent for a non-owner super admin;
+  as the owner the select read `claude-sonnet-5` (the env), Save disabled until
+  it changed, Opus 5.5 saved, toast, the row written, and it held after reload;
+  no overflow at 1440 or 390, select and Save 44px at 390. 1866 tests (4 new;
+  the owner guard watched failing with the check removed), `tsc`, eslint on the
+  touched files, build clean. **Not verified:** a real Claude call on the
+  chosen model (no API key here), and production.
 - 2026-09-23: The shop's front door — product above the fold, and a category
   tile that is not two letters. Asked for as: "Redesign these 2 sections /
   Include relevant images / Search zen garden malaysia related images also

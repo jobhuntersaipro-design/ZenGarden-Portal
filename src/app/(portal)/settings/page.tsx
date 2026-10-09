@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import { redirect } from "next/navigation";
 import { SessionProvider } from "next-auth/react";
 import type { StylePreview } from "@/components/settings/AvatarPicker";
+import { ExtractionModelCard } from "@/components/settings/ExtractionModelCard";
 import { ProfileCard } from "@/components/settings/ProfileCard";
 import { SecurityCard } from "@/components/settings/SecurityCard";
 import { Role } from "@/generated/prisma/enums";
@@ -12,6 +13,7 @@ import {
   isAvatarStyleId,
   renderAvatarDataUri,
 } from "@/lib/avatar-styles";
+import { extractionModel, isModelOwner } from "@/lib/extraction/model";
 import { prisma } from "@/lib/prisma";
 import { withLoadingFloor } from "@/lib/loading-floor";
 
@@ -84,6 +86,10 @@ async function SettingsPage() {
           hasPassword={Boolean(user.passwordHash)}
           passwordChangedAt={user.passwordChangedAt?.toISOString() ?? null}
         />
+
+        {isModelOwner(user.email) && (
+          <ExtractionModelCard current={await extractionModel()} />
+        )}
       </div>
     </SessionProvider>
   );

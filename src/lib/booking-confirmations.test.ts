@@ -3,7 +3,9 @@ import { describe, expect, it, vi } from "vitest";
 vi.mock("@/lib/env", () => ({
   env: { ANTHROPIC_API_KEY: "test-key", EXTRACTION_MODEL: "claude-sonnet-5" },
 }));
-vi.mock("@/lib/prisma", () => ({ prisma: {} }));
+vi.mock("@/lib/prisma", () => ({
+  prisma: { appSetting: { findUnique: async () => null } },
+}));
 
 const { extractBookingConfirmation, BOOKING_SYSTEM_PROMPT } = await import(
   "@/lib/extraction/extract-booking"

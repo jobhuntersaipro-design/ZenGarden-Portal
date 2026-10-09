@@ -738,3 +738,11 @@ model StockCount {
   @@index([purchaseOrderId])
   @@index([countedOn])
 }
+
+/// A key/value setting changed from the portal rather than by a redeploy.
+/// `extractionModel` is the only key (2026-10-09).
+model AppSetting {
+  key       String   @id
+  value     String
+  updatedAt DateTime @updatedAt
+}
