@@ -764,6 +764,8 @@ enum CertType {
   NOT
   HL
   COA
+  /// Kept on file only: never a dot, never a status, never auto-approval.
+  OTHER
 }
 
 /// One certificate file and its expiry (2026-10-14). Linked to many products,

@@ -12,9 +12,18 @@ async function NewCertificatePage() {
   return (
     <>
       <BackLink fallbackHref="/admin/certifications" />
-      <h1 className="mb-lg font-display text-[length:var(--text-display-md)] font-[650] tracking-[-1.36px] text-ink">
-        Upload certificate
-      </h1>
+      <div className="mb-lg">
+        <p className="font-mono text-[length:var(--text-eyebrow)] text-ink-tertiary">
+          Halal · NOT · COA · Other
+        </p>
+        <h1 className="font-display text-[length:var(--text-display-md)] font-[650] tracking-[-1.36px] text-ink">
+          Upload certificate
+        </h1>
+        <p className="mt-xxs text-[length:var(--text-body-sm)] text-ink-secondary">
+          Drop the file in and Claude reads its type, number and expiry. Check them, tick the
+          products it covers, and save.
+        </p>
+      </div>
       <CertificateForm products={products} />
     </>
   );

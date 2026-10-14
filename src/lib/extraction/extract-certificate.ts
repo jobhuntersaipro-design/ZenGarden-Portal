@@ -18,7 +18,7 @@ Classify the document:
 - "NOT": a cosmetic / pharma product notification (e.g. NPRA notification, "Notification Note", notification number such as NOT…).
 - "HL": a Halal certificate (JAKIM, MUI or another Halal authority).
 - "COA": a Certificate of Analysis for a batch.
-- "other": anything else.
+- "other": any other certificate or document (GMP, ISO, test report, licence…).
 reference: the certificate, notification or batch number as printed, or null.
 expiresOn: the date the certificate stops being valid, as YYYY-MM-DD — "expiry date", "valid until", "tarikh tamat", "exp." or, on a COA, the batch's expiry date. If only a validity period from an issue date is printed, add it. Null if no expiry can be read. Never guess a date that is not on the page.
 Dates printed day-first (14/10/2026) are Malaysian: day, month, year.`;

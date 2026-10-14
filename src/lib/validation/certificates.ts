@@ -1,5 +1,5 @@
 import { z } from "zod";
-import { CERT_TYPES } from "@/lib/certification";
+import { CERT_TYPES, DOC_TYPES } from "@/lib/certification";
 import { ACCEPTED_MIME_TYPES, MAX_FILE_BYTES, MAX_NAME_LENGTH } from "@/lib/validation/upload";
 import { isoDate } from "@/lib/validation/purchase-orders";
 
@@ -14,7 +14,7 @@ export const certificateFileSchema = z.object({
 });
 
 export const certificateSchema = z.object({
-  type: z.enum(CERT_TYPES),
+  type: z.enum(DOC_TYPES),
   reference: z
     .string()
     .trim()

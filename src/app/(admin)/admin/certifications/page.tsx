@@ -7,13 +7,18 @@ import { LinkSpinner } from "@/components/portal/LinkSpinner";
 import { Rise } from "@/components/portal/Rise";
 import { TablePagination } from "@/components/portal/TablePagination";
 import { Button } from "@/components/ui/button";
-import { CERT_LABEL, CERT_TYPES, type CertStatus } from "@/lib/certification";
+import type { CertFilterField } from "@/components/certificates/CertFilters";
+import { CERT_LABEL, CERT_TYPES, DOC_LABEL, DOC_TYPES, type CertStatus } from "@/lib/certification";
 import {
+  EXPIRY_FILTERS,
+  EXPIRY_LABEL,
   OVERVIEW_SHOW,
   OVERVIEW_SORT_KEYS,
+  matchesExpiry,
   needsAttention,
+  oneOf,
+  selectCertificates,
   selectOverview,
-  type OverviewShow,
 } from "@/lib/certification-overview";
 import { todayISO } from "@/lib/dates";
 import { withLoadingFloor } from "@/lib/loading-floor";
@@ -122,7 +127,7 @@ async function CertificationPage({ searchParams }: { searchParams: Promise<Searc
         {view === "certificates" ? (
           <CertificatesList params={params} today={today} />
         ) : (
-          <ProductsView params={params} overview={overview} />
+          <ProductsView params={params} overview={overview} today={today} />
         )}
       </Rise>
     </>
@@ -132,24 +137,60 @@ async function CertificationPage({ searchParams }: { searchParams: Promise<Searc
 function ProductsView({
   params,
   overview,
+  today,
 }: {
   params: SearchParams;
   overview: Awaited<ReturnType<typeof loadCertificationOverview>>;
+  today: string;
 }) {
   const q = firstParam(params, "q")?.trim() || undefined;
-  const showParam = firstParam(params, "show") as OverviewShow;
-  const show = OVERVIEW_SHOW.includes(showParam) ? showParam : "all";
+  const show = oneOf(firstParam(params, "show"), OVERVIEW_SHOW) ?? "all";
   const markets = [...new Set(overview.flatMap((row) => (row.market ? [row.market] : [])))].sort();
-  // Resolved against what exists, so the select never shows a filter the rows are not under.
-  const marketParam = firstParam(params, "market");
-  const market = marketParam && markets.includes(marketParam) ? marketParam : null;
+  const market = oneOf(firstParam(params, "market"), markets);
+  const type = oneOf(firstParam(params, "type"), CERT_TYPES);
+  const expiry = oneOf(firstParam(params, "expiry"), EXPIRY_FILTERS);
   const sort = parseSort(params, OVERVIEW_SORT_KEYS, { key: "name", dir: "asc" });
-  const rows = selectOverview(overview, { q, market: market ?? undefined, show, sort });
+  const rows = selectOverview(overview, { q, market, type, expiry, show, sort, today });
   const { page, size, skip, take } = parsePagination(params, [50, 100]);
   const counts = {
     all: overview.length,
     attention: overview.filter(needsAttention).length,
   };
+  const count = (filter: Parameters<typeof selectOverview>[1]) => selectOverview(overview, filter).length;
+  const base = { show: "all" as const, sort, today };
+  const fields: CertFilterField[] = [
+    {
+      id: "type",
+      label: "Certificate",
+      options: CERT_TYPES.map((value) => ({
+        value,
+        label: CERT_LABEL[value],
+        hint: count({ ...base, type: value }),
+      })),
+    },
+    {
+      id: "expiry",
+      label: "Expiry",
+      options: EXPIRY_FILTERS.map((value) => ({
+        value,
+        label: EXPIRY_LABEL[value],
+        hint: count({ ...base, type, expiry: value }),
+      })),
+    },
+    ...(markets.length > 0
+      ? [
+          {
+            id: "market",
+            label: "Market",
+            options: markets.map((value) => ({
+              value,
+              label: value,
+              hint: overview.filter((row) => row.market === value).length,
+            })),
+          },
+        ]
+      : []),
+  ];
 
   return (
     <>
@@ -158,8 +199,7 @@ function ProductsView({
         sort={sort}
         show={show}
         counts={counts}
-        market={market}
-        markets={markets}
+        fields={fields}
       />
       <TablePagination page={page} size={size} total={rows.length} sizes={[50, 100]} />
     </>
@@ -167,7 +207,46 @@ function ProductsView({
 }
 
 async function CertificatesList({ params, today }: { params: SearchParams; today: string }) {
-  const certificates = await listCertificates();
+  const all = await listCertificates();
+  const q = firstParam(params, "q")?.trim() || undefined;
+  const uploaders = [...new Set(all.flatMap((row) => (row.uploadedBy ? [row.uploadedBy] : [])))].sort();
+  const type = oneOf(firstParam(params, "type"), DOC_TYPES);
+  const uploadedBy = oneOf(firstParam(params, "by"), uploaders);
+  const expiry = oneOf(firstParam(params, "expiry"), EXPIRY_FILTERS.filter((e) => e !== "missing"));
+  const certificates = selectCertificates(all, { q, type, uploadedBy, expiry, today });
+  const fields: CertFilterField[] = [
+    {
+      id: "type",
+      label: "Type",
+      options: DOC_TYPES.map((value) => ({
+        value,
+        label: DOC_LABEL[value],
+        hint: all.filter((row) => row.type === value).length,
+      })),
+    },
+    {
+      id: "expiry",
+      label: "Expiry",
+      options: EXPIRY_FILTERS.filter((e) => e !== "missing").map((value) => ({
+        value,
+        label: EXPIRY_LABEL[value],
+        hint: all.filter((row) => matchesExpiry(row.expiresOn, value, today)).length,
+      })),
+    },
+    ...(uploaders.length > 0
+      ? [
+          {
+            id: "by",
+            label: "Uploaded by",
+            options: uploaders.map((value) => ({
+              value,
+              label: value,
+              hint: all.filter((row) => row.uploadedBy === value).length,
+            })),
+          },
+        ]
+      : []),
+  ];
   const sort = parseSort(params, CERT_SORT_KEYS, { key: "expiresOn", dir: "asc" });
   const value = (row: (typeof certificates)[number]) =>
     sort.key === "products"
@@ -181,7 +260,15 @@ async function CertificatesList({ params, today }: { params: SearchParams; today
     const order = left < right ? -1 : left > right ? 1 : 0;
     return sort.dir === "asc" ? order : -order;
   });
-  return <CertificatesTable certificates={sorted} sort={sort} today={today} />;
+  return (
+    <CertificatesTable
+      certificates={sorted}
+      sort={sort}
+      today={today}
+      fields={fields}
+      filtered={Boolean(q || type || uploadedBy || expiry)}
+    />
+  );
 }
 
 export default withLoadingFloor(CertificationPage);

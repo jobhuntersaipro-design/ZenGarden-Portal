@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { usePathname, useSearchParams } from "next/navigation";
 import { clearCertOverride, setCertOverride } from "@/actions/certificates";
+import { CertFilters, type CertFilterField } from "@/components/certificates/CertFilters";
 import { DOT_TONE } from "@/components/certificates/CertDots";
 import { ChoiceButton } from "@/components/portal/ChoiceButton";
 import { DataTable, type Column } from "@/components/portal/DataTable";
@@ -15,12 +16,10 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
-import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { usePendingChoice } from "@/hooks/usePendingChoice";
 import { useAwaitableRefresh } from "@/hooks/useAwaitableRefresh";
 import { useTableSort } from "@/hooks/useTableSort";
-import { useUrlNavigation } from "@/hooks/useUrlNavigation";
 import {
   CERT_LABEL,
   STATUS_LABEL,
@@ -37,9 +36,6 @@ const SHOW_LABEL: Record<OverviewShow, string> = {
   attention: "Needs attention",
 };
 
-const SELECT =
-  "h-control-md rounded-sm border border-hairline-strong bg-transparent px-xs text-[length:var(--text-body-md)] text-ink focus-visible:border-focus focus-visible:outline-2 focus-visible:outline-focus sm:h-control-sm sm:text-[length:var(--text-body-sm)]";
-
 /**
  * Every product × Halal / NOT / COA (2026-10-14). A cell opens the override
  * for that product and type: the one decision made here rather than on a
@@ -50,21 +46,17 @@ export function CertificationTable({
   sort,
   show,
   counts,
-  market,
-  markets,
+  fields,
 }: {
   rows: OverviewRow[];
   sort: { key: string; dir: SortDirection };
   show: OverviewShow;
   counts: Record<OverviewShow, number>;
-  market: string | null;
-  markets: string[];
+  fields: CertFilterField[];
 }) {
   const onSortChange = useTableSort();
-  const { replace } = useUrlNavigation();
   const pathname = usePathname();
   const searchParams = useSearchParams();
-  const [query, setQuery] = useState(searchParams.get("q") ?? "");
   const choice = usePendingChoice<OverviewShow>(show);
   const [open, setOpen] = useState<{ row: OverviewRow; type: CertType } | null>(null);
 
@@ -136,32 +128,7 @@ export function CertificationTable({
 
   return (
     <>
-      <div className="mb-sm flex flex-wrap items-center gap-sm">
-        <Input
-          aria-label="Search products"
-          placeholder="Product, SKU or market…"
-          value={query}
-          onChange={(event) => {
-            setQuery(event.target.value);
-            replace(hrefWith({ q: event.target.value }));
-          }}
-          className="h-control-md w-64 sm:h-control-sm"
-        />
-        {markets.length > 0 ? (
-          <select
-            aria-label="Market"
-            value={market ?? ""}
-            onChange={(event) => replace(hrefWith({ market: event.target.value || null }))}
-            className={SELECT}
-          >
-            <option value="">All markets</option>
-            {markets.map((value) => (
-              <option key={value} value={value}>
-                {value}
-              </option>
-            ))}
-          </select>
-        ) : null}
+      <CertFilters fields={fields} placeholder="Product, SKU or market…">
         <div
           role="group"
           aria-label="Show"
@@ -182,7 +149,7 @@ export function CertificationTable({
             </ChoiceButton>
           ))}
         </div>
-      </div>
+      </CertFilters>
 
       <DataTable
         columns={columns}

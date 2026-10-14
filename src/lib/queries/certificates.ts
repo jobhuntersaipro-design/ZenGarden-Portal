@@ -4,6 +4,7 @@ import {
   productCerts,
   type CertStatus,
   type CertType,
+  type DocType,
   type ProductCerts,
 } from "@/lib/certification";
 
@@ -103,7 +104,7 @@ export async function loadCertificationOverview(): Promise<OverviewRow[]> {
 
 export type CertificateRow = {
   id: string;
-  type: CertType;
+  type: DocType;
   originalName: string;
   reference: string | null;
   expiresOn: string;
@@ -128,7 +129,7 @@ const CERT_SELECT = {
 
 type CertRecord = {
   id: string;
-  type: CertType;
+  type: DocType;
   originalName: string;
   reference: string | null;
   expiresOn: Date;

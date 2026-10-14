@@ -2,19 +2,35 @@
 
 import { useMemo, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
-import { Upload } from "lucide-react";
+import { Sparkles } from "lucide-react";
 import { deleteCertificate, saveCertificate } from "@/actions/certificates";
 import type { PresignedCertificate } from "@/app/api/certificates/presign/route";
+import {
+  FileDropzone,
+  type FileDropzoneUpload,
+} from "@/components/arc/file-dropzone/file-dropzone";
+import { RadioCards } from "@/components/arc/radio-cards/radio-cards";
+import { TextShimmer } from "@/components/arc/text-shimmer/text-shimmer";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
-import { CERT_LABEL, CERT_TYPES, type CertType } from "@/lib/certification";
+import { DOC_LABEL, DOC_TYPES, type DocType } from "@/lib/certification";
 import type { CertificateExtraction } from "@/lib/extraction/extract-certificate";
 import type { CertificateRow } from "@/lib/queries/certificates";
 import { toast } from "@/lib/toast";
 import {
   ACCEPT_ATTRIBUTE,
+  MAX_FILE_BYTES,
   type AcceptedMimeType,
+  formatBytes,
   rejectionReason,
 } from "@/lib/validation/upload";
 
@@ -22,13 +38,37 @@ type Product = { id: string; name: string; sku: string; market: string | null };
 type Uploaded = { key: string; name: string; type: AcceptedMimeType; size: number };
 
 const LABEL = "block text-[length:var(--text-body-sm)] font-medium text-ink";
-const SELECT =
-  "mt-xxs h-control-md w-full rounded-sm border border-hairline-strong bg-transparent px-xs text-[length:var(--text-body-md)] text-ink focus-visible:border-focus focus-visible:outline-2 focus-visible:outline-focus sm:text-[length:var(--text-body-sm)]";
+
+const TYPE_HINT: Record<DocType, string> = {
+  HL: "JAKIM, MUI or another Halal body",
+  NOT: "NPRA product notification",
+  COA: "A batch's lab results",
+  OTHER: "Kept on file — drives no status dot",
+};
+
+/** Kind of document Claude reads, as the form's type. */
+const fromKind = (kind: CertificateExtraction["kind"]): DocType => (kind === "other" ? "OTHER" : kind);
+
+/** A PUT straight to R2 that reports its progress, which `fetch` cannot. */
+function putWithProgress(url: string, file: File, onProgress: (percent: number) => void, signal: AbortSignal) {
+  return new Promise<void>((resolve, reject) => {
+    const xhr = new XMLHttpRequest();
+    xhr.open("PUT", url);
+    xhr.setRequestHeader("Content-Type", file.type);
+    xhr.upload.onprogress = (event) => event.lengthComputable && onProgress((event.loaded / event.total) * 100);
+    xhr.onload = () => (xhr.status < 300 ? resolve() : reject(new Error(`Storage refused the file (${xhr.status})`)));
+    xhr.onerror = () => reject(new Error("The upload was interrupted — check your connection"));
+    signal.addEventListener("abort", () => xhr.abort());
+    xhr.send(file);
+  });
+}
 
 /**
  * Upload a certificate and say what it covers (2026-10-14). The file goes
- * straight to R2, Claude reads its type, number and expiry, and a person
- * confirms them. One certificate can cover many products — a Halal
+ * straight to R2 through Arc's dropzone, Claude reads its type, number and
+ * expiry, and a person confirms them. Choosing a type other than the one
+ * Claude read asks first: a Halal certificate filed as a COA turns the wrong
+ * dot green. One certificate can cover many products — a Halal
  * certificate covers a range — so when it lapses or is replaced they all
  * move together.
  */
@@ -40,16 +80,20 @@ export function CertificateForm({
   certificate?: CertificateRow;
 }) {
   const router = useRouter();
-  const fileInput = useRef<HTMLInputElement>(null);
   const [file, setFile] = useState<Uploaded | null>(null);
-  const [type, setType] = useState<CertType>(certificate?.type ?? "HL");
+  const [type, setType] = useState<DocType | null>(certificate?.type ?? null);
+  /** The type Claude read off the current file, if it read one. */
+  const [detected, setDetected] = useState<DocType | null>(null);
+  const [asking, setAsking] = useState<DocType | null>(null);
+  /** Bumped per file, so a slow read of a replaced file is ignored. */
+  const attempt = useRef(0);
   const [reference, setReference] = useState(certificate?.reference ?? "");
   const [expiresOn, setExpiresOn] = useState(certificate?.expiresOn ?? "");
   const [selected, setSelected] = useState<Set<string>>(
     new Set(certificate?.products.map((product) => product.id)),
   );
   const [search, setSearch] = useState("");
-  const [stage, setStage] = useState<"idle" | "uploading" | "reading">("idle");
+  const [reading, setReading] = useState(false);
   const [note, setNote] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
@@ -63,71 +107,82 @@ export function CertificateForm({
       : products;
   }, [products, search]);
 
-  const upload = async (chosen: File) => {
-    setError(null);
+  const clearFile = () => {
+    attempt.current += 1;
+    setFile(null);
+    setDetected(null);
     setNote(null);
-    const reason = rejectionReason({ name: chosen.name, type: chosen.type, size: chosen.size });
-    if (reason) {
-      setError(reason);
-      return;
-    }
-    setStage("uploading");
-    try {
-      const presign = await fetch("/api/certificates/presign", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ name: chosen.name, type: chosen.type, size: chosen.size }),
-      });
-      const signed = (await presign.json().catch(() => ({}))) as PresignedCertificate & {
-        error?: string;
-      };
-      if (!presign.ok) {
-        setError(signed.error ?? "We couldn't start that upload.");
-        return;
-      }
-      const put = await fetch(signed.url, {
-        method: "PUT",
-        headers: { "Content-Type": chosen.type },
-        body: chosen,
-      });
-      if (!put.ok) {
-        setError("Storage refused the file. Try again.");
-        return;
-      }
-      const uploaded = {
-        key: signed.key,
-        name: chosen.name,
-        type: chosen.type as AcceptedMimeType,
-        size: chosen.size,
-      };
-      setFile(uploaded);
+    setReading(false);
+  };
 
-      setStage("reading");
-      const read = await fetch("/api/certificates/read", {
+  const read = async (uploaded: Uploaded, mine: number) => {
+    setReading(true);
+    try {
+      const response = await fetch("/api/certificates/read", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ key: uploaded.key, type: uploaded.type }),
       });
-      const found = (await read.json().catch(() => ({}))) as Partial<CertificateExtraction> & {
+      const found = (await response.json().catch(() => ({}))) as Partial<CertificateExtraction> & {
         error?: string;
       };
-      if (!read.ok) {
-        setNote(found.error ?? "We couldn't read it — enter the details by hand.");
+      if (mine !== attempt.current) return;
+      if (!response.ok || !found.kind) {
+        setNote(found.error ?? "We couldn't read it — choose the type and enter the details by hand.");
         return;
       }
-      if (found.kind && found.kind !== "other") setType(found.kind);
+      const kind = fromKind(found.kind);
+      setDetected(kind);
+      setType(kind);
       if (found.reference) setReference(found.reference);
       if (found.expiresOn) setExpiresOn(found.expiresOn);
       setNote(
         found.expiresOn
-          ? "Read from the file — check the type and the expiry before saving."
-          : "No expiry could be read off the file — enter it by hand.",
+          ? `Claude read this as ${DOC_LABEL[kind]} — check the number and expiry before saving.`
+          : `Claude read this as ${DOC_LABEL[kind]}, but no expiry — enter it by hand.`,
       );
     } catch {
-      setError("The upload was interrupted — check your connection.");
+      if (mine === attempt.current) setNote("We couldn't reach the server to read it — enter the details by hand.");
     } finally {
-      setStage("idle");
+      if (mine === attempt.current) setReading(false);
     }
+  };
+
+  /** Arc's dropzone calls this per file: presign, PUT with progress, then Claude reads it. */
+  const upload: FileDropzoneUpload = async (item, { onProgress, signal }) => {
+    const chosen = item.file;
+    if (!chosen) throw new Error("No file");
+    const mine = ++attempt.current;
+    setError(null);
+    setNote(null);
+    setFile(null);
+    setDetected(null);
+    const reason = rejectionReason({ name: chosen.name, type: chosen.type, size: chosen.size });
+    if (reason) throw new Error(reason);
+    const presign = await fetch("/api/certificates/presign", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ name: chosen.name, type: chosen.type, size: chosen.size }),
+      signal,
+    });
+    const signed = (await presign.json().catch(() => ({}))) as PresignedCertificate & { error?: string };
+    if (!presign.ok) throw new Error(signed.error ?? "We couldn't start that upload");
+    await putWithProgress(signed.url, chosen, onProgress, signal);
+    if (mine !== attempt.current) return;
+    const uploaded = {
+      key: signed.key,
+      name: chosen.name,
+      type: chosen.type as AcceptedMimeType,
+      size: chosen.size,
+    };
+    setFile(uploaded);
+    void read(uploaded, mine);
+  };
+
+  /** Picking a type other than the one Claude read asks first. */
+  const chooseType = (next: DocType) => {
+    if (detected && next !== detected && next !== type) setAsking(next);
+    else setType(next);
   };
 
   const toggle = (id: string, on: boolean) =>
@@ -141,6 +196,7 @@ export function CertificateForm({
   const save = async () => {
     setError(null);
     if (!certificate && !file) return setError("Upload the certificate file.");
+    if (!type) return setError("Choose what kind of certificate this is.");
     if (!expiresOn) return setError("Enter the expiry date.");
     setSaving(true);
     try {
@@ -173,86 +229,76 @@ export function CertificateForm({
     }
   };
 
-  const busy = stage !== "idle" || saving;
+  const busy = reading || saving;
 
   return (
     <div className="grid grid-cols-1 gap-lg lg:grid-cols-2">
       <section className="min-w-0 rounded-lg border border-hairline bg-canvas p-lg">
         <p className={LABEL}>File</p>
-        <p className="mt-xxs text-[length:var(--text-caption)] text-ink-tertiary">
-          PDF, PNG or JPG. Claude reads the type, number and expiry; you confirm them.
-        </p>
-        <div className="mt-sm flex flex-wrap items-center gap-sm">
-          <Button
-            type="button"
-            variant={file || certificate ? "outline" : "default"}
-            disabled={busy}
-            pending={stage !== "idle"}
-            onClick={() => fileInput.current?.click()}
-          >
-            <Upload aria-hidden className="size-4" />
-            {stage === "uploading"
-              ? "Uploading…"
-              : stage === "reading"
-                ? "Reading the certificate…"
-                : file || certificate
-                  ? "Replace file"
-                  : "Choose file"}
-          </Button>
-          {file || certificate ? (
-            <span
-              className="min-w-0 truncate text-[length:var(--text-body-sm)] text-ink"
-              title={file?.name ?? certificate?.originalName}
+        {certificate ? (
+          <p className="mt-xxs truncate text-[length:var(--text-body-sm)] text-ink-secondary">
+            On file:{" "}
+            <a
+              href={`/api/certificates/${certificate.id}/url`}
+              target="_blank"
+              rel="noreferrer"
+              title={certificate.originalName}
+              className="text-brand-link underline-offset-2 hover:underline"
             >
-              {certificate && !file ? (
-                <a
-                  href={`/api/certificates/${certificate.id}/url`}
-                  target="_blank"
-                  rel="noreferrer"
-                  className="text-brand-link underline-offset-2 hover:underline"
-                >
-                  {certificate.originalName}
-                </a>
-              ) : (
-                file?.name
-              )}
-            </span>
-          ) : null}
-          <input
-            ref={fileInput}
-            type="file"
+              {certificate.originalName}
+            </a>
+          </p>
+        ) : null}
+        <div className="mt-sm">
+          <FileDropzone
+            multiple={false}
+            maxFiles={1}
             accept={ACCEPT_ATTRIBUTE}
-            className="sr-only"
-            tabIndex={-1}
-            aria-hidden
-            onChange={(event) => {
-              const chosen = event.target.files?.[0];
-              event.target.value = "";
-              if (chosen) void upload(chosen);
-            }}
+            maxSize={MAX_FILE_BYTES}
+            compactAt={1}
+            label={certificate ? "Replace the file" : "Add the certificate"}
+            description="Drop the file here or choose from your device"
+            note={`PDF, PNG or JPG — up to ${formatBytes(MAX_FILE_BYTES)}. Claude reads the type, number and expiry.`}
+            onUpload={upload}
+            onFilesChange={(files) => (files.length === 0 ? clearFile() : undefined)}
           />
         </div>
-        {note ? (
-          <p role="status" className="mt-sm text-[length:var(--text-body-sm)] text-ink-secondary">
+        {reading ? (
+          <p role="status" className="mt-sm flex items-center gap-xs text-[length:var(--text-body-sm)] text-ink-secondary">
+            <Sparkles aria-hidden className="size-4 shrink-0 text-ink-tertiary" />
+            <TextShimmer>Claude is reading the certificate…</TextShimmer>
+          </p>
+        ) : note ? (
+          <p role="status" className="mt-sm flex items-start gap-xs text-[length:var(--text-body-sm)] text-ink-secondary">
+            <Sparkles aria-hidden className="mt-xxs size-4 shrink-0 text-ink-tertiary" />
             {note}
           </p>
         ) : null}
 
+        <p id="cert-type-label" className={`${LABEL} mt-lg`}>
+          Type
+        </p>
+        <RadioCards
+          aria-labelledby="cert-type-label"
+          className="mt-xs"
+          minColumnWidth={170}
+          value={type}
+          disabled={reading}
+          onValueChange={(value) => chooseType(value as DocType)}
+          options={DOC_TYPES.map((value) => ({
+            value,
+            label: DOC_LABEL[value],
+            description: TYPE_HINT[value],
+            meta:
+              detected === value ? (
+                <span className="inline-flex items-center gap-xxs text-[length:var(--text-caption)] text-ink-secondary">
+                  <Sparkles aria-hidden className="size-3" /> Read by Claude
+                </span>
+              ) : undefined,
+          }))}
+        />
+
         <div className="mt-lg grid gap-md sm:grid-cols-2">
-          <label className={LABEL}>
-            Type
-            <select
-              value={type}
-              onChange={(event) => setType(event.target.value as CertType)}
-              className={SELECT}
-            >
-              {CERT_TYPES.map((value) => (
-                <option key={value} value={value}>
-                  {value} · {CERT_LABEL[value]}
-                </option>
-              ))}
-            </select>
-          </label>
           <label className={LABEL}>
             Certificate number
             <Input
@@ -275,25 +321,6 @@ export function CertificateForm({
           </label>
         </div>
 
-        {error ? (
-          <p
-            role="alert"
-            className="mt-md rounded-sm border border-accent-red px-sm py-xs text-[length:var(--text-body-sm)] text-accent-red"
-          >
-            {error}
-          </p>
-        ) : null}
-
-        <div className="mt-lg flex flex-wrap gap-sm">
-          <Button type="button" onClick={save} disabled={busy} pending={saving}>
-            {certificate ? "Save certificate" : "Upload certificate"}
-          </Button>
-          {certificate ? (
-            <Button type="button" variant="destructive" onClick={remove} disabled={busy}>
-              Delete
-            </Button>
-          ) : null}
-        </div>
       </section>
 
       <section className="min-w-0 rounded-lg border border-hairline bg-canvas p-lg">
@@ -312,7 +339,7 @@ export function CertificateForm({
             placeholder="Product, SKU or market…"
             value={search}
             onChange={(event) => setSearch(event.target.value)}
-            className="h-control-md min-w-0 flex-1 sm:h-control-sm"
+            className="h-control-md min-w-0 basis-full sm:h-control-sm sm:basis-auto sm:flex-1"
           />
           <Button
             type="button"
@@ -354,6 +381,56 @@ export function CertificateForm({
           ) : null}
         </ul>
       </section>
+
+      {/* Below both cards, so a phone ticks the products before it saves. */}
+      <div className="flex flex-col gap-md lg:col-span-2">
+        {error ? (
+          <p
+            role="alert"
+            className="rounded-sm border border-accent-red px-sm py-xs text-[length:var(--text-body-sm)] text-accent-red"
+          >
+            {error}
+          </p>
+        ) : null}
+
+        <div className="flex flex-wrap gap-sm">
+          <Button type="button" onClick={save} disabled={busy} pending={saving}>
+            {certificate ? "Save certificate" : "Upload certificate"}
+          </Button>
+          {certificate ? (
+            <Button type="button" variant="destructive" onClick={remove} disabled={busy}>
+              Delete
+            </Button>
+          ) : null}
+        </div>
+      </div>
+
+      <Dialog open={asking !== null} onOpenChange={(next) => (next ? null : setAsking(null))}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Change the type to {asking ? DOC_LABEL[asking] : ""}?</DialogTitle>
+            <DialogDescription>
+              Claude read this file as {detected ? DOC_LABEL[detected] : ""}.{" "}
+              {asking === "OTHER"
+                ? "Filed as Other, it turns no dot green on the products it covers."
+                : `Filing it as ${asking ? DOC_LABEL[asking] : ""} changes which dot it turns green on every product it covers.`}
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setAsking(null)}>
+              Keep {detected ? DOC_LABEL[detected] : ""}
+            </Button>
+            <Button
+              onClick={() => {
+                setType(asking);
+                setAsking(null);
+              }}
+            >
+              Change to {asking ? DOC_LABEL[asking] : ""}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

@@ -18,6 +18,15 @@ export const CERT_LABEL: Record<CertType, string> = {
   COA: "Certificate of analysis",
 };
 
+/**
+ * What a certificate file can be filed as. OTHER is kept for reference only:
+ * it is never a dot, never a status and never counts towards auto-approval.
+ */
+export const DOC_TYPES = [...CERT_TYPES, "OTHER"] as const;
+export type DocType = (typeof DOC_TYPES)[number];
+
+export const DOC_LABEL: Record<DocType, string> = { ...CERT_LABEL, OTHER: "Other" };
+
 export type CertStatus = "approved" | "renew" | "expired" | "missing";
 
 export const STATUS_LABEL: Record<CertStatus, string> = {
@@ -64,8 +73,8 @@ export function typeStatus(
 export type ProductCerts = Record<CertType, TypeStatus>;
 
 export function productCerts(
-  certs: { type: CertType; expiresOn: string }[],
-  overrides: CertType[],
+  certs: { type: DocType; expiresOn: string }[],
+  overrides: DocType[],
   today: string,
 ): ProductCerts {
   return Object.fromEntries(

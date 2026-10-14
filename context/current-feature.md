@@ -1,3 +1,47 @@
+# Certification revamp: Arc dropzone, Claude picks the type, filters on both views
+
+## Status
+
+**Built on `claude/focused-albattani-oqgkhf`** (2026-10-14). Asked for as
+"revamp admin certification page … drag and drop using uiarc … AI analyse the
+doc, auto select the type, NOT/Halal Cert/COS/Others, prompt user if user
+select another type … filter uploaded by who, expired date, cert type; filter
+products by expired date, cert type, market". "COS" read as COA.
+
+- **Upload** is Arc's `FileDropzone` (single file, progress over an XHR PUT,
+  folds to a bar once a file is in). Claude reads it; the **type is Arc
+  `RadioCards`** — Pharma notification, Halal, COA, **Other** — with "Read by
+  Claude" on the one it chose. Choosing another type opens a dialog ("Keep
+  Halal" / "Change to …"); going back to Claude's choice does not ask.
+  Save sits below both cards, so a phone ticks products first.
+- **`OTHER`** joins `CertType` (migration `20261014120000_cert_type_other`,
+  one `ADD VALUE`). It is stored only: `CERT_TYPES` (the dots, statuses,
+  auto-approval) is still NOT/HL/COA; `DOC_TYPES` adds OTHER for files.
+- **Filters** (Arc `FilterToolbar` + search, all in the URL, counts beside
+  each value): Certificates by Type, Expiry (expired / within 30 / within 90
+  days / valid) and Uploaded by; By product by Certificate, Expiry (+ Not
+  uploaded) and Market. A certificate type alone keeps products that have it;
+  with an expiry it reads only that type. An override never reads expired.
+  Pure in `certification-overview.ts`, tested.
+
+## Verified
+
+Local Postgres + seed, moto for R2, a Messages stand-in, production build,
+Chromium 1440 and 390 as a super admin. A Halal read set HL, number and
+expiry; COA asked, Keep kept Halal; Other asked and changed; back to Halal
+did not ask; saved HL with 3 products. A stand-in "other" answer selected
+Other. Filters against 6 certificates: Type Other 1, Expired 1, Uploaded by
+Aisha 3, NOT within 90 days 1; products HL expired 2, Vietnam 1, COA not
+uploaded 9 (12 − 3 covered). No overflow on any page at either width.
+1887 tests (4 new), `tsc`, lint unchanged (4 `ShopHeader` errors), build.
+
+## Not verified
+
+Claude on real certificates (no API key) and a real R2 upload; production.
+The dropzone's row ✕ is Arc's 32px at 390, as on the PO upload screen.
+
+## Before that
+
 # Product certification: NOT / HL / COA dots, auto-approval, the overview
 
 ## Status

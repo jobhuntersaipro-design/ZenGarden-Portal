@@ -2,7 +2,7 @@ import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 import { CertificateForm } from "@/components/certificates/CertificateForm";
 import { BackLink } from "@/components/portal/BackLink";
-import { CERT_LABEL } from "@/lib/certification";
+import { DOC_LABEL } from "@/lib/certification";
 import { withLoadingFloor } from "@/lib/loading-floor";
 import { listCertifiableProducts, loadCertificate } from "@/lib/queries/certificates";
 
@@ -17,7 +17,7 @@ async function CertificatePage({ params }: { params: Promise<{ id: string }> }) 
     <>
       <BackLink fallbackHref="/admin/certifications?view=certificates" />
       <p className="font-mono text-[length:var(--text-eyebrow)] text-ink-tertiary">
-        {CERT_LABEL[certificate.type]}
+        {DOC_LABEL[certificate.type]}
       </p>
       <h1
         title={certificate.originalName}

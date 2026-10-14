@@ -1,9 +1,10 @@
 "use client";
 
+import { CertFilters, type CertFilterField } from "@/components/certificates/CertFilters";
 import { DOT_TONE } from "@/components/certificates/CertDots";
 import { DataTable, type Column } from "@/components/portal/DataTable";
 import { useTableSort } from "@/hooks/useTableSort";
-import { CERT_LABEL, STATUS_LABEL, expiryStatus } from "@/lib/certification";
+import { DOC_LABEL, STATUS_LABEL, expiryStatus } from "@/lib/certification";
 import { formatDate } from "@/lib/dates";
 import type { CertificateRow } from "@/lib/queries/certificates";
 import type { SortDirection } from "@/lib/queries/pagination";
@@ -13,8 +14,13 @@ export function CertificatesTable({
   certificates,
   sort,
   today,
+  fields,
+  filtered,
 }: {
   certificates: CertificateRow[];
+  fields: CertFilterField[];
+  /** A filter or search is narrowing the list, so empty means "no match". */
+  filtered: boolean;
   sort: { key: string; dir: SortDirection };
   today: string;
 }) {
@@ -29,7 +35,7 @@ export function CertificatesTable({
             {row.originalName}
           </span>
           <span className="block truncate text-[length:var(--text-caption)] text-ink-tertiary">
-            {CERT_LABEL[row.type]}
+            {DOC_LABEL[row.type]}
             {row.reference ? ` · ${row.reference}` : ""}
           </span>
         </span>
@@ -79,14 +85,21 @@ export function CertificatesTable({
   ];
 
   return (
-    <DataTable
+    <>
+      <CertFilters fields={fields} placeholder="File, number or product…" />
+      <DataTable
       columns={columns}
       rows={certificates}
       sort={sort}
       onSortChange={onSortChange}
       rowHref={(row) => `/admin/certifications/${row.id}`}
-      emptyText="No certificates uploaded yet."
-      emptyDescription="Upload a Halal, notification or COA certificate to start."
+      emptyText={filtered ? "No certificates match." : "No certificates uploaded yet."}
+      emptyDescription={
+        filtered
+          ? "Clear a filter or the search to see more."
+          : "Upload a Halal, notification or COA certificate to start."
+      }
     />
+    </>
   );
 }
