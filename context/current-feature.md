@@ -42,6 +42,18 @@ caption, the booking confirmation's "still reading" line and the owner's
 model card. Code comments keep the name. Driven at 1440 and 390: the page
 text holds no "Claude".
 
+**Same day: the file is previewed on the form.** Asked for as "show the
+uploaded preview file". Under Certificate number and Expires, a **Preview**
+shows the file through the PO pages' `DocumentPreview` (pages, zoom, Fit), so
+the number and date can be checked against it. A file just dropped in is
+drawn from the browser (`file` prop, a blob URL revoked on replace); a saved
+one asks `/api/certificates/[id]/url?preview=1` for its link and type. Driven
+at 1440 and 390: a Halal PDF and a PNG scan rendered while AI read them,
+removing the file removed the preview, and after saving the edit page showed
+the stored PDF; no overflow at either width. A certificate whose file is
+missing from storage shows "We couldn't read that PDF" with Download and Try
+again.
+
 ## Not verified
 
 Claude on real certificates (no API key) and a real R2 upload; production.

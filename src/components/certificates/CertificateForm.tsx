@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { Sparkles } from "lucide-react";
 import { deleteCertificate, saveCertificate } from "@/actions/certificates";
@@ -11,6 +11,7 @@ import {
 } from "@/components/arc/file-dropzone/file-dropzone";
 import { RadioCards } from "@/components/arc/radio-cards/radio-cards";
 import { TextShimmer } from "@/components/arc/text-shimmer/text-shimmer";
+import { DocumentPreview } from "@/components/review/DocumentPreviewLoader";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
 import {
@@ -81,6 +82,9 @@ export function CertificateForm({
 }) {
   const router = useRouter();
   const [file, setFile] = useState<Uploaded | null>(null);
+  /** The dropped file itself, shown from the browser while it uploads and is read. */
+  const [local, setLocal] = useState<{ url: string; mimeType: string } | null>(null);
+  useEffect(() => () => (local ? URL.revokeObjectURL(local.url) : undefined), [local]);
   const [type, setType] = useState<DocType | null>(certificate?.type ?? null);
   /** The type Claude read off the current file, if it read one. */
   const [detected, setDetected] = useState<DocType | null>(null);
@@ -110,6 +114,7 @@ export function CertificateForm({
   const clearFile = () => {
     attempt.current += 1;
     setFile(null);
+    setLocal(null);
     setDetected(null);
     setNote(null);
     setReading(false);
@@ -159,6 +164,7 @@ export function CertificateForm({
     setDetected(null);
     const reason = rejectionReason({ name: chosen.name, type: chosen.type, size: chosen.size });
     if (reason) throw new Error(reason);
+    setLocal({ url: URL.createObjectURL(chosen), mimeType: chosen.type });
     const presign = await fetch("/api/certificates/presign", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
@@ -321,6 +327,29 @@ export function CertificateForm({
           </label>
         </div>
 
+        {local || certificate ? (
+          <>
+            <p className={`${LABEL} mt-lg`}>Preview</p>
+            <div className="mt-xs">
+              <DocumentPreview
+                key={local?.url ?? certificate?.id}
+                documentId={certificate?.id ?? "new"}
+                originalName={local ? "the uploaded file" : (certificate?.originalName ?? "")}
+                file={local ?? undefined}
+                urlEndpoint={certificate ? `/api/certificates/${certificate.id}/url?preview=1` : undefined}
+                download={
+                  certificate && !local ? (
+                    <Button variant="secondary" asChild>
+                      <a href={`/api/certificates/${certificate.id}/url?download=1`}>Download</a>
+                    </Button>
+                  ) : (
+                    <span />
+                  )
+                }
+              />
+            </div>
+          </>
+        ) : null}
       </section>
 
       <section className="min-w-0 rounded-lg border border-hairline bg-canvas p-lg">

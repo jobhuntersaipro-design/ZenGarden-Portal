@@ -29,6 +29,7 @@ export function DocumentPreview({
   originalName,
   urlEndpoint,
   download,
+  file,
 }: {
   documentId: string;
   originalName: string;
@@ -39,8 +40,14 @@ export function DocumentPreview({
   urlEndpoint?: string;
   /** Replaces the purchase-order download and its sentence in the error state. */
   download?: ReactNode;
+  /**
+   * A file already in hand — a certificate just dropped in, shown from its
+   * browser blob (2026-10-14) — so nothing is fetched.
+   */
+  file?: DocumentUrlResponse;
 }) {
-  const [source, setSource] = useState<DocumentUrlResponse | null>(null);
+  const [fetched, setSource] = useState<DocumentUrlResponse | null>(null);
+  const source = file ?? fetched;
   const [error, setError] = useState<string | null>(null);
   const [pages, setPages] = useState(0);
   const [page, setPage] = useState(1);
@@ -85,6 +92,7 @@ export function DocumentPreview({
   const [attempt, setAttempt] = useState(0);
 
   useEffect(() => {
+    if (file) return;
     let cancelled = false;
     void (async () => {
       try {
@@ -99,7 +107,7 @@ export function DocumentPreview({
     return () => {
       cancelled = true;
     };
-  }, [documentId, urlEndpoint, attempt]);
+  }, [documentId, urlEndpoint, attempt, file]);
 
   if (error) {
     return (
