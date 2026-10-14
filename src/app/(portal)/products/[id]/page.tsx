@@ -2,6 +2,8 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { Role } from "@/generated/prisma/enums";
+import { CertDots } from "@/components/certificates/CertDots";
+import { loadProductCerts } from "@/lib/queries/certificates";
 import { BackLink } from "@/components/portal/BackLink";
 import { PageHeader } from "@/components/portal/PageHeader";
 import { KpiTile } from "@/components/dashboard/KpiTile";
@@ -91,6 +93,7 @@ async function ProductPage({
     listFamilies(),
     loadProductStock(id),
   ]);
+  const certs = (await loadProductCerts([id])).get(id);
   if (!data) notFound();
 
   const isSuperAdmin = user?.role === Role.SUPER_ADMIN;
@@ -251,6 +254,20 @@ async function ProductPage({
               </p>
             </div>
           </div>
+
+          {certs ? (
+            <div className="mt-md flex flex-wrap items-center gap-sm">
+              <CertDots certs={certs} size="md" />
+              {isSuperAdmin ? (
+                <Link
+                  href={`/admin/certifications?q=${encodeURIComponent(data.product.sku)}`}
+                  className="text-[length:var(--text-body-sm)] text-brand-link underline-offset-2 hover:underline focus-visible:outline-2 focus-visible:outline-focus"
+                >
+                  Manage certification
+                </Link>
+              ) : null}
+            </div>
+          ) : null}
 
           {data.product.description ? (
             <p className="mt-md text-[length:var(--text-body-md)] text-ink-secondary">

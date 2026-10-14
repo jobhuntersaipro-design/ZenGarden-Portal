@@ -7,6 +7,7 @@ import { SubmittedOrderPane } from "@/components/web-orders/SubmittedOrderPane";
 import { WebOrderReviewForm } from "@/components/web-orders/WebOrderReviewForm";
 import { can, requirePagePermission } from "@/lib/permissions/require";
 import { prisma } from "@/lib/prisma";
+import { loadProductCerts } from "@/lib/queries/certificates";
 import { loadWebOrderForReview } from "@/lib/queries/web-orders";
 import { withLoadingFloor } from "@/lib/loading-floor";
 
@@ -35,6 +36,7 @@ async function WebOrderReviewPage({
 
   const order = await loadWebOrderForReview(id);
   if (!order) notFound();
+  const certs = await loadProductCerts(order.lines.map((line) => line.productId));
 
   // Already dealt with: send the reader to the order it became rather than to
   // a form that would refuse them.
@@ -75,12 +77,12 @@ async function WebOrderReviewPage({
           </section>
           <div className="flex min-w-0 flex-col gap-lg">
             {canConfirm ? <WebOrderReviewForm order={order} /> : null}
-            <SubmittedOrderPane order={order} />
+            <SubmittedOrderPane order={order} certs={certs} />
           </div>
         </div>
       ) : (
         <div className="mt-lg grid min-w-0 gap-lg lg:grid-cols-2">
-          <SubmittedOrderPane order={order} />
+          <SubmittedOrderPane order={order} certs={certs} />
           {canConfirm ? <WebOrderReviewForm order={order} /> : null}
         </div>
       )}

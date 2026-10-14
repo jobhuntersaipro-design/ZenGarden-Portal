@@ -1,5 +1,6 @@
 "use server";
 
+import { autoApproveWebOrder } from "@/lib/web-order-confirm";
 import { after } from "next/server";
 import { revalidatePath } from "next/cache";
 import { Prisma } from "@/generated/prisma/client";
@@ -432,7 +433,11 @@ export async function submitWebOrder(
     // back to the buyer as an order that did not go.
     after(async () => {
       const file = await attachWebOrderDocument(placed.id);
-      await notify(placed.reference, file);
+      // Every product green on NOT, HL and COA: confirmed with no review
+      // (2026-10-14). The buyer then gets the confirmation, not a receipt
+      // promising a review that will not happen.
+      const approved = await autoApproveWebOrder(placed.id, file);
+      await notify(placed.reference, file, approved);
     });
 
     return { success: true, data: { reference: placed.reference } };
@@ -475,6 +480,7 @@ const ORDER_EMAIL_ROLES: Role[] = [Role.SUPER_ADMIN, Role.MEMBER, Role.PRODUCTIO
 async function notify(
   reference: string,
   file: WebOrderDocument | null,
+  autoApproved = false,
 ): Promise<void> {
   try {
     const order = await prisma.webOrder.findUnique({
@@ -534,6 +540,7 @@ async function notify(
             buyerLogo: po.buyerLogo,
             preview: po.preview,
             attached: po.attached,
+            autoApproved,
           }),
         },
       );
@@ -546,6 +553,8 @@ async function notify(
       // The receipt is one more request against the same rate limit.
       await new Promise((done) => setTimeout(done, EACH_SEND_GAP_MS));
     }
+
+    if (autoApproved) return;
 
     // The client's copy links to the shop host, not the portal: that is the
     // only host their session exists on (Phase 15 — the cookie is host-only).

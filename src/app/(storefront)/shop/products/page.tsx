@@ -1,3 +1,4 @@
+import { loadCertDots } from "@/lib/queries/certificates";
 import type { Metadata } from "next";
 import Link from "next/link";
 import { ActiveFilters } from "@/components/shop/catalogue/ActiveFilters";
@@ -37,6 +38,9 @@ async function ShopCataloguePage({
     listShopProducts(query, audience.market),
     listShopCategories(audience.market),
   ]);
+  const dots = Object.fromEntries(
+    await loadCertDots(catalogue.groups.flatMap((group) => group.variants.map((variant) => variant.id))),
+  );
   const { from, to } = pageRange(query.page, SHOP_PER_PAGE, catalogue.total);
   // The breadcrumb names where the reader is; the heading names what the
   // grid is showing, which under a search is the search.
@@ -119,7 +123,7 @@ async function ShopCataloguePage({
         ) : (
           <ul className="grid grid-cols-2 gap-md md:grid-cols-3 lg:grid-cols-4">
             {catalogue.groups.map((group) => (
-              <ShopProductCard key={group.key} group={group} />
+              <ShopProductCard key={group.key} group={group} dots={dots} />
             ))}
           </ul>
         )}

@@ -59,6 +59,8 @@ model User {
   purchaseOrderDocuments PurchaseOrderDocument[] @relation("poDocumentsUploaded")
   bookingsUploaded   BookingConfirmation[] @relation("bookingsUploaded")
   bookingsReviewed   BookingConfirmation[] @relation("bookingsReviewed")
+  certificatesUploaded Certificate[]       @relation("certificatesUploaded")
+  certOverrides      CertificateOverride[] @relation("certOverrides")
   buyer              Buyer?               @relation(fields: [buyerId], references: [id])
 
   @@index([buyerId])
@@ -286,8 +288,10 @@ model PurchaseOrder {
   /// vanish from the purchase-order list with no error.
   documentId     String?        @unique
   document       Document?      @relation(fields: [documentId], references: [id])
-  confirmedById  String
-  confirmedBy    User           @relation("confirmedBy", fields: [confirmedById], references: [id])
+  /// Null when the order was auto-approved: a shop order whose every product
+  /// was certified green confirms itself (2026-10-14). Nothing else writes null.
+  confirmedById  String?
+  confirmedBy    User?          @relation("confirmedBy", fields: [confirmedById], references: [id], onDelete: Restrict)
   confirmedAt    DateTime       @default(now())
   stage          PoStage        @default(ORDER_PLACED)
   stageChangedAt DateTime       @default(now())
@@ -483,6 +487,8 @@ model Product {
   lineItems        LineItem[]
   webOrderLines    WebOrderLine[]
   stockCounts      StockCount[]
+  certificates     Certificate[]
+  certOverrides    CertificateOverride[]
   createdAt        DateTime       @default(now())
   updatedAt        DateTime       @updatedAt
 
@@ -751,4 +757,49 @@ model AppSetting {
   key       String   @id
   value     String
   updatedAt DateTime @updatedAt
+}
+
+/// NOT = Pharma notification, HL = Halal, COA = Certificate of analysis.
+enum CertType {
+  NOT
+  HL
+  COA
+}
+
+/// One certificate file and its expiry (2026-10-14). Linked to many products,
+/// because one Halal certificate covers a whole range: replacing or expiring it
+/// moves every linked product together. A product's status for a type is the
+/// best of the certificates linked to it (`src/lib/certification.ts`).
+model Certificate {
+  id           String    @id @default(cuid())
+  type         CertType
+  r2Key        String    @unique // certificates/{uuid}.{ext}
+  originalName String
+  mimeType     String
+  sizeBytes    Int
+  /// The certificate's own number as printed, if it has one.
+  reference    String?
+  /// Read by Claude at upload, corrected by a person.
+  expiresOn    DateTime  @db.Date
+  products     Product[]
+  uploadedById String?
+  uploadedBy   User?     @relation("certificatesUploaded", fields: [uploadedById], references: [id], onDelete: SetNull)
+  createdAt    DateTime  @default(now())
+  updatedAt    DateTime  @updatedAt
+
+  @@index([type, expiresOn])
+}
+
+/// An admin marking a product's type green whatever its certificates say,
+/// with the reason. Cleared when a new certificate of that type is linked.
+model CertificateOverride {
+  productId String
+  product   Product  @relation(fields: [productId], references: [id], onDelete: Cascade)
+  type      CertType
+  reason    String
+  byId      String?
+  by        User?    @relation("certOverrides", fields: [byId], references: [id], onDelete: SetNull)
+  at        DateTime @default(now())
+
+  @@id([productId, type])
 }

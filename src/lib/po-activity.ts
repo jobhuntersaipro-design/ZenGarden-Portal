@@ -212,7 +212,13 @@ export function buildLifecycleFeed(input: {
     actorRole: input.confirmedByRole,
     at: input.confirmedAt,
     title: [
-      { kind: "text", text: `${input.confirmedByName ?? SYSTEM_ACTOR} confirmed the order` },
+      {
+        kind: "text",
+        // Null only on a shop order that approved itself (2026-10-14).
+        text: input.confirmedByName
+          ? `${input.confirmedByName} confirmed the order`
+          : "Auto-approved: every product was certified green",
+      },
     ],
     detail: null,
     note: null,

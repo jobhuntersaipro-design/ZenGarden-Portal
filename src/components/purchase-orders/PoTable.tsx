@@ -388,6 +388,9 @@ export function poColumns({
       cell: (row) =>
         row.confirmedByName ? (
           <PersonChip name={row.confirmedByName} image={row.confirmedByImage} />
+        ) : row.stage ? (
+          // A purchase order with nobody behind it approved itself (2026-10-14).
+          <span className="text-ink-secondary">Auto-approved</span>
         ) : (
           <span className="text-ink-disabled">Not confirmed</span>
         ),

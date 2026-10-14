@@ -1,3 +1,5 @@
+import { loadCertDots } from "@/lib/queries/certificates";
+import { CertDots } from "@/components/certificates/CertDots";
 import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 import { Prisma } from "@/generated/prisma/browser";
@@ -69,6 +71,9 @@ async function ShopProductPage({
     audience.market,
     variants.map((sibling) => sibling.id),
   );
+  const dots = Object.fromEntries(
+    await loadCertDots([product.id, ...related.map((other) => other.id)]),
+  );
 
   const perPieceLabel =
     product.packSize === null
@@ -123,6 +128,12 @@ async function ShopProductPage({
             ) : null}
           </div>
 
+          {dots[product.id] ? (
+            <div className="mt-sm">
+              <CertDots dots={dots[product.id]} size="md" />
+            </div>
+          ) : null}
+
           {variants.length > 1 ? (
             <div className="mt-md sm:mt-lg">
               <VariantPicker variants={variants} selectedId={product.id} />
@@ -170,6 +181,7 @@ async function ShopProductPage({
               <ShopProductCard
                 key={relatedProduct.id}
                 group={singleGroup(relatedProduct)}
+                dots={dots}
               />
             ))}
           </ul>

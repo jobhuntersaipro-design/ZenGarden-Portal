@@ -1,3 +1,68 @@
+# Product certification: NOT / HL / COA dots, auto-approval, the overview
+
+## Status
+
+**Built on `claude/great-brown-n2ij3l`** (2026-10-14). ClickUp epic
+[z8v9xnhuf7](https://app.clickup.com/t/z8v9xnhuf7), all four children. The
+epic left six questions open; each was given the safe default below and is
+one small change to reverse.
+
+- **`Certificate`** (type NOT / HL / COA, file in R2 under `certificates/`,
+  number, `expiresOn`) linked to **many products** — one Halal certificate
+  covers a range and they move together. **`CertificateOverride`** (product,
+  type, reason, who, when). `PurchaseOrder.confirmedById` is nullable: null
+  means auto-approved. Migration `20261014035940_certificates`; the
+  `documentId_fkey` drift was cut out of it again.
+- **Status rules** (`src/lib/certification.ts`): green more than 3 months from
+  expiry, amber within 3 months, red past expiry or **not uploaded** (red,
+  labelled "Not uploaded"). The certificate that expires last decides. An
+  override reads green; it needs a reason and is cleared when a new
+  certificate of that type is linked to the product.
+- **Per country:** a product is already one market, so the overview's Country
+  is `Product.market`; no second dimension. Buyers only see their market.
+- **Admin › Certification** (super admin): three summary tiles, *By product*
+  (search, market, Needs attention, sort worst first; a cell opens the
+  override) and *Certificates* (file, expiry, what it covers).
+  **Upload certificate**: the file goes to R2, Claude reads type, number and
+  expiry (`/api/certificates/read`), a person confirms them and ticks the
+  products. Expiry is a typed date input: the calendar steps a month at a time.
+- **Dots** (`CertDots`): portal product page (+ "Manage certification" for
+  super admins), PO line items, the shop-order review lines; shop card and
+  product page **colours only** — no date, number or file reaches a buyer.
+- **Auto-approval**: after a shop order is sent, if every product is green on
+  all three and the buyer has payment terms, it confirms itself through the
+  same transaction a person's Confirm uses (`src/lib/web-order-confirm.ts`).
+  **No delivery date is promised**; the buyer gets "Order … confirmed — we
+  will email the delivery date", not the "we have your order" receipt; the
+  team's email says it was auto-approved. Setting the date later emails the
+  buyer as a first date, not "has moved". Anything else → the review queue,
+  unchanged. Red is not blocked from ordering.
+
+## Verified
+
+Local Postgres + seed, a local S3 stand-in and Messages stand-in, production
+build, Chromium at 1440 and 390. Uploaded a Halal (12 products), NOT (2) and
+COA (1) PDF: each read back type, number and expiry and saved. Edited the NOT
+expiry to 30 Jun 2027; overrode Lime's COA (an empty reason refused). As the
+buyer, catalogue and product page show the dots, and the HTML holds no date,
+number, file name or reason. A Lime order (all green) went **CONFIRMED** with
+no confirmer, no delivery date, terms 30 days, total 96.00; the PO reads
+"Auto-approved: every product was certified green" and Confirmed by
+"Auto-approved". A Lemon order (COA expired) stayed **SUBMITTED** with a red
+COA dot on its review screen. Member: page 404, API 403, dots but no link.
+No overflow at 390/1440 on any page driven. 1883 tests (8 new; the
+auto-approval gate watched failing with the green check removed), `tsc`,
+lint unchanged (4 `ShopHeader` errors), build clean.
+
+## Not verified
+
+**Claude on a real certificate** (no API key here) — the sample `COA LV
+6A0205.pdf` was not attached to the ticket. A real R2 upload. Production
+behind sign-in. **No admin alerts** when a certificate turns amber or red
+(question 6, not built). Overrides keep their current reason only; no history.
+
+## Before that
+
 # Vessel tracking: a booking names its order, each vessel links to VesselFinder
 
 ## Status

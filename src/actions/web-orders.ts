@@ -4,7 +4,7 @@ import { after } from "next/server";
 import { revalidatePath } from "next/cache";
 import { Prisma } from "@/generated/prisma/client";
 import { WebOrderStatus } from "@/generated/prisma/enums";
-import { writePurchaseOrder } from "@/actions/purchase-orders";
+import { confirmWebOrderAs, sendConfirmedEmail } from "@/lib/web-order-confirm";
 import { UnauthorizedError } from "@/lib/auth-guards";
 import type { PermissionKey } from "@/lib/permissions/actions";
 import { requirePermission } from "@/lib/permissions/require";
@@ -23,17 +23,11 @@ import {
   type PoDraft,
 } from "@/lib/validation/purchase-orders";
 import {
-  WebOrderConfirmed,
-  webOrderConfirmedSubject,
-} from "@/emails/WebOrderConfirmed";
-import {
   WebOrderDeclined,
   webOrderDeclinedSubject,
 } from "@/emails/WebOrderDeclined";
 import { sendEmail } from "@/lib/email";
 import { env } from "@/lib/env";
-import { formatDate } from "@/lib/dates";
-import { formatMYR } from "@/lib/money";
 import { z } from "zod";
 
 export type ActionResult<T = undefined> =
@@ -142,100 +136,37 @@ export async function confirmWebOrder(
     // `documentId` has been nullable since Phase 16 for exactly this.
     const file = await attachWebOrderDocument(webOrderId);
 
-    const confirmed = await prisma.$transaction(async (tx) => {
-      const order = await tx.webOrder.findUnique({
-        where: { id: webOrderId },
-        select: {
-          id: true,
-          status: true,
-          buyerId: true,
-          buyerReference: true,
-          reference: true,
-          placedBy: { select: { email: true } },
-        },
-      });
-      if (!order) throw new Error("MISSING_ORDER");
-      // Straight from SUBMITTED since the Receive step was removed
-      // (2026-09-17). RECEIVED is still accepted: orders received before then
-      // still exist and still need confirming.
-      if (
-        order.status !== WebOrderStatus.SUBMITTED &&
-        order.status !== WebOrderStatus.RECEIVED
-      ) {
-        throw new Error("ALREADY_REVIEWED");
-      }
-
-      const written = await writePurchaseOrder(tx, {
-        data,
-        buyerId: order.buyerId,
-        // The purchase order we generated ourselves, where there is one. This
-        // is what puts a shop order's document on the ops detail page beside
-        // an uploaded scan's.
-        documentId: file?.documentId ?? null,
-        confirmedById: user.id,
-        revision: 1,
-        revisionOfId: null,
-        totals,
-        totalsAcknowledged: totalsAcknowledged === true,
-        buyerReference: order.buyerReference,
-        deliveryDate,
-      });
-
-      // Guarded on the status read above, not only on the id. Under READ
-      // COMMITTED a decline can commit between that read and this write; an
-      // unguarded update would then write CONFIRMED over DECLINED and commit
-      // a purchase order for an order the buyer was told is declined.
-      // Throwing here rolls back the purchase order written just above.
-      const { count } = await tx.webOrder.updateMany({
-        where: { id: order.id, status: order.status },
-        data: {
-          status: WebOrderStatus.CONFIRMED,
-          purchaseOrderId: written,
-          reviewedById: user.id,
-          reviewedAt: new Date(),
-        },
-      });
-      if (count === 0) throw new Error("ALREADY_REVIEWED");
-
-      return { poId: written, order };
+    const confirmed = await confirmWebOrderAs({
+      webOrderId,
+      data,
+      totals,
+      totalsAcknowledged: totalsAcknowledged === true,
+      deliveryDate,
+      confirmedById: user.id,
+      // The purchase order we generated ourselves, where there is one. This
+      // is what puts a shop order's document on the ops detail page beside
+      // an uploaded scan's.
+      documentId: file?.documentId ?? null,
     });
 
     revalidatePath("/purchase-orders");
     revalidatePath("/");
     revalidatePath(shopPath.orders());
 
-    // The buyer hears that their order is on, and when. Until Phase 38 they
-    // heard nothing at all and had to come and look. After the response and
-    // through sendEmail, which never throws: a failed email is a missing
+    // The buyer hears that their order is on, and when. After the response
+    // and through sendEmail, which never throws: a failed email is a missing
     // nudge, not an unconfirmed order.
-    //
-    // The file is redrawn first (Phase 42), because the one sent at submit
-    // could not carry the date this confirmation promises. A failed redraw
-    // returns null and the email goes without it.
-    after(async () => {
-      const redrawn = await attachWebOrderDocument(webOrderId, { redraw: true });
-      const po = await preparePoEmail(webOrderId, confirmed.order.reference, redrawn);
-      await sendEmail({
-        to: [confirmed.order.placedBy.email],
-        subject: webOrderConfirmedSubject(
-          confirmed.order.buyerReference,
-          confirmed.order.reference,
-          formatDate(deliveryDate),
-        ),
-        attachments: po.attachments,
-        react: WebOrderConfirmed({
-          reference: confirmed.order.reference,
-          poNumber: confirmed.order.buyerReference,
-          expectedDelivery: formatDate(deliveryDate),
-          total: formatMYR(Number(data.total)),
-          orderUrl: `${env.SHOP_URL ?? env.APP_URL}/orders/${confirmed.poId}`,
-          attached: po.attached,
-          document: po.document,
-          buyerLogo: po.buyerLogo,
-          preview: po.preview,
-        }),
-      });
-    });
+    after(() =>
+      sendConfirmedEmail({
+        webOrderId,
+        poId: confirmed.poId,
+        reference: confirmed.order.reference,
+        buyerReference: confirmed.order.buyerReference,
+        email: confirmed.order.placedBy.email,
+        deliveryDate,
+        total: data.total,
+      }),
+    );
 
     return { success: true, data: { poId: confirmed.poId } };
   } catch (cause) {

@@ -3,6 +3,7 @@ import { ShopProductCard } from "@/components/shop/ShopProductCard";
 import { singleGroup } from "@/lib/queries/shop-catalogue";
 import { shopHref } from "@/lib/shop-routes";
 import type { ShopProduct } from "@/lib/queries/shop-catalogue";
+import type { CertDots } from "@/lib/queries/certificates";
 
 /**
  * `isFallback` is `loadShopHome`'s `bestSellersAreFallback`: true when
@@ -14,9 +15,11 @@ import type { ShopProduct } from "@/lib/queries/shop-catalogue";
 export function BestSellers({
   products,
   isFallback,
+  dots,
 }: {
   products: ShopProduct[];
   isFallback: boolean;
+  dots?: Record<string, CertDots>;
 }) {
   if (products.length === 0) return null;
 
@@ -38,6 +41,7 @@ export function BestSellers({
           <ShopProductCard
             key={product.id}
             group={singleGroup(product)}
+            dots={dots}
             badge={!isFallback && index === 0 ? "Best seller" : undefined}
           />
         ))}

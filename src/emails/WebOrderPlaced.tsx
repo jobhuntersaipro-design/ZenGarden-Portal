@@ -23,6 +23,8 @@ export type WebOrderPlacedProps = {
   preview?: boolean;
   /** Whether the PDF is on the email. */
   attached?: boolean;
+  /** Every product was certified green, so it confirmed itself (2026-10-14). */
+  autoApproved?: boolean;
 };
 
 /** The team's copy of a shop order: short, with the same document the buyer gets. */
@@ -36,6 +38,7 @@ export function WebOrderPlaced({
   document = null,
   preview = false,
   attached = false,
+  autoApproved = false,
 }: WebOrderPlacedProps) {
   return (
     <Layout partnerLogo={buyerLogo}>
@@ -46,9 +49,15 @@ export function WebOrderPlaced({
       <Paragraph>
         {`${placedByName} at ${buyerName} placed an order on the shop.`}
       </Paragraph>
+      {autoApproved ? (
+        <Paragraph>
+          Every product on it is certified green on NOT, Halal and COA, so it was approved
+          without review. Set the expected delivery date on the purchase order.
+        </Paragraph>
+      ) : null}
       {document ? <PoSummary document={document} heading="The order" /> : null}
       <PoPreview reference={reference} orderUrl={reviewUrl} preview={preview} attached={attached} />
-      <ButtonLink href={reviewUrl}>Review the order</ButtonLink>
+      <ButtonLink href={reviewUrl}>{autoApproved ? "Open the order" : "Review the order"}</ButtonLink>
       <PoFooter />
     </Layout>
   );

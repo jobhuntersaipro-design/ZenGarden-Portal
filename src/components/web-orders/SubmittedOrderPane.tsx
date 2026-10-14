@@ -1,4 +1,6 @@
 import { PersonChip } from "@/components/ui/person";
+import { CertDots } from "@/components/certificates/CertDots";
+import type { ProductCerts } from "@/lib/certification";
 import { quantityCaption } from "@/lib/cartons";
 import { formatDateTime } from "@/lib/dates";
 import { formatMYR } from "@/lib/money";
@@ -13,7 +15,14 @@ import type { OpsWebOrder } from "@/lib/queries/web-orders";
  * changes happen, and having two editable copies of the same numbers is how a
  * reviewer loses track of which one the buyer agreed to.
  */
-export function SubmittedOrderPane({ order }: { order: OpsWebOrder }) {
+export function SubmittedOrderPane({
+  order,
+  certs,
+}: {
+  order: OpsWebOrder;
+  /** NOT / HL / COA by product id (2026-10-14). */
+  certs?: Map<string, ProductCerts>;
+}) {
   return (
     <section className="@container min-w-0 rounded-lg border border-hairline bg-canvas p-lg">
       <p className="font-mono text-[length:var(--text-eyebrow)] text-ink-tertiary">
@@ -79,6 +88,11 @@ export function SubmittedOrderPane({ order }: { order: OpsWebOrder }) {
                 Number(line.amount),
               )}`}
             </p>
+            {certs?.get(line.productId) ? (
+              <div className="mt-xxs">
+                <CertDots certs={certs.get(line.productId)} />
+              </div>
+            ) : null}
           </li>
         ))}
       </ul>

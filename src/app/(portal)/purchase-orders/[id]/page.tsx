@@ -1,5 +1,7 @@
 import type { Metadata } from "next";
 import Link from "next/link";
+import { CertDots } from "@/components/certificates/CertDots";
+import { loadProductCerts } from "@/lib/queries/certificates";
 import { notFound, redirect } from "next/navigation";
 import { Role } from "@/generated/prisma/enums";
 import { DocumentPreview } from "@/components/review/DocumentPreviewLoader";
@@ -109,6 +111,9 @@ async function PurchaseOrderPage({
     },
   });
   if (!po) notFound();
+  const certs = await loadProductCerts(
+    po.lineItems.flatMap((line) => (line.productId ? [line.productId] : [])),
+  );
 
   // An old revision is not a page of its own: the current one is the record.
   if (po.supersededBy) redirect(`/purchase-orders/${po.supersededBy.id}`);
@@ -539,7 +544,8 @@ async function PurchaseOrderPage({
                       image={po.confirmedBy.image}
                     />
                   ) : (
-                    "—"
+                    // Nothing else leaves it null (2026-10-14).
+                    "Auto-approved"
                   )}
                 </dd>
               </div>
@@ -597,6 +603,11 @@ async function PurchaseOrderPage({
                       .filter(Boolean)
                       .join(" · ")}
                   </p>
+                  {line.productId && certs.get(line.productId) ? (
+                    <div className="mt-xxs">
+                      <CertDots certs={certs.get(line.productId)} />
+                    </div>
+                  ) : null}
                 </li>
               ))}
             </ul>

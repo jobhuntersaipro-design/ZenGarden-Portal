@@ -15,8 +15,11 @@ export type WebOrderConfirmedProps = {
    * "—", by `PoMetaLine`.
    */
   poNumber?: string | null;
-  /** Already formatted — "2 Oct 2026" — so the email and the screen agree. */
-  expectedDelivery: string;
+  /**
+   * Already formatted — "2 Oct 2026" — so the email and the screen agree.
+   * Null on an auto-approved order: nobody has committed to a date yet.
+   */
+  expectedDelivery: string | null;
   total: string;
   orderUrl: string;
   /**
@@ -74,12 +77,15 @@ export function WebOrderConfirmed({
       <Paragraph>
         {updated
           ? `We have had to change the delivery date on order ${name}. It is now expected on ${expectedDelivery}. Nothing else on the order has changed.`
-          : `We have accepted your order at ${total} and expect to deliver it on ${expectedDelivery}.`}
+          : expectedDelivery
+            ? `We have accepted your order at ${total} and expect to deliver it on ${expectedDelivery}.`
+            : `We have accepted your order at ${total}. We will email you the delivery date as soon as it is set.`}
       </Paragraph>
       {attached ? (
         <Paragraph>
-          Your purchase order, showing the expected delivery date, is attached to
-          this email.
+          {expectedDelivery
+            ? "Your purchase order, showing the expected delivery date, is attached to this email."
+            : "Your purchase order is attached to this email."}
         </Paragraph>
       ) : null}
       {document ? (
@@ -99,13 +105,14 @@ export function WebOrderConfirmed({
 export const webOrderConfirmedSubject = (
   poNumber: string | null,
   reference: string,
-  expectedDelivery: string,
+  expectedDelivery: string | null,
   updated = false,
 ) => {
   const name = emailOrderName(poNumber, reference);
-  return updated
-    ? `Updated: order ${name} · delivery now expected ${expectedDelivery}`
-    : `Order ${name} confirmed · delivery expected ${expectedDelivery}`;
+  if (updated) return `Updated: order ${name} · delivery now expected ${expectedDelivery}`;
+  return expectedDelivery
+    ? `Order ${name} confirmed · delivery expected ${expectedDelivery}`
+    : `Order ${name} confirmed`;
 };
 
 export default WebOrderConfirmed;

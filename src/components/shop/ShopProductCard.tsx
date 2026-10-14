@@ -2,6 +2,8 @@
 
 import { useId, useState } from "react";
 import Link from "next/link";
+import { CertDots } from "@/components/certificates/CertDots";
+import type { CertDots as Dots } from "@/lib/queries/certificates";
 import { AddToCart } from "@/components/shop/AddToCart";
 import { CartonStepper } from "@/components/shop/CartonStepper";
 import { ProductThumb } from "@/components/products/ProductThumb";
@@ -30,8 +32,11 @@ import chip from "@/components/arc/chip-group/chip-group.module.css";
 export function ShopProductCard({
   group,
   badge,
+  dots,
 }: {
   group: ShopProductGroup;
+  /** NOT / HL / COA by product id: colours only (2026-10-14). */
+  dots?: Record<string, Dots>;
   /** e.g. "Best seller" — a pill over the top-left of the image well. */
   badge?: string;
 }) {
@@ -110,6 +115,11 @@ export function ShopProductCard({
       <p className="mt-xxs text-[length:var(--text-caption)] text-ink-tertiary">
         {packCaption}
       </p>
+      {dots?.[selected.id] ? (
+        <div className="mt-xxs">
+          <CertDots dots={dots[selected.id]} />
+        </div>
+      ) : null}
 
       {hasChoice ? (
         <VariantChips

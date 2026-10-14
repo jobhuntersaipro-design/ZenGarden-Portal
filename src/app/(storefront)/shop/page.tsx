@@ -4,6 +4,7 @@ import { CategoryGrid } from "@/components/shop/home/CategoryGrid";
 import { Hero } from "@/components/shop/home/Hero";
 import { HowItWorks } from "@/components/shop/home/HowItWorks";
 import { NoMarketPanel } from "@/components/shop/NoMarketPanel";
+import { loadCertDots } from "@/lib/queries/certificates";
 import { loadShopHome } from "@/lib/queries/shop-home";
 import { loadShopAudience } from "@/lib/shop-viewer";
 import { withLoadingFloor } from "@/lib/loading-floor";
@@ -30,6 +31,7 @@ async function ShopHome() {
   }
 
   const home = await loadShopHome(audience.market);
+  const dots = Object.fromEntries(await loadCertDots(home.bestSellers.map((product) => product.id)));
 
   return (
     <div className="pt-lg">
@@ -39,7 +41,7 @@ async function ShopHome() {
           full-screen gradient card and How it works, and nothing buyable was
           on the first screen. */}
       <div className="mt-xl">
-        <BestSellers products={home.bestSellers} isFallback={home.bestSellersAreFallback} />
+        <BestSellers products={home.bestSellers} isFallback={home.bestSellersAreFallback} dots={dots} />
       </div>
       <div className="mt-xl">
         <CategoryGrid categories={home.categories} />

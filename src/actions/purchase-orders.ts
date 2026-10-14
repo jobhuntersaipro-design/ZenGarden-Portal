@@ -208,7 +208,8 @@ export async function writePurchaseOrder(
     buyerId: string;
     /** Null for an order placed on the shop: there is no scan behind it. */
     documentId: string | null;
-    confirmedById: string;
+    /** Null when a shop order was auto-approved (2026-10-14). */
+    confirmedById: string | null;
     revision: number;
     revisionOfId: string | null;
     totals: ReturnType<typeof checkTotals>;

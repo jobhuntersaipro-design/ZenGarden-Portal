@@ -474,6 +474,9 @@ export async function updatePurchaseOrder(
     if (deliveryMoved && po.webOrder) {
       const order = po.webOrder;
       const newDate = data.deliveryDate;
+      // An auto-approved order has no date until the team sets one; the first
+      // one is news, not a change (2026-10-14).
+      const moved = po.deliveryDate !== null;
       after(async () => {
         const redrawn = await attachWebOrderDocument(order.id, { redraw: true });
         if (!newDate) return;
@@ -487,7 +490,7 @@ export async function updatePurchaseOrder(
             order.buyerReference,
             order.reference,
             when,
-            true,
+            moved,
           ),
           attachments: mail.attachments,
           react: WebOrderConfirmed({
@@ -496,7 +499,7 @@ export async function updatePurchaseOrder(
             expectedDelivery: when,
             total: formatMYR(po.total.toNumber()),
             orderUrl: `${env.SHOP_URL ?? env.APP_URL}/orders/${poId}`,
-            updated: true,
+            updated: moved,
             attached: mail.attached,
             document: mail.document,
             buyerLogo: mail.buyerLogo,
