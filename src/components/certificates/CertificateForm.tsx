@@ -138,8 +138,8 @@ export function CertificateForm({
       if (found.expiresOn) setExpiresOn(found.expiresOn);
       setNote(
         found.expiresOn
-          ? `Claude read this as ${DOC_LABEL[kind]} — check the number and expiry before saving.`
-          : `Claude read this as ${DOC_LABEL[kind]}, but no expiry — enter it by hand.`,
+          ? `AI read this as ${DOC_LABEL[kind]} — check the number and expiry before saving.`
+          : `AI read this as ${DOC_LABEL[kind]}, but no expiry — enter it by hand.`,
       );
     } catch {
       if (mine === attempt.current) setNote("We couldn't reach the server to read it — enter the details by hand.");
@@ -258,7 +258,7 @@ export function CertificateForm({
             compactAt={1}
             label={certificate ? "Replace the file" : "Add the certificate"}
             description="Drop the file here or choose from your device"
-            note={`PDF, PNG or JPG — up to ${formatBytes(MAX_FILE_BYTES)}. Claude reads the type, number and expiry.`}
+            note={`PDF, PNG or JPG — up to ${formatBytes(MAX_FILE_BYTES)}. AI reads the type, number and expiry.`}
             onUpload={upload}
             onFilesChange={(files) => (files.length === 0 ? clearFile() : undefined)}
           />
@@ -266,7 +266,7 @@ export function CertificateForm({
         {reading ? (
           <p role="status" className="mt-sm flex items-center gap-xs text-[length:var(--text-body-sm)] text-ink-secondary">
             <Sparkles aria-hidden className="size-4 shrink-0 text-ink-tertiary" />
-            <TextShimmer>Claude is reading the certificate…</TextShimmer>
+            <TextShimmer>AI is reading the certificate…</TextShimmer>
           </p>
         ) : note ? (
           <p role="status" className="mt-sm flex items-start gap-xs text-[length:var(--text-body-sm)] text-ink-secondary">
@@ -292,7 +292,7 @@ export function CertificateForm({
             meta:
               detected === value ? (
                 <span className="inline-flex items-center gap-xxs text-[length:var(--text-caption)] text-ink-secondary">
-                  <Sparkles aria-hidden className="size-3" /> Read by Claude
+                  <Sparkles aria-hidden className="size-3" /> Read by AI
                 </span>
               ) : undefined,
           }))}
@@ -410,7 +410,7 @@ export function CertificateForm({
           <DialogHeader>
             <DialogTitle>Change the type to {asking ? DOC_LABEL[asking] : ""}?</DialogTitle>
             <DialogDescription>
-              Claude read this file as {detected ? DOC_LABEL[detected] : ""}.{" "}
+              AI read this file as {detected ? DOC_LABEL[detected] : ""}.{" "}
               {asking === "OTHER"
                 ? "Filed as Other, it turns no dot green on the products it covers."
                 : `Filing it as ${asking ? DOC_LABEL[asking] : ""} changes which dot it turns green on every product it covers.`}

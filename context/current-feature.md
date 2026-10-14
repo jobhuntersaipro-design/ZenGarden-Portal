@@ -35,6 +35,13 @@ Aisha 3, NOT within 90 days 1; products HL expired 2, Vietnam 1, COA not
 uploaded 9 (12 − 3 covered). No overflow on any page at either width.
 1887 tests (4 new), `tsc`, lint unchanged (4 `ShopHeader` errors), build.
 
+**Same day: no "Claude" on screen.** Asked for as "remove all Claude word,
+just replace it as AI". Every user-visible "Claude" is now "AI": the read
+note, "Read by AI", the type prompt, the dropzone note, the upload page
+caption, the booking confirmation's "still reading" line and the owner's
+model card. Code comments keep the name. Driven at 1440 and 390: the page
+text holds no "Claude".
+
 ## Not verified
 
 Claude on real certificates (no API key) and a real R2 upload; production.

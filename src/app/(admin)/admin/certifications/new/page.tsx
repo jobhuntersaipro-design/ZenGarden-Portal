@@ -20,7 +20,7 @@ async function NewCertificatePage() {
           Upload certificate
         </h1>
         <p className="mt-xxs text-[length:var(--text-body-sm)] text-ink-secondary">
-          Drop the file in and Claude reads its type, number and expiry. Check them, tick the
+          Drop the file in and AI reads its type, number and expiry. Check them, tick the
           products it covers, and save.
         </p>
       </div>

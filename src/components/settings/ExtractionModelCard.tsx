@@ -32,7 +32,7 @@ export function ExtractionModelCard({ current }: { current: string }) {
         Document reading
       </h2>
       <p className="mb-md text-[length:var(--text-body-sm)] text-ink-secondary">
-        The Claude model that reads uploaded purchase orders and booking
+        The AI model that reads uploaded purchase orders and booking
         confirmations. Only you can see this.
       </p>
       <label htmlFor="extraction-model" className="mb-xxs block text-[length:var(--text-body-sm)] text-ink">

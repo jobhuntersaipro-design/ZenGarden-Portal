@@ -78,7 +78,7 @@ export function BookingForm({
       <div className="@container flex min-w-0 flex-col gap-md">
         {reading ? (
           <p className="rounded-lg border border-hairline bg-surface-soft p-md text-[length:var(--text-body-sm)] text-ink-secondary">
-            Claude is still reading this booking confirmation. Refresh in a moment.
+            AI is still reading this booking confirmation. Refresh in a moment.
           </p>
         ) : null}
 
