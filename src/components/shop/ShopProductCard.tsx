@@ -99,6 +99,7 @@ export function ShopProductCard({
               {badge}
             </span>
           ) : null}
+          {dots?.[selected.id] ? <CertDots dots={dots[selected.id]} overlay /> : null}
         </div>
         <h3
           className={`${card.title} mt-xs text-[length:var(--text-body-sm)] text-ink`}
@@ -115,11 +116,6 @@ export function ShopProductCard({
       <p className="mt-xxs text-[length:var(--text-caption)] text-ink-tertiary">
         {packCaption}
       </p>
-      {dots?.[selected.id] ? (
-        <div className="mt-xxs">
-          <CertDots dots={dots[selected.id]} />
-        </div>
-      ) : null}
 
       {hasChoice ? (
         <VariantChips

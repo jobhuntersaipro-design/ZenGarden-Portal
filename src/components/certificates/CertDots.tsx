@@ -25,15 +25,25 @@ export function CertDots({
   certs,
   dots,
   size = "sm",
+  overlay = false,
 }: {
   certs?: ProductCerts;
   dots?: Dots;
   size?: "sm" | "md";
+  /**
+   * A pill over the bottom-right of a product image (the shop, 2026-10-14).
+   * The image well must be `relative`. One row, tighter gaps, so it fits a
+   * two-up phone card's ~133px image.
+   */
+  overlay?: boolean;
 }) {
+  const layout = overlay
+    ? "absolute right-xxs bottom-xxs gap-x-xs rounded-pill bg-canvas/90 px-xs py-xxs text-ink shadow-xs"
+    : "flex-wrap gap-x-sm gap-y-xxs text-ink-secondary";
   return (
     <ul
       aria-label="Certification"
-      className={`flex flex-wrap items-center gap-x-sm gap-y-xxs ${size === "md" ? "text-[length:var(--text-body-sm)]" : "text-[length:var(--text-caption)]"} text-ink-secondary`}
+      className={`flex items-center ${layout} ${size === "md" ? "text-[length:var(--text-body-sm)]" : "text-[length:var(--text-caption)]"}`}
     >
       {CERT_TYPES.map((type) => {
         const status = certs?.[type].status ?? dots?.[type] ?? "missing";

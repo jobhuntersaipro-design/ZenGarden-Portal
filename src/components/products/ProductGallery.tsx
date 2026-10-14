@@ -1,7 +1,7 @@
 "use client";
 
 import { Carousel } from "@/components/arc/carousel/carousel";
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState, type ReactNode } from "react";
 import { ImageOff } from "lucide-react";
 
 /**
@@ -65,11 +65,14 @@ export function ProductGallery({
   productName,
   canEdit,
   audience,
+  overlay,
 }: {
   images: { id: string; url: string | null; position: number }[];
   productName: string;
   canEdit: boolean;
   audience: "staff" | "buyer";
+  /** Drawn over the image's bottom-right corner, e.g. the shop's cert dots. */
+  overlay?: ReactNode;
 }) {
   const [broken, setBroken] = useState<Set<string>>(new Set());
   const usable = images.filter((image) => image.url && !broken.has(image.id));
@@ -94,7 +97,7 @@ export function ProductGallery({
       // saying "Photo coming soon" pushed the price and Add to cart below the
       // first screen. The portal keeps its 4/3 panel at every width.
       <section
-        className={`flex flex-col items-center justify-center gap-xs self-start rounded-lg border border-dashed border-hairline-strong bg-surface p-lg text-center ${
+        className={`relative flex flex-col items-center justify-center gap-xs self-start rounded-lg border border-dashed border-hairline-strong bg-surface p-lg text-center ${
           audience === "buyer" ? "h-32 sm:h-auto sm:aspect-4/3" : "aspect-4/3"
         }`}
       >
@@ -127,6 +130,7 @@ export function ProductGallery({
             </p>
           </>
         )}
+        {overlay}
       </section>
     );
   }
@@ -141,10 +145,10 @@ export function ProductGallery({
         slideSize="100cqw"
         slideLabel={(index, count) => `Photo ${index + 1} of ${count}`}
       >
-        {usable.map((image) => (
+        {usable.map((image, index) => (
           <div
             key={image.id}
-            className="aspect-4/3 overflow-hidden rounded-lg bg-surface-soft"
+            className="relative aspect-4/3 overflow-hidden rounded-lg bg-surface-soft"
           >
             <GalleryImage
               src={image.url!}
@@ -152,6 +156,8 @@ export function ProductGallery({
               onFail={() => fail(image.id)}
               className="size-full object-cover"
             />
+            {/* On every slide so it stays put while swiping; read once. */}
+            {overlay ? <div aria-hidden={index > 0 || undefined}>{overlay}</div> : null}
           </div>
         ))}
       </Carousel>
@@ -175,6 +181,7 @@ export function ProductGallery({
             {Math.min(selected, usable.length - 1) + 1} / {usable.length}
           </span>
         ) : null}
+        {overlay}
       </div>
 
       {usable.length > 1 ? (

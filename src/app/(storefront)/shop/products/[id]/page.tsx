@@ -102,6 +102,9 @@ async function ShopProductPage({
             productName={product.name}
             canEdit={false}
             audience="buyer"
+            overlay={
+              dots[product.id] ? <CertDots dots={dots[product.id]} size="md" overlay /> : null
+            }
           />
         </div>
 
@@ -127,12 +130,6 @@ async function ShopProductPage({
               </>
             ) : null}
           </div>
-
-          {dots[product.id] ? (
-            <div className="mt-sm">
-              <CertDots dots={dots[product.id]} size="md" />
-            </div>
-          ) : null}
 
           {variants.length > 1 ? (
             <div className="mt-md sm:mt-lg">

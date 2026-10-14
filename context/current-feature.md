@@ -29,6 +29,9 @@ one small change to reverse.
 - **Dots** (`CertDots`): portal product page (+ "Manage certification" for
   super admins), PO line items, the shop-order review lines; shop card and
   product page **colours only** — no date, number or file reaches a buyer.
+  On the shop the dots sit in a pill over the bottom-right of the product
+  image (card, product page photo or carousel, "Photo coming soon" tile),
+  asked for the same day; staff screens keep them inline.
 - **Auto-approval**: after a shop order is sent, if every product is green on
   all three and the buyer has payment terms, it confirms itself through the
   same transaction a person's Confirm uses (`src/lib/web-order-confirm.ts`).
