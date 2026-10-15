@@ -69,6 +69,14 @@ both read HL expired · COA renew. Saving a certificate ticked at listing
 level linked both variants; an override turned the row green and removing it
 cleared it (0 rows left). 1890 tests (3 new), `tsc`, lint unchanged, build.
 
+**2026-10-15: the shop's dots pill is 35% smaller.** Asked for as "make the
+bottom right certificates list 35% smaller … to not block the product view".
+The overlay alone is drawn at `scale-65` from its bottom-right corner (card
+and shop product page); staff screens keep their inline dots. Measured on the
+ZEN 2.1L card: 135×26 → 88×17 px, so on a two-up phone card it covers 8% of
+the image instead of 19% (it used to span the image's whole width); the
+product page pill 146×29 → 95×19. No overflow at 1440 or 390.
+
 ## Not verified
 
 Claude on real certificates (no API key) and a real R2 upload; production.

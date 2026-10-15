@@ -33,12 +33,13 @@ export function CertDots({
   /**
    * A pill over the bottom-right of a product image (the shop, 2026-10-14).
    * The image well must be `relative`. One row, tighter gaps, so it fits a
-   * two-up phone card's ~133px image.
+   * two-up phone card's ~133px image. Drawn at 65% from its corner (asked
+   * for 2026-10-15) so it covers less of the photo.
    */
   overlay?: boolean;
 }) {
   const layout = overlay
-    ? "absolute right-xxs bottom-xxs gap-x-xs rounded-pill bg-canvas/90 px-xs py-xxs text-ink shadow-xs"
+    ? "absolute right-xxs bottom-xxs origin-bottom-right scale-65 gap-x-xs rounded-pill bg-canvas/90 px-xs py-xxs text-ink shadow-xs"
     : "flex-wrap gap-x-sm gap-y-xxs text-ink-secondary";
   return (
     <ul
