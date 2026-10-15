@@ -6,6 +6,7 @@ import { DataTable, type Column } from "@/components/portal/DataTable";
 import { useTableSort } from "@/hooks/useTableSort";
 import { DOC_LABEL, STATUS_LABEL, expiryStatus } from "@/lib/certification";
 import { formatDate } from "@/lib/dates";
+import { groupName } from "@/lib/product-groups";
 import type { CertificateRow } from "@/lib/queries/certificates";
 import type { SortDirection } from "@/lib/queries/pagination";
 
@@ -60,7 +61,8 @@ export function CertificatesTable({
       header: "Covers",
       defaultDir: "desc",
       cell: (row) => {
-        const names = row.products.map((product) => product.name);
+        // One name per product, not per flavour: the certificate covers them all.
+        const names = [...new Set(row.products.map((product) => groupName(product)))];
         return (
           <span title={names.join("\n")} className="block max-w-72 truncate">
             {names.length === 0

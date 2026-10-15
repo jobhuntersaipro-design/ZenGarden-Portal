@@ -4,6 +4,7 @@ import { revalidatePath } from "next/cache";
 import type { ActionResult } from "@/actions/auth";
 import { UnauthorizedError, requireSuperAdmin } from "@/lib/auth-guards";
 import { prisma } from "@/lib/prisma";
+import { listingProductIds } from "@/lib/queries/certificates";
 import { deleteObject, headObject } from "@/lib/r2";
 import {
   certificateSchema,
@@ -117,7 +118,7 @@ export async function deleteCertificate(id: string): Promise<ActionResult> {
   }
 }
 
-/** Mark one product's type green whatever its certificates say, with why. */
+/** Mark a product's type green — every variant of its listing — whatever its certificates say, with why. */
 export async function setCertOverride(input: {
   productId: string;
   type: string;
@@ -130,11 +131,13 @@ export async function setCertOverride(input: {
       return { success: false, error: parsed.error.issues[0]?.message ?? "Check the form." };
     }
     const { productId, type, reason } = parsed.data;
-    await prisma.certificateOverride.upsert({
-      where: { productId_type: { productId, type } },
-      create: { productId, type, reason, byId: user.id },
-      update: { reason, byId: user.id, at: new Date() },
-    });
+    // An override covers the whole listing, so it lives on one variant: any
+    // other variant's override of this type is replaced, not left beside it.
+    const ids = await listingProductIds(productId);
+    await prisma.$transaction([
+      prisma.certificateOverride.deleteMany({ where: { productId: { in: ids }, type } }),
+      prisma.certificateOverride.create({ data: { productId, type, reason, byId: user.id } }),
+    ]);
     revalidate();
     return { success: true, data: undefined };
   } catch (cause) {
@@ -150,7 +153,10 @@ export async function clearCertOverride(input: {
     await requireSuperAdmin();
     const parsed = overrideSchema.pick({ productId: true, type: true }).safeParse(input);
     if (!parsed.success) return { success: false, error: "Check the form." };
-    await prisma.certificateOverride.deleteMany({ where: parsed.data });
+    const ids = await listingProductIds(parsed.data.productId);
+    await prisma.certificateOverride.deleteMany({
+      where: { productId: { in: ids }, type: parsed.data.type },
+    });
     revalidate();
     return { success: true, data: undefined };
   } catch (cause) {

@@ -8,6 +8,7 @@ const row = (name: string, market: string | null, expiresOn: string | null): Ove
   id: name,
   name,
   sku: name.toUpperCase(),
+  variants: 1,
   market,
   overrides: {},
   certs: productCerts(

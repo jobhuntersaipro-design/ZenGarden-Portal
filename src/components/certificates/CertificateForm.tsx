@@ -25,7 +25,8 @@ import {
 import { Input } from "@/components/ui/input";
 import { DOC_LABEL, DOC_TYPES, type DocType } from "@/lib/certification";
 import type { CertificateExtraction } from "@/lib/extraction/extract-certificate";
-import type { CertificateRow } from "@/lib/queries/certificates";
+import type { CertifiableListing, CertificateRow } from "@/lib/queries/certificates";
+import { plural } from "@/lib/plural";
 import { toast } from "@/lib/toast";
 import {
   ACCEPT_ATTRIBUTE,
@@ -35,7 +36,6 @@ import {
   rejectionReason,
 } from "@/lib/validation/upload";
 
-type Product = { id: string; name: string; sku: string; market: string | null };
 type Uploaded = { key: string; name: string; type: AcceptedMimeType; size: number };
 
 const LABEL = "block text-[length:var(--text-body-sm)] font-medium text-ink";
@@ -77,7 +77,7 @@ export function CertificateForm({
   products,
   certificate,
 }: {
-  products: Product[];
+  products: CertifiableListing[];
   certificate?: CertificateRow;
 }) {
   const router = useRouter();
@@ -93,9 +93,12 @@ export function CertificateForm({
   const attempt = useRef(0);
   const [reference, setReference] = useState(certificate?.reference ?? "");
   const [expiresOn, setExpiresOn] = useState(certificate?.expiresOn ?? "");
-  const [selected, setSelected] = useState<Set<string>>(
-    new Set(certificate?.products.map((product) => product.id)),
-  );
+  // A certificate covers a product with every flavour of it, so the picker
+  // ticks listings; a listing is ticked when any of its variants is linked.
+  const [selected, setSelected] = useState<Set<string>>(() => {
+    const linked = new Set(certificate?.products.map((product) => product.id));
+    return new Set(products.filter((p) => p.ids.some((id) => linked.has(id))).map((p) => p.key));
+  });
   const [search, setSearch] = useState("");
   const [reading, setReading] = useState(false);
   const [note, setNote] = useState<string | null>(null);
@@ -207,7 +210,7 @@ export function CertificateForm({
     setSaving(true);
     try {
       const result = await saveCertificate(
-        { type, reference, expiresOn, productIds: [...selected], file },
+        { type, reference, expiresOn, productIds: products.filter((p) => selected.has(p.key)).flatMap((p) => p.ids), file },
         certificate?.id,
       );
       if (!result.success) return setError(result.error);
@@ -360,7 +363,7 @@ export function CertificateForm({
           </p>
         </div>
         <p className="mt-xxs text-[length:var(--text-caption)] text-ink-tertiary">
-          Every product this certificate is for. A product&apos;s market is its country.
+          Every product this certificate is for — it covers all of a product&apos;s variants. A product&apos;s market is its country.
         </p>
         <div className="mt-sm flex flex-wrap items-center gap-sm">
           <Input
@@ -374,7 +377,7 @@ export function CertificateForm({
             type="button"
             variant="outline"
             size="sm"
-            onClick={() => setSelected((current) => new Set([...current, ...shown.map((p) => p.id)]))}
+            onClick={() => setSelected((current) => new Set([...current, ...shown.map((p) => p.key)]))}
           >
             Select {search.trim() ? "these" : "all"} ({shown.length})
           </Button>
@@ -384,11 +387,11 @@ export function CertificateForm({
         </div>
         <ul className="mt-sm max-h-preview overflow-y-auto rounded-sm border border-hairline">
           {shown.map((product) => (
-            <li key={product.id} className="border-b border-hairline last:border-b-0">
+            <li key={product.key} className="border-b border-hairline last:border-b-0">
               <label className="flex min-h-control-md cursor-pointer items-center gap-sm px-sm py-xxs hover:bg-surface-soft">
                 <Checkbox
-                  checked={selected.has(product.id)}
-                  onCheckedChange={(on) => toggle(product.id, on === true)}
+                  checked={selected.has(product.key)}
+                  onCheckedChange={(on) => toggle(product.key, on === true)}
                   aria-label={product.name}
                 />
                 <span className="min-w-0 flex-1">
@@ -396,7 +399,7 @@ export function CertificateForm({
                     {product.name}
                   </span>
                   <span className="block truncate text-[length:var(--text-caption)] text-ink-tertiary">
-                    {product.sku}
+                    {product.variants > 1 ? plural(product.variants, "variant") : product.sku}
                     {product.market ? ` · ${product.market}` : ""}
                   </span>
                 </span>

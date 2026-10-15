@@ -54,10 +54,27 @@ the stored PDF; no overflow at either width. A certificate whose file is
 missing from storage shows "We couldn't read that PDF" with Download and Try
 again.
 
+**2026-10-15: a certificate covers the product, not one flavour.** Reported
+with two shop cards of one product showing different dots per flavour ("the
+certificate should be product level, not variant level"). A product's status
+is now read from every certificate and override on any variant of its
+**listing** (`groupKey`: the family, or brand + name, in one market — the
+shop card), in `loadProductCerts`, so the shop, PO lines and auto-approval
+all follow. The overview and the upload's Covers picker show one row per
+listing ("2 variants"); ticking one links every variant. An override sits on
+one variant and is replaced/cleared across the listing. The same product in
+another market stays separate. No migration. Driven at 1440/390 on ZEN 2.1L
+Malaysia: before, Goat's Milk read COA amber and Lavender COA red; after,
+both read HL expired · COA renew. Saving a certificate ticked at listing
+level linked both variants; an override turned the row green and removing it
+cleared it (0 rows left). 1890 tests (3 new), `tsc`, lint unchanged, build.
+
 ## Not verified
 
 Claude on real certificates (no API key) and a real R2 upload; production.
 The dropzone's row ✕ is Arc's 32px at 390, as on the PO upload screen.
+**Certification does not cross markets**: a Halal certificate for the
+Malaysia listing does not cover the Vietnam one; tick both if it should.
 
 ## Before that
 

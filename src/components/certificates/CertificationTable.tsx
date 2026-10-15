@@ -27,6 +27,7 @@ import {
 } from "@/lib/certification";
 import { OVERVIEW_SHOW, type OverviewShow } from "@/lib/certification-overview";
 import { formatDate } from "@/lib/dates";
+import { plural } from "@/lib/plural";
 import type { OverviewRow } from "@/lib/queries/certificates";
 import type { SortDirection } from "@/lib/queries/pagination";
 import { toast } from "@/lib/toast";
@@ -111,7 +112,7 @@ export function CertificationTable({
             {row.name}
           </span>
           <span className="block truncate text-[length:var(--text-caption)] text-ink-tertiary">
-            {row.sku}
+            {row.variants > 1 ? `${plural(row.variants, "variant")}` : row.sku}
           </span>
         </span>
       ),
