@@ -16,6 +16,7 @@ import {
   type ProductView,
 } from "@/components/products/ProductToolbar";
 import { formatMYR } from "@/lib/money";
+import { loadCertDots } from "@/lib/queries/certificates";
 import {
   FAMILY_SORT_KEYS,
   NO_FAMILY,
@@ -192,6 +193,10 @@ async function ProductsPage({
       }),
     );
   }
+  const dots =
+    view === "grid" && by === "product"
+      ? await loadCertDots(paged.map((product) => product.id))
+      : new Map();
 
   return (
     <>
@@ -324,6 +329,7 @@ async function ProductsPage({
                 key={product.id}
                 product={product}
                 imageUrl={imageUrls.get(product.id) ?? null}
+                dots={dots.get(product.id)}
               />
             ))}
           </div>

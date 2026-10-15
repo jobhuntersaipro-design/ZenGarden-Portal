@@ -77,6 +77,12 @@ ZEN 2.1L card: 135×26 → 88×17 px, so on a two-up phone card it covers 8% of
 the image instead of 19% (it used to span the image's whole width); the
 product page pill 146×29 → 95×19. No overflow at 1440 or 390.
 
+**Same day: the portal's product grid shows the pill too** ("It should show
+here too", on `/products`). `ProductCard` takes the same `loadCertDots` result
+for the page of cards, grid view only, drawn as the shop's overlay. Driven at
+1440 and 390 on "ZEN 2.1L": 3 cards, 3 pills, the two Malaysia variants
+reading alike (COA amber) and Vietnam all red; no overflow.
+
 ## Not verified
 
 Claude on real certificates (no API key) and a real R2 upload; production.

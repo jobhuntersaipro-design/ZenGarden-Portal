@@ -1,5 +1,7 @@
 import Link from "next/link";
+import { CertDots } from "@/components/certificates/CertDots";
 import { ProductThumb } from "@/components/products/ProductThumb";
+import type { CertDots as Dots } from "@/lib/queries/certificates";
 import type { ProductRow } from "@/lib/queries/products";
 import { formatMYR } from "@/lib/money";
 import { plural } from "@/lib/plural";
@@ -24,9 +26,11 @@ function flagFor(product: ProductRow) {
 export function ProductCard({
   product,
   imageUrl,
+  dots,
 }: {
   product: ProductRow;
   imageUrl: string | null;
+  dots?: Dots;
 }) {
   const flag = flagFor(product);
 
@@ -55,6 +59,7 @@ export function ProductCard({
             </span>
           ) : null}
         </div>
+        {dots ? <CertDots dots={dots} overlay /> : null}
       </div>
 
       <div className="flex flex-1 flex-col gap-xxs p-md">
