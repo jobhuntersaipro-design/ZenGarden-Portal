@@ -1,4 +1,4 @@
-# Planned: shipments and their documents (specs 63–65)
+# Planned: order tweaks, QC hold, shipments and containers (specs 63–68)
 
 ## Status
 
@@ -16,6 +16,19 @@ buyer, so the papers belong to a **Shipment** that the POs ride on.
 - `docs/specs/65-shipment-document-reading.md` — AI classifies and reads the
   papers and cross-checks cartons, vessel and consignee. Needs one real set of
   papers from the customer first.
+
+Added the same day, from the customer's second list:
+
+- `docs/specs/66-order-confirmation-and-notes.md` — delivery date and payment
+  terms optional at confirm; three greens auto-approve with no payment-terms
+  condition (shop orders only); an Add note box on a PO.
+- `docs/specs/67-qc-hold-and-buyer-stages.md` — a skippable QC hold that QC
+  alone puts on and releases; buyers see Order placed → QC passed →
+  Delivering → Delivered only.
+- `docs/specs/68-container-details.md` — containers on a shipment with photos,
+  videos and a description, shown to the buyer (dates only, no staff names).
+
+**Build order:** 66 → 67 → 63 → 68 → 64 → 65.
 
 ## Before that
 
