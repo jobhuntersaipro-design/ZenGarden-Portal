@@ -38,8 +38,11 @@ export function LifecycleActions({
   advanceBlockedReason,
   canMoveBack,
   advanceWarning = null,
+  current = null,
 }: {
   poId: string;
+  /** Phase 67: In production offers QC hold beside Advance; QC hold releases. */
+  current?: PoStage | null;
   next: PoStage | null;
   previous: PoStage | null;
   /** Whether this viewer's role owns the stage the order is in (Phase 48). */
@@ -95,6 +98,9 @@ export function LifecycleActions({
    * lost — the same rule the Move back dialog follows.
    */
   const [advanceOpen, setAdvanceOpen] = useState(false);
+  const [holdOpen, setHoldOpen] = useState(false);
+  const [holdNote, setHoldNote] = useState("");
+  const [holding, setHolding] = useState(false);
 
   const showMoveBack = canMoveBack && previous !== null;
   if (!next && !showMoveBack) return null;
@@ -106,6 +112,11 @@ export function LifecycleActions({
    * caption below says who to ask.
    */
   const blocked = next !== null && !canAdvance;
+  // QC's two outcomes from In production: pass, or hold with a reason.
+  const canHold = current === "IN_PRODUCTION" && !blocked;
+  const advanceLabel = next
+    ? `${current === "QC_HOLD" ? "Release" : "Advance"} to ${stageLabel(next)}`
+    : "";
 
   return (
     <div className="flex flex-col items-end gap-xxs">
@@ -196,9 +207,75 @@ export function LifecycleActions({
           </>
         ) : null}
 
+        {canHold ? (
+          <Dialog open={holdOpen} onOpenChange={setHoldOpen}>
+            <Button variant="secondary" onClick={() => setHoldOpen(true)}>
+              Put on QC hold
+            </Button>
+            <DialogContent>
+              <DialogHeader>
+                <DialogTitle>Put this order on QC hold?</DialogTitle>
+                <DialogDescription>
+                  It stays on hold until QC releases it to QC passed.
+                </DialogDescription>
+              </DialogHeader>
+              <label
+                htmlFor="hold-note"
+                className="font-mono text-[length:var(--text-eyebrow)] text-ink-tertiary"
+              >
+                What did QC find?
+              </label>
+              <Textarea
+                id="hold-note"
+                rows={2}
+                value={holdNote}
+                onChange={(event) => setHoldNote(event.target.value)}
+              />
+              <DialogFooter>
+                <Button
+                  variant="secondary"
+                  onClick={() => {
+                    setHoldOpen(false);
+                    setHoldNote("");
+                  }}
+                >
+                  Cancel
+                </Button>
+                <Button
+                  variant="secondary"
+                  className="bg-ink text-canvas hover:bg-ink-deep"
+                  disabled={!holdNote.trim()}
+                  pending={holding}
+                  onClick={async () => {
+                    setHolding(true);
+                    const moved = pageMoves();
+                    try {
+                      const result = await advanceStage(poId, holdNote, true);
+                      if (!result.success) {
+                        toast.error(result.error);
+                        return;
+                      }
+                      await moved;
+                      setHoldOpen(false);
+                      setHoldNote("");
+                      toast.success("Put on QC hold");
+                    } catch {
+                      toast.error("We couldn't reach the server. Try again.");
+                    } finally {
+                      setHolding(false);
+                    }
+                  }}
+                >
+                  {holding ? "Putting on hold…" : "Put on hold"}
+                </Button>
+              </DialogFooter>
+            </DialogContent>
+          </Dialog>
+        ) : null}
+
         {blocked ? (
           <Button disabled title={advanceBlockedReason ?? undefined}>
-            Advance to {stageLabel(next)}
+            {advanceLabel}
           </Button>
         ) : null}
 
@@ -212,7 +289,7 @@ export function LifecycleActions({
                 {/* The menu half is 38px wide; a phone gets the 44px floor. */}
                 <span className="inline-flex max-sm:[&>div>button:last-child]:min-w-11">
                   <SplitButton
-                    label={`Advance to ${stageLabel(next)}`}
+                    label={advanceLabel}
                     onClick={() => setAdvanceOpen(true)}
                     actions={[
                       {
@@ -228,7 +305,7 @@ export function LifecycleActions({
             ) : (
               <PopoverTrigger asChild>
                 {/* The label always names the stage it moves to. */}
-                <Button>Advance to {stageLabel(next)}</Button>
+                <Button>{advanceLabel}</Button>
               </PopoverTrigger>
             )}
             <PopoverContent align="end" className="w-80 p-md shadow-md">

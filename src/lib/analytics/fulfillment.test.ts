@@ -81,11 +81,12 @@ describe("stageSeries", () => {
 });
 
 describe("stageBreakdown", () => {
-  it("lists all six stages in order, even the empty ones", () => {
+  it("lists every stage in order, even the empty ones", () => {
     const breakdown = stageBreakdown([order("2026-09-01", PoStage.DELIVERED)]);
     expect(breakdown.map((entry) => entry.stage)).toEqual([
       "ORDER_PLACED",
       "IN_PRODUCTION",
+      "QC_HOLD",
       "QC_PASSED",
       "IN_WAREHOUSE",
       "DELIVERING",

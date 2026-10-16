@@ -106,8 +106,14 @@ const RAW_ACTIONS = [
   },
   {
     key: "po.advance.in_production",
-    label: "Advance: In production → QC passed",
-    description: "Sign off quality control on a finished batch.",
+    label: "QC: In production → QC passed or QC hold",
+    description: "Pass a finished batch, or put it on hold with a reason.",
+    group: "Fulfilment",
+  },
+  {
+    key: "po.advance.qc_hold",
+    label: "Release: QC hold → QC passed",
+    description: "Release an order QC put on hold once the problem is fixed.",
     group: "Fulfilment",
   },
   {

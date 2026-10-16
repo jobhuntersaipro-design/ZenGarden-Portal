@@ -39,6 +39,8 @@ export const DEFAULT_GRANTS: Readonly<
     "po.upload",
     "po.document",
     "po.advance.in_production",
+    // Phase 67: QC alone gives the green light to a held order.
+    "po.advance.qc_hold",
   ],
   [Role.WAREHOUSE]: [
     ...VIEW_EVERYWHERE,

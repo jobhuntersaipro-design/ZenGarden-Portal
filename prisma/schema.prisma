@@ -408,6 +408,9 @@ enum BookingStatus {
 enum PoStage {
   ORDER_PLACED
   IN_PRODUCTION
+  /// QC found a problem (Phase 67). Optional detour; QC alone puts an order on
+  /// hold and releases it to QC passed.
+  QC_HOLD
   QC_PASSED
   IN_WAREHOUSE
   DELIVERING

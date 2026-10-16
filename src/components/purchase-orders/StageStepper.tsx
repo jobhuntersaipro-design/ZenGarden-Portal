@@ -1,6 +1,6 @@
-import type { PoStage } from "@/generated/prisma/enums";
 import { formatDate } from "@/lib/dates";
-import { PO_STAGES, stageIndex, stageLabel } from "@/lib/po-stages";
+import { PoStage } from "@/generated/prisma/enums";
+import { PO_STAGES, stageLabel } from "@/lib/po-stages";
 import { Stepper } from "@/components/arc/stepper/stepper";
 
 export type StageEvent = {
@@ -22,8 +22,15 @@ export function StageStepper({
   current,
   events,
   showActor,
+  stages: only,
 }: {
   current: PoStage | null;
+  /**
+   * The stages to draw. The buyer passes `BUYER_STAGES` (Phase 67); staff
+   * leave it out and see every stage, QC hold only on an order that has been
+   * in it — most never are, and an empty detour would read as a skipped step.
+   */
+  stages?: readonly PoStage[];
   events: StageEvent[];
   /**
    * Required (2026-09-24), so no caller can forget it. The buyer's query nulls
@@ -33,14 +40,19 @@ export function StageStepper({
    */
   showActor: boolean;
 }) {
-  const currentIndex = current === null ? -1 : stageIndex(current);
   // The first time each stage was reached is what the caption names.
   const reached = new Map<PoStage, StageEvent>();
   for (const event of events) {
     if (!reached.has(event.toStage)) reached.set(event.toStage, event);
   }
+  const list =
+    only ??
+    PO_STAGES.filter(
+      (stage) => stage !== PoStage.QC_HOLD || current === PoStage.QC_HOLD || reached.has(stage),
+    );
+  const currentIndex = current === null ? -1 : list.indexOf(current);
 
-  const stages = PO_STAGES.map((stage, index) => ({
+  const stages = list.map((stage, index) => ({
     stage,
     done: currentIndex > index,
     isCurrent: currentIndex === index,
@@ -54,13 +66,13 @@ export function StageStepper({
         }`
       : formatDate(event.changedAt);
 
-  const delivered = currentIndex === PO_STAGES.length - 1;
+  const delivered = currentIndex === list.length - 1;
   return (
     <div className="mt-lg">
       <Stepper
         label="Order stage"
         completeLabel="Delivered"
-        current={delivered ? PO_STAGES.length : Math.max(0, currentIndex)}
+        current={delivered ? list.length : Math.max(0, currentIndex)}
         steps={stages.map(({ stage, done, isCurrent, event }) => ({
           id: stage,
           label: stageLabel(stage),

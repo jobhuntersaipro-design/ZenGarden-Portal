@@ -179,6 +179,7 @@ describe("stageSnapshotSeries, every stage", () => {
     ).toEqual({
       ORDER_PLACED: 1,
       IN_PRODUCTION: 0,
+      QC_HOLD: 0,
       QC_PASSED: 0,
       IN_WAREHOUSE: 0,
       DELIVERING: 1,
@@ -275,6 +276,7 @@ describe("pointBreakdown", () => {
     expect(legend("2026-09-10")).toEqual([
       [PoStage.ORDER_PLACED, 2],
       [PoStage.IN_PRODUCTION, 0],
+      [PoStage.QC_HOLD, 0],
       [PoStage.QC_PASSED, 0],
       [PoStage.IN_WAREHOUSE, 0],
       [PoStage.DELIVERING, 0],
@@ -282,6 +284,7 @@ describe("pointBreakdown", () => {
     expect(legend("2026-09-13")).toEqual([
       [PoStage.ORDER_PLACED, 1],
       [PoStage.IN_PRODUCTION, 1],
+      [PoStage.QC_HOLD, 0],
       [PoStage.QC_PASSED, 1],
       [PoStage.IN_WAREHOUSE, 0],
       [PoStage.DELIVERING, 0],
@@ -380,6 +383,7 @@ describe("overdue on the board", () => {
     ).toEqual([
       [PoStage.ORDER_PLACED, 2, 1],
       [PoStage.IN_PRODUCTION, 0, 0],
+      [PoStage.QC_HOLD, 0, 0],
       [PoStage.QC_PASSED, 0, 0],
       [PoStage.IN_WAREHOUSE, 0, 0],
       [PoStage.DELIVERING, 0, 0],

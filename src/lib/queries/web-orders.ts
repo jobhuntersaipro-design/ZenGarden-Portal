@@ -3,6 +3,7 @@ import { matchesBuyerOrder, type BuyerOrderFilter } from "@/lib/buyer-order-filt
 import { orderIdentity } from "@/lib/order-identity";
 import { documentParty, type PoDocumentParty } from "@/lib/purchase-order-document";
 import { prisma } from "@/lib/prisma";
+import { buyerStage, isBuyerStage } from "@/lib/po-stages";
 import type { PoStage } from "@/generated/prisma/enums";
 
 export type ClientOrderLine = {
@@ -87,7 +88,6 @@ const STATUS_RANK: Record<string, number> = {
   // than submitted, still short of a stage.
   received: 1,
   ORDER_PLACED: 2,
-  IN_PRODUCTION: 3,
   QC_PASSED: 4,
   IN_WAREHOUSE: 5,
   DELIVERING: 6,
@@ -225,8 +225,10 @@ export async function listBuyerOrders(
         orderId,
         buyerReference: poNumber,
         date: po.poDate,
-        stage: po.stage,
-        stageChangedAt: po.stageChangedAt,
+        // The buyer's view of the stage (Phase 67): In production, QC hold
+        // and In warehouse never reach the shop. Nor does when they changed.
+        stage: buyerStage(po.stage),
+        stageChangedAt: null,
         deliveryDate: po.deliveryDate,
         total: po.total.toFixed(2),
         lineCount: po._count.lineItems,
@@ -420,8 +422,9 @@ export async function loadBuyerOrder(
       buyerReference:
         orderIdentity(po).poNumber ?? po.webOrder?.buyerReference?.trim() ?? null,
       date: po.poDate,
-      stage: po.stage,
-      stageChangedAt: po.stageChangedAt,
+      // Phase 67: the buyer's four stages only, and no hidden stage's date.
+      stage: buyerStage(po.stage),
+      stageChangedAt: null,
       deliveryDate: po.deliveryDate,
       subtotal: po.subtotal.toFixed(2),
       tax: po.tax.toFixed(2),
@@ -436,11 +439,13 @@ export async function loadBuyerOrder(
       documentId: po.webOrder?.documentId ?? null,
       lineCount: po.lineItems.length,
       buyer: documentParty(po.buyer, po.webOrder?.placedBy ?? null),
-      events: po.stageEvents.map((event) => ({
-        toStage: event.toStage,
-        changedAt: event.changedAt.toISOString(),
-        changedByName: null as null,
-      })),
+      events: po.stageEvents
+        .filter((event) => isBuyerStage(event.toStage))
+        .map((event) => ({
+          toStage: event.toStage,
+          changedAt: event.changedAt.toISOString(),
+          changedByName: null as null,
+        })),
       lines: po.lineItems.map((line) => ({
         position: line.position,
         // The code the buyer printed, where the document carried one;

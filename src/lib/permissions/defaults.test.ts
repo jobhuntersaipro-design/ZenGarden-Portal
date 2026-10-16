@@ -9,11 +9,12 @@ import { OPS_ROLES, roleLabel } from "@/lib/permissions/roles";
 import { defaultGranted, defaultRows } from "@/lib/permissions/defaults";
 
 describe("the registry", () => {
-  // Twenty-four since notes on an order (Phase 66, `po.note`).
+  // Twenty-five since QC hold (Phase 67, `po.advance.qc_hold`); twenty-four
+  // since notes on an order (Phase 66, `po.note`).
   // Twenty-three since booking confirmations (2026-10-08): `bc.view`,
   // `bc.upload`, `bc.review`. Twenty since the per-order document upload.
   it("holds every action once with unique keys", () => {
-    expect(PERMISSION_ACTIONS).toHaveLength(24);
+    expect(PERMISSION_ACTIONS).toHaveLength(25);
     const keys = PERMISSION_ACTIONS.map((action) => action.key);
     expect(new Set(keys).size).toBe(PERMISSION_ACTIONS.length);
   });

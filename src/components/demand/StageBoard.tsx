@@ -15,8 +15,8 @@ import { useEdgeFades } from "@/hooks/useEdgeFades";
 import arcTable from "@/components/arc/sortable-data-table/sortable-data-table.module.css";
 import { Button } from "@/components/ui/button";
 import { PoStage } from "@/generated/prisma/enums";
-import { PO_STAGES, stageLabel } from "@/lib/po-stages";
-import { STAGE_VARS, cssVar } from "@/lib/analytics/palette";
+import { PO_STAGES, stageColorVar, stageLabel } from "@/lib/po-stages";
+import { cssVar } from "@/lib/analytics/palette";
 import { pointBreakdown } from "@/lib/analytics/stage-history";
 import type {
   StageSplitBreakdown,
@@ -307,7 +307,7 @@ export function StageBoard({
                 className="size-2 shrink-0 rounded-full"
                 style={{
                   background: cssVar(
-                    STAGE_VARS[PO_STAGES.indexOf(entry.stage)],
+                    stageColorVar(entry.stage),
                   ),
                 }}
               />

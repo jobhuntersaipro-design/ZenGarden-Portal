@@ -2,6 +2,8 @@ import { describe, expect, it } from "vitest";
 import { PoStage } from "@/generated/prisma/enums";
 import {
   PO_STAGES,
+  buyerStage,
+  holdStage,
   isFinalStage,
   nextStage,
   prevStage,
@@ -30,10 +32,11 @@ describe("stageLabel", () => {
 });
 
 describe("stageColorVar", () => {
-  it("maps stages to the six palette tokens in order", () => {
+  it("maps stages to the palette tokens in order, the hold its own", () => {
     expect(PO_STAGES.map(stageColorVar)).toEqual([
       "--color-stage-1",
       "--color-stage-2",
+      "--color-stage-hold",
       "--color-stage-3",
       "--color-stage-4",
       "--color-stage-5",
@@ -59,14 +62,15 @@ describe("stagesUpTo", () => {
     expect(stagesUpTo(PoStage.QC_PASSED)).toEqual([
       PoStage.ORDER_PLACED,
       PoStage.IN_PRODUCTION,
+      PoStage.QC_HOLD,
       PoStage.QC_PASSED,
     ]);
   });
 
-  it("returns one entry at the start and all six at the end", () => {
+  it("returns one entry at the start and every stage at the end", () => {
     expect(stagesUpTo(PoStage.ORDER_PLACED)).toHaveLength(1);
-    expect(stagesUpTo(PoStage.DELIVERED)).toHaveLength(6);
-    expect(stageIndex(PoStage.DELIVERED)).toBe(5);
+    expect(stagesUpTo(PoStage.DELIVERED)).toHaveLength(7);
+    expect(stageIndex(PoStage.DELIVERED)).toBe(6);
   });
 });
 
@@ -83,7 +87,33 @@ describe("prevStage", () => {
   it("is the inverse of nextStage everywhere it is defined", () => {
     for (const stage of PO_STAGES) {
       const next = nextStage(stage);
-      if (next) expect(prevStage(next)).toBe(stage);
+      // A release from QC hold goes back to In production, not to the hold.
+      if (next && stage !== PoStage.QC_HOLD) expect(prevStage(next)).toBe(stage);
     }
+  });
+});
+
+// Phase 67.
+describe("QC hold", () => {
+  it("is a detour: In production passes straight to QC passed", () => {
+    expect(nextStage(PoStage.IN_PRODUCTION)).toBe(PoStage.QC_PASSED);
+    expect(holdStage(PoStage.IN_PRODUCTION)).toBe(PoStage.QC_HOLD);
+    expect(holdStage(PoStage.QC_PASSED)).toBeNull();
+    expect(nextStage(PoStage.QC_HOLD)).toBe(PoStage.QC_PASSED);
+    expect(prevStage(PoStage.QC_HOLD)).toBe(PoStage.IN_PRODUCTION);
+  });
+});
+
+describe("buyerStage", () => {
+  it("shows a buyer the last of their four stages the order has reached", () => {
+    expect(PO_STAGES.map(buyerStage)).toEqual([
+      PoStage.ORDER_PLACED,
+      PoStage.ORDER_PLACED,
+      PoStage.ORDER_PLACED,
+      PoStage.QC_PASSED,
+      PoStage.QC_PASSED,
+      PoStage.DELIVERING,
+      PoStage.DELIVERED,
+    ]);
   });
 });

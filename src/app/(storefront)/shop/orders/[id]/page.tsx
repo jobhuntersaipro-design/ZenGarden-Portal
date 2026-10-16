@@ -6,6 +6,7 @@ import { CheckoutSteps } from "@/components/shop/checkout/CheckoutSteps";
 import { PurchaseOrderPreview } from "@/components/shop/checkout/PurchaseOrderPreview";
 import { BuyerOrderDocuments } from "@/components/shop/orders/BuyerOrderDocuments";
 import { ReorderButton } from "@/components/shop/orders/ReorderButton";
+import { BUYER_STAGES } from "@/lib/po-stages";
 import { StageStepper } from "@/components/purchase-orders/StageStepper";
 import { requireClient } from "@/lib/auth-guards";
 import { buyerOrderStatus } from "@/lib/buyer-order-status";
@@ -187,7 +188,12 @@ async function OrderDetailPage({
               Confirmed by our team.
             </p>
           )}
-          <StageStepper current={order.stage} events={order.events} showActor={false} />
+          <StageStepper
+            current={order.stage}
+            events={order.events}
+            showActor={false}
+            stages={BUYER_STAGES}
+          />
         </section>
       ) : (
         <section className="mt-lg rounded-lg border border-hairline bg-canvas p-lg">

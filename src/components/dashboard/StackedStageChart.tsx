@@ -14,8 +14,8 @@ import {
 } from "recharts";
 import type { PoStage } from "@/generated/prisma/enums";
 import type { StagePoint } from "@/lib/analytics/fulfillment";
-import { PO_STAGES, stageLabel } from "@/lib/po-stages";
-import { STAGE_VARS, cssVar } from "@/lib/analytics/palette";
+import { PO_STAGES, stageColorVar, stageLabel } from "@/lib/po-stages";
+import { cssVar } from "@/lib/analytics/palette";
 import {
   axisInterval,
   CHART_ANIMATION,
@@ -29,8 +29,9 @@ import { ChartScroller } from "@/components/charts/ChartScroller";
 /** Delivered at the bottom, Order placed on top (design reference §3.2). */
 const STACK_ORDER = [...PO_STAGES].reverse();
 
-const colorFor = (stage: PoStage) =>
-  cssVar(STAGE_VARS[PO_STAGES.indexOf(stage)]);
+// By stage, not by position: QC hold (Phase 67) sits between two stages and
+// would shift every colour after it.
+const colorFor = (stage: PoStage) => cssVar(stageColorVar(stage));
 
 /**
  * A point, optionally carrying the late share of each of its stages.

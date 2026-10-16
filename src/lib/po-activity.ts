@@ -145,6 +145,13 @@ export function describeActivity(
 
   const from = stageIn(event.fromStage);
   const to = stageIn(event.toStage);
+  // Phase 67: a hold and a release say so, rather than "advanced".
+  if (event.toStage === "QC_HOLD" && event.fromStage === "IN_PRODUCTION") {
+    return [text(`${actor} put this order on `), to];
+  }
+  if (event.fromStage === "QC_HOLD" && event.toStage === "QC_PASSED") {
+    return [text(`${actor} released this order from `), from, text(" to "), to];
+  }
   if (stageIndex(event.toStage) > stageIndex(event.fromStage)) {
     return [text(`${actor} advanced this order from `), from, text(" to "), to];
   }

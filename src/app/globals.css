@@ -274,6 +274,7 @@
   --color-stage-1: #4a3aa7;   /* Order placed   — violet */
   --color-stage-2: #2a78d6;   /* In production  — blue */
   --color-stage-3: #1baf7a;   /* QC passed      — aqua */
+  --color-stage-hold: #8f3b1b; /* QC hold       — rust, a problem; not the overdue red (Phase 67) */
   --color-stage-4: #eda100;   /* In warehouse   — yellow */
   --color-stage-5: #e87ba4;   /* Delivering     — pink */
   --color-stage-6: #04642a;   /* Delivered      — deep green */

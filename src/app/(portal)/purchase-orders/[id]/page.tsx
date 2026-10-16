@@ -132,6 +132,14 @@ async function PurchaseOrderPage({
     .map((person) => ({ name: person.name, src: person.image ?? undefined }));
 
   const current = po.stage;
+  // The count the stepper draws: QC hold only on an order that has been in it
+  // (Phase 67), so an order that passed first time reads "of 6".
+  const shownStages = PO_STAGES.filter(
+    (stage) =>
+      stage !== "QC_HOLD" ||
+      current === "QC_HOLD" ||
+      po.stageEvents.some((event) => event.kind === "STAGE" && event.toStage === "QC_HOLD"),
+  );
 
   // Phase 48. The Advance button is disabled rather than hidden off-stage, and
   // the caption names the role that does own it — a refusal that only says
@@ -323,7 +331,7 @@ async function PurchaseOrderPage({
               <StageBadge stage={current} />
               {isFinalStage(current)
                 ? `· ${daysFromOrder} days from order`
-                : `· stage ${stageIndex(current) + 1} of ${PO_STAGES.length}`}
+                : `· stage ${shownStages.indexOf(current) + 1} of ${shownStages.length}`}
             </h2>
             <p className="mt-xxs text-[length:var(--text-caption)] text-ink-tertiary">
               {latestStageEvent?.changedBy?.name ? (
@@ -358,6 +366,7 @@ async function PurchaseOrderPage({
 
           <LifecycleActions
             poId={po.id}
+            current={current}
             next={nextStage(current)}
             previous={prevStage(current)}
             canAdvance={canAdvance}

@@ -1,16 +1,9 @@
 /**
  * Chart colours as CSS variable names, resolved at render time — never hex
  * literals in a component. The values live in `globals.css @theme` and these
- * are the only names a chart may reach for.
+ * are the only names a chart may reach for. Stage colours come from
+ * `stageColorVar` in `po-stages.ts`, keyed by stage rather than position.
  */
-export const STAGE_VARS = [
-  "--color-stage-1",
-  "--color-stage-2",
-  "--color-stage-3",
-  "--color-stage-4",
-  "--color-stage-5",
-  "--color-stage-6",
-] as const;
 
 /**
  * The donut palette, in fixed rank order. Deliberately a different set from the

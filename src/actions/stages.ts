@@ -11,7 +11,7 @@ import { requirePermission, rolesWithPermission } from "@/lib/permissions/requir
 import { roleLabel } from "@/lib/permissions/roles";
 import { optionalPaymentTermsSchema } from "@/lib/payment-terms";
 import { prisma } from "@/lib/prisma";
-import { nextStage, prevStage, stageLabel } from "@/lib/po-stages";
+import { holdStage, nextStage, prevStage, stageLabel } from "@/lib/po-stages";
 import { composeEditNote } from "@/lib/po-activity";
 import { REASON_REQUIRED, isoDate } from "@/lib/validation/purchase-orders";
 import {
@@ -199,6 +199,8 @@ async function moveStockForDelivery(
 export async function advanceStage(
   poId: string,
   note?: string,
+  /** Phase 67: send an order in production to QC hold instead of QC passed. */
+  hold = false,
 ): Promise<ActionResult<{ stage: PoStage }>> {
   try {
     const po = await prisma.purchaseOrder.findUnique({
@@ -207,8 +209,15 @@ export async function advanceStage(
     });
     if (!po) return { success: false, error: "That order is gone." };
 
-    const target = nextStage(po.stage);
+    const target = hold ? holdStage(po.stage) : nextStage(po.stage);
+    // The same key either way: whoever passes QC is whoever holds it.
     const key = advanceKeyFor(po.stage);
+    if (hold && !target) {
+      return { success: false, error: "Only an order in production can go on QC hold." };
+    }
+    if (hold && !note?.trim()) {
+      return { success: false, error: "Say why it is on hold." };
+    }
     if (!target || !key) {
       return { success: false, error: "This order is already delivered." };
     }

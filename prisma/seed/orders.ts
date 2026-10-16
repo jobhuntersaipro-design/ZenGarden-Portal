@@ -28,14 +28,15 @@ export type PlannedOrder = {
 };
 
 /** Stage order, mirroring src/lib/po-stages.ts without importing app code. */
-export const PO_STAGES_ORDER = [
+// The seed never puts an order on QC hold (Phase 67), so the hold is left out.
+export const PO_STAGES_ORDER: readonly PoStage[] = [
   PoStage.ORDER_PLACED,
   PoStage.IN_PRODUCTION,
   PoStage.QC_PASSED,
   PoStage.IN_WAREHOUSE,
   PoStage.DELIVERING,
   PoStage.DELIVERED,
-] as const;
+];
 
 const MIN_TOTAL = 1_000;
 const MAX_TOTAL = 150_000;
