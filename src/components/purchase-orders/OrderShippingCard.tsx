@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { VesselLink } from "@/components/booking-confirmations/VesselLink";
-import { ChecklistDots } from "@/components/shipments/ChecklistDots";
+import { ChecklistDots, ShipmentStatusBadge } from "@/components/shipments/ChecklistDots";
 import { AddToShipment } from "@/components/shipments/AddToShipment";
 import { formatDate } from "@/lib/dates";
 import type { OrderShipment } from "@/lib/queries/shipments";
@@ -37,6 +37,16 @@ export function OrderShippingCard({
                 >
                   Shipment {s.reference}
                 </Link>
+                <span className="flex flex-wrap items-center gap-xs">
+                  <ShipmentStatusBadge status={s.checklist.status} />
+                  {s.checklist.reason ? (
+                    <span
+                      className={`text-[length:var(--text-caption)] ${s.checklist.status === "overdue" ? "text-accent-red" : "text-ink-secondary"}`}
+                    >
+                      {s.checklist.reason}
+                    </span>
+                  ) : null}
+                </span>
                 <ChecklistDots slots={s.checklist.slots} withLabels />
                 <p className="text-[length:var(--text-caption)] text-ink-tertiary">
                   {s.checklist.requiredDone} of {s.checklist.requiredTotal} required documents

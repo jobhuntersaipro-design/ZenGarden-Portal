@@ -3,7 +3,7 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { BackLink } from "@/components/portal/BackLink";
 import { PageHeader } from "@/components/portal/PageHeader";
-import { ChecklistDots } from "@/components/shipments/ChecklistDots";
+import { ChecklistDots, ShipmentStatusBadge } from "@/components/shipments/ChecklistDots";
 import { ContainersCard } from "@/components/shipments/ContainersCard";
 import { ShipmentBookingCard } from "@/components/shipments/ShipmentBookingCard";
 import { ShipmentDocumentsCard } from "@/components/shipments/ShipmentDocumentsCard";
@@ -60,6 +60,10 @@ async function ShipmentPage({ params }: { params: Promise<{ id: string }> }) {
             Buyer
           </Link>
         </p>
+        <div className="flex flex-wrap items-center gap-sm">
+          <ShipmentStatusBadge status={checklist.status} />
+          {checklist.reason ? <span className="text-ink">{checklist.reason}</span> : null}
+        </div>
         <div className="flex flex-wrap items-center gap-sm">
           <ChecklistDots slots={checklist.slots} withLabels />
           <span className="tabular-nums">

@@ -19,7 +19,8 @@ import { Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle } from "
 import type { ShipmentDocType } from "@/generated/prisma/enums";
 import { useAwaitableRefresh } from "@/hooks/useAwaitableRefresh";
 import { formatDate } from "@/lib/dates";
-import type { ChecklistSlot } from "@/lib/shipments/checklist";
+import type { TrackedSlot } from "@/lib/shipments/due";
+import { dueWords } from "@/lib/shipments/due";
 import { CUSTOMS_LABELS, SLOT_LABEL } from "@/lib/shipments/checklist";
 import { toast } from "@/lib/toast";
 import { formatBytes } from "@/lib/validation/upload";
@@ -40,11 +41,16 @@ export type ShipmentDoc = {
 
 const ACTION = "h-control-md min-w-11 gap-xxs px-sm text-[length:var(--text-caption)] sm:h-control-sm sm:min-w-0";
 
-const NOTE: Partial<Record<ChecklistSlot["state"], string>> = {
-  optional: "Optional — for reference",
-  not_needed: "Not needed for this shipment",
-  missing: "Missing",
-};
+/** What an empty slot says: its due date in the slot's own colour. */
+function emptyNote(slot: TrackedSlot): { text: string; tone: string } {
+  if (slot.state === "optional") return { text: "Optional — for reference", tone: "text-ink-tertiary" };
+  if (slot.state === "not_needed") return { text: "Not needed for this shipment", tone: "text-ink-tertiary" };
+  if (!slot.dueOn) return { text: "Missing", tone: "text-ink-tertiary" };
+  const due = `Due ${formatDate(slot.dueOn)}`;
+  if (slot.state === "overdue") return { text: `${due} · ${dueWords(slot.daysLeft!)}`, tone: "text-accent-red" };
+  if (slot.state === "due_soon") return { text: `${due} · ${dueWords(slot.daysLeft!)}`, tone: "text-brand-amber-strong" };
+  return { text: due, tone: "text-ink-tertiary" };
+}
 
 /**
  * One row per paper, in the flow's order (Phase 63 §4.4). Replace keeps the
@@ -57,7 +63,7 @@ export function ShipmentDocumentsCard({
   canManage,
 }: {
   shipmentId: string;
-  slots: ChecklistSlot[];
+  slots: TrackedSlot[];
   documents: ShipmentDoc[];
   canManage: boolean;
 }) {
@@ -178,7 +184,7 @@ function SlotRow({
   onSaved,
 }: {
   shipmentId: string;
-  slot: ChecklistSlot;
+  slot: TrackedSlot;
   current: ShipmentDoc | null;
   earlier: ShipmentDoc[];
   canManage: boolean;
@@ -273,7 +279,7 @@ function SlotRow({
                 </p>
               </>
             ) : (
-              <p className="text-[length:var(--text-caption)] text-ink-tertiary">{NOTE[slot.state]}</p>
+              <p className={`text-[length:var(--text-caption)] ${emptyNote(slot).tone}`}>{emptyNote(slot).text}</p>
             )}
           </div>
         </div>

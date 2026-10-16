@@ -29,6 +29,11 @@ export function todayISO(): string {
   return format(new TZDate(new Date(), TIME_ZONE), "yyyy-MM-dd");
 }
 
+/** `2026-10-16`: the Kuala Lumpur calendar day an instant falls on. */
+export function klDay(value: DateInput): string {
+  return format(toKL(value), "yyyy-MM-dd");
+}
+
 /** `5 Aug 2026` — the format the canvas uses in tables and headers. */
 export function formatDate(value: DateInput): string {
   return format(toKL(value), "d MMM yyyy");

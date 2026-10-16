@@ -189,6 +189,24 @@ async function PurchaseOrderPage({
   const shipments = (await can("shipment.view")) ? await shipmentsForOrder(po.id) : null;
   const addToShipments =
     shipments && (await can("shipment.manage")) ? await openShipmentsForBuyer(po.buyerId) : null;
+  // Phase 64: warns, never blocks — the short-stock rule.
+  const shippingWarning = !shipments
+    ? null
+    : current === "IN_WAREHOUSE" && shipments.length === 0
+      ? "Not on a shipment yet."
+      : current === "DELIVERING"
+        ? (() => {
+            const noBl = shipments.filter((sh) =>
+              sh.checklist.slots.some((slot) => slot.key === "BILL_OF_LADING" && slot.state !== "done"),
+            );
+            return noBl.length
+              ? `No final bill of lading on ${noBl.map((sh) => sh.reference).join(", ")} yet. It can still be marked delivered.`
+              : shipments.length === 0
+                ? "Not on a shipment yet. It can still be marked delivered."
+                : null;
+          })()
+        : null;
+  const advanceWarning = [deliveryShortWarning, shippingWarning].filter(Boolean).join(" ") || null;
 
   const daysFromOrder = Math.max(
     0,
@@ -372,7 +390,7 @@ async function PurchaseOrderPage({
             next={nextStage(current)}
             previous={prevStage(current)}
             canAdvance={canAdvance}
-            advanceWarning={deliveryShortWarning}
+            advanceWarning={advanceWarning}
             advanceBlockedReason={advanceBlockedReason}
             canMoveBack={await can("po.revert")}
           />

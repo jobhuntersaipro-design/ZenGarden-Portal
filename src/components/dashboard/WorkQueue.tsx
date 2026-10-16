@@ -21,7 +21,14 @@ import { INTAKE_STATUS } from "@/components/portal/StatusBadge";
  * /purchase-orders, where those rows now live; only failed uploads are still a
  * filter on the table.
  */
-export function WorkQueue({ intake }: { intake: IntakeCounts }) {
+export function WorkQueue({
+  intake,
+  shipments,
+}: {
+  intake: IntakeCounts;
+  /** Phase 64: null when the reader may not open shipments. */
+  shipments?: { overdue: number; pastEtdNoBl: number; yesterday: string } | null;
+}) {
   const jobs = [
     {
       key: "needs-review",
@@ -47,6 +54,22 @@ export function WorkQueue({ intake }: { intake: IntakeCounts }) {
       tone: INTAKE_STATUS.NEEDS_REVIEW,
       one: "order from the shop to confirm",
       many: "orders from the shop to confirm",
+    },
+    {
+      key: "shipments-overdue",
+      href: "/shipments?status=overdue",
+      count: shipments?.overdue ?? 0,
+      tone: INTAKE_STATUS.FAILED,
+      one: "shipment has overdue documents",
+      many: "shipments have overdue documents",
+    },
+    {
+      key: "shipments-no-bl",
+      href: `/shipments?missing=BILL_OF_LADING&etd_to=${shipments?.yesterday ?? ""}`,
+      count: shipments?.pastEtdNoBl ?? 0,
+      tone: INTAKE_STATUS.FAILED,
+      one: "shipment past ETD without a bill of lading",
+      many: "shipments past ETD without a bill of lading",
     },
   ].filter((job) => job.count > 0);
 

@@ -2,7 +2,7 @@
 
 import { DataTable, type Column } from "@/components/portal/DataTable";
 import { TablePagination } from "@/components/portal/TablePagination";
-import { ChecklistDots } from "@/components/shipments/ChecklistDots";
+import { ChecklistDots, ShipmentStatusBadge } from "@/components/shipments/ChecklistDots";
 import { formatDate } from "@/lib/dates";
 import type { ShipmentListRow } from "@/lib/queries/shipments";
 
@@ -25,8 +25,22 @@ const COLUMNS: Column<ShipmentListRow>[] = [
     ),
   },
   {
+    key: "status",
+    header: "Status",
+    sortable: false,
+    cell: (row) => (
+      <span className="flex flex-col items-start gap-xxs">
+        <ShipmentStatusBadge status={row.checklist.status} />
+        {row.checklist.reason ? (
+          <span className="text-[length:var(--text-caption)] text-ink-tertiary">{row.checklist.reason}</span>
+        ) : null}
+      </span>
+    ),
+  },
+  {
     key: "orders",
     header: "Orders",
+    showAt: "wide",
     sortable: false,
     align: "right",
     cell: (row) => (
@@ -63,13 +77,19 @@ const COLUMNS: Column<ShipmentListRow>[] = [
       </span>
     ),
   },
-  { key: "createdAt", header: "Created", sortable: false, cell: (row) => formatDate(row.createdAt) },
+  { key: "createdAt", header: "Created", sortable: false, showAt: "lg", cell: (row) => formatDate(row.createdAt) },
 ];
 
 function card(row: ShipmentListRow) {
   return (
     <div className="flex flex-col gap-xxs">
-      <span className="font-mono text-[length:var(--text-body-md)] font-medium text-ink">{row.reference}</span>
+      <span className="flex items-start justify-between gap-sm">
+        <span className="font-mono text-[length:var(--text-body-md)] font-medium text-ink">{row.reference}</span>
+        <ShipmentStatusBadge status={row.checklist.status} />
+      </span>
+      {row.checklist.reason ? (
+        <span className="text-[length:var(--text-body-sm)] text-ink-secondary">{row.checklist.reason}</span>
+      ) : null}
       <span className="truncate text-[length:var(--text-body-sm)] text-ink-secondary">
         {row.buyer.name} · {row.orders.length} {row.orders.length === 1 ? "order" : "orders"}
       </span>
@@ -88,7 +108,7 @@ function card(row: ShipmentListRow) {
   );
 }
 
-/** Newest first, one order only (Phase 63 §4.2); filters and sorts are Phase 64. */
+/** Sorted and filtered by the toolbar above (Phase 64). */
 export function ShipmentTable({
   rows,
   page,

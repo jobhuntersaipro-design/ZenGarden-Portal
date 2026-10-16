@@ -1,9 +1,10 @@
 import type { Prisma } from "@/generated/prisma/client";
 import { BookingStatus, PoStage, type ShipmentDocType } from "@/generated/prisma/enums";
 import { prisma } from "@/lib/prisma";
-import { formatDate } from "@/lib/dates";
+import { formatDate, klDay, todayISO } from "@/lib/dates";
 import { ORDER_IDENTITY_SELECT, orderIdentity, orderLabel } from "@/lib/order-identity";
-import { shipmentChecklist } from "@/lib/shipments/checklist";
+import { STATUS_ORDER, trackShipment, type ShipmentStatus } from "@/lib/shipments/due";
+import type { SlotKey } from "@/lib/shipments/checklist";
 
 /**
  * Shipments (Phase 63). Staff only: no shop route or shop query reads these
@@ -38,17 +39,39 @@ const currentDocs = {
   select: { type: true },
 } satisfies Prisma.Shipment$documentsArgs;
 
-const checklistOf = (s: {
-  formDRequired: boolean;
-  bookings: unknown[];
-  documents: { type: ShipmentDocType }[];
-}) =>
-  shipmentChecklist({
+const day = (d: Date | null | undefined) => (d ? d.toISOString().slice(0, 10) : null);
+
+/** The one reading of a shipment's papers and due dates every screen shares (Phase 64). */
+const checklistOf = (
+  s: {
+    createdAt: Date;
+    formDRequired: boolean;
+    bookings: { etdPol: Date | null; etaPod: Date | null }[];
+    documents: { type: ShipmentDocType }[];
+  },
+  today = todayISO(),
+) =>
+  trackShipment({
+    createdOn: klDay(s.createdAt),
+    etd: day(s.bookings[0]?.etdPol),
+    eta: day(s.bookings[0]?.etaPod),
     hasBooking: s.bookings.length > 0,
     current: s.documents.map((d) => d.type),
     formDRequired: s.formDRequired,
+    today,
   });
 
+export type ShipmentFilters = {
+  q?: string;
+  status?: ShipmentStatus;
+  missing?: SlotKey;
+  buyerId?: string;
+  market?: string;
+  etdFrom?: string;
+  etdTo?: string;
+  sort: "status" | "etd" | "eta" | "createdAt";
+  dir: "asc" | "desc";
+};
 
 export function shipmentWhere(q?: string): Prisma.ShipmentWhereInput {
   if (!q) return {};
@@ -76,41 +99,78 @@ export function shipmentWhere(q?: string): Prisma.ShipmentWhereInput {
   };
 }
 
-export async function listShipments({ q, page, size }: { q?: string; page: number; size: number }) {
-  const where = shipmentWhere(q);
-  const [rows, total] = await Promise.all([
-    prisma.shipment.findMany({
-      where,
-      orderBy: { createdAt: "desc" },
-      skip: (page - 1) * size,
-      take: size,
-      select: {
-        id: true,
-        reference: true,
-        market: true,
-        formDRequired: true,
-        createdAt: true,
-        buyer: { select: { id: true, name: true } },
-        orders: { select: { purchaseOrder: { select: ORDER_IDENTITY_SELECT } } },
-        bookings: bookingsOf,
-        documents: currentDocs,
-      },
-    }),
-    prisma.shipment.count({ where }),
-  ]);
-  return {
-    total,
-    rows: rows.map((s) => ({
+/**
+ * The list, filtered and sorted in memory: status is derived from due dates,
+ * not stored, so it cannot be a `where`.
+ * ponytail: every shipment matching the search is read; push filters into SQL past a few thousand.
+ */
+export async function listShipments(filters: ShipmentFilters, page: number, size: number) {
+  const shipments = await prisma.shipment.findMany({
+    where: shipmentWhere(filters.q),
+    orderBy: { createdAt: "desc" },
+    select: {
+      id: true,
+      reference: true,
+      market: true,
+      formDRequired: true,
+      createdAt: true,
+      buyer: { select: { id: true, name: true } },
+      orders: { select: { purchaseOrder: { select: ORDER_IDENTITY_SELECT } } },
+      bookings: bookingsOf,
+      documents: currentDocs,
+    },
+  });
+  const today = todayISO();
+  const all = shipments.map((s) => {
+    const checklist = checklistOf(s, today);
+    return {
       id: s.id,
       reference: s.reference,
       market: s.market,
       buyer: s.buyer,
       createdAt: s.createdAt.toISOString(),
       orders: s.orders.map((o) => orderLabel(orderIdentity(o.purchaseOrder))),
-      etd: s.bookings[0]?.etdPol?.toISOString() ?? null,
-      eta: s.bookings[0]?.etaPod?.toISOString() ?? null,
-      checklist: checklistOf(s),
-    })),
+      etd: day(s.bookings[0]?.etdPol),
+      eta: day(s.bookings[0]?.etaPod),
+      checklist,
+    };
+  });
+  // Options are read off the rows, so a select never offers what nothing carries.
+  const buyers = [...new Map(all.map((r) => [r.buyer.id, r.buyer])).values()].sort((a, b) => a.name.localeCompare(b.name));
+  const markets = [...new Set(all.map((r) => r.market).filter((m): m is string => Boolean(m)))].sort();
+  const resolved = {
+    ...filters,
+    buyerId: buyers.some((b) => b.id === filters.buyerId) ? filters.buyerId : undefined,
+    market: markets.includes(filters.market ?? "") ? filters.market : undefined,
+  };
+  const narrowed = all.filter(
+    (r) =>
+      (!resolved.buyerId || r.buyer.id === resolved.buyerId) &&
+      (!resolved.market || r.market === resolved.market) &&
+      (!resolved.etdFrom || (r.etd !== null && r.etd >= resolved.etdFrom)) &&
+      (!resolved.etdTo || (r.etd !== null && r.etd <= resolved.etdTo)) &&
+      (!resolved.missing ||
+        r.checklist.slots.some((slot) => slot.key === resolved.missing && ["missing", "due_soon", "overdue"].includes(slot.state))),
+  );
+  const counts = Object.fromEntries(STATUS_ORDER.map((st) => [st, narrowed.filter((r) => r.checklist.status === st).length])) as Record<ShipmentStatus, number>;
+  const rows = resolved.status ? narrowed.filter((r) => r.checklist.status === resolved.status) : narrowed;
+  const sign = filters.dir === "asc" ? 1 : -1;
+  const key = (r: (typeof rows)[number]) =>
+    filters.sort === "status" ? String(STATUS_ORDER.indexOf(r.checklist.status)) : filters.sort === "createdAt" ? r.createdAt : r[filters.sort];
+  rows.sort((a, b) => {
+    const [x, y] = [key(a), key(b)];
+    // A blank sorts last in both directions (00-master §4).
+    if (x === null || y === null) return x === y ? 0 : x === null ? 1 : -1;
+    return x < y ? -sign : x > y ? sign : (a.etd ?? "9").localeCompare(b.etd ?? "9");
+  });
+  return {
+    total: rows.length,
+    all: narrowed.length,
+    counts,
+    buyers,
+    markets,
+    resolved,
+    rows: rows.slice((page - 1) * size, page * size),
   };
 }
 
@@ -187,10 +247,7 @@ export async function loadShipment(id: string) {
     ...s,
     orders,
     cartons: orders.reduce((sum, o) => sum + o.cartons, 0),
-    checklist: checklistOf({
-      ...s,
-      documents: s.documents.filter((d) => !d.supersededAt),
-    }),
+    checklist: checklistOf({ ...s, documents: s.documents.filter((d) => !d.supersededAt) }),
   };
 }
 
@@ -206,6 +263,7 @@ export async function shipmentsForOrder(purchaseOrderId: string) {
       id: true,
       reference: true,
       formDRequired: true,
+      createdAt: true,
       bookings: bookingsOf,
       documents: currentDocs,
     },
@@ -297,3 +355,18 @@ export async function shippableOrders(buyerId: string) {
 }
 
 export type ShippableOrder = Awaited<ReturnType<typeof shippableOrders>>[number];
+
+/**
+ * The dashboard's two shipment lines (Phase 64 §4), counted by the very
+ * `listShipments` the links open, so a line and its list cannot disagree.
+ * ponytail: two passes over the shipments; one pass when it ever shows on a profile.
+ */
+export async function shipmentWorkCounts() {
+  const yesterday = new Date(Date.parse(`${todayISO()}T00:00:00Z`) - 86_400_000).toISOString().slice(0, 10);
+  const base = { sort: "status", dir: "asc" } as const;
+  const [overdue, noBl] = await Promise.all([
+    listShipments({ ...base, status: "overdue" }, 1, 1),
+    listShipments({ ...base, missing: "BILL_OF_LADING", etdTo: yesterday }, 1, 1),
+  ]);
+  return { overdue: overdue.total, pastEtdNoBl: noBl.total, yesterday };
+}
