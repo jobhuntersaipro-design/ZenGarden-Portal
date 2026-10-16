@@ -18,6 +18,8 @@ import {
 } from "@/lib/purchase-order-document";
 import { orderLabel } from "@/lib/order-identity";
 import { listBuyerOrderDocuments } from "@/lib/queries/purchase-order-documents";
+import { listBuyerContainers } from "@/lib/queries/buyer-containers";
+import { BuyerContainers } from "@/components/shop/orders/BuyerContainers";
 import { loadBuyerOrder } from "@/lib/queries/web-orders";
 import { shopHref } from "@/lib/shop-routes";
 import { withLoadingFloor } from "@/lib/loading-floor";
@@ -59,6 +61,8 @@ async function OrderDetailPage({
   // purchase order yet, so it has no attached files — an empty list, not an error.
   const documents =
     order.kind === "confirmed" ? await listBuyerOrderDocuments(buyerId, order.id) : [];
+  const containers =
+    order.kind === "confirmed" ? await listBuyerContainers(buyerId, order.id) : [];
 
   // The same document the buyer read before confirming, drawn from the order
   // as it now stands. One builder and one `PurchaseOrderPreview` serve both
@@ -256,6 +260,8 @@ async function OrderDetailPage({
           </span>
         </div>
       </section>
+
+      {order.kind === "confirmed" ? <BuyerContainers orderId={order.id} containers={containers} /> : null}
 
       <BuyerOrderDocuments
         purchaseOrderId={order.kind === "confirmed" ? order.id : null}

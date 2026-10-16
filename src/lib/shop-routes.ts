@@ -55,6 +55,8 @@ export const shopHref = {
   /** JSON `{ url, mimeType }` for the in-page preview. Not a storage key. */
   orderDocumentUrl: (orderId: string, documentId: string) =>
     `/api/shop/orders/${orderId}/documents/${documentId}/url`,
+  /** Container photos and videos on this order (Phase 68): `${base}/${mediaId}/url`, a 302. */
+  containerMediaBase: (orderId: string) => `/api/shop/orders/${orderId}/containers`,
 } as const;
 
 /** What Next resolved. Use for every `revalidatePath` in storefront actions. */

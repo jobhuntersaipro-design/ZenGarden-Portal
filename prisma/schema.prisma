@@ -13,58 +13,61 @@ datasource db {
 }
 
 model User {
-  id                 String               @id @default(cuid())
-  email              String               @unique
-  name               String
-  image              String?
-  avatarKey          String? // R2 object key for the stored picture
-  avatarStyle        String? // DiceBear style id, when generated
-  avatarSeed         String? // the seed that generated it
-  passwordChangedAt  DateTime? // when passwordHash was last written
-  emailVerified      DateTime? // Auth.js adapter field
-  role               Role                 @default(MEMBER)
-  passwordHash       String? // null = no password; Google always works
-  mustChangePassword Boolean              @default(false)
-  sessionVersion     Int                  @default(0) // bumped to sign a user out everywhere; compared in the jwt callback
-  disabledAt         DateTime?
-  lastActiveAt       DateTime?
+  id                     String                  @id @default(cuid())
+  email                  String                  @unique
+  name                   String
+  image                  String?
+  avatarKey              String? // R2 object key for the stored picture
+  avatarStyle            String? // DiceBear style id, when generated
+  avatarSeed             String? // the seed that generated it
+  passwordChangedAt      DateTime? // when passwordHash was last written
+  emailVerified          DateTime? // Auth.js adapter field
+  role                   Role                    @default(MEMBER)
+  passwordHash           String? // null = no password; Google always works
+  mustChangePassword     Boolean                 @default(false)
+  sessionVersion         Int                     @default(0) // bumped to sign a user out everywhere; compared in the jwt callback
+  disabledAt             DateTime?
+  lastActiveAt           DateTime?
   /**
    * Set if and only if `role` is CLIENT — a database CHECK enforces it. A
    * client is a buyer's own contact on the shop host, not a user of the
    * portal: `requireUser()` refuses them and `requireClient()` is theirs.
    */
-  buyerId            String?
+  buyerId                String?
   /// A display handle, shown in ops and (from Phase 21) on the customer's own
   /// settings screen. NEVER an authentication identifier — see
   /// docs/specs/23-customer-profiles.md §2.
-  username           String?              @unique
+  username               String?                 @unique
   /// The contact's own line. The company's address stays on `Buyer`.
-  phone              String?
-  createdAt          DateTime             @default(now())
-  updatedAt          DateTime             @updatedAt
-  accounts           Account[]
-  documents          Document[]
-  confirmedOrders    PurchaseOrder[]      @relation("confirmedBy")
-  stageEvents        PoStageEvent[]
-  passwordResets     PasswordResetToken[]
-  productPrices      ProductPrice[]
-  stockCounts        StockCount[]
-  webOrdersPlaced    WebOrder[]           @relation("webOrdersPlaced")
-  webOrdersReviewed  WebOrder[]           @relation("webOrdersReviewed")
-  webOrdersReceived  WebOrder[]           @relation("webOrdersReceived")
-  auditActions       AuditEvent[]         @relation("auditActor")
-  auditSubjects      AuditEvent[]         @relation("auditSubject")
-  permissionEdits    PermissionGrant[]    @relation("permissionEdits")
-  buyerDocuments     BuyerDocument[]      @relation("buyerDocumentsUploaded")
+  phone                  String?
+  createdAt              DateTime                @default(now())
+  updatedAt              DateTime                @updatedAt
+  accounts               Account[]
+  documents              Document[]
+  confirmedOrders        PurchaseOrder[]         @relation("confirmedBy")
+  stageEvents            PoStageEvent[]
+  passwordResets         PasswordResetToken[]
+  productPrices          ProductPrice[]
+  stockCounts            StockCount[]
+  webOrdersPlaced        WebOrder[]              @relation("webOrdersPlaced")
+  webOrdersReviewed      WebOrder[]              @relation("webOrdersReviewed")
+  webOrdersReceived      WebOrder[]              @relation("webOrdersReceived")
+  auditActions           AuditEvent[]            @relation("auditActor")
+  auditSubjects          AuditEvent[]            @relation("auditSubject")
+  permissionEdits        PermissionGrant[]       @relation("permissionEdits")
+  buyerDocuments         BuyerDocument[]         @relation("buyerDocumentsUploaded")
   purchaseOrderDocuments PurchaseOrderDocument[] @relation("poDocumentsUploaded")
-  bookingsUploaded   BookingConfirmation[] @relation("bookingsUploaded")
-  bookingsReviewed   BookingConfirmation[] @relation("bookingsReviewed")
-  shipmentsCreated   Shipment[]            @relation("shipmentsCreated")
-  shipmentDocsUploaded ShipmentDocument[]  @relation("shipmentDocsUploaded")
-  shipmentEvents     ShipmentEvent[]       @relation("shipmentEvents")
-  certificatesUploaded Certificate[]       @relation("certificatesUploaded")
-  certOverrides      CertificateOverride[] @relation("certOverrides")
-  buyer              Buyer?               @relation(fields: [buyerId], references: [id])
+  bookingsUploaded       BookingConfirmation[]   @relation("bookingsUploaded")
+  bookingsReviewed       BookingConfirmation[]   @relation("bookingsReviewed")
+  shipmentsCreated       Shipment[]              @relation("shipmentsCreated")
+  shipmentDocsUploaded   ShipmentDocument[]      @relation("shipmentDocsUploaded")
+  containersCreated      Container[]             @relation("containersCreated")
+  containersUpdated      Container[]             @relation("containersUpdated")
+  containerMedia         ContainerMedia[]        @relation("containerMediaUploaded")
+  shipmentEvents         ShipmentEvent[]         @relation("shipmentEvents")
+  certificatesUploaded   Certificate[]           @relation("certificatesUploaded")
+  certOverrides          CertificateOverride[]   @relation("certOverrides")
+  buyer                  Buyer?                  @relation(fields: [buyerId], references: [id])
 
   @@index([buyerId])
 }
@@ -162,7 +165,6 @@ model Buyer {
   /**
    * The one market this buyer buys in — a `CatalogLabel` of kind MARKET, the
    * same growing list `Product.market` is drawn from, matched exactly.
-   *
    * It is what the shop is scoped by: a signed-in contact sees the products
    * carrying this market and no others. NULL means nobody has assigned one
    * yet, and it fails **closed** — such a buyer's shop is empty and says so,
@@ -266,48 +268,48 @@ enum ExtractionStatus {
 }
 
 model PurchaseOrder {
-  id             String         @id @default(cuid())
+  id             String                  @id @default(cuid())
   /// The buyer's own purchase-order number: printed on an uploaded scan, or
   /// null on an order placed on the shop, whose buyer PO (if any) is in
   /// `buyerReference`. Never our Order ID — that is `WebOrder.reference`.
   poNumber       String?
-  revision       Int            @default(1)
-  revisionOfId   String?        @unique
-  revisionOf     PurchaseOrder? @relation("revisions", fields: [revisionOfId], references: [id])
-  supersededBy   PurchaseOrder? @relation("revisions")
+  revision       Int                     @default(1)
+  revisionOfId   String?                 @unique
+  revisionOf     PurchaseOrder?          @relation("revisions", fields: [revisionOfId], references: [id])
+  supersededBy   PurchaseOrder?          @relation("revisions")
   buyerId        String
-  buyer          Buyer          @relation(fields: [buyerId], references: [id])
-  poDate         DateTime       @db.Date
-  deliveryDate   DateTime?      @db.Date
-  currency       String         @default("MYR")
+  buyer          Buyer                   @relation(fields: [buyerId], references: [id])
+  poDate         DateTime                @db.Date
+  deliveryDate   DateTime?               @db.Date
+  currency       String                  @default("MYR")
   buyerReference String?
   paymentTerms   String?
-  subtotal       Decimal        @db.Decimal(14, 2)
-  tax            Decimal        @db.Decimal(14, 2)
-  total          Decimal        @db.Decimal(14, 2)
+  subtotal       Decimal                 @db.Decimal(14, 2)
+  tax            Decimal                 @db.Decimal(14, 2)
+  total          Decimal                 @db.Decimal(14, 2)
   notes          String?
   /// Nullable since Phase 16: an order placed on the shop has no scan behind
   /// it. @unique still holds — Postgres permits many NULLs, so one PO per
   /// document survives. Every join on it must be a LEFT JOIN, or web orders
   /// vanish from the purchase-order list with no error.
-  documentId     String?        @unique
-  document       Document?      @relation(fields: [documentId], references: [id])
+  documentId     String?                 @unique
+  document       Document?               @relation(fields: [documentId], references: [id])
   /// Null when the order was auto-approved: a shop order whose every product
   /// was certified green confirms itself (2026-10-14). Nothing else writes null.
   confirmedById  String?
-  confirmedBy    User?          @relation("confirmedBy", fields: [confirmedById], references: [id], onDelete: Restrict)
-  confirmedAt    DateTime       @default(now())
-  stage          PoStage        @default(ORDER_PLACED)
-  stageChangedAt DateTime       @default(now())
+  confirmedBy    User?                   @relation("confirmedBy", fields: [confirmedById], references: [id], onDelete: Restrict)
+  confirmedAt    DateTime                @default(now())
+  stage          PoStage                 @default(ORDER_PLACED)
+  stageChangedAt DateTime                @default(now())
   stageEvents    PoStageEvent[]
   lineItems      LineItem[]
   stockMoves     StockCount[]
   webOrder       WebOrder?
   orderDocuments PurchaseOrderDocument[]
-  createdAt      DateTime       @default(now())
-  updatedAt      DateTime       @updatedAt
+  createdAt      DateTime                @default(now())
+  updatedAt      DateTime                @updatedAt
 
-  shipments      ShipmentOrder[]
+  shipments ShipmentOrder[]
 
   @@unique([buyerId, poNumber, revision])
   @@index([poDate])
@@ -319,7 +321,6 @@ model PurchaseOrder {
  * A file kept against one purchase order — a buyer spec, artwork, a packing
  * note — rather than against the buyer account (`BuyerDocument`) or as the
  * original scan (`Document`).
- *
  * Staff upload these. A buyer may read the rows on their own purchase order
  * (`PurchaseOrder.buyerId`) through the shop route, which is why this table
  * is keyed by the order and not folded into `BuyerDocument`: that table is
@@ -351,7 +352,6 @@ model PurchaseOrderDocument {
 /**
  * A carrier's booking confirmation, uploaded and read by Claude like a PO scan
  * but standalone: it is not linked to a purchase order or a buyer (2026-10-08).
- *
  * Its own table rather than a kind of `Document`, so nothing that reads the PO
  * intake (the review queue, the orphan sweep, the document URL route) can ever
  * pick one up. Every extracted field is nullable: a BC prints what it prints.
@@ -421,10 +421,11 @@ model Shipment {
   createdAt     DateTime @default(now())
   updatedAt     DateTime @updatedAt
 
-  orders    ShipmentOrder[]
-  bookings  BookingConfirmation[]
-  documents ShipmentDocument[]
-  events    ShipmentEvent[]
+  orders     ShipmentOrder[]
+  bookings   BookingConfirmation[]
+  documents  ShipmentDocument[]
+  events     ShipmentEvent[]
+  containers Container[]
 
   @@index([buyerId])
   @@index([createdAt])
@@ -559,11 +560,11 @@ model ProductFamily {
 }
 
 model Product {
-  id               String         @id @default(cuid())
-  sku              String         @unique
+  id               String                @id @default(cuid())
+  sku              String                @unique
   name             String
   familyId         String?
-  family           ProductFamily? @relation(fields: [familyId], references: [id], onDelete: SetNull)
+  family           ProductFamily?        @relation(fields: [familyId], references: [id], onDelete: SetNull)
   brand            String? // ZEN GARDEN, MR. KING, L.HANDS…; free-growing list
   variant          String? // Goat's Milk, Lavender, Lemon…; free-growing list
   packSize         Int? // pieces per carton (6, 12, 24)
@@ -571,17 +572,17 @@ model Product {
   category         String
   unit             String
   market           String? // country or customer the formulation is made for; free-growing list, see listMarkets()
-  listPrice        Decimal        @db.Decimal(14, 2)
+  listPrice        Decimal               @db.Decimal(14, 2)
   /**
    * Cartons on hand: what the team counts, less what has gone out for
    * delivery since (2026-10-08), never shown on the shop. Null means
    * nobody has counted this product yet, which is not the same as zero: zero
    * is a count, and the low-stock flag reads it as one.
    */
-  stockCartons      Int?
+  stockCartons     Int?
   description      String?
-  active           Boolean        @default(true)
-  needsReview      Boolean        @default(false) // created from a PO; details not filled in yet
+  active           Boolean               @default(true)
+  needsReview      Boolean               @default(false) // created from a PO; details not filled in yet
   images           ProductImage[]
   prices           ProductPrice[]
   lineItems        LineItem[]
@@ -589,8 +590,8 @@ model Product {
   stockCounts      StockCount[]
   certificates     Certificate[]
   certOverrides    CertificateOverride[]
-  createdAt        DateTime       @default(now())
-  updatedAt        DateTime       @updatedAt
+  createdAt        DateTime              @default(now())
+  updatedAt        DateTime              @updatedAt
 
   @@index([familyId])
 }
@@ -821,30 +822,30 @@ model PermissionGrant {
 /// `Product.stockCartons` caches the current count with the greatest
 /// `countedOn`. This table is the truth; nothing else may write that column.
 model StockCount {
-  id           String      @id @default(cuid())
-  productId    String
-  product      Product     @relation(fields: [productId], references: [id], onDelete: Cascade)
+  id              String         @id @default(cuid())
+  productId       String
+  product         Product        @relation(fields: [productId], references: [id], onDelete: Cascade)
   /// The day counted, in Kuala Lumpur, stored as a calendar date.
-  countedOn    DateTime    @db.Date
+  countedOn       DateTime       @db.Date
   /// Cartons on hand. A typed count is never below zero; an order going out
   /// for delivery may take it below zero, which is the shortfall (2026-10-08).
   /// A CHECK enforces both.
-  cartons      Int
-  note         String?
+  cartons         Int
+  note            String?
   /// Null means the seed or an import, never a person.
-  countedById  String?
-  countedBy    User?       @relation(fields: [countedById], references: [id], onDelete: SetNull)
+  countedById     String?
+  countedBy       User?          @relation(fields: [countedById], references: [id], onDelete: SetNull)
   /// The row this one corrects. A row nothing supersedes is the current one.
-  supersedesId String?     @unique
-  supersedes   StockCount? @relation("corrections", fields: [supersedesId], references: [id], onDelete: SetNull)
-  supersededBy StockCount? @relation("corrections")
+  supersedesId    String?        @unique
+  supersedes      StockCount?    @relation("corrections", fields: [supersedesId], references: [id], onDelete: SetNull)
+  supersededBy    StockCount?    @relation("corrections")
   /// Set when this row is not a count but an order moving stock (2026-10-08):
   /// out for delivery takes its cartons off, moved back puts them back.
   /// `fromCartons` is the figure before, `cartons` the figure after.
   purchaseOrderId String?
   purchaseOrder   PurchaseOrder? @relation(fields: [purchaseOrderId], references: [id], onDelete: SetNull)
   fromCartons     Int?
-  createdAt    DateTime    @default(now())
+  createdAt       DateTime       @default(now())
 
   @@index([productId, countedOn])
   @@index([purchaseOrderId])
@@ -904,4 +905,49 @@ model CertificateOverride {
   at        DateTime @default(now())
 
   @@id([productId, type])
+}
+
+/// A loaded container on a shipment (Phase 68): its numbers, a description
+/// and the photos and videos staff take. The buyer sees these, with dates only.
+model Container {
+  id          String           @id @default(cuid())
+  shipmentId  String
+  shipment    Shipment         @relation(fields: [shipmentId], references: [id], onDelete: Cascade)
+  containerNo String?
+  sealNo      String?
+  size        String?
+  description String?
+  createdById String
+  createdBy   User             @relation("containersCreated", fields: [createdById], references: [id])
+  createdAt   DateTime         @default(now())
+  updatedById String?
+  updatedBy   User?            @relation("containersUpdated", fields: [updatedById], references: [id], onDelete: SetNull)
+  updatedAt   DateTime         @updatedAt
+  media       ContainerMedia[]
+
+  @@index([shipmentId])
+}
+
+enum ContainerMediaKind {
+  PHOTO
+  VIDEO
+}
+
+model ContainerMedia {
+  id             String             @id @default(cuid())
+  containerId    String
+  container      Container          @relation(fields: [containerId], references: [id], onDelete: Cascade)
+  kind           ContainerMediaKind
+  r2Key          String             @unique // containers/{containerId}/{uuid}.{ext}
+  /// Photos: a 600px WebP beside the original.
+  thumbKey       String?
+  originalName   String
+  mimeType       String
+  sizeBytes      Int
+  uploadedById   String
+  uploadedBy     User               @relation("containerMediaUploaded", fields: [uploadedById], references: [id])
+  uploadedByName String
+  uploadedAt     DateTime           @default(now())
+
+  @@index([containerId, uploadedAt])
 }

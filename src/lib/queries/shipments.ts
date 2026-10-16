@@ -155,6 +155,24 @@ export async function loadShipment(id: string) {
         },
       },
       events: { orderBy: { at: "desc" }, take: 50 },
+      containers: {
+        orderBy: { createdAt: "asc" },
+        select: {
+          id: true,
+          containerNo: true,
+          sealNo: true,
+          size: true,
+          description: true,
+          createdAt: true,
+          updatedAt: true,
+          createdBy: { select: { name: true } },
+          updatedBy: { select: { name: true } },
+          media: {
+            orderBy: { uploadedAt: "asc" },
+            select: { id: true, kind: true, originalName: true, uploadedByName: true, uploadedAt: true },
+          },
+        },
+      },
     },
   });
   if (!s) return null;

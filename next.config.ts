@@ -21,6 +21,8 @@ const SHARP_ROUTES = [
   "/api/products/**",
   // 2026-09-24: a buyer's logo is fitted with sharp.
   "/api/buyers/**",
+  // 2026-10-16: a container photo gets a thumbnail (Phase 68).
+  "/api/shipments/**",
 ];
 
 /**

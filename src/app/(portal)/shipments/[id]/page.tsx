@@ -4,6 +4,7 @@ import { notFound } from "next/navigation";
 import { BackLink } from "@/components/portal/BackLink";
 import { PageHeader } from "@/components/portal/PageHeader";
 import { ChecklistDots } from "@/components/shipments/ChecklistDots";
+import { ContainersCard } from "@/components/shipments/ContainersCard";
 import { ShipmentBookingCard } from "@/components/shipments/ShipmentBookingCard";
 import { ShipmentDocumentsCard } from "@/components/shipments/ShipmentDocumentsCard";
 import { ShipmentOrdersCard } from "@/components/shipments/ShipmentOrdersCard";
@@ -79,6 +80,18 @@ async function ShipmentPage({ params }: { params: Promise<{ id: string }> }) {
               supersededAt: iso(d.supersededAt),
             }))}
             canManage={canManage}
+          />
+          <ContainersCard
+            shipmentId={shipment.id}
+            canManage={canManage}
+            containers={shipment.containers.map((c) => ({
+              ...c,
+              createdAt: c.createdAt.toISOString(),
+              updatedAt: c.updatedAt.toISOString(),
+              createdBy: c.createdBy.name,
+              updatedBy: c.updatedBy?.name ?? null,
+              media: c.media.map((m) => ({ ...m, uploadedAt: m.uploadedAt.toISOString() })),
+            }))}
           />
         </div>
         <div className="flex min-w-0 flex-col gap-lg">
