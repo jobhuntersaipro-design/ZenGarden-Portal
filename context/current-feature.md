@@ -1,34 +1,76 @@
-# Planned: order tweaks, QC hold, shipments and containers (specs 63–68)
+# Order tweaks, QC hold, shipments, containers and tracking (specs 63, 64, 66, 67, 68)
 
 ## Status
 
-**Specified, not built** (2026-10-16). Asked for as the export document flow
-"PO → BC → invoice (optional) → packing list → customs form (K2) → final bill
-of lading → Form D", "tied to PO level", with "document management and
-tracking" the problem to solve. One container carries several POs of one
-buyer, so the papers belong to a **Shipment** that the POs ride on.
+**Built on `claude/great-einstein-jr3mt3`, merged to `main`** (2026-10-16/17).
+Asked for as the export document flow "PO → BC → invoice (optional) → packing
+list → customs form (K2) → final bill of lading → Form D", "tied to PO level",
+then the customer's second list. Answers taken: auto-approve is **shop orders
+only**; buyers see **dates only**, never staff names; the due-day defaults are
+accepted; the customer will send real papers and container media.
 
-- `docs/specs/63-shipments-and-documents.md` — Shipment, its POs, its BC
-  (moved from PO), one slot per paper with history, the checklist. Staff only.
-- `docs/specs/64-shipment-tracking.md` — due dates from ETD/ETA, overdue,
-  filters, dashboard lines, the Delivered warning. The day counts are
-  defaults to confirm with the customer.
-- `docs/specs/65-shipment-document-reading.md` — AI classifies and reads the
-  papers and cross-checks cartons, vessel and consignee. Needs one real set of
-  papers from the customer first.
+- **66** — delivery date and payment terms optional at confirm (a blank reads
+  "—" on the PDF); three greens auto-approve with no payment-terms condition;
+  **Add note** on a PO (`po.note`, `PoEventKind.NOTE`).
+- **67** — `QC_HOLD` between In production and QC passed, put on (with a
+  reason) and released by QC's key; the stepper shows it only when used.
+  Buyers see Order placed → QC passed → Delivering → Delivered only, and no
+  hold reason. Stage charts colour by stage (`stageColorVar`), not index.
+- **63** — `Shipment` (SHP-YYMM-NNNN) carrying POs of one buyer, its booking
+  (moved from PO; the migration turned every BC→PO link into a one-PO
+  shipment), one slot per paper with replace-keeps-history, a checklist read by
+  the list, the shipment page and each PO's Shipping card, and an activity
+  feed (`ShipmentEvent`, not `AuditEvent` — a shipment's own feed).
+  `shipment.view` / `shipment.manage`. **Shipments** in the sidebar; on the
+  phone bar it takes Bookings' place (seven tabs).
+- **68** — containers on a shipment: number, seal, size, description, photos
+  (JPG/PNG, 600px WebP thumb) and videos (MP4/MOV/WebM to 200 MB, browser→R2
+  with progress). Added by / last edited by. The buyer's order shows "Your
+  container" with dates only, through `/api/shop/orders/[id]/containers/…`.
+- **64** — due dates (`DOCUMENT_DUE_DAYS`, KL calendar days), amber/red dots,
+  derived status and reason, list filters with counts, two dashboard lines
+  counted by the list's own function, and the Delivering/Delivered warning
+  (warns, never blocks).
 
-Added the same day, from the customer's second list:
+## Verified
 
-- `docs/specs/66-order-confirmation-and-notes.md` — delivery date and payment
-  terms optional at confirm; three greens auto-approve with no payment-terms
-  condition (shop orders only); an Add note box on a PO.
-- `docs/specs/67-qc-hold-and-buyer-stages.md` — a skippable QC hold that QC
-  alone puts on and releases; buyers see Order placed → QC passed →
-  Delivering → Delivered only.
-- `docs/specs/68-container-details.md` — containers on a shipment with photos,
-  videos and a description, shown to the buyer (dates only, no staff names).
+Local Postgres + seed, moto for R2, Chromium at 1440 and 390, as a super
+admin, a planner, QC, a member and a buyer.
+- 66: blank date and terms confirmed and stored null; the PDF reads "—"; a
+  note lands at the top of the feed.
+- 67: hold refused with no reason; held; the planner's Release disabled; QC
+  released to QC passed; the buyer's page shows 4 stages and no QC_HOLD,
+  IN_PRODUCTION or reason in the HTML.
+- 63: Form D defaulted on for an Indonesia buyer; a shipment created from a PO
+  link with two orders; packing list replaced (v1 under Earlier versions, both
+  downloaded byte-identical), BL deleted (row and R2 object gone), Form D off
+  dropped the count 5 → 4; a booking linked; PO card and BC page show it.
+  Member: no Upload/Delete, presign 403, `/shipments/new` 404; a buyer 403 on
+  the staff file route. A guard that no shop source reads shipment tables,
+  watched failing.
+- 68: 4 photos + 3 videos (one 151 MB MP4) in 7 s locally; thumbs 600px; the
+  planner's edit read "Last edited by Nurul Izzati"; buyer page shows the
+  gallery with no staff name; another buyer's order 404; a deleted photo's
+  original and thumbnail both gone from storage. **H.264 does not play in this
+  test Chromium at all** (`canPlayType` empty); a WebM played in both views.
+- 64: an ETD 10 Oct shipment read Overdue, "Packing list 9 days late", red
+  dots; chips Overdue 1 / In progress 1; each dashboard line (1) equals the
+  list it opens; "Not on a shipment yet" shown and the advance to Delivered
+  still went through.
+- No overflow at 390 or 1440 on any page driven. 1925 tests (the shop
+  documents access file still fails to import without a full env, as on HEAD),
+  `tsc`, lint unchanged (4 `ShopHeader` errors, 1 warning), build clean.
 
-**Build order:** 66 → 67 → 63 → 68 → 64 → 65.
+## Not verified
+
+Production behind sign-in (no staff login here; nothing written there).
+Real R2 at 200 MB, a real iPhone's HEIC (the input accepts JPG/PNG so iOS
+hands over a JPEG) and MOV, Android playback of HEVC. The due-day counts are
+defaults. Not built: reordering container media (upload order), Activity
+paging (newest 50), the orphan sweep for `shipments/` and `containers/`
+prefixes (PO documents have none either). **Phase 65 (AI reading of the
+papers) is not built**: its spec waits on one real set of papers from the
+customer.
 
 ## Before that
 
