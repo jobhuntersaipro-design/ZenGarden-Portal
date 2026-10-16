@@ -1,3 +1,24 @@
+# Planned: shipments and their documents (specs 63–65)
+
+## Status
+
+**Specified, not built** (2026-10-16). Asked for as the export document flow
+"PO → BC → invoice (optional) → packing list → customs form (K2) → final bill
+of lading → Form D", "tied to PO level", with "document management and
+tracking" the problem to solve. One container carries several POs of one
+buyer, so the papers belong to a **Shipment** that the POs ride on.
+
+- `docs/specs/63-shipments-and-documents.md` — Shipment, its POs, its BC
+  (moved from PO), one slot per paper with history, the checklist. Staff only.
+- `docs/specs/64-shipment-tracking.md` — due dates from ETD/ETA, overdue,
+  filters, dashboard lines, the Delivered warning. The day counts are
+  defaults to confirm with the customer.
+- `docs/specs/65-shipment-document-reading.md` — AI classifies and reads the
+  papers and cross-checks cartons, vessel and consignee. Needs one real set of
+  papers from the customer first.
+
+## Before that
+
 # Certification revamp: Arc dropzone, Claude picks the type, filters on both views
 
 ## Status
