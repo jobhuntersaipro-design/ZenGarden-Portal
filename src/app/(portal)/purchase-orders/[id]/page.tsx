@@ -400,6 +400,8 @@ async function PurchaseOrderPage({
         {/* Notes and activity live with the lifecycle they describe
             (2026-09-18), not at the foot of the page. */}
         <LifecycleFeed
+          poId={po.id}
+          canNote={await can("po.note")}
           events={po.stageEvents.map((event) => ({
             id: event.id,
             kind: event.kind,

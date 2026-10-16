@@ -1,5 +1,7 @@
 import { renderToStaticMarkup } from "react-dom/server";
 import { describe, expect, it } from "vitest";
+import { vi } from "vitest";
+vi.mock("@/actions/stages", () => ({ addPoNote: vi.fn() }));
 import { LifecycleFeed } from "@/components/purchase-orders/LifecycleFeed";
 import type { PoActivityEvent } from "@/lib/po-activity";
 
@@ -19,6 +21,8 @@ const event = (over: Partial<PoActivityEvent> = {}): PoActivityEvent => ({
 const feed = (events: PoActivityEvent[], over: Partial<Parameters<typeof LifecycleFeed>[0]> = {}) =>
   renderToStaticMarkup(
     <LifecycleFeed
+      poId="po1"
+      canNote={false}
       events={events}
       confirmedAt="2026-09-01T02:00:00.000Z"
       confirmedByName="Aisha Rahman"

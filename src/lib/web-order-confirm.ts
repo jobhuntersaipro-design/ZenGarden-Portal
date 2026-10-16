@@ -130,9 +130,11 @@ export async function sendConfirmedEmail(input: {
 
 /**
  * Confirm a just-sent shop order with no person in the loop, when every
- * product on it is green on NOT, HL and COA (ClickUp z8v9xnhuf7). Anything
- * else — one amber or red dot, no payment terms on the buyer — leaves it in
- * the review queue exactly as before.
+ * product on it is green on NOT, HL and COA (ClickUp z8v9xnhuf7). That is the
+ * only business condition (Phase 66): a buyer with no payment terms on file
+ * is approved too, with the terms left blank. One amber or red dot leaves the
+ * order in the review queue exactly as before. Shop orders only — an
+ * uploaded PO still needs a person to check what the AI read.
  *
  * No delivery date is promised: nobody has committed to one. The team sets
  * it on the purchase order, which emails the buyer as a date change does.
@@ -146,8 +148,7 @@ export async function autoApproveWebOrder(
   try {
     const order = await loadWebOrderForReview(webOrderId);
     if (!order || order.status !== WebOrderStatus.SUBMITTED || order.lines.length === 0) return false;
-    const paymentTerms = paymentTermsDaysInput(order.buyerPaymentTerms);
-    if (!paymentTerms) return false;
+    const paymentTerms = paymentTermsDaysInput(order.buyerPaymentTerms) || null;
     const certs = await loadProductCerts(order.lines.map((line) => line.productId));
     const green = order.lines.every((line) => {
       const productCerts = certs.get(line.productId);

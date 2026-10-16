@@ -72,4 +72,17 @@ describe("autoApproveWebOrder", () => {
     );
     expect(sendEmail.mock.calls[0][0].subject).toBe("Order ACME-1 confirmed");
   });
+
+  // Phase 66: three greens are the only condition. A buyer with no payment
+  // terms on file used to be left for review, however green the products.
+  it("approves an all-green order from a buyer with no payment terms", async () => {
+    certs = new Map([["p_green", green], ["p_other", green]]);
+    order.buyerPaymentTerms = null as unknown as string;
+    try {
+      expect(await autoApproveWebOrder("wo_1", null)).toBe(true);
+      expect(writePurchaseOrder.mock.calls[0][1].data.paymentTerms).toBeNull();
+    } finally {
+      order.buyerPaymentTerms = "30 days";
+    }
+  });
 });

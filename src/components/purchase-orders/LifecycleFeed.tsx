@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import type { Role } from "@/generated/prisma/enums";
+import { AddNoteForm } from "@/components/purchase-orders/AddNoteForm";
 import { StageBadge } from "@/components/portal/StatusBadge";
 import { PersonAvatar } from "@/components/ui/person";
 import { formatDateTime } from "@/lib/dates";
@@ -39,12 +40,17 @@ const PAGE_SIZE = 10;
  * Newest first, the order this list and its query have always used.
  */
 export function LifecycleFeed({
+  poId,
+  canNote,
   events,
   confirmedAt,
   confirmedByName,
   confirmedByImage,
   confirmedByRole,
 }: {
+  /** Phase 66: the note box sits above the feed for anyone with `po.note`. */
+  poId: string;
+  canNote: boolean;
   events: PoActivityEvent[];
   confirmedAt: string;
   confirmedByName: string | null;
@@ -80,6 +86,7 @@ export function LifecycleFeed({
       <h3 className="mb-sm font-mono text-[length:var(--text-eyebrow)] text-ink-tertiary">
         Notes and activity
       </h3>
+      {canNote ? <AddNoteForm poId={poId} /> : null}
 
       {items.length === 0 ? (
         <p className="text-[length:var(--text-body-sm)] text-ink-tertiary">

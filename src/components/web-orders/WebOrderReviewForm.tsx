@@ -103,17 +103,15 @@ export function WebOrderReviewForm({ order }: { order: OpsWebOrder }) {
   }, [draft]);
 
   const totals = useMemo(() => checkTotals(submitted), [submitted]);
-  // Both are settled by the team at confirm and printed on the buyer's
-  // purchase order, so neither may be left blank. The server says the same.
+  // Both optional since Phase 66: the buyer's purchase order reads "—" until
+  // the team sets them. A date that is given still can't precede the PO date
+  // — the picker greys those days out, but one can be typed, and the PO date
+  // can move after one was picked (2026-09-17).
   const missing = {
-    // The picker greys out days before the PO date, but a date can still be
-    // typed, and the PO date can move after one was picked (2026-09-17).
-    deliveryDate: !deliveryDate
-      ? "Set an expected delivery date."
-      : draft.poDate && deliveryDate < draft.poDate
+    deliveryDate:
+      deliveryDate && draft.poDate && deliveryDate < draft.poDate
         ? "Expected delivery can't be before the PO date."
         : null,
-    paymentTerms: draft.paymentTerms?.trim() ? null : "Enter the payment terms.",
   };
   const firstMissing = (Object.keys(missing) as (keyof typeof missing)[]).find(
     (field) => missing[field] !== null,
@@ -141,7 +139,7 @@ export function WebOrderReviewForm({ order }: { order: OpsWebOrder }) {
         />
         <Field
           id="deliveryDate"
-          label="Expected delivery"
+          label="Expected delivery (optional)"
           type="date"
           value={deliveryDate}
           min={draft.poDate || undefined}
@@ -150,14 +148,13 @@ export function WebOrderReviewForm({ order }: { order: OpsWebOrder }) {
         />
         <Field
           id="paymentTerms"
-          label="Payment terms (days)"
+          label="Terms in days (optional)"
           type="number"
           min="0"
           value={draft.paymentTerms ?? ""}
           onChange={(value) =>
             dispatch({ type: "field", field: "paymentTerms", value })
           }
-          error={attempted ? (missing.paymentTerms ?? undefined) : undefined}
         />
       </div>
 
@@ -178,8 +175,8 @@ export function WebOrderReviewForm({ order }: { order: OpsWebOrder }) {
         {/* Straight to Confirm: the Receive step was removed on 2026-09-17. */}
         <Button
           pending={pending && !declining}
-          // Not disabled for an empty date or terms: a greyed-out button does
-          // not say which field is missing. Pressing it does, under the field.
+          // Not disabled for a date before the PO date: a greyed-out button
+          // does not say what is wrong. Pressing it does, under the field.
           disabled={blockedByTotals}
           onClick={() => {
             if (firstMissing) {
@@ -214,7 +211,7 @@ export function WebOrderReviewForm({ order }: { order: OpsWebOrder }) {
           </p>
         ) : attempted && firstMissing ? (
           <p role="alert" className="text-[length:var(--text-caption)] text-accent-red">
-            Check the expected delivery date and payment terms to confirm.
+            Check the expected delivery date to confirm.
           </p>
         ) : deliveryDate && deliveryDate < todayISO() ? (
           // Allowed, not blocked: backdating a date the goods already went

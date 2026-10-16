@@ -96,9 +96,7 @@ export type LifecycleItem = {
   id: string;
   /**
    * An activity is something the system recorded; a note is something a
-   * person wrote on its own. Today every stored record is an action with a
-   * sentence, so `note` is reserved for a note that arrives with no activity
-   * to ride on — it is rendered rather than dropped.
+   * person wrote on its own — a NOTE event (Phase 66), which has no sentence.
    */
   type: "activity" | "note";
   actor: string;
@@ -126,6 +124,8 @@ export function describeActivity(
   event: PoActivityEvent,
   actor: string,
 ): ActivitySegment[] {
+  // A note left on its own (Phase 66) has no sentence: the row is the note.
+  if (event.kind === "NOTE") return [];
   if (event.kind === "EDIT") {
     const note = event.note ?? "";
     if (note.startsWith(MISMATCH_PREFIX)) {

@@ -1,4 +1,4 @@
-import { ExtractionStatus } from "@/generated/prisma/enums";
+import { ExtractionStatus, PoEventKind } from "@/generated/prisma/enums";
 import { dateColumnRange, type Aggregation } from "@/lib/dates";
 import { openWebOrderCount } from "@/lib/queries/web-orders";
 import { ORDER_IDENTITY_SELECT, orderIdentity, type OrderIdentity } from "@/lib/order-identity";
@@ -229,7 +229,12 @@ export async function loadDashboard(
           // Only this range's orders: the "Largest PO" card names one of them.
           ...ORDER_IDENTITY_SELECT,
           lineItems: LINE_SELECT,
-          stageEvents: { select: { toStage: true, changedAt: true } },
+          stageEvents: {
+            // Stage moves only: an edit or a note carries the order's stage
+            // at the time and would read as a move (Phase 66).
+            where: { kind: PoEventKind.STAGE },
+            select: { toStage: true, changedAt: true },
+          },
         },
       }),
       prisma.purchaseOrder.findMany({

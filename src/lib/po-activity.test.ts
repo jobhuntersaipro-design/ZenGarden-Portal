@@ -207,3 +207,18 @@ describe("buildLifecycleFeed", () => {
     expect(items.at(-1)).toMatchObject({ at: "2026-09-01T02:00:00.000Z" });
   });
 });
+
+// Phase 66: a note left on its own is a Note row with the person's words and
+// no sentence — not an "advanced" or "recorded at" line.
+describe("a standalone note", () => {
+  it("is a note row carrying the text", () => {
+    const [row] = buildLifecycleFeed({
+      events: [event({ kind: "NOTE", fromStage: null, note: "Buyer asked for blue caps" })],
+      confirmedAt: "2026-09-01T00:00:00.000Z",
+      confirmedByName: "Aisha Rahman",
+      confirmedByImage: null,
+      confirmedByRole: "SUPER_ADMIN",
+    });
+    expect(row).toMatchObject({ type: "note", title: null, note: "Buyer asked for blue caps" });
+  });
+});

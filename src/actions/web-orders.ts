@@ -66,7 +66,7 @@ const declineSchema = z.object({
 export async function confirmWebOrder(
   webOrderId: string,
   draft: PoDraft,
-  options: { totalsAcknowledged?: boolean; deliveryDate?: string },
+  options: { totalsAcknowledged?: boolean; deliveryDate?: string | null },
 ): Promise<ActionResult<{ poId: string }>> {
   const { user, error } = await guardPermission("po.confirm");
   if (!user) return { success: false, error: error! };
@@ -82,30 +82,22 @@ export async function confirmWebOrder(
       error: parsedDraft.error.issues[0]?.message ?? "That order could not be saved.",
     };
   }
-  // The web-order schema, not the shared one: a delivery date is required
-  // here and nowhere else. An uploaded purchase order may carry none, and
-  // `confirmPurchaseOrder` still confirms without it.
+  // Delivery date and payment terms are both optional (Phase 66): the
+  // buyer's purchase order reads "—" for each until the team sets it.
   const parsedOptions = webOrderConfirmOptionsSchema.safeParse(options);
   if (!parsedOptions.success) {
-    return {
-      success: false,
-      error:
-        parsedOptions.error.issues[0]?.path[0] === "deliveryDate"
-          ? "An expected delivery date is required."
-          : "That order could not be saved.",
-    };
+    return { success: false, error: "That delivery date isn't a calendar day." };
   }
-  const data = { ...parsedDraft.data, poNumber: "" };
-  const { totalsAcknowledged, deliveryDate } = parsedOptions.data;
-  // Also required here and nowhere else (2026-09-17): the team settles the
-  // terms at confirm as it settles the date, and the buyer's purchase order
-  // reads "—" for both until it does.
-  if (!data.paymentTerms?.trim()) {
-    return { success: false, error: "Payment terms are required." };
-  }
+  const data = {
+    ...parsedDraft.data,
+    poNumber: "",
+    paymentTerms: parsedDraft.data.paymentTerms?.trim() || null,
+  };
+  const { totalsAcknowledged } = parsedOptions.data;
+  const deliveryDate = parsedOptions.data.deliveryDate || null;
   // Goods cannot arrive before they were ordered (2026-09-17). Both are
   // validated YYYY-MM-DD strings, so they compare as calendar days.
-  if (deliveryDate < data.poDate) {
+  if (deliveryDate && deliveryDate < data.poDate) {
     return { success: false, error: "Expected delivery can't be before the PO date." };
   }
 

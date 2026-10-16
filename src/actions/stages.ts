@@ -524,3 +524,45 @@ export async function updatePurchaseOrder(
     return { success: false, error: "We couldn't save those changes." };
   }
 }
+
+const noteSchema = z.string().trim().min(1, "Write the note first.").max(2000, "Keep a note under 2,000 characters.");
+
+/**
+ * A note left on an order on its own (Phase 66), not with a stage move.
+ * Stored as a NOTE event at the order's current stage so the feed, its paging
+ * and its actor line are reused; every reader of stage history filters STAGE,
+ * so a note never moves a chart. Staff only — no shop query reads it.
+ */
+export async function addPoNote(
+  poId: string,
+  text: string,
+): Promise<ActionResult> {
+  const { user, error } = await guardPermission("po.note");
+  if (!user) return { success: false, error: error! };
+  const parsed = noteSchema.safeParse(text);
+  if (!parsed.success) {
+    return { success: false, error: parsed.error.issues[0]?.message ?? "Write the note first." };
+  }
+  try {
+    const po = await prisma.purchaseOrder.findUnique({
+      where: { id: poId },
+      select: { stage: true },
+    });
+    if (!po) return { success: false, error: "That order is gone." };
+    await prisma.poStageEvent.create({
+      data: {
+        purchaseOrderId: poId,
+        kind: PoEventKind.NOTE,
+        fromStage: null,
+        toStage: po.stage,
+        note: parsed.data,
+        changedById: user.id,
+      },
+    });
+    revalidatePath(`/purchase-orders/${poId}`);
+    return { success: true, data: undefined };
+  } catch (cause) {
+    console.error("[stages] addPoNote", cause);
+    return { success: false, error: "We couldn't save that note." };
+  }
+}

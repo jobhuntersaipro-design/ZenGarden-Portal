@@ -335,35 +335,19 @@ describe("confirmWebOrder", () => {
     });
   });
 
-  /**
-   * The date is a promise the team makes, and the buyer is emailed it the
-   * moment Confirm is pressed. There is no confirming a shop order without
-   * one — and `confirm.test.ts`, which covers uploaded purchase orders, still
-   * passes unchanged, which is the proof that gate did not spread.
-   */
-  it("refuses to confirm a shop order with no delivery date", async () => {
+  // Phase 66: both optional. The buyer's document reads "—" until set.
+  it("confirms a shop order with no delivery date", async () => {
     const result = await confirmWebOrder("wo1", draft(), {});
-    expect(result).toEqual({
-      success: false,
-      error: "An expected delivery date is required.",
-    });
-    expect(writePurchaseOrder).not.toHaveBeenCalled();
+    expect(result.success).toBe(true);
+    expect(writePurchaseOrder.mock.calls[0][1].deliveryDate).toBeNull();
   });
 
-  /**
-   * Asked for on 2026-09-17: the team settles the terms at confirm, as it does
-   * the date, and the buyer's document reads "—" until it does. The form shows
-   * the error under the field; this is the gate a direct call meets.
-   */
   it.each([null, "", "   "])(
-    "refuses to confirm a shop order with no payment terms (%j)",
+    "confirms a shop order with no payment terms (%j)",
     async (paymentTerms) => {
       const result = await confirmWebOrder("wo1", draft({ paymentTerms }), OPTIONS);
-      expect(result).toEqual({
-        success: false,
-        error: "Payment terms are required.",
-      });
-      expect(writePurchaseOrder).not.toHaveBeenCalled();
+      expect(result.success).toBe(true);
+      expect(writePurchaseOrder.mock.calls[0][1].data.paymentTerms).toBeNull();
     },
   );
 

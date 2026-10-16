@@ -126,18 +126,13 @@ export const confirmOptionsSchema = z.object({
 });
 
 /**
- * What confirming a **shop** order needs on top (Phase 38): the day the team
- * commits to delivering.
- *
- * Deliberately not part of `PoDraftSchema` or of `confirmOptionsSchema`
- * itself. A purchase order read off a customer's scan may carry no delivery
- * date at all, and `confirmPurchaseOrder` must keep confirming without one;
- * an order placed on the shop is a promise the team is making, and the buyer
- * is told the date by email the moment it is made. Requiring it here and
- * nowhere else is what keeps those two true at once.
+ * What confirming a **shop** order may carry on top (Phase 38): the day the
+ * team commits to delivering. Optional since Phase 66 — an order can be
+ * confirmed before a date is known, the buyer's document reads "—", and
+ * setting it later emails the buyer as a first date. A blank arrives as "".
  */
 export const webOrderConfirmOptionsSchema = confirmOptionsSchema.extend({
-  deliveryDate: isoDate,
+  deliveryDate: z.union([isoDate, z.literal("")]).nullable().optional(),
 });
 
 const decimalOrZero = (value: string | null | undefined) => {

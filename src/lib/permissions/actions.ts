@@ -67,6 +67,12 @@ const RAW_ACTIONS = [
     group: "Purchase orders",
   },
   {
+    key: "po.note",
+    label: "Add a note to an order",
+    description: "Leave a note in an order's Notes and activity. Staff only.",
+    group: "Purchase orders",
+  },
+  {
     key: "po.review",
     label: "Review an extracted order",
     description: "Correct value on the review screen and save a draft.",

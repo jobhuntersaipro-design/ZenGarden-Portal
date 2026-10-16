@@ -427,7 +427,8 @@ export async function loadBuyerOrder(
       tax: po.tax.toFixed(2),
       total: po.total.toFixed(2),
       currency: po.currency,
-      paymentTerms: po.paymentTerms ?? po.buyer.paymentTerms,
+      // The terms on the purchase order; blank is "not set yet" (Phase 66).
+      paymentTerms: po.paymentTerms,
       notes: po.webOrder?.notes ?? null,
       // Deliberately the *shop order's* document, not `PurchaseOrder.documentId`:
       // on a scan-origin purchase order that column is the customer's own
@@ -574,7 +575,7 @@ export async function loadWebOrderDocumentSource(webOrderId: string) {
       documentId: true,
       // The day the team committed to, once they have (Phase 42): the file is
       // redrawn at confirm and whenever that date moves.
-      purchaseOrder: { select: { deliveryDate: true } },
+      purchaseOrder: { select: { deliveryDate: true, paymentTerms: true } },
       buyer: { select: BUYER_PARTY_SELECT },
       placedBy: { select: PLACED_BY_SELECT },
       lines: {
@@ -611,7 +612,11 @@ export async function loadWebOrderDocumentSource(webOrderId: string) {
       orderId: order.reference,
       poNumber: order.buyerReference,
       currency: order.currency,
-      paymentTerms: order.buyer.paymentTerms,
+      // Once confirmed, the terms the team set — blank means not set yet
+      // (Phase 66) and prints "—", never the buyer's default behind it.
+      paymentTerms: order.purchaseOrder
+        ? order.purchaseOrder.paymentTerms
+        : order.buyer.paymentTerms,
       notes: order.notes,
       // The cart quotes no tax; the team settles it when they confirm.
       tax: null as string | null,

@@ -429,10 +429,12 @@ model PoStageEvent {
   @@index([purchaseOrderId, changedAt])
 }
 
-// EDIT rows record field edits on the detail page; analytics ignore them
+// EDIT rows record field edits on the detail page; NOTE rows a note left on
+// its own (Phase 66, toStage = the stage at the time). Analytics read STAGE only.
 enum PoEventKind {
   STAGE
   EDIT
+  NOTE
 }
 
 /// A product line at one size, across every market (Phase 36).

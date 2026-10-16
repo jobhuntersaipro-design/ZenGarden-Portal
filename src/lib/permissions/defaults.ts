@@ -12,6 +12,8 @@ const VIEW_EVERYWHERE = [
   "po.view",
   "product.view",
   "buyer.view",
+  // Phase 66: any member of staff may leave a note on an order.
+  "po.note",
 ] as const satisfies readonly PermissionKey[];
 
 /**
