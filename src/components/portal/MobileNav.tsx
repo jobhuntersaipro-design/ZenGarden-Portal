@@ -12,7 +12,7 @@ import {
   REVIEW_QUEUE_HREF,
   TAB_BAR_COLUMNS,
   isActive,
-  navFor,
+  tabsFor,
 } from "@/components/portal/nav";
 
 /**
@@ -78,7 +78,7 @@ export function MobileTabBar({ allowed }: { allowed: readonly string[] }) {
   const pathname = usePathname();
   // Orders waiting on the team, on the Orders tab (Phase 46).
   const { count: reviewCount } = useReviewCount();
-  const tabs = navFor(allowed);
+  const tabs = tabsFor(allowed);
 
   // A role with no destination at all has no bar to draw. It cannot happen
   // with the shipped defaults — every ops role holds all four view keys — but

@@ -59,6 +59,9 @@ model User {
   purchaseOrderDocuments PurchaseOrderDocument[] @relation("poDocumentsUploaded")
   bookingsUploaded   BookingConfirmation[] @relation("bookingsUploaded")
   bookingsReviewed   BookingConfirmation[] @relation("bookingsReviewed")
+  shipmentsCreated   Shipment[]            @relation("shipmentsCreated")
+  shipmentDocsUploaded ShipmentDocument[]  @relation("shipmentDocsUploaded")
+  shipmentEvents     ShipmentEvent[]       @relation("shipmentEvents")
   certificatesUploaded Certificate[]       @relation("certificatesUploaded")
   certOverrides      CertificateOverride[] @relation("certOverrides")
   buyer              Buyer?               @relation(fields: [buyerId], references: [id])
@@ -188,6 +191,7 @@ model Buyer {
   webOrders      WebOrder[]
   auditEvents    AuditEvent[]
   documents      BuyerDocument[]
+  shipments      Shipment[]
 
   @@index([market])
 }
@@ -303,7 +307,7 @@ model PurchaseOrder {
   createdAt      DateTime       @default(now())
   updatedAt      DateTime       @updatedAt
 
-  bookings       BookingConfirmation[]
+  shipments      ShipmentOrder[]
 
   @@unique([buyerId, poNumber, revision])
   @@index([poDate])
@@ -378,9 +382,10 @@ model BookingConfirmation {
   motherVessel        String?
   /// As printed; a web link is shown as one.
   vesselTracking      String?
-  /// The order this booking ships, chosen by a person; the PO page shows its vessels.
-  purchaseOrderId     String?
-  purchaseOrder       PurchaseOrder? @relation(fields: [purchaseOrderId], references: [id], onDelete: SetNull)
+  /// The shipment this booking books space for (Phase 63, was a single PO).
+  /// A shipment can hold several; the newest is its current booking.
+  shipmentId          String?
+  shipment            Shipment?     @relation(fields: [shipmentId], references: [id], onDelete: SetNull)
   uploadedById        String
   uploadedBy          User          @relation("bookingsUploaded", fields: [uploadedById], references: [id])
   uploadedAt          DateTime      @default(now())
@@ -392,7 +397,97 @@ model BookingConfirmation {
 
   @@index([status])
   @@index([uploadedAt])
+  @@index([shipmentId])
+}
+
+/// One container's worth of export (Phase 63): several POs of one buyer, the
+/// booking that carries them and the papers that let them out of one country
+/// and into another. Staff only — no shop query reads it.
+model Shipment {
+  id            String   @id @default(cuid())
+  /// SHP-YYMM-NNNN, minted from `seq`. What staff quote.
+  seq           Int      @default(autoincrement())
+  reference     String   @unique
+  buyerId       String
+  buyer         Buyer    @relation(fields: [buyerId], references: [id], onDelete: Restrict)
+  /// Destination, copied from the buyer at create, editable.
+  market        String?
+  /// Explicit, not derived from the market: a market can be a retailer
+  /// ("Super Indo") rather than a country. Defaulted at create.
+  formDRequired Boolean  @default(false)
+  note          String?
+  createdById   String
+  createdBy     User     @relation("shipmentsCreated", fields: [createdById], references: [id])
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  orders    ShipmentOrder[]
+  bookings  BookingConfirmation[]
+  documents ShipmentDocument[]
+  events    ShipmentEvent[]
+
+  @@index([buyerId])
+  @@index([createdAt])
+}
+
+/// A join table, not a column on PurchaseOrder, so one PO split across two
+/// containers costs nothing. Same buyer is enforced in the action.
+model ShipmentOrder {
+  shipmentId      String
+  shipment        Shipment      @relation(fields: [shipmentId], references: [id], onDelete: Cascade)
+  purchaseOrderId String
+  purchaseOrder   PurchaseOrder @relation(fields: [purchaseOrderId], references: [id], onDelete: Cascade)
+  addedAt         DateTime      @default(now())
+
+  @@id([shipmentId, purchaseOrderId])
   @@index([purchaseOrderId])
+}
+
+enum ShipmentDocType {
+  INVOICE
+  PACKING_LIST
+  CUSTOMS_FORM
+  BILL_OF_LADING
+  FORM_D
+}
+
+/// A shipping paper in R2. One current file per type per shipment (enforced
+/// in the complete route's transaction); a replaced one keeps its row with
+/// `supersededAt` set, so earlier versions stay downloadable.
+model ShipmentDocument {
+  id             String          @id @default(cuid())
+  shipmentId     String
+  shipment       Shipment        @relation(fields: [shipmentId], references: [id], onDelete: Cascade)
+  type           ShipmentDocType
+  /// Customs only: K2, K3, K4 or what was typed.
+  label          String?
+  r2Key          String          @unique // shipments/{shipmentId}/{uuid}.{ext}
+  originalName   String
+  mimeType       String
+  sizeBytes      Int
+  uploadedById   String
+  uploadedBy     User            @relation("shipmentDocsUploaded", fields: [uploadedById], references: [id])
+  uploadedByName String
+  uploadedAt     DateTime        @default(now())
+  supersededAt   DateTime?
+
+  @@index([shipmentId, type, supersededAt])
+}
+
+/// What happened to a shipment, for its activity feed (Phase 64). `text` is
+/// the sentence's object ("the packing list PL-1022.pdf"); `action` the verb.
+model ShipmentEvent {
+  id         String   @id @default(cuid())
+  shipmentId String
+  shipment   Shipment @relation(fields: [shipmentId], references: [id], onDelete: Cascade)
+  actorId    String?
+  actor      User?    @relation("shipmentEvents", fields: [actorId], references: [id], onDelete: SetNull)
+  actorName  String
+  action     String
+  text       String
+  at         DateTime @default(now())
+
+  @@index([shipmentId, at])
 }
 
 /// UPLOADING until the bytes are verified in R2; such rows are never listed.

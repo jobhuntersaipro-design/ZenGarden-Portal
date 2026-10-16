@@ -1,4 +1,4 @@
-import { Boxes, CalendarClock, FileText, LayoutDashboard, Package, Ship, Users } from "lucide-react";
+import { Boxes, CalendarClock, Container, FileText, LayoutDashboard, Package, Ship, Users } from "lucide-react";
 import type { PermissionKey } from "@/lib/permissions/actions";
 
 /**
@@ -46,6 +46,17 @@ export const NAV = [
     short: "Bookings",
     icon: Ship,
     permission: "bc.view",
+    // An eighth tab would be 48px at 390 with "Shipments" cut. On a phone a
+    // booking is reached through its shipment (Phase 63 §4.1), whose page
+    // header links back to this list.
+    tabBar: false,
+  },
+  {
+    href: "/shipments",
+    label: "Shipments",
+    short: "Shipping",
+    icon: Container,
+    permission: "shipment.view",
   },
   {
     href: "/purchase-orders",
@@ -78,6 +89,7 @@ export const NAV = [
   short: string;
   icon: unknown;
   permission: PermissionKey;
+  tabBar?: false;
 }[];
 
 /** /upload and /review/[id] belong to the Purchase orders section. */
@@ -103,6 +115,11 @@ export function isActive(pathname: string, href: string): boolean {
  */
 export function navFor(allowed: readonly string[]): typeof NAV[number][] {
   return NAV.filter((entry) => allowed.includes(entry.href));
+}
+
+/** The phone bar's tabs: `navFor` less the entries kept off it. */
+export function tabsFor(allowed: readonly string[]): typeof NAV[number][] {
+  return navFor(allowed).filter((entry) => !("tabBar" in entry));
 }
 
 /**

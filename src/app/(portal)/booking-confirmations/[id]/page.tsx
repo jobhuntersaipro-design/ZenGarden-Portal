@@ -8,9 +8,9 @@ import { DownloadOriginal } from "@/components/purchase-orders/DownloadOriginal"
 import { DocumentPreview } from "@/components/review/DocumentPreviewLoader";
 import { can, requirePagePermission } from "@/lib/permissions/require";
 import { formatDateTime } from "@/lib/dates";
-import { BookingOrderLink } from "@/components/booking-confirmations/BookingOrderLink";
-import { bookingOrderOptions, loadBooking } from "@/lib/queries/booking-confirmations";
-import { orderIdentity, orderLabel } from "@/lib/order-identity";
+import { BookingShipmentLink } from "@/components/booking-confirmations/BookingShipmentLink";
+import { loadBooking } from "@/lib/queries/booking-confirmations";
+import { shipmentOptions } from "@/lib/queries/shipments";
 import { BOOKING_FIELDS } from "@/lib/validation/booking-confirmations";
 import { withLoadingFloor } from "@/lib/loading-floor";
 
@@ -33,8 +33,12 @@ async function BookingPage({ params }: { params: Promise<{ id: string }> }) {
   const booking = await loadBooking(id);
   if (!booking || booking.status === "UPLOADING") notFound();
 
-  const [canReview, canRetry] = await Promise.all([can("bc.review"), can("bc.upload")]);
-  const orderOptions = canReview ? await bookingOrderOptions() : [];
+  const [canReview, canRetry, canShip] = await Promise.all([
+    can("bc.review"),
+    can("bc.upload"),
+    can("shipment.manage"),
+  ]);
+  const options = canReview ? await shipmentOptions() : [];
   const endpoint = `/api/booking-confirmations/${booking.id}/url`;
   // Strings for the form; a date column crosses as its calendar day.
   const initial = Object.fromEntries(
@@ -77,15 +81,12 @@ async function BookingPage({ params }: { params: Promise<{ id: string }> }) {
         canReview={canReview}
         canRetry={canRetry}
         linkedOrder={
-          <BookingOrderLink
+          <BookingShipmentLink
             bookingId={booking.id}
-            linked={
-              booking.purchaseOrder
-                ? { id: booking.purchaseOrder.id, label: orderLabel(orderIdentity(booking.purchaseOrder)) }
-                : null
-            }
-            options={orderOptions}
+            linked={booking.shipment ? { id: booking.shipment.id, label: booking.shipment.reference } : null}
+            options={options}
             canEdit={canReview}
+            canCreate={canShip}
           />
         }
         reviewedBy={

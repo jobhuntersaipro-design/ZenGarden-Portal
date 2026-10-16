@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { NAV, TAB_BAR_COLUMNS, navFor } from "@/components/portal/nav";
+import { NAV, TAB_BAR_COLUMNS, navFor, tabsFor } from "@/components/portal/nav";
 import { PERMISSION_ACTIONS } from "@/lib/permissions/actions";
 
 /**
@@ -29,6 +29,7 @@ describe("the portal's destinations", () => {
     expect(NAV.map((entry) => entry.label)).toEqual([
       "Dashboard",
       "Booking Confirmations",
+      "Shipments",
       "Purchase Orders",
       "Demand Board",
       "Buyers",
@@ -42,6 +43,14 @@ describe("the portal's destinations", () => {
    * lines there, which is why `short` exists — and why it has to stay one
    * word for the two labels that are not.
    */
+  it("keeps the phone bar at seven tabs: Shipments takes Bookings' place", () => {
+    const all = NAV.map((entry) => entry.href);
+    expect(tabsFor(all).map((entry) => entry.short)).toEqual([
+      "Home", "Shipping", "Orders", "Demand", "Buyers", "Products", "Stock",
+    ]);
+    expect(TAB_BAR_COLUMNS[tabsFor(all).length]).toBeDefined();
+  });
+
   it("gives the phone bar a one-word label for every destination", () => {
     for (const { short } of NAV) {
       expect(short.includes(" "), short).toBe(false);
@@ -80,7 +89,7 @@ describe("what a role may open", () => {
    * the filter can produce therefore needs one spelled out.
    */
   it("has a literal column class for every width the bar can be", () => {
-    for (let count = 1; count <= NAV.length; count++) {
+    for (let count = 1; count <= tabsFor(NAV.map((entry) => entry.href)).length; count++) {
       expect(TAB_BAR_COLUMNS[count], `${count} tabs`).toBe(`grid-cols-${count}`);
     }
   });

@@ -14,6 +14,7 @@ const VIEW_EVERYWHERE = [
   "buyer.view",
   // Phase 66: any member of staff may leave a note on an order.
   "po.note",
+  "shipment.view",
 ] as const satisfies readonly PermissionKey[];
 
 /**
@@ -29,6 +30,7 @@ export const DEFAULT_GRANTS: Readonly<
   [Role.PRODUCTION_PLANNER]: [
     ...VIEW_EVERYWHERE,
     "bc.upload",
+    "shipment.manage",
     "po.upload",
     "po.document",
     "po.advance.order_placed",
@@ -36,6 +38,7 @@ export const DEFAULT_GRANTS: Readonly<
   [Role.QC]: [
     ...VIEW_EVERYWHERE,
     "bc.upload",
+    "shipment.manage",
     "po.upload",
     "po.document",
     "po.advance.in_production",
@@ -45,6 +48,7 @@ export const DEFAULT_GRANTS: Readonly<
   [Role.WAREHOUSE]: [
     ...VIEW_EVERYWHERE,
     "bc.upload",
+    "shipment.manage",
     "po.upload",
     "po.document",
     "po.advance.qc_passed",

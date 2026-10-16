@@ -19,7 +19,7 @@ import { LifecycleActions } from "@/components/purchase-orders/LifecycleActions"
 import { StageStepper } from "@/components/purchase-orders/StageStepper";
 import { OrderStockCard } from "@/components/purchase-orders/OrderStockCard";
 import { OrderShippingCard } from "@/components/purchase-orders/OrderShippingCard";
-import { bookingsForOrder } from "@/lib/queries/booking-confirmations";
+import { openShipmentsForBuyer, shipmentsForOrder } from "@/lib/queries/shipments";
 import { deliveryDeductions, stockShortfall } from "@/lib/stock";
 import { advanceKeyFor } from "@/lib/permissions/actions";
 import { can, requirePagePermission, rolesWithPermission } from "@/lib/permissions/require";
@@ -186,7 +186,9 @@ async function PurchaseOrderPage({
       : "Only a super admin advances this stage.";
   }
   const orderDocuments = await listPurchaseOrderDocuments(po.id);
-  const bookings = (await can("bc.view")) ? await bookingsForOrder(po.id) : null;
+  const shipments = (await can("shipment.view")) ? await shipmentsForOrder(po.id) : null;
+  const addToShipments =
+    shipments && (await can("shipment.manage")) ? await openShipmentsForBuyer(po.buyerId) : null;
 
   const daysFromOrder = Math.max(
     0,
@@ -668,7 +670,9 @@ async function PurchaseOrderPage({
             ]}
           />
 
-          {bookings ? <OrderShippingCard bookings={bookings} /> : null}
+          {shipments ? (
+            <OrderShippingCard purchaseOrderId={po.id} shipments={shipments} addTo={addToShipments} />
+          ) : null}
         </div>
       </div>
 
