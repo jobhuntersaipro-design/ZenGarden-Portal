@@ -4,7 +4,6 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { deleteShipment, updateShipment } from "@/actions/shipments";
 import { Button } from "@/components/ui/button";
-import { Checkbox } from "@/components/ui/checkbox";
 import {
   Dialog,
   DialogContent,
@@ -16,8 +15,9 @@ import {
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { toast } from "@/lib/toast";
+import { formDDefault } from "@/lib/shipments/checklist";
 
-/** Edit (market, Form D, note) and Delete while empty. */
+/** Edit (market, note; Form D follows the market) and Delete while empty. */
 export function ShipmentSettings({
   id,
   market,
@@ -66,7 +66,7 @@ export function ShipmentSettings({
         <DialogContent>
           <DialogHeader>
             <DialogTitle>Edit shipment</DialogTitle>
-            <DialogDescription>Market, Form D and the note.</DialogDescription>
+            <DialogDescription>Market and the note.</DialogDescription>
           </DialogHeader>
           <label className="flex flex-col gap-xs">
             <span className="font-mono text-[length:var(--text-eyebrow)] text-ink-tertiary">Market</span>
@@ -74,16 +74,10 @@ export function ShipmentSettings({
               value={values.market}
               maxLength={80}
               className="h-control-md"
-              onChange={(e) => setValues({ ...values, market: e.target.value })}
+              onChange={(e) =>
+                setValues({ ...values, market: e.target.value, formDRequired: formDDefault(e.target.value) })
+              }
             />
-          </label>
-          <label className="flex cursor-pointer items-center gap-sm">
-            <Checkbox
-              checked={values.formDRequired}
-              onCheckedChange={(v) => setValues({ ...values, formDRequired: v === true })}
-              aria-label="Needs Form D"
-            />
-            <span className="text-[length:var(--text-body-sm)]">Needs Form D</span>
           </label>
           <label className="flex flex-col gap-xs">
             <span className="font-mono text-[length:var(--text-eyebrow)] text-ink-tertiary">Note</span>

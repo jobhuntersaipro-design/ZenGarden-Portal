@@ -6,6 +6,7 @@ import { LinkSpinner } from "@/components/portal/LinkSpinner";
 import { Button } from "@/components/ui/button";
 import { BookingFilters } from "@/components/booking-confirmations/BookingFilters";
 import { BookingTable, type BookingRow } from "@/components/booking-confirmations/BookingTable";
+import { ShippingTabs } from "@/components/shipments/ShippingTabs";
 import { can, requirePagePermission } from "@/lib/permissions/require";
 import {
   firstParam,
@@ -77,7 +78,7 @@ async function BookingConfirmationsPage({
     <>
       <PageHeader
         eyebrow="Shipping"
-        title="Booking confirmations"
+        title="Shipments"
         action={
           canUpload ? (
             <Button asChild>
@@ -90,6 +91,7 @@ async function BookingConfirmationsPage({
         }
       />
 
+      <ShippingTabs bookings />
       <BookingFilters uploaders={uploaders} />
 
       <p className="mb-sm text-[length:var(--text-body-sm)] text-ink-secondary">

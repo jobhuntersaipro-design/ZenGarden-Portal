@@ -5,7 +5,6 @@ import { useRouter } from "next/navigation";
 import { createShipment } from "@/actions/shipments";
 import { OrderPicker } from "@/components/shipments/OrderPicker";
 import { Button } from "@/components/ui/button";
-import { Checkbox } from "@/components/ui/checkbox";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { useUrlNavigation } from "@/hooks/useUrlNavigation";
@@ -19,7 +18,8 @@ const SELECT =
 
 /**
  * Buyer first — its choice goes in the URL, so the server lists that buyer's
- * orders — then the orders, market and Form D (Phase 63 §4.3).
+ * orders — then the orders and market (Phase 63 §4.3). Form D follows the market
+ * and is not asked: an Indonesian shipment needs one.
  */
 export function NewShipmentForm({
   buyers,
@@ -120,13 +120,6 @@ export function NewShipmentForm({
               }}
             />
           </div>
-
-          <label className="flex cursor-pointer items-center gap-sm">
-            <Checkbox checked={formD} onCheckedChange={(v) => setFormD(v === true)} aria-label="Needs Form D" />
-            <span className="text-[length:var(--text-body-sm)] text-ink">
-              Needs Form D <span className="text-ink-tertiary">— lowers Indonesian import duty</span>
-            </span>
-          </label>
 
           <div className="flex flex-col gap-xs">
             <label htmlFor="shipment-note" className={LABEL}>

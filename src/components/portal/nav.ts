@@ -1,4 +1,4 @@
-import { Boxes, CalendarClock, Container, FileText, LayoutDashboard, Package, Ship, Users } from "lucide-react";
+import { Boxes, CalendarClock, Container, FileText, LayoutDashboard, Package, Users } from "lucide-react";
 import type { PermissionKey } from "@/lib/permissions/actions";
 
 /**
@@ -40,17 +40,9 @@ export const NAV = [
     icon: LayoutDashboard,
     permission: "dashboard.view",
   },
-  {
-    href: "/booking-confirmations",
-    label: "Booking Confirmations",
-    short: "Bookings",
-    icon: Ship,
-    permission: "bc.view",
-    // An eighth tab would be 48px at 390 with "Shipments" cut. On a phone a
-    // booking is reached through its shipment (Phase 63 §4.1), whose page
-    // header links back to this list.
-    tabBar: false,
-  },
+  // Booking confirmations live under this tab (2026-10-17): the customer
+  // tracks a shipment and its booking on one row of one sheet, so the portal
+  // keeps them in one place too. Every role holding bc.view holds this.
   {
     href: "/shipments",
     label: "Shipments",
@@ -89,7 +81,6 @@ export const NAV = [
   short: string;
   icon: unknown;
   permission: PermissionKey;
-  tabBar?: false;
 }[];
 
 /** /upload and /review/[id] belong to the Purchase orders section. */
@@ -101,6 +92,9 @@ export function isActive(pathname: string, href: string): boolean {
       pathname.startsWith("/upload") ||
       pathname.startsWith("/review")
     );
+  }
+  if (href === "/shipments") {
+    return pathname.startsWith("/shipments") || pathname.startsWith("/booking-confirmations");
   }
   return pathname.startsWith(href);
 }
@@ -117,10 +111,8 @@ export function navFor(allowed: readonly string[]): typeof NAV[number][] {
   return NAV.filter((entry) => allowed.includes(entry.href));
 }
 
-/** The phone bar's tabs: `navFor` less the entries kept off it. */
-export function tabsFor(allowed: readonly string[]): typeof NAV[number][] {
-  return navFor(allowed).filter((entry) => !("tabBar" in entry));
-}
+/** The phone bar's tabs: every destination the reader may open. */
+export const tabsFor = navFor;
 
 /**
  * The phone tab bar's column count, as literal classes.

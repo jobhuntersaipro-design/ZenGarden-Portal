@@ -61,6 +61,26 @@ admin, a planner, QC, a member and a buyer.
   documents access file still fails to import without a full env, as on HEAD),
   `tsc`, lint unchanged (4 `ShopHeader` errors, 1 warning), build clean.
 
+**2026-10-17: Bookings live under Shipments; no Form D tick.** Asked for as
+"no need show this form D tick" and "combine Booking Confirmation and
+Shipments in 1 tab", after the customer's tracking sheet (LHM LOGISTICS &
+DOCUMENTATION RECORDS: one row per container — customer, forwarders,
+destination, 20FT/40FT/LCL, FOB/CIF/D2D, container no., vessel, dates,
+status, then a column per paper). Form D is no longer asked on create or Edit;
+it follows the market (an Indonesian one needs it), and changing the market
+in Edit re-derives it. **One nav row, Shipments**, with a Shipments / Booking
+confirmations tab strip on both lists and Upload BC on the shipment list; the
+BC pages light Shipments. The shipment table reads like the sheet:
+Destination (the booking's POD, else the market) and Container / vessel
+(first container no. · size, "+N", feeder else mother); search also matches
+container no., vessel and POD. Driven at 1440 and 390: 7 nav rows, the tab
+strip on both pages, `msku` / `skyline` / `surabaya` 1 row each, `zzzz` 0, no
+"Form D" on the new form or in Edit, no overflow. 1926 tests, `tsc`, lint
+unchanged, build. **Not built from the sheet:** forwarders, shipment terms,
+warehouse in/out dates, the free-text status and the extra papers (Telex,
+KSO, gate pass, Form E, insurance, NOA…); each is a column or a slot to add
+when asked.
+
 ## Not verified
 
 Production behind sign-in (no staff login here; nothing written there).

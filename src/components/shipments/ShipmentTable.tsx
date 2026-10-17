@@ -9,6 +9,14 @@ import type { ShipmentListRow } from "@/lib/queries/shipments";
 const blank = <span className="text-ink-tertiary">—</span>;
 const noSort = () => {};
 
+/** "TIIU6249628 · 40FT", then "+2" for the rest, as the sheet's one column. */
+function containerLine(row: ShipmentListRow): string | null {
+  const [first, ...rest] = row.containers;
+  if (!first) return null;
+  const head = [first.containerNo, first.size].filter(Boolean).join(" · ") || "Container";
+  return rest.length ? `${head} +${rest.length}` : head;
+}
+
 const COLUMNS: Column<ShipmentListRow>[] = [
   {
     key: "reference",
@@ -23,6 +31,34 @@ const COLUMNS: Column<ShipmentListRow>[] = [
         </span>
       </span>
     ),
+  },
+  {
+    key: "destination",
+    header: "Destination",
+    sortable: false,
+    showAt: "md",
+    // The port the booking names; the market until a booking does.
+    cell: (row) => {
+      const where = row.portOfDischarge ?? row.market;
+      return where ? <span className="block max-w-48 truncate" title={where}>{where}</span> : blank;
+    },
+  },
+  {
+    key: "container",
+    header: "Container / vessel",
+    sortable: false,
+    showAt: "lg",
+    cell: (row) =>
+      row.containers.length || row.vessel ? (
+        <span className="flex min-w-0 flex-col gap-xxs">
+          <span className="font-mono">{containerLine(row) ?? "—"}</span>
+          <span className="block max-w-48 truncate text-ink-secondary" title={row.vessel ?? undefined}>
+            {row.vessel ?? "—"}
+          </span>
+        </span>
+      ) : (
+        blank
+      ),
   },
   {
     key: "status",
@@ -77,7 +113,6 @@ const COLUMNS: Column<ShipmentListRow>[] = [
       </span>
     ),
   },
-  { key: "createdAt", header: "Created", sortable: false, showAt: "lg", cell: (row) => formatDate(row.createdAt) },
 ];
 
 function card(row: ShipmentListRow) {
@@ -93,6 +128,11 @@ function card(row: ShipmentListRow) {
       <span className="truncate text-[length:var(--text-body-sm)] text-ink-secondary">
         {row.buyer.name} · {row.orders.length} {row.orders.length === 1 ? "order" : "orders"}
       </span>
+      {row.market || row.portOfDischarge || row.containers.length || row.vessel ? (
+        <span className="truncate text-[length:var(--text-body-sm)] text-ink-secondary">
+          {[row.portOfDischarge ?? row.market, containerLine(row), row.vessel].filter(Boolean).join(" · ")}
+        </span>
+      ) : null}
       {row.etd || row.eta ? (
         <span className="text-[length:var(--text-body-sm)] text-ink-secondary">
           ETD {row.etd ? formatDate(row.etd) : "—"} · ETA {row.eta ? formatDate(row.eta) : "—"}

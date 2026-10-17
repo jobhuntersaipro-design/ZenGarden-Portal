@@ -80,7 +80,7 @@ export function ShipmentFilters({
           <Search className="pointer-events-none absolute left-xs top-1/2 size-4 -translate-y-1/2 text-ink-tertiary" aria-hidden />
           <Input
             aria-label="Search shipments"
-            placeholder="Reference, buyer, PO number, booking no.…"
+            placeholder="Reference, buyer, PO, booking, container, vessel…"
             value={query}
             onChange={(e) => {
               const value = e.target.value;

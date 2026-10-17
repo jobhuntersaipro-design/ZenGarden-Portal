@@ -6,6 +6,7 @@ import { LinkSpinner } from "@/components/portal/LinkSpinner";
 import { Button } from "@/components/ui/button";
 import { ShipmentFilters } from "@/components/shipments/ShipmentFilters";
 import { ShipmentTable } from "@/components/shipments/ShipmentTable";
+import { ShippingTabs } from "@/components/shipments/ShippingTabs";
 import { can, requirePagePermission } from "@/lib/permissions/require";
 import { firstParam, parsePagination, type SearchParams } from "@/lib/queries/pagination";
 import { listShipments, type ShipmentFilters as Filters } from "@/lib/queries/shipments";
@@ -39,10 +40,11 @@ async function ShipmentsPage({ searchParams }: { searchParams: Promise<SearchPar
     sort: pick("sort", ["status", "etd", "eta", "createdAt"] as const) ?? "status",
     dir: pick("dir", ["asc", "desc"] as const) ?? "asc",
   };
-  const [list, canManage, canBookings] = await Promise.all([
+  const [list, canManage, canBookings, canUploadBc] = await Promise.all([
     listShipments(filters, page, size),
     can("shipment.manage"),
     can("bc.view"),
+    can("bc.upload"),
   ]);
 
   return (
@@ -52,13 +54,13 @@ async function ShipmentsPage({ searchParams }: { searchParams: Promise<SearchPar
         title="Shipments"
         action={
           <div className="flex flex-wrap items-center gap-sm">
-            {canBookings ? (
-              <Link
-                href="/booking-confirmations"
-                className="inline-flex min-h-11 items-center text-[length:var(--text-body-sm)] text-brand-link underline-offset-2 hover:underline sm:min-h-0"
-              >
-                Booking confirmations
-              </Link>
+            {canUploadBc ? (
+              <Button asChild variant="secondary">
+                <Link href="/booking-confirmations/upload">
+                  <LinkSpinner />
+                  Upload BC
+                </Link>
+              </Button>
             ) : null}
             {canManage ? (
               <Button asChild>
@@ -71,6 +73,7 @@ async function ShipmentsPage({ searchParams }: { searchParams: Promise<SearchPar
           </div>
         }
       />
+      <ShippingTabs bookings={canBookings} />
       <ShipmentFilters
         counts={list.counts}
         all={list.all}

@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { NAV, TAB_BAR_COLUMNS, navFor, tabsFor } from "@/components/portal/nav";
+import { NAV, TAB_BAR_COLUMNS, isActive, navFor, tabsFor } from "@/components/portal/nav";
 import { PERMISSION_ACTIONS } from "@/lib/permissions/actions";
 
 /**
@@ -28,7 +28,6 @@ describe("the portal's destinations", () => {
   it("reads the way the sidebar reads", () => {
     expect(NAV.map((entry) => entry.label)).toEqual([
       "Dashboard",
-      "Booking Confirmations",
       "Shipments",
       "Purchase Orders",
       "Demand Board",
@@ -43,12 +42,17 @@ describe("the portal's destinations", () => {
    * lines there, which is why `short` exists — and why it has to stay one
    * word for the two labels that are not.
    */
-  it("keeps the phone bar at seven tabs: Shipments takes Bookings' place", () => {
+  it("keeps the phone bar at seven tabs, one per destination", () => {
     const all = NAV.map((entry) => entry.href);
     expect(tabsFor(all).map((entry) => entry.short)).toEqual([
       "Home", "Shipping", "Orders", "Demand", "Buyers", "Products", "Stock",
     ]);
     expect(TAB_BAR_COLUMNS[tabsFor(all).length]).toBeDefined();
+  });
+
+  it("lights Shipments on a booking confirmation's pages", () => {
+    expect(isActive("/booking-confirmations/abc", "/shipments")).toBe(true);
+    expect(isActive("/shipments/new", "/shipments")).toBe(true);
   });
 
   it("gives the phone bar a one-word label for every destination", () => {

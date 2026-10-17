@@ -81,7 +81,19 @@ export function shipmentWhere(q?: string): Prisma.ShipmentWhereInput {
       { reference: like },
       { market: like },
       { buyer: { name: like } },
-      { bookings: { some: { bookingNumber: like } } },
+      {
+        bookings: {
+          some: {
+            OR: [
+              { bookingNumber: like },
+              { feederVessel: like },
+              { motherVessel: like },
+              { portOfDischarge: like },
+            ],
+          },
+        },
+      },
+      { containers: { some: { containerNo: like } } },
       {
         orders: {
           some: {
@@ -118,6 +130,7 @@ export async function listShipments(filters: ShipmentFilters, page: number, size
       orders: { select: { purchaseOrder: { select: ORDER_IDENTITY_SELECT } } },
       bookings: bookingsOf,
       documents: currentDocs,
+      containers: { orderBy: { createdAt: "asc" }, select: { containerNo: true, size: true } },
     },
   });
   const today = todayISO();
@@ -132,6 +145,11 @@ export async function listShipments(filters: ShipmentFilters, page: number, size
       orders: s.orders.map((o) => orderLabel(orderIdentity(o.purchaseOrder))),
       etd: day(s.bookings[0]?.etdPol),
       eta: day(s.bookings[0]?.etaPod),
+      // The customer's sheet reads a shipment by these: where it goes, in
+      // which box, on which ship (2026-10-17).
+      portOfDischarge: s.bookings[0]?.portOfDischarge ?? null,
+      vessel: s.bookings[0]?.feederVessel ?? s.bookings[0]?.motherVessel ?? null,
+      containers: s.containers,
       checklist,
     };
   });
