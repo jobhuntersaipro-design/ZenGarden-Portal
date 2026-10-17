@@ -102,6 +102,18 @@ segment in `surface-soft` vanished on the table's highlighted row
 asked for — see the reply; one constant (`SLOT_LABEL`) if the customer wants
 it changed. 1917 tests, `tsc`, lint unchanged, build.
 
+**2026-10-17: two stages renamed, Put on QC hold removed.** Asked for on the
+PO stepper as "rename QC passed to production done - QC hold, and In warehouse
+to QC pass - In warehouse … remove the Put on QC hold". `QC_PASSED` reads
+**Production done - QC hold** and `IN_WAREHOUSE` **QC pass - In warehouse**
+(labels only: enum, data and stage order unchanged); the permission grid's
+labels follow. The **Put on QC hold** button and dialog are gone; an order
+already in `QC_HOLD` still shows Release. Driven at 1440 and 390 on an order in
+production: stepper and Advance read the new names, no hold button; the 390
+page overflowed 411 before (the hold button) and 390 after. 1917 tests, `tsc`,
+lint unchanged, build. **Note:** buyers see the `QC_PASSED` label too, so their
+order page now reads "Production done - QC hold".
+
 ## Not verified
 
 Production behind sign-in (no staff login here; nothing written there).

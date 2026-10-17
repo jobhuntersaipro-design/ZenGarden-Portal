@@ -21,8 +21,8 @@ const LABELS: Record<PoStage, string> = {
   ORDER_PLACED: "Order placed",
   IN_PRODUCTION: "In production",
   QC_HOLD: "QC hold",
-  QC_PASSED: "QC passed",
-  IN_WAREHOUSE: "In warehouse",
+  QC_PASSED: "Production done - QC hold",
+  IN_WAREHOUSE: "QC pass - In warehouse",
   DELIVERING: "Delivering",
   DELIVERED: "Delivered",
 };

@@ -23,7 +23,7 @@ describe("PO_STAGES", () => {
 describe("stageLabel", () => {
   it("is sentence case, not the enum name", () => {
     expect(stageLabel(PoStage.IN_PRODUCTION)).toBe("In production");
-    expect(stageLabel(PoStage.QC_PASSED)).toBe("QC passed");
+    expect(stageLabel(PoStage.QC_PASSED)).toBe("Production done - QC hold");
   });
 
   it("labels every stage", () => {

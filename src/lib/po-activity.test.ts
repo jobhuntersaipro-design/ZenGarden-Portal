@@ -47,7 +47,7 @@ describe("describeActivity", () => {
   it("says a move back is a move back", () => {
     expect(
       say(event({ fromStage: "QC_PASSED", toStage: "IN_PRODUCTION" }), "Chris Lam"),
-    ).toBe("Chris Lam moved this order back from QC passed to In production");
+    ).toBe("Chris Lam moved this order back from Production done - QC hold to In production");
   });
 
   it("reads the stored previous stage, not the stepper's order", () => {
@@ -55,7 +55,7 @@ describe("describeActivity", () => {
     // "from In warehouse", which is not where the order was.
     expect(
       say(event({ fromStage: "DELIVERING", toStage: "QC_PASSED" }), "Aisha Rahman"),
-    ).toContain("from Delivering to QC passed");
+    ).toContain("from Delivering to Production done - QC hold");
   });
 
   it("opens the lifecycle with the order being placed", () => {
