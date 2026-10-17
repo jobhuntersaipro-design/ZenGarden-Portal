@@ -10,8 +10,7 @@ import { ShippingTabs } from "@/components/shipments/ShippingTabs";
 import { can, requirePagePermission } from "@/lib/permissions/require";
 import { firstParam, parsePagination, type SearchParams } from "@/lib/queries/pagination";
 import { listShipments, type ShipmentFilters as Filters } from "@/lib/queries/shipments";
-import { SLOT_ORDER, type SlotKey } from "@/lib/shipments/checklist";
-import { STATUS_ORDER, type ShipmentStatus } from "@/lib/shipments/due";
+import { SLOT_ORDER, STATUS_ORDER, type ShipmentStatus, type SlotKey } from "@/lib/shipments/checklist";
 import { withLoadingFloor } from "@/lib/loading-floor";
 
 export const metadata: Metadata = { title: "Shipments · Zen Garden Portal" };

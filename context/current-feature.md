@@ -81,6 +81,27 @@ warehouse in/out dates, the free-text status and the extra papers (Telex,
 KSO, gate pass, Form E, insurance, NOA…); each is a column or a slot to add
 when asked.
 
+**2026-10-17: the flow in the customer's order, a progress bar, no due
+dates.** Asked for as "PO → BC (from us or them) → Invoice (optional) →
+Packing list → Customs form (proof only) → Bill of lading (from the vessel,
+after it confirms invoice + packing list) → Form D (upload only)", "a progress
+bar for each step … what is missing per PO", and "no due date for all
+documents". `SLOT_ORDER` is that order with the PO as step 1 (done while the
+shipment carries an order); each step says who provides it (`SLOT_SOURCE`).
+**Phase 64's due dates are gone**: `due.ts` and its test deleted, no amber/red
+dots, no Overdue/Due soon chips, and the two dashboard lines removed. Status
+is No booking / In progress / Complete, with "Missing: …" listing the empty
+steps in order. `ShipmentProgress` draws every step on the shipment page
+(seven across from 48rem of box, a numbered/ticked list below) and on each
+PO's Shipping card; the list's Documents column is the badge, "4 of 6", a
+segmented bar and the missing line. Driven at 1440 and 390: SHP-2610-0002 read
+PO, BC, PL, K2 uploaded, invoice optional, BL and Form D missing; no "due",
+"overdue" or "late" on any page; no overflow. Found while driving: a missing
+segment in `surface-soft` vanished on the table's highlighted row
+(`hairline-strong` now). **Kept "Bill of lading"** although "landing" was
+asked for — see the reply; one constant (`SLOT_LABEL`) if the customer wants
+it changed. 1917 tests, `tsc`, lint unchanged, build.
+
 ## Not verified
 
 Production behind sign-in (no staff login here; nothing written there).

@@ -1,13 +1,13 @@
 import Link from "next/link";
 import { VesselLink } from "@/components/booking-confirmations/VesselLink";
-import { ChecklistDots, ShipmentStatusBadge } from "@/components/shipments/ChecklistDots";
+import { ShipmentProgress, ShipmentStatusBadge } from "@/components/shipments/ChecklistDots";
 import { AddToShipment } from "@/components/shipments/AddToShipment";
 import { formatDate } from "@/lib/dates";
 import type { OrderShipment } from "@/lib/queries/shipments";
 
 /**
- * The shipments carrying this order (Phase 63): each with its papers'
- * checklist and the current booking's route, dates and vessels, each vessel's
+ * The shipments carrying this order (Phase 63): each with this order's
+ * document progress, step by step (2026-10-17), and the current booking's route, dates and vessels, each vessel's
  * live position one click away on VesselFinder.
  */
 export function OrderShippingCard({
@@ -39,18 +39,13 @@ export function OrderShippingCard({
                 </Link>
                 <span className="flex flex-wrap items-center gap-xs">
                   <ShipmentStatusBadge status={s.checklist.status} />
-                  {s.checklist.reason ? (
-                    <span
-                      className={`text-[length:var(--text-caption)] ${s.checklist.status === "overdue" ? "text-accent-red" : "text-ink-secondary"}`}
-                    >
-                      {s.checklist.reason}
-                    </span>
-                  ) : null}
+                  <span className="text-[length:var(--text-caption)] tabular-nums text-ink-secondary">
+                    {s.checklist.requiredDone} of {s.checklist.requiredTotal} documents
+                  </span>
                 </span>
-                <ChecklistDots slots={s.checklist.slots} withLabels />
-                <p className="text-[length:var(--text-caption)] text-ink-tertiary">
-                  {s.checklist.requiredDone} of {s.checklist.requiredTotal} required documents
-                </p>
+                <div className="my-xs">
+                  <ShipmentProgress slots={s.checklist.slots} />
+                </div>
                 {bc ? (
                   <>
                     <Link

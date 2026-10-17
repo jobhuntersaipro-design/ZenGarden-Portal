@@ -13,8 +13,6 @@ import { MoreAnalytics } from "@/components/dashboard/MoreAnalytics";
 import { PriceDriftList } from "@/components/dashboard/PriceDriftList";
 import { RangeControls } from "@/components/dashboard/RangeControls";
 import { WorkQueue } from "@/components/dashboard/WorkQueue";
-import { shipmentWorkCounts } from "@/lib/queries/shipments";
-import { can } from "@/lib/permissions/require";
 import { SalesCard } from "@/components/dashboard/SalesCard";
 import { PoTable, type PoRow } from "@/components/purchase-orders/PoTable";
 import { Button } from "@/components/ui/button";
@@ -143,7 +141,7 @@ async function DashboardPage({
 
       {/* Before the range controls, because it does not obey them: a draft has
           no PO date to filter on. */}
-      <WorkQueue intake={data.intake} shipments={(await can("shipment.view")) ? await shipmentWorkCounts() : null} />
+      <WorkQueue intake={data.intake} />
 
       <RangeControls
         preset={range.preset}

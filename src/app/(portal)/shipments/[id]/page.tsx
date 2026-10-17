@@ -3,7 +3,7 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { BackLink } from "@/components/portal/BackLink";
 import { PageHeader } from "@/components/portal/PageHeader";
-import { ChecklistDots, ShipmentStatusBadge } from "@/components/shipments/ChecklistDots";
+import { ShipmentProgress, ShipmentStatusBadge } from "@/components/shipments/ChecklistDots";
 import { ContainersCard } from "@/components/shipments/ContainersCard";
 import { ShipmentBookingCard } from "@/components/shipments/ShipmentBookingCard";
 import { ShipmentDocumentsCard } from "@/components/shipments/ShipmentDocumentsCard";
@@ -60,18 +60,19 @@ async function ShipmentPage({ params }: { params: Promise<{ id: string }> }) {
             Buyer
           </Link>
         </p>
-        <div className="flex flex-wrap items-center gap-sm">
-          <ShipmentStatusBadge status={checklist.status} />
-          {checklist.reason ? <span className="text-ink">{checklist.reason}</span> : null}
-        </div>
-        <div className="flex flex-wrap items-center gap-sm">
-          <ChecklistDots slots={checklist.slots} withLabels />
-          <span className="tabular-nums">
-            {checklist.requiredDone} of {checklist.requiredTotal} required documents
-          </span>
-        </div>
         {shipment.note ? <p className="whitespace-pre-line text-ink">{shipment.note}</p> : null}
       </div>
+
+      <section className="mb-lg min-w-0 rounded-lg border border-hairline bg-canvas p-lg">
+        <div className="mb-sm flex flex-wrap items-center gap-sm">
+          <h2 className="font-mono text-[length:var(--text-eyebrow)] text-ink-tertiary">Progress</h2>
+          <ShipmentStatusBadge status={checklist.status} />
+          <span className="text-[length:var(--text-body-sm)] tabular-nums text-ink-secondary">
+            {checklist.requiredDone} of {checklist.requiredTotal} documents
+          </span>
+        </div>
+        <ShipmentProgress slots={checklist.slots} />
+      </section>
 
       <div className="grid grid-cols-1 gap-lg xl:grid-cols-document">
         <div className="flex min-w-0 flex-col gap-lg">

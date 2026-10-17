@@ -1,68 +1,103 @@
 import type { ShipmentDocType } from "@/generated/prisma/enums";
 
 /**
- * What a shipment still lacks (Phase 63). Pure — no Prisma — so the list,
- * the shipment page and every PO's Shipping card read one rule and cannot
- * count differently. Phase 64 adds the due dates on top of this.
+ * What a shipment still lacks (Phase 63, re-ordered 2026-10-17). Pure — no
+ * Prisma — so the list, the shipment page and every PO's Shipping card read
+ * one rule and cannot count differently. **No due dates** (asked for
+ * 2026-10-17): a paper is uploaded, missing, optional or not needed.
  */
 
-export type SlotKey = "BOOKING" | ShipmentDocType;
+export type SlotKey = "PURCHASE_ORDER" | "BOOKING" | ShipmentDocType;
 export type SlotState = "done" | "missing" | "optional" | "not_needed";
 
-/** The export flow's own order: booking, then the papers as they arrive. */
+/** The export flow's own order, as the customer runs it. */
 export const SLOT_ORDER: readonly SlotKey[] = [
+  "PURCHASE_ORDER",
   "BOOKING",
-  "PACKING_LIST",
   "INVOICE",
+  "PACKING_LIST",
   "CUSTOMS_FORM",
   "BILL_OF_LADING",
   "FORM_D",
 ];
 
 export const SLOT_LABEL: Record<SlotKey, string> = {
+  PURCHASE_ORDER: "Purchase order",
   BOOKING: "Booking confirmation",
-  PACKING_LIST: "Packing list",
   INVOICE: "Invoice",
+  PACKING_LIST: "Packing list",
   CUSTOMS_FORM: "Customs form",
   BILL_OF_LADING: "Bill of lading",
   FORM_D: "Form D",
 };
 
-/** Shorter, for a dot's tooltip and a phone. */
+/** Shorter, for a phone and a tight row. */
 export const SLOT_SHORT: Record<SlotKey, string> = {
+  PURCHASE_ORDER: "PO",
   BOOKING: "BC",
-  PACKING_LIST: "PL",
   INVOICE: "INV",
+  PACKING_LIST: "PL",
   CUSTOMS_FORM: "K2",
   BILL_OF_LADING: "BL",
   FORM_D: "D",
 };
 
+/** Who provides each paper, in the customer's words. */
+export const SLOT_SOURCE: Record<SlotKey, string> = {
+  PURCHASE_ORDER: "From the buyer",
+  BOOKING: "From us or the buyer's forwarder",
+  INVOICE: "Optional",
+  PACKING_LIST: "From us",
+  CUSTOMS_FORM: "From customs — proof only",
+  BILL_OF_LADING: "From the shipping line once the vessel departs, after it checks the invoice and packing list",
+  FORM_D: "Issued by Zen Garden — upload only",
+};
+
+export type ShipmentStatus = "no_booking" | "in_progress" | "complete";
+
+export const STATUS_LABEL: Record<ShipmentStatus, string> = {
+  no_booking: "No booking",
+  in_progress: "In progress",
+  complete: "Complete",
+};
+
+/** Least done first: the order the list sorts by status. */
+export const STATUS_ORDER: readonly ShipmentStatus[] = ["no_booking", "in_progress", "complete"];
+
 export type ChecklistSlot = { key: SlotKey; state: SlotState };
 
 export function shipmentChecklist(input: {
+  hasOrders: boolean;
   hasBooking: boolean;
   current: ReadonlySet<ShipmentDocType> | readonly ShipmentDocType[];
   formDRequired: boolean;
-}): { slots: ChecklistSlot[]; requiredDone: number; requiredTotal: number } {
+}) {
   const current = new Set(input.current);
   const slots = SLOT_ORDER.map((key): ChecklistSlot => {
-    const done = key === "BOOKING" ? input.hasBooking : current.has(key);
+    const done =
+      key === "PURCHASE_ORDER" ? input.hasOrders : key === "BOOKING" ? input.hasBooking : current.has(key);
     if (done) return { key, state: "done" };
-    // The invoice is for reference only: never "missing".
     if (key === "INVOICE") return { key, state: "optional" };
     if (key === "FORM_D" && !input.formDRequired) return { key, state: "not_needed" };
     return { key, state: "missing" };
   });
-  const required = slots.filter(
-    (slot) => slot.key !== "INVOICE" && !(slot.key === "FORM_D" && !input.formDRequired),
-  );
+  // The invoice is optional even once uploaded: it never counts.
+  const required = slots.filter((slot) => slot.key !== "INVOICE" && slot.state !== "not_needed");
+  const missing = slots.filter((slot) => slot.state === "missing").map((slot) => slot.key);
+  const requiredDone = required.filter((slot) => slot.state === "done").length;
+  const status: ShipmentStatus = missing.length === 0 ? "complete" : !input.hasBooking ? "no_booking" : "in_progress";
   return {
     slots,
-    requiredDone: required.filter((slot) => slot.state === "done").length,
+    requiredDone,
     requiredTotal: required.length,
+    missing,
+    status,
+    /** "Missing: Packing list, Customs form" — null once complete. */
+    reason: missing.length ? `Missing: ${missing.map((key) => SLOT_LABEL[key]).join(", ")}` : null,
   };
 }
+
+export type Checklist = ReturnType<typeof shipmentChecklist>;
 
 /**
  * Whether a new shipment needs a Form D, before anyone says. Form D lowers

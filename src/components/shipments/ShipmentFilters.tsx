@@ -9,21 +9,18 @@ import { DateInput } from "@/components/ui/date-input";
 import { Input } from "@/components/ui/input";
 import { usePendingChoice } from "@/hooks/usePendingChoice";
 import { useUrlNavigation } from "@/hooks/useUrlNavigation";
-import { SLOT_LABEL, SLOT_ORDER } from "@/lib/shipments/checklist";
-import { STATUS_LABEL, STATUS_ORDER, type ShipmentStatus } from "@/lib/shipments/due";
+import { SLOT_LABEL, SLOT_ORDER, STATUS_LABEL, STATUS_ORDER, type ShipmentStatus } from "@/lib/shipments/checklist";
 
 const SELECT =
   "h-control-md rounded-sm border border-hairline-strong bg-transparent px-xs text-[length:var(--text-body-md)] text-ink focus-visible:border-focus focus-visible:outline-2 focus-visible:outline-focus sm:h-control-sm sm:text-[length:var(--text-body-sm)]";
 
 const CHIP_DOT: Record<ShipmentStatus, string> = {
-  overdue: DOT.overdue,
-  due_soon: DOT.due_soon,
   no_booking: DOT.missing,
   in_progress: "bg-accent-blue border-accent-blue",
   complete: DOT.done,
 };
 
-/** Status chips with counts, then Missing, Buyer, Market, ETD and sort — all in the URL (Phase 64 §2). */
+/** Status chips with counts, then Missing, Buyer, Market, ETD and sort — all in the URL (no due dates since 2026-10-17). */
 export function ShipmentFilters({
   counts,
   all,
@@ -93,7 +90,7 @@ export function ShipmentFilters({
         </div>
         <select aria-label="Missing document" className={SELECT} value={resolved.missing ?? ""} onChange={(e) => set({ missing: e.target.value })}>
           <option value="">Any document</option>
-          {SLOT_ORDER.filter((k) => k !== "INVOICE").map((key) => (
+          {SLOT_ORDER.filter((k) => k !== "INVOICE" && k !== "PURCHASE_ORDER").map((key) => (
             <option key={key} value={key}>
               Missing {SLOT_LABEL[key].toLowerCase()}
             </option>
@@ -129,7 +126,7 @@ export function ShipmentFilters({
             set({ sort, dir });
           }}
         >
-          <option value="status:asc">Status, overdue first</option>
+          <option value="status:asc">Status, least done first</option>
           <option value="etd:asc">ETD, soonest first</option>
           <option value="eta:asc">ETA, soonest first</option>
           <option value="createdAt:desc">Newest first</option>

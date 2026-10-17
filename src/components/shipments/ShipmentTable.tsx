@@ -62,13 +62,20 @@ const COLUMNS: Column<ShipmentListRow>[] = [
   },
   {
     key: "status",
-    header: "Status",
+    header: "Documents",
     sortable: false,
+    // One column, not two: the status, the bar a segment per step, and what is missing.
     cell: (row) => (
-      <span className="flex flex-col items-start gap-xxs">
-        <ShipmentStatusBadge status={row.checklist.status} />
+      <span className="flex w-56 flex-col items-start gap-xxs">
+        <span className="flex items-center gap-xs">
+          <ShipmentStatusBadge status={row.checklist.status} />
+          <span className="text-[length:var(--text-caption)] tabular-nums text-ink-tertiary">
+            {row.checklist.requiredDone} of {row.checklist.requiredTotal}
+          </span>
+        </span>
+        <ChecklistDots slots={row.checklist.slots} />
         {row.checklist.reason ? (
-          <span className="text-[length:var(--text-caption)] text-ink-tertiary">{row.checklist.reason}</span>
+          <span className="whitespace-normal text-[length:var(--text-caption)] text-ink-secondary">{row.checklist.reason}</span>
         ) : null}
       </span>
     ),
@@ -100,19 +107,6 @@ const COLUMNS: Column<ShipmentListRow>[] = [
         blank
       ),
   },
-  {
-    key: "documents",
-    header: "Documents",
-    sortable: false,
-    cell: (row) => (
-      <span className="flex flex-col gap-xxs">
-        <ChecklistDots slots={row.checklist.slots} />
-        <span className="text-[length:var(--text-caption)] tabular-nums text-ink-tertiary">
-          {row.checklist.requiredDone} of {row.checklist.requiredTotal}
-        </span>
-      </span>
-    ),
-  },
 ];
 
 function card(row: ShipmentListRow) {
@@ -138,11 +132,9 @@ function card(row: ShipmentListRow) {
           ETD {row.etd ? formatDate(row.etd) : "—"} · ETA {row.eta ? formatDate(row.eta) : "—"}
         </span>
       ) : null}
-      <span className="flex items-center gap-sm">
-        <ChecklistDots slots={row.checklist.slots} withLabels />
-      </span>
-      <span className="text-[length:var(--text-caption)] text-ink-tertiary">
-        {row.checklist.requiredDone} of {row.checklist.requiredTotal} required documents
+      <ChecklistDots slots={row.checklist.slots} />
+      <span className="text-[length:var(--text-caption)] tabular-nums text-ink-tertiary">
+        {row.checklist.requiredDone} of {row.checklist.requiredTotal} documents
       </span>
     </div>
   );

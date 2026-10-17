@@ -5,7 +5,7 @@ import { Download, Eye, Upload } from "lucide-react";
 import { deleteShipmentDocument, setCustomsLabel } from "@/actions/shipments";
 import type { PresignedShipmentDocument } from "@/app/api/shipments/[id]/documents/presign/route";
 import { DocumentPreview } from "@/components/review/DocumentPreviewLoader";
-import { ChecklistDots } from "@/components/shipments/ChecklistDots";
+import { DOT, slotSentence } from "@/components/shipments/ChecklistDots";
 import { Button } from "@/components/ui/button";
 import {
   Dialog,
@@ -19,9 +19,7 @@ import { Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle } from "
 import type { ShipmentDocType } from "@/generated/prisma/enums";
 import { useAwaitableRefresh } from "@/hooks/useAwaitableRefresh";
 import { formatDate } from "@/lib/dates";
-import type { TrackedSlot } from "@/lib/shipments/due";
-import { dueWords } from "@/lib/shipments/due";
-import { CUSTOMS_LABELS, SLOT_LABEL } from "@/lib/shipments/checklist";
+import { CUSTOMS_LABELS, SLOT_LABEL, SLOT_SOURCE, type ChecklistSlot } from "@/lib/shipments/checklist";
 import { toast } from "@/lib/toast";
 import { formatBytes } from "@/lib/validation/upload";
 import { PO_DOCUMENT_CONTENTS, PO_DOCUMENT_SIGNATURE_BYTES, poDocumentContentsReason } from "@/lib/validation/po-files";
@@ -41,15 +39,11 @@ export type ShipmentDoc = {
 
 const ACTION = "h-control-md min-w-11 gap-xxs px-sm text-[length:var(--text-caption)] sm:h-control-sm sm:min-w-0";
 
-/** What an empty slot says: its due date in the slot's own colour. */
-function emptyNote(slot: TrackedSlot): { text: string; tone: string } {
+/** What an empty slot says: who provides it. No due dates (2026-10-17). */
+function emptyNote(slot: ChecklistSlot): { text: string; tone: string } {
   if (slot.state === "optional") return { text: "Optional — for reference", tone: "text-ink-tertiary" };
   if (slot.state === "not_needed") return { text: "Not needed for this shipment", tone: "text-ink-tertiary" };
-  if (!slot.dueOn) return { text: "Missing", tone: "text-ink-tertiary" };
-  const due = `Due ${formatDate(slot.dueOn)}`;
-  if (slot.state === "overdue") return { text: `${due} · ${dueWords(slot.daysLeft!)}`, tone: "text-accent-red" };
-  if (slot.state === "due_soon") return { text: `${due} · ${dueWords(slot.daysLeft!)}`, tone: "text-brand-amber-strong" };
-  return { text: due, tone: "text-ink-tertiary" };
+  return { text: `Missing · ${SLOT_SOURCE[slot.key]}`, tone: "text-ink-secondary" };
 }
 
 /**
@@ -63,7 +57,7 @@ export function ShipmentDocumentsCard({
   canManage,
 }: {
   shipmentId: string;
-  slots: TrackedSlot[];
+  slots: ChecklistSlot[];
   documents: ShipmentDoc[];
   canManage: boolean;
 }) {
@@ -81,7 +75,7 @@ export function ShipmentDocumentsCard({
       </p>
       <ul className="mt-sm flex min-w-0 flex-col">
         {slots
-          .filter((slot) => slot.key !== "BOOKING")
+          .filter((slot) => slot.key !== "BOOKING" && slot.key !== "PURCHASE_ORDER")
           .map((slot) => {
             const type = slot.key as ShipmentDocType;
             const files = documents.filter((d) => d.type === type);
@@ -184,7 +178,7 @@ function SlotRow({
   onSaved,
 }: {
   shipmentId: string;
-  slot: TrackedSlot;
+  slot: ChecklistSlot;
   current: ShipmentDoc | null;
   earlier: ShipmentDoc[];
   canManage: boolean;
@@ -261,9 +255,11 @@ function SlotRow({
     >
       <div className="flex min-w-0 flex-wrap items-center gap-sm">
         <div className="flex min-w-0 flex-1 basis-full items-start gap-sm sm:basis-0">
-          <span className="mt-xxs">
-            <ChecklistDots slots={[slot]} />
-          </span>
+          <span
+            title={slotSentence(slot)}
+            aria-label={slotSentence(slot)}
+            className={`mt-xs block size-2.5 shrink-0 rounded-full border-2 ${DOT[slot.state]}`}
+          />
           <div className="min-w-0 flex-1">
             <p className="text-[length:var(--text-body-sm)] font-medium text-ink">
               {name}

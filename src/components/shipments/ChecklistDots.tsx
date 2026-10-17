@@ -1,59 +1,105 @@
+import { Check } from "lucide-react";
 import { cn } from "cn";
 import { Badge, type BadgeTone } from "@/components/arc/badge/badge";
-import { formatDate } from "@/lib/dates";
-import { SLOT_LABEL, SLOT_SHORT } from "@/lib/shipments/checklist";
-import { STATUS_LABEL, dueWords, type ShipmentStatus, type TrackedSlot, type TrackedState } from "@/lib/shipments/due";
+import {
+  SLOT_LABEL,
+  SLOT_SHORT,
+  SLOT_SOURCE,
+  STATUS_LABEL,
+  type ChecklistSlot,
+  type ShipmentStatus,
+  type SlotState,
+} from "@/lib/shipments/checklist";
 
-/** The status palette (00-master §4): green done, amber due soon, red late. */
-export const DOT: Record<TrackedState, string> = {
+/** Green uploaded, hollow missing, dashed optional or not needed. No due dates (2026-10-17). */
+export const DOT: Record<SlotState, string> = {
   done: "bg-accent-green border-accent-green",
   missing: "border-ink-tertiary bg-transparent",
-  due_soon: "bg-brand-amber border-brand-amber",
-  overdue: "bg-accent-red border-accent-red",
   optional: "border-hairline bg-transparent border-dashed",
   not_needed: "border-hairline bg-transparent border-dashed",
 };
 
-const SAYS: Record<TrackedState, string> = {
-  done: "uploaded",
-  missing: "missing",
-  due_soon: "missing",
-  overdue: "missing",
-  optional: "optional",
-  not_needed: "not needed",
+const SEGMENT: Record<SlotState, string> = {
+  done: "bg-accent-green",
+  missing: "bg-hairline-strong",
+  optional: "border border-dashed border-hairline",
+  not_needed: "border border-dashed border-hairline",
 };
 
-/** "Bill of lading missing — due 21 Oct 2026, 3 days late". */
-export function slotSentence(slot: TrackedSlot): string {
-  const head = `${SLOT_LABEL[slot.key]} ${SAYS[slot.state]}`;
-  if (!slot.dueOn) return head;
-  return `${head} — due ${formatDate(slot.dueOn)}${slot.daysLeft !== null ? `, ${dueWords(slot.daysLeft)}` : ""}`;
-}
+const SAYS: Record<SlotState, string> = {
+  done: "Uploaded",
+  missing: "Missing",
+  optional: "Optional",
+  not_needed: "Not needed",
+};
 
-/** One dot per paper, in the flow's order (Phase 63 §5, coloured by Phase 64). */
-export function ChecklistDots({ slots, withLabels = false }: { slots: TrackedSlot[]; withLabels?: boolean }) {
+export const slotSentence = (slot: ChecklistSlot) => `${SLOT_LABEL[slot.key]}: ${SAYS[slot.state].toLowerCase()}`;
+
+/** The flow as one bar, a segment per step in order (PO → BC → … → Form D). For a row. */
+export function ChecklistDots({ slots }: { slots: ChecklistSlot[] }) {
   return (
-    <ul className="flex flex-wrap items-center gap-xs" aria-label="Shipping documents">
+    <ol className="flex w-full max-w-56 gap-xxs" aria-label="Documents">
       {slots.map((slot) => {
         const sentence = slotSentence(slot);
         return (
-          <li key={slot.key} title={sentence} aria-label={sentence} className="flex items-center gap-xxs">
-            <span aria-hidden className={cn("block size-2.5 rounded-full border-2", DOT[slot.state])} />
-            {withLabels ? (
-              <span aria-hidden className="font-mono text-[length:var(--text-caption)] text-ink-tertiary">
-                {SLOT_SHORT[slot.key]}
-              </span>
-            ) : null}
-          </li>
+          <li key={slot.key} title={sentence} aria-label={sentence} className={cn("h-2 flex-1 rounded-pill", SEGMENT[slot.state])} />
         );
       })}
-    </ul>
+    </ol>
+  );
+}
+
+/**
+ * Every step named, with what it is waiting on (2026-10-17). One column in a
+ * narrow card or on a phone; the steps side by side once the box is 48rem.
+ */
+export function ShipmentProgress({ slots }: { slots: ChecklistSlot[] }) {
+  return (
+    <div className="@container min-w-0">
+      <ol className="grid grid-cols-1 gap-xs @3xl:grid-cols-7 @3xl:gap-xxs" aria-label="Document progress">
+        {slots.map((slot, index) => (
+          <li key={slot.key} className="flex min-w-0 items-start gap-xs @3xl:flex-col @3xl:gap-xxs">
+            <span className="hidden h-1.5 w-full rounded-pill @3xl:block" aria-hidden>
+              <span className={cn("block h-full w-full rounded-pill", SEGMENT[slot.state])} />
+            </span>
+            <span
+              aria-hidden
+              className={cn(
+                "flex size-6 shrink-0 items-center justify-center rounded-full border-2 text-[length:var(--text-caption)] tabular-nums @3xl:hidden",
+                slot.state === "done" ? "border-accent-green bg-accent-green text-canvas" : DOT[slot.state],
+                slot.state === "missing" ? "text-ink" : slot.state === "done" ? "" : "text-ink-tertiary",
+              )}
+            >
+              {slot.state === "done" ? <Check className="size-3.5" strokeWidth={3} /> : index + 1}
+            </span>
+            <span className="flex min-w-0 flex-col">
+              <span className="text-[length:var(--text-body-sm)] text-ink">
+                <span className="hidden font-mono text-ink-tertiary @3xl:inline">{index + 1} · </span>
+                {SLOT_LABEL[slot.key]}
+                <span className="sr-only"> — {SAYS[slot.state]}</span>
+              </span>
+              <span
+                aria-hidden
+                className={cn(
+                  "text-[length:var(--text-caption)]",
+                  slot.state === "done" ? "text-ink-secondary" : slot.state === "missing" ? "text-ink" : "text-ink-tertiary",
+                )}
+              >
+                {SAYS[slot.state]}
+                <span className="font-mono"> · {SLOT_SHORT[slot.key]}</span>
+              </span>
+              {slot.state === "missing" ? (
+                <span className="text-[length:var(--text-caption)] text-ink-tertiary">{SLOT_SOURCE[slot.key]}</span>
+              ) : null}
+            </span>
+          </li>
+        ))}
+      </ol>
+    </div>
   );
 }
 
 const TONE: Record<ShipmentStatus, BadgeTone> = {
-  overdue: "danger",
-  due_soon: "warning",
   no_booking: "neutral",
   in_progress: "info",
   complete: "success",

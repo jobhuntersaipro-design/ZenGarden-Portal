@@ -1,10 +1,9 @@
 import type { Prisma } from "@/generated/prisma/client";
 import { BookingStatus, PoStage, type ShipmentDocType } from "@/generated/prisma/enums";
 import { prisma } from "@/lib/prisma";
-import { formatDate, klDay, todayISO } from "@/lib/dates";
+import { formatDate } from "@/lib/dates";
 import { ORDER_IDENTITY_SELECT, orderIdentity, orderLabel } from "@/lib/order-identity";
-import { STATUS_ORDER, trackShipment, type ShipmentStatus } from "@/lib/shipments/due";
-import type { SlotKey } from "@/lib/shipments/checklist";
+import { STATUS_ORDER, shipmentChecklist, type ShipmentStatus, type SlotKey } from "@/lib/shipments/checklist";
 
 /**
  * Shipments (Phase 63). Staff only: no shop route or shop query reads these
@@ -41,24 +40,18 @@ const currentDocs = {
 
 const day = (d: Date | null | undefined) => (d ? d.toISOString().slice(0, 10) : null);
 
-/** The one reading of a shipment's papers and due dates every screen shares (Phase 64). */
-const checklistOf = (
-  s: {
-    createdAt: Date;
-    formDRequired: boolean;
-    bookings: { etdPol: Date | null; etaPod: Date | null }[];
-    documents: { type: ShipmentDocType }[];
-  },
-  today = todayISO(),
-) =>
-  trackShipment({
-    createdOn: klDay(s.createdAt),
-    etd: day(s.bookings[0]?.etdPol),
-    eta: day(s.bookings[0]?.etaPod),
+/** The one reading of a shipment's papers every screen shares. A PO's own card passes `hasOrders` true. */
+const checklistOf = (s: {
+  formDRequired: boolean;
+  orders?: unknown[];
+  bookings: unknown[];
+  documents: { type: ShipmentDocType }[];
+}) =>
+  shipmentChecklist({
+    hasOrders: s.orders ? s.orders.length > 0 : true,
     hasBooking: s.bookings.length > 0,
     current: s.documents.map((d) => d.type),
     formDRequired: s.formDRequired,
-    today,
   });
 
 export type ShipmentFilters = {
@@ -112,7 +105,7 @@ export function shipmentWhere(q?: string): Prisma.ShipmentWhereInput {
 }
 
 /**
- * The list, filtered and sorted in memory: status is derived from due dates,
+ * The list, filtered and sorted in memory: status is derived from the papers,
  * not stored, so it cannot be a `where`.
  * ponytail: every shipment matching the search is read; push filters into SQL past a few thousand.
  */
@@ -133,9 +126,8 @@ export async function listShipments(filters: ShipmentFilters, page: number, size
       containers: { orderBy: { createdAt: "asc" }, select: { containerNo: true, size: true } },
     },
   });
-  const today = todayISO();
   const all = shipments.map((s) => {
-    const checklist = checklistOf(s, today);
+    const checklist = checklistOf(s);
     return {
       id: s.id,
       reference: s.reference,
@@ -168,7 +160,7 @@ export async function listShipments(filters: ShipmentFilters, page: number, size
       (!resolved.etdFrom || (r.etd !== null && r.etd >= resolved.etdFrom)) &&
       (!resolved.etdTo || (r.etd !== null && r.etd <= resolved.etdTo)) &&
       (!resolved.missing ||
-        r.checklist.slots.some((slot) => slot.key === resolved.missing && ["missing", "due_soon", "overdue"].includes(slot.state))),
+        r.checklist.missing.includes(resolved.missing)),
   );
   const counts = Object.fromEntries(STATUS_ORDER.map((st) => [st, narrowed.filter((r) => r.checklist.status === st).length])) as Record<ShipmentStatus, number>;
   const rows = resolved.status ? narrowed.filter((r) => r.checklist.status === resolved.status) : narrowed;
@@ -373,18 +365,3 @@ export async function shippableOrders(buyerId: string) {
 }
 
 export type ShippableOrder = Awaited<ReturnType<typeof shippableOrders>>[number];
-
-/**
- * The dashboard's two shipment lines (Phase 64 §4), counted by the very
- * `listShipments` the links open, so a line and its list cannot disagree.
- * ponytail: two passes over the shipments; one pass when it ever shows on a profile.
- */
-export async function shipmentWorkCounts() {
-  const yesterday = new Date(Date.parse(`${todayISO()}T00:00:00Z`) - 86_400_000).toISOString().slice(0, 10);
-  const base = { sort: "status", dir: "asc" } as const;
-  const [overdue, noBl] = await Promise.all([
-    listShipments({ ...base, status: "overdue" }, 1, 1),
-    listShipments({ ...base, missing: "BILL_OF_LADING", etdTo: yesterday }, 1, 1),
-  ]);
-  return { overdue: overdue.total, pastEtdNoBl: noBl.total, yesterday };
-}
