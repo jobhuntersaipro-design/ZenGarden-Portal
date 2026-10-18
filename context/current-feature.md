@@ -114,6 +114,20 @@ page overflowed 411 before (the hold button) and 390 after. 1917 tests, `tsc`,
 lint unchanged, build. **Note:** buyers see the `QC_PASSED` label too, so their
 order page now reads "Production done - QC hold".
 
+**2026-10-18: a Notes card on the shipment.** Asked for as "make it better
+by adding a note section, allow user to add notes here", against the one-line
+note under the shipment's title. **Notes** sits at the top of the right
+column: a box and **Add note** (`shipment.manage`), then every note newest
+first with its author, role and time. A note is a `ShipmentEvent` with action
+`NOTE` (no migration), read on its own so the 50-row Activity feed never
+pushes one off, and left out of Activity. The note typed on the create form is
+the oldest entry; it no longer shows under the title and left the Edit
+dialog, so it cannot be rewritten after the fact. Driven at 1440 and 390 on
+SHP-2610-0002: "test" moved from the header into the card; a two-line note
+added, the box cleared, "Note added", count 1 → 2; the Edit dialog reads
+Market only; no overflow, Add note 44px at 390. 1920 tests (3 new), `tsc`,
+lint unchanged, build. Not built: editing or deleting a note.
+
 ## Not verified
 
 Production behind sign-in (no staff login here; nothing written there).

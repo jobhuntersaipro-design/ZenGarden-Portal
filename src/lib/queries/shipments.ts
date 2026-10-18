@@ -189,12 +189,15 @@ export type ShipmentListRow = Awaited<ReturnType<typeof listShipments>>["rows"][
 const cartonsOf = (lines: { quantity: Prisma.Decimal }[]) =>
   lines.reduce((sum, line) => sum + Number(line.quantity), 0);
 
+/** Matches `NOTE` in the shipments actions: a note on the shipment's feed. */
+export const SHIPMENT_NOTE = "NOTE";
+
 export async function loadShipment(id: string) {
   const s = await prisma.shipment.findUnique({
     where: { id },
     include: {
       buyer: { select: { id: true, name: true } },
-      createdBy: { select: { name: true } },
+      createdBy: { select: { name: true, image: true, role: true } },
       orders: {
         orderBy: { addedAt: "asc" },
         select: {
@@ -224,7 +227,8 @@ export async function loadShipment(id: string) {
           supersededAt: true,
         },
       },
-      events: { orderBy: { at: "desc" }, take: 50 },
+      // Notes are read on their own below, so a busy feed never pushes one off.
+      events: { where: { action: { not: SHIPMENT_NOTE } }, orderBy: { at: "desc" }, take: 50 },
       containers: {
         orderBy: { createdAt: "asc" },
         select: {
@@ -246,6 +250,11 @@ export async function loadShipment(id: string) {
     },
   });
   if (!s) return null;
+  const notes = await prisma.shipmentEvent.findMany({
+    where: { shipmentId: id, action: SHIPMENT_NOTE },
+    orderBy: { at: "desc" },
+    select: { id: true, text: true, at: true, actorName: true, actor: { select: { image: true, role: true } } },
+  });
   const orders = s.orders.map(({ purchaseOrder: po }) => ({
     id: po.id,
     stage: po.stage,
@@ -255,6 +264,7 @@ export async function loadShipment(id: string) {
   }));
   return {
     ...s,
+    notes,
     orders,
     cartons: orders.reduce((sum, o) => sum + o.cartons, 0),
     checklist: checklistOf({ ...s, documents: s.documents.filter((d) => !d.supersededAt) }),

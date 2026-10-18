@@ -13,27 +13,24 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
-import { Textarea } from "@/components/ui/textarea";
 import { toast } from "@/lib/toast";
 import { formDDefault } from "@/lib/shipments/checklist";
 
-/** Edit (market, note; Form D follows the market) and Delete while empty. */
+/** Edit (market; Form D follows the market; notes have their own card) and Delete while empty. */
 export function ShipmentSettings({
   id,
   market,
   formDRequired,
-  note,
   canDelete,
 }: {
   id: string;
   market: string | null;
   formDRequired: boolean;
-  note: string | null;
   canDelete: boolean;
 }) {
   const router = useRouter();
   const [open, setOpen] = useState<"edit" | "delete" | null>(null);
-  const [values, setValues] = useState({ market: market ?? "", formDRequired, note: note ?? "" });
+  const [values, setValues] = useState({ market: market ?? "", formDRequired });
   const [busy, setBusy] = useState(false);
 
   const run = async (work: () => Promise<{ success: boolean; error?: string }>, done: string, after?: () => void) => {
@@ -66,7 +63,7 @@ export function ShipmentSettings({
         <DialogContent>
           <DialogHeader>
             <DialogTitle>Edit shipment</DialogTitle>
-            <DialogDescription>Market and the note.</DialogDescription>
+            <DialogDescription>Where it is going. Form D follows the market.</DialogDescription>
           </DialogHeader>
           <label className="flex flex-col gap-xs">
             <span className="font-mono text-[length:var(--text-eyebrow)] text-ink-tertiary">Market</span>
@@ -77,14 +74,6 @@ export function ShipmentSettings({
               onChange={(e) =>
                 setValues({ ...values, market: e.target.value, formDRequired: formDDefault(e.target.value) })
               }
-            />
-          </label>
-          <label className="flex flex-col gap-xs">
-            <span className="font-mono text-[length:var(--text-eyebrow)] text-ink-tertiary">Note</span>
-            <Textarea
-              value={values.note}
-              maxLength={2000}
-              onChange={(e) => setValues({ ...values, note: e.target.value })}
             />
           </label>
           <DialogFooter>

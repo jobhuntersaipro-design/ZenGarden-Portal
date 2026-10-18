@@ -10,6 +10,7 @@ import type { PermissionKey } from "@/lib/permissions/actions";
 import { requirePermission } from "@/lib/permissions/require";
 import { prisma } from "@/lib/prisma";
 import { deleteObject } from "@/lib/r2";
+import { SHIPMENT_NOTE } from "@/lib/queries/shipments";
 import { SLOT_LABEL, shipmentReference } from "@/lib/shipments/checklist";
 import { orderIdentity, orderLabel, ORDER_IDENTITY_SELECT } from "@/lib/order-identity";
 
@@ -126,7 +127,6 @@ const updateSchema = z.object({
   id,
   market: text(80),
   formDRequired: z.boolean(),
-  note: text(2000),
 });
 
 export async function updateShipment(input: z.input<typeof updateSchema>): Promise<ActionResult> {
@@ -139,16 +139,15 @@ export async function updateShipment(input: z.input<typeof updateSchema>): Promi
     await prisma.$transaction(async (tx) => {
       const before = await tx.shipment.findUniqueOrThrow({
         where: { id: shipmentId },
-        select: { market: true, formDRequired: true, note: true },
+        select: { market: true, formDRequired: true },
       });
       await tx.shipment.update({
         where: { id: shipmentId },
-        data: { market: data.market ?? null, formDRequired: data.formDRequired, note: data.note ?? null },
+        data: { market: data.market ?? null, formDRequired: data.formDRequired },
       });
       const changed = [
         before.market !== (data.market ?? null) && "market",
         before.formDRequired !== data.formDRequired && (data.formDRequired ? "Form D needed" : "Form D not needed"),
-        before.note !== (data.note ?? null) && "note",
       ].filter(Boolean);
       if (changed.length) await log(tx, shipmentId, user, "SHIPMENT_UPDATED", `edited ${changed.join(", ")}`);
     });
@@ -157,6 +156,27 @@ export async function updateShipment(input: z.input<typeof updateSchema>): Promi
   } catch (cause) {
     console.error("[shipments] update", cause);
     return { success: false, error: "We couldn't save that shipment." };
+  }
+}
+
+const noteSchema = z.object({
+  shipmentId: id,
+  text: z.string().trim().min(1, "Write the note first.").max(2000, "Keep a note under 2,000 characters."),
+});
+
+/** A note on the shipment's own feed (2026-10-18): one row per note, with who and when. */
+export async function addShipmentNote(input: z.input<typeof noteSchema>): Promise<ActionResult> {
+  const { user, error } = await guard("shipment.manage");
+  if (!user) return { success: false, error };
+  const parsed = noteSchema.safeParse(input);
+  if (!parsed.success) return { success: false, error: parsed.error.issues[0]?.message ?? "Write the note first." };
+  try {
+    await log(prisma, parsed.data.shipmentId, user, SHIPMENT_NOTE, parsed.data.text);
+    touch(parsed.data.shipmentId);
+    return { success: true, data: undefined };
+  } catch (cause) {
+    console.error("[shipments] note", cause);
+    return { success: false, error: "We couldn't save that note." };
   }
 }
 

@@ -7,6 +7,7 @@ import { ShipmentProgress, ShipmentStatusBadge } from "@/components/shipments/Ch
 import { ContainersCard } from "@/components/shipments/ContainersCard";
 import { ShipmentBookingCard } from "@/components/shipments/ShipmentBookingCard";
 import { ShipmentDocumentsCard } from "@/components/shipments/ShipmentDocumentsCard";
+import { ShipmentNotesCard } from "@/components/shipments/ShipmentNotesCard";
 import { ShipmentOrdersCard } from "@/components/shipments/ShipmentOrdersCard";
 import { ShipmentSettings } from "@/components/shipments/ShipmentSettings";
 import { formatDateTime } from "@/lib/dates";
@@ -45,7 +46,6 @@ async function ShipmentPage({ params }: { params: Promise<{ id: string }> }) {
               id={shipment.id}
               market={shipment.market}
               formDRequired={shipment.formDRequired}
-              note={shipment.note}
               canDelete={shipment.documents.length === 0 && shipment.bookings.length === 0}
             />
           ) : null
@@ -60,7 +60,6 @@ async function ShipmentPage({ params }: { params: Promise<{ id: string }> }) {
             Buyer
           </Link>
         </p>
-        {shipment.note ? <p className="whitespace-pre-line text-ink">{shipment.note}</p> : null}
       </div>
 
       <section className="mb-lg min-w-0 rounded-lg border border-hairline bg-canvas p-lg">
@@ -100,6 +99,33 @@ async function ShipmentPage({ params }: { params: Promise<{ id: string }> }) {
           />
         </div>
         <div className="flex min-w-0 flex-col gap-lg">
+          <ShipmentNotesCard
+            shipmentId={shipment.id}
+            canManage={canManage}
+            notes={[
+              ...shipment.notes.map((n) => ({
+                id: n.id,
+                text: n.text,
+                at: n.at.toISOString(),
+                author: n.actorName,
+                image: n.actor?.image ?? null,
+                role: n.actor?.role ?? null,
+              })),
+              // The note typed on the create form, the oldest entry.
+              ...(shipment.note
+                ? [
+                    {
+                      id: "created",
+                      text: shipment.note,
+                      at: shipment.createdAt.toISOString(),
+                      author: shipment.createdBy.name,
+                      image: shipment.createdBy.image,
+                      role: shipment.createdBy.role,
+                    },
+                  ]
+                : []),
+            ]}
+          />
           <ShipmentOrdersCard
             shipmentId={shipment.id}
             orders={shipment.orders}

@@ -9,7 +9,7 @@ const tx = {
 };
 
 vi.mock("@/lib/prisma", () => ({
-  prisma: { $transaction: (work: (t: typeof tx) => unknown) => work(tx) },
+  prisma: { $transaction: (work: (t: typeof tx) => unknown) => work(tx), shipmentEvent: tx.shipmentEvent },
 }));
 vi.mock("@/lib/r2", () => ({ deleteObject: vi.fn() }));
 vi.mock("next/cache", () => ({ revalidatePath: vi.fn() }));
@@ -18,7 +18,7 @@ const requirePermission = vi.fn();
 vi.mock("@/lib/auth-guards", () => ({ UnauthorizedError }));
 vi.mock("@/lib/permissions/require", () => ({ requirePermission: (key: string) => requirePermission(key) }));
 
-const { addOrdersToShipment, createShipment, linkBookingToShipment, removeOrderFromShipment } = await import(
+const { addOrdersToShipment, addShipmentNote, createShipment, linkBookingToShipment, removeOrderFromShipment } = await import(
   "@/actions/shipments"
 );
 
@@ -99,5 +99,27 @@ describe("linkBookingToShipment", () => {
     const result = await linkBookingToShipment({ bookingId: "b1", shipmentId: "s1" });
     expect(result).toEqual({ success: true, data: undefined });
     expect(requirePermission).toHaveBeenCalledWith("bc.review");
+  });
+});
+
+describe("addShipmentNote", () => {
+  it("writes one NOTE row with the note, who and the shipment", async () => {
+    const result = await addShipmentNote({ shipmentId: "s1", text: "  Forwarder wants the BL by Friday  " });
+    expect(result).toEqual({ success: true, data: undefined });
+    expect(tx.shipmentEvent.create).toHaveBeenCalledWith({
+      data: { shipmentId: "s1", actorId: "u1", actorName: "Rina", action: "NOTE", text: "Forwarder wants the BL by Friday" },
+    });
+  });
+
+  it("refuses a blank note and writes nothing", async () => {
+    const result = await addShipmentNote({ shipmentId: "s1", text: "   " });
+    expect(result).toEqual({ success: false, error: "Write the note first." });
+    expect(tx.shipmentEvent.create).not.toHaveBeenCalled();
+  });
+
+  it("refuses a member, who holds no shipment.manage", async () => {
+    requirePermission.mockRejectedValue(new UnauthorizedError("You don't have permission to do that."));
+    expect((await addShipmentNote({ shipmentId: "s1", text: "hi" })).success).toBe(false);
+    expect(tx.shipmentEvent.create).not.toHaveBeenCalled();
   });
 });
