@@ -4,7 +4,7 @@ const tx = {
   purchaseOrder: { findMany: vi.fn(), findUnique: vi.fn() },
   shipment: { create: vi.fn(), update: vi.fn(), findUnique: vi.fn() },
   shipmentOrder: { createMany: vi.fn(), count: vi.fn(), deleteMany: vi.fn() },
-  shipmentEvent: { create: vi.fn() },
+  shipmentEvent: { create: vi.fn(), findUnique: vi.fn(), update: vi.fn(), delete: vi.fn() },
   bookingConfirmation: { updateMany: vi.fn() },
 };
 
@@ -18,7 +18,7 @@ const requirePermission = vi.fn();
 vi.mock("@/lib/auth-guards", () => ({ UnauthorizedError }));
 vi.mock("@/lib/permissions/require", () => ({ requirePermission: (key: string) => requirePermission(key) }));
 
-const { addOrdersToShipment, addShipmentNote, createShipment, linkBookingToShipment, removeOrderFromShipment } = await import(
+const { addOrdersToShipment, addShipmentNote, createShipment, deleteShipmentNote, editShipmentNote, linkBookingToShipment, removeOrderFromShipment } = await import(
   "@/actions/shipments"
 );
 
@@ -121,5 +121,41 @@ describe("addShipmentNote", () => {
     requirePermission.mockRejectedValue(new UnauthorizedError("You don't have permission to do that."));
     expect((await addShipmentNote({ shipmentId: "s1", text: "hi" })).success).toBe(false);
     expect(tx.shipmentEvent.create).not.toHaveBeenCalled();
+  });
+});
+
+describe("editing and deleting a note", () => {
+  const note = (actorId: string, action = "NOTE") => ({ shipmentId: "s1", action, actorId });
+
+  it("lets the author edit their note, stamping editedAt and logging it", async () => {
+    tx.shipmentEvent.findUnique.mockResolvedValue(note("u1"));
+    const result = await editShipmentNote({ id: "n1", text: "  BL due Monday  " });
+    expect(result).toEqual({ success: true, data: undefined });
+    expect(tx.shipmentEvent.update).toHaveBeenCalledWith({
+      where: { id: "n1" },
+      data: { text: "BL due Monday", editedAt: expect.any(Date) },
+    });
+    expect(tx.shipmentEvent.create.mock.calls[0][0].data).toMatchObject({ action: "NOTE_EDITED", text: "edited a note" });
+  });
+
+  it("refuses someone else's note, unless they are a super admin", async () => {
+    tx.shipmentEvent.findUnique.mockResolvedValue(note("u2"));
+    expect(await deleteShipmentNote({ id: "n1" })).toEqual({
+      success: false,
+      error: "Only the person who wrote a note can change it.",
+    });
+    expect(tx.shipmentEvent.delete).not.toHaveBeenCalled();
+
+    requirePermission.mockResolvedValue({ id: "u9", name: "Aisha", role: "SUPER_ADMIN" });
+    expect((await deleteShipmentNote({ id: "n1" })).success).toBe(true);
+    expect(tx.shipmentEvent.delete).toHaveBeenCalledWith({ where: { id: "n1" } });
+  });
+
+  it("never touches an activity row through the note actions", async () => {
+    tx.shipmentEvent.findUnique.mockResolvedValue(note("u1", "SHIPMENT_CREATED"));
+    expect((await editShipmentNote({ id: "n1", text: "x" })).success).toBe(false);
+    expect((await deleteShipmentNote({ id: "n1" })).success).toBe(false);
+    expect(tx.shipmentEvent.update).not.toHaveBeenCalled();
+    expect(tx.shipmentEvent.delete).not.toHaveBeenCalled();
   });
 });

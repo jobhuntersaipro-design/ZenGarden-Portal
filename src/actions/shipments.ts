@@ -95,7 +95,6 @@ export async function createShipment(input: z.input<typeof createSchema>): Promi
           buyerId: data.buyerId,
           market: data.market ?? null,
           formDRequired: data.formDRequired,
-          note: data.note ?? null,
           createdById: user.id,
           orders: { create: data.purchaseOrderIds.map((purchaseOrderId) => ({ purchaseOrderId })) },
         },
@@ -104,6 +103,7 @@ export async function createShipment(input: z.input<typeof createSchema>): Promi
       const reference = shipmentReference(row.seq, row.createdAt);
       await tx.shipment.update({ where: { id: row.id }, data: { reference } });
       await log(tx, row.id, user, "SHIPMENT_CREATED", `created ${reference} with ${labels.join(", ")}`);
+      if (data.note) await log(tx, row.id, user, SHIPMENT_NOTE, data.note);
       if (data.bookingId) {
         const linked = await tx.bookingConfirmation.updateMany({
           where: { id: data.bookingId },
@@ -177,6 +177,58 @@ export async function addShipmentNote(input: z.input<typeof noteSchema>): Promis
   } catch (cause) {
     console.error("[shipments] note", cause);
     return { success: false, error: "We couldn't save that note." };
+  }
+}
+
+/** A note's author may change it; so may a super admin. */
+async function ownNote(noteId: string, user: SessionUser) {
+  const note = await prisma.shipmentEvent.findUnique({
+    where: { id: noteId },
+    select: { shipmentId: true, action: true, actorId: true },
+  });
+  if (!note || note.action !== SHIPMENT_NOTE) return { note: null, error: "That note is gone." };
+  if (note.actorId !== user.id && user.role !== "SUPER_ADMIN")
+    return { note: null, error: "Only the person who wrote a note can change it." };
+  return { note, error: null };
+}
+
+export async function editShipmentNote(input: { id: string; text: string }): Promise<ActionResult> {
+  const { user, error } = await guard("shipment.manage");
+  if (!user) return { success: false, error };
+  const parsed = noteSchema.pick({ text: true }).extend({ id }).safeParse(input);
+  if (!parsed.success) return { success: false, error: parsed.error.issues[0]?.message ?? "Write the note first." };
+  try {
+    const { note, error: refused } = await ownNote(parsed.data.id, user);
+    if (!note) return { success: false, error: refused };
+    await prisma.$transaction(async (tx) => {
+      await tx.shipmentEvent.update({ where: { id: parsed.data.id }, data: { text: parsed.data.text, editedAt: new Date() } });
+      await log(tx, note.shipmentId, user, "NOTE_EDITED", "edited a note");
+    });
+    touch(note.shipmentId);
+    return { success: true, data: undefined };
+  } catch (cause) {
+    console.error("[shipments] edit note", cause);
+    return { success: false, error: "We couldn't save that note." };
+  }
+}
+
+export async function deleteShipmentNote(input: { id: string }): Promise<ActionResult> {
+  const { user, error } = await guard("shipment.manage");
+  if (!user) return { success: false, error };
+  const parsed = z.object({ id }).safeParse(input);
+  if (!parsed.success) return { success: false, error: "That note is gone." };
+  try {
+    const { note, error: refused } = await ownNote(parsed.data.id, user);
+    if (!note) return { success: false, error: refused };
+    await prisma.$transaction(async (tx) => {
+      await tx.shipmentEvent.delete({ where: { id: parsed.data.id } });
+      await log(tx, note.shipmentId, user, "NOTE_DELETED", "deleted a note");
+    });
+    touch(note.shipmentId);
+    return { success: true, data: undefined };
+  } catch (cause) {
+    console.error("[shipments] delete note", cause);
+    return { success: false, error: "We couldn't delete that note." };
   }
 }
 

@@ -128,6 +128,22 @@ added, the box cleared, "Note added", count 1 → 2; the Edit dialog reads
 Market only; no overflow, Add note 44px at 390. 1920 tests (3 new), `tsc`,
 lint unchanged, build. Not built: editing or deleting a note.
 
+**2026-10-18: notes can be edited and deleted.** Asked for as "allow edit
+and delete notes". A note's author, or a super admin, gets **Edit** (inline,
+Save/Cancel) and **Delete** (a dialog with Cancel); everyone else reads only.
+An edited note reads "· edited" (`ShipmentEvent.editedAt`), and each edit or
+delete writes a line to Activity ("edited a note", "deleted a note"). The
+note actions refuse any row that is not a `NOTE`, so Activity cannot be
+rewritten through them. Migration `20261018090000_shipment_note_edits` adds
+`editedAt` and moves every create-form `Shipment.note` into a NOTE row (author
+= creator, time = created), emptying the column; `createShipment` now writes
+the create-form note as a NOTE row. Driven at 1440 and 390 on SHP-2610-0002:
+the backfilled "test" note edited and showing "· edited", a new note deleted
+after a cancelled first try, both lines in Activity, the state held after a
+reload; as the planner, no Edit/Delete on Aisha's note, but Edit/Delete on
+their own; no overflow at 390, Edit/Delete 44px. 1923 tests (3 new), `tsc`,
+lint unchanged, build.
+
 ## Not verified
 
 Production behind sign-in (no staff login here; nothing written there).

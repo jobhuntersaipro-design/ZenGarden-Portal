@@ -25,7 +25,7 @@ export async function generateMetadata({ params }: { params: Promise<{ id: strin
 const iso = (d: Date | null) => d?.toISOString() ?? null;
 
 async function ShipmentPage({ params }: { params: Promise<{ id: string }> }) {
-  await requirePagePermission("shipment.view");
+  const viewer = await requirePagePermission("shipment.view");
   const shipment = await loadShipment((await params).id);
   if (!shipment) notFound();
   const [canManage, canUpload] = await Promise.all([can("shipment.manage"), can("bc.upload")]);
@@ -102,29 +102,16 @@ async function ShipmentPage({ params }: { params: Promise<{ id: string }> }) {
           <ShipmentNotesCard
             shipmentId={shipment.id}
             canManage={canManage}
-            notes={[
-              ...shipment.notes.map((n) => ({
-                id: n.id,
-                text: n.text,
-                at: n.at.toISOString(),
-                author: n.actorName,
-                image: n.actor?.image ?? null,
-                role: n.actor?.role ?? null,
-              })),
-              // The note typed on the create form, the oldest entry.
-              ...(shipment.note
-                ? [
-                    {
-                      id: "created",
-                      text: shipment.note,
-                      at: shipment.createdAt.toISOString(),
-                      author: shipment.createdBy.name,
-                      image: shipment.createdBy.image,
-                      role: shipment.createdBy.role,
-                    },
-                  ]
-                : []),
-            ]}
+            notes={shipment.notes.map((n) => ({
+              id: n.id,
+              text: n.text,
+              at: n.at.toISOString(),
+              editedAt: iso(n.editedAt),
+              author: n.actorName,
+              image: n.actor?.image ?? null,
+              role: n.actor?.role ?? null,
+              canChange: canManage && (n.actorId === viewer.id || viewer.role === "SUPER_ADMIN"),
+            }))}
           />
           <ShipmentOrdersCard
             shipmentId={shipment.id}

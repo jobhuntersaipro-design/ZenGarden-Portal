@@ -487,6 +487,8 @@ model ShipmentEvent {
   action     String
   text       String
   at         DateTime @default(now())
+  /// Set when a NOTE is edited.
+  editedAt   DateTime?
 
   @@index([shipmentId, at])
 }

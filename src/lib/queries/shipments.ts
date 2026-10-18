@@ -197,7 +197,7 @@ export async function loadShipment(id: string) {
     where: { id },
     include: {
       buyer: { select: { id: true, name: true } },
-      createdBy: { select: { name: true, image: true, role: true } },
+      createdBy: { select: { name: true } },
       orders: {
         orderBy: { addedAt: "asc" },
         select: {
@@ -253,7 +253,7 @@ export async function loadShipment(id: string) {
   const notes = await prisma.shipmentEvent.findMany({
     where: { shipmentId: id, action: SHIPMENT_NOTE },
     orderBy: { at: "desc" },
-    select: { id: true, text: true, at: true, actorName: true, actor: { select: { image: true, role: true } } },
+    select: { id: true, text: true, at: true, editedAt: true, actorId: true, actorName: true, actor: { select: { image: true, role: true } } },
   });
   const orders = s.orders.map(({ purchaseOrder: po }) => ({
     id: po.id,
