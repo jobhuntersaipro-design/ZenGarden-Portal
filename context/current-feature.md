@@ -171,6 +171,17 @@ with a 2.4 MB WebM at a throttled 250 KB/s, at 1440 and 390: the bar counted
 0 → 100 in ~50 steps, read 34% mid-way, switched to Saving, then the toast "1
 file added" and no bar left; no overflow at 390. `tsc`, lint unchanged.
 
+**2026-10-18: activity feeds page ten at a time.** Asked for as "add
+pagination to activity, applies to all activity tables". `PagedList`
+(`src/components/portal/PagedList.tsx`) is the purchase order feed's own
+browser-side pager pulled out: ten rows, "1–10 of N", Previous / Next, page
+clamped to the last one. Now on the shipment's Activity (query cap 50 → 500),
+the /stock feed (20 → 200 loaded), each product's stock activity, and the PO
+feed, which reuses it instead of its own copy. The admin buyer timeline already
+paged on the server; the buyer's Order activity is a heatmap, not a list.
+Driven at 1440 and 390: SHP-2610-0001 1–10 of 16 → 11–16; /stock 1–10 of 13 →
+11–13; Previous/Next 44px at 390; no overflow. Test stock rows removed.
+
 ## Not verified
 
 Production behind sign-in (no staff login here; nothing written there).

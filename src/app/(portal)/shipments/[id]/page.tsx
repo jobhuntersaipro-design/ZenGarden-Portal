@@ -3,6 +3,7 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { BackLink } from "@/components/portal/BackLink";
 import { PageHeader } from "@/components/portal/PageHeader";
+import { PagedList } from "@/components/portal/PagedList";
 import { ShipmentProgress, ShipmentStatusBadge } from "@/components/shipments/ChecklistDots";
 import { ContainersCard } from "@/components/shipments/ContainersCard";
 import { ShipmentBookingCard } from "@/components/shipments/ShipmentBookingCard";
@@ -130,19 +131,20 @@ async function ShipmentPage({ params }: { params: Promise<{ id: string }> }) {
       </div>
       <section className="mt-lg min-w-0 rounded-lg border border-hairline bg-canvas p-lg">
         <h2 className="mb-sm font-mono text-[length:var(--text-eyebrow)] text-ink-tertiary">Activity</h2>
-        <ul className="flex flex-col gap-xs">
-          {shipment.events.map((e) => (
-            <li key={e.id} className="text-[length:var(--text-body-sm)] text-ink">
-              {e.actorName} {e.text}
-              <span className="block text-[length:var(--text-caption)] text-ink-tertiary">
-                {formatDateTime(e.at)}
-              </span>
-            </li>
-          ))}
-          {shipment.events.length === 0 ? (
-            <li className="text-[length:var(--text-body-sm)] text-ink-secondary">Nothing yet.</li>
-          ) : null}
-        </ul>
+        {shipment.events.length ? (
+          <PagedList className="flex flex-col gap-xs">
+            {shipment.events.map((e) => (
+              <li key={e.id} className="text-[length:var(--text-body-sm)] text-ink">
+                {e.actorName} {e.text}
+                <span className="block text-[length:var(--text-caption)] text-ink-tertiary">
+                  {formatDateTime(e.at)}
+                </span>
+              </li>
+            ))}
+          </PagedList>
+        ) : (
+          <p className="text-[length:var(--text-body-sm)] text-ink-secondary">Nothing yet.</p>
+        )}
       </section>
     </>
   );

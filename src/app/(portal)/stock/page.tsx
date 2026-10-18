@@ -68,7 +68,7 @@ async function StockPage({
   // panel is never rendered mid-fetch with an empty trend under a real name.
   const [rows, feed, counts] = await Promise.all([
     loadStockSheet(q),
-    loadStockFeed(20),
+    loadStockFeed(200),
     openId ? loadProductStock(openId) : Promise.resolve([]),
   ]);
 

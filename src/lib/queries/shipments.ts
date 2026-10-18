@@ -228,7 +228,8 @@ export async function loadShipment(id: string) {
         },
       },
       // Notes are read on their own below, so a busy feed never pushes one off.
-      events: { where: { action: { not: SHIPMENT_NOTE } }, orderBy: { at: "desc" }, take: 50 },
+      // ponytail: newest 500, paged in the browser; page the query if a shipment outgrows it.
+      events: { where: { action: { not: SHIPMENT_NOTE } }, orderBy: { at: "desc" }, take: 500 },
       containers: {
         orderBy: { createdAt: "asc" },
         select: {

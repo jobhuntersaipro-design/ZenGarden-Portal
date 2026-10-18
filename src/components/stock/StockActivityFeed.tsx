@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { PagedList } from "@/components/portal/PagedList";
 import { PersonChip } from "@/components/ui/person";
 import { formatDate, formatDateTime } from "@/lib/dates";
 import { describeStockCount, stockActivity, type StockCountRow } from "@/lib/stock";
@@ -31,7 +32,7 @@ export function StockActivityFeed({
   }
 
   return (
-    <ul className="flex flex-col divide-y divide-hairline">
+    <PagedList className="flex flex-col divide-y divide-hairline">
       {entries.map((entry) => {
         const source = named.get(entry.id);
         return (
@@ -74,6 +75,6 @@ export function StockActivityFeed({
           </li>
         );
       })}
-    </ul>
+    </PagedList>
   );
 }
