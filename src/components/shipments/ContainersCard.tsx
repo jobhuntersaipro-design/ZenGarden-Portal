@@ -3,6 +3,7 @@
 import { useRef, useState } from "react";
 import { Upload } from "lucide-react";
 import { createContainer, deleteContainer, deleteContainerMedia, setContainerMediaNote, updateContainer } from "@/actions/containers";
+import { Progress } from "@/components/arc/progress/progress";
 import { ContainerGallery, type GalleryItem } from "@/components/shipments/ContainerGallery";
 import { Button } from "@/components/ui/button";
 import {
@@ -130,7 +131,7 @@ function ContainerBlock({
     values.size !== (c.size ?? "") ||
     values.description !== (c.description ?? "");
   const [saving, setSaving] = useState(false);
-  const [progress, setProgress] = useState<string | null>(null);
+  const [progress, setProgress] = useState<{ label: string; pct: number } | null>(null);
   const [errors, setErrors] = useState<string[]>([]);
   const [dragging, setDragging] = useState(false);
   const [confirm, setConfirm] = useState<{ kind: "media"; item: GalleryItem } | { kind: "container" } | null>(null);
@@ -152,7 +153,8 @@ function ContainerBlock({
         problems.push(`${file.name} isn't the kind of file its name says.`);
         continue;
       }
-      const label = (pct: number) => setProgress(`Uploading ${index + 1} of ${files.length} · ${file.name} · ${pct}%`);
+      const of = files.length > 1 ? `${index + 1} of ${files.length} · ` : "";
+      const label = (pct: number) => setProgress({ label: `Uploading ${of}${file.name}`, pct });
       label(0);
       try {
         const presign = await fetch(`${base}/presign`, {
@@ -169,6 +171,8 @@ function ContainerBlock({
           problems.push(`${file.name}: the upload was interrupted.`);
           continue;
         }
+        // The bytes are in; the server still checks them and draws a photo's thumbnail.
+        setProgress({ label: `Saving ${of}${file.name}`, pct: 100 });
         const done = await fetch(`${base}/complete`, {
           method: "POST",
           headers: { "Content-Type": "application/json" },
@@ -303,9 +307,7 @@ function ContainerBlock({
         {edited}
       </p>
       {progress ? (
-        <p role="status" className="truncate text-[length:var(--text-body-sm)] text-ink-secondary">
-          {progress}
-        </p>
+        <Progress value={progress.pct} label={progress.label} showValue className="min-w-0 break-words" />
       ) : null}
       {errors.map((error) => (
         <p key={error} role="alert" className="text-[length:var(--text-body-sm)] text-accent-red">

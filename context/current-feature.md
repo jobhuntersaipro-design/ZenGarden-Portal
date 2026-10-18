@@ -161,6 +161,16 @@ driving: the fallback text ran under the delete button, so it now sits at the
 bottom of the tile on one line. 1926 tests (3 new), `tsc`, lint unchanged,
 build.
 
+**2026-10-18: a real upload bar on containers.** Asked for as "show a
+proper upload progress bar using UIARC when uploading files in containers",
+against the one-line "Uploading 1 of 1 · … · 100%" text. Arc's `Progress`
+(the PO upload queue's) now reads "Uploading [2 of 3 ·] file name" with the
+percentage counted beside a filling bar, then "Saving file name" at 100% while
+the server checks the file and draws a thumbnail, and leaves when done. Driven
+with a 2.4 MB WebM at a throttled 250 KB/s, at 1440 and 390: the bar counted
+0 → 100 in ~50 steps, read 34% mid-way, switched to Saving, then the toast "1
+file added" and no bar left; no overflow at 390. `tsc`, lint unchanged.
+
 ## Not verified
 
 Production behind sign-in (no staff login here; nothing written there).
