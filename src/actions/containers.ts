@@ -127,3 +127,33 @@ export async function deleteContainerMedia(input: { id: string }): Promise<Actio
     return { success: false, error: "We couldn't delete that file." };
   }
 }
+
+/** A staff note on one photo or video; blank clears it. Buyers never see it. */
+export async function setContainerMediaNote(input: { id: string; note: string }): Promise<ActionResult> {
+  const { user, error } = await guard();
+  if (!user) return { success: false, error };
+  const parsed = z
+    .object({ id, note: z.string().trim().max(2000, "Keep a note under 2,000 characters.") })
+    .safeParse(input);
+  if (!parsed.success) return { success: false, error: parsed.error.issues[0]?.message ?? "That file is gone." };
+  try {
+    const media = await prisma.containerMedia.findUnique({
+      where: { id: parsed.data.id },
+      select: { originalName: true, container: { select: { shipmentId: true } } },
+    });
+    if (!media) return { success: false, error: "That file is gone." };
+    const note = parsed.data.note || null;
+    await prisma.containerMedia.update({ where: { id: parsed.data.id }, data: { note } });
+    await event(
+      media.container.shipmentId,
+      user,
+      "CONTAINER_MEDIA_NOTE",
+      note ? `noted ${media.originalName}: ${note}` : `removed the note on ${media.originalName}`,
+    );
+    await touch(media.container.shipmentId);
+    return { success: true, data: undefined };
+  } catch (cause) {
+    console.error("[containers] media note", cause);
+    return { success: false, error: "We couldn't save that note." };
+  }
+}

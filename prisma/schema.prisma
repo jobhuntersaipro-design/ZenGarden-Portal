@@ -950,6 +950,8 @@ model ContainerMedia {
   uploadedBy     User               @relation("containerMediaUploaded", fields: [uploadedById], references: [id])
   uploadedByName String
   uploadedAt     DateTime           @default(now())
+  /// Staff only: never in the buyer's select.
+  note           String?
 
   @@index([containerId, uploadedAt])
 }

@@ -144,6 +144,23 @@ reload; as the planner, no Edit/Delete on Aisha's note, but Edit/Delete on
 their own; no overflow at 390, Edit/Delete 44px. 1923 tests (3 new), `tsc`,
 lint unchanged, build.
 
+**2026-10-18: videos play in place; notes on photos and videos.** Asked
+for as "when click the video, just play the video there" and "allow user to
+add notes to the video and photos too". A video tile turns into the player
+(autoplay, native controls); a photo still opens the panel. A video the
+browser cannot play (a `.MOV` in Chrome) reads "Can't play here." with
+Download, in the tile. Each photo or video takes one **staff-only** note
+(`ContainerMedia.note`, migration `20261018100000_container_media_note`):
+Add note / Edit note under the tile (`shipment.manage`), blank clears it, and
+each change is a line in the shipment's Activity. The buyer's select is
+pinned without it, so buyers never see a note. Driven at 1440 and 390 on
+SHP-2610-0001 against moto: the WebM played inline (currentTime 2.34, no panel
+opened), the MOV showed the fallback, a note saved, held after a reload and
+appeared in Activity; no overflow at 390, every control 44px. Found while
+driving: the fallback text ran under the delete button, so it now sits at the
+bottom of the tile on one line. 1926 tests (3 new), `tsc`, lint unchanged,
+build.
+
 ## Not verified
 
 Production behind sign-in (no staff login here; nothing written there).

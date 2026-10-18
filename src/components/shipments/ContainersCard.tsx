@@ -2,7 +2,7 @@
 
 import { useRef, useState } from "react";
 import { Upload } from "lucide-react";
-import { createContainer, deleteContainer, deleteContainerMedia, updateContainer } from "@/actions/containers";
+import { createContainer, deleteContainer, deleteContainerMedia, setContainerMediaNote, updateContainer } from "@/actions/containers";
 import { ContainerGallery, type GalleryItem } from "@/components/shipments/ContainerGallery";
 import { Button } from "@/components/ui/button";
 import {
@@ -37,7 +37,7 @@ export type StaffContainer = {
   createdBy: string;
   updatedAt: string;
   updatedBy: string | null;
-  media: { id: string; kind: ContainerMediaKind; originalName: string; uploadedByName: string; uploadedAt: string }[];
+  media: { id: string; kind: ContainerMediaKind; originalName: string; uploadedByName: string; uploadedAt: string; note: string | null }[];
 };
 
 const LABEL = "font-mono text-[length:var(--text-eyebrow)] text-ink-tertiary";
@@ -321,8 +321,28 @@ function ContainerBlock({
             originalName: m.originalName,
             by: m.uploadedByName,
             date: formatDate(m.uploadedAt),
+            note: m.note,
           }))}
           onDelete={canManage ? (item) => setConfirm({ kind: "media", item }) : undefined}
+          onNote={
+            canManage
+              ? async (item, note) => {
+                  try {
+                    const result = await setContainerMediaNote({ id: item.id, note });
+                    if (!result.success) {
+                      toast.error(result.error);
+                      return false;
+                    }
+                    await onSaved();
+                    toast.success(note.trim() ? "Note saved" : "Note removed");
+                    return true;
+                  } catch {
+                    toast.error("We couldn't reach the server. Try again.");
+                    return false;
+                  }
+                }
+              : undefined
+          }
         />
       ) : (
         <p className="text-[length:var(--text-body-sm)] text-ink-secondary">

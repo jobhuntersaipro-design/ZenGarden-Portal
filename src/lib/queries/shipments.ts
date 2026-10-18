@@ -243,7 +243,7 @@ export async function loadShipment(id: string) {
           updatedBy: { select: { name: true } },
           media: {
             orderBy: { uploadedAt: "asc" },
-            select: { id: true, kind: true, originalName: true, uploadedByName: true, uploadedAt: true },
+            select: { id: true, kind: true, originalName: true, uploadedByName: true, uploadedAt: true, note: true },
           },
         },
       },
