@@ -35,7 +35,7 @@ import {
   isLow,
 } from "@/components/review/ExtractField";
 import { AlertTriangle, CheckCircle2 } from "lucide-react";
-import { SourceHighlightProvider } from "@/components/review/source-highlight";
+import { SourceConnector, SourceHighlightProvider } from "@/components/review/source-highlight";
 import type { Source } from "@/lib/extraction/source-match";
 import { Input } from "@/components/ui/input";
 import { DateInput } from "@/components/ui/date-input";
@@ -329,7 +329,8 @@ export function ReviewForm({
           that sums up how sure the read was. `min-w-0` down the chain keeps
           the 952px line-items table scrolling inside its own container rather
           than pushing the page sideways on a phone. */}
-      <div className="min-w-0 overflow-hidden rounded-xl border border-hairline bg-canvas">
+      <div className="relative min-w-0 overflow-hidden rounded-xl border border-hairline bg-canvas">
+        <SourceConnector />
         <div className="min-w-0 p-sm sm:p-md">
           <ReviewSplit document={document} documentSize={52}>
             <div className="@container flex min-w-0 flex-col gap-lg">

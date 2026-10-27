@@ -215,7 +215,15 @@ marks nothing, and the same figure printed twice is marked twice. Driven on a
 generated copy of the PO: Buyer, PO number "PO-LHM-AND-018-26", date
 "02-Oct-26", "MYR", "30 days", subtotal and total "70,680.00" (both
 places), line 2's description, code and "16,740.00"; nothing after the
-pointer left; focus on Currency marked "MYR". Driven at 1440 and 390 on a local rig with a generated copy of the
+pointer left; focus on Currency marked "MYR". **Then the connector line**
+(same day, asked for): `SourceConnector`, an SVG overlay on the card, draws
+a curve with a dot at each end from the first visible mark to the hovered
+row, re-measured every frame while a row is pointed at, so it follows a
+scroll or a zoom of the PDF. It is drawn only when the mark is visible in its
+pane and to the left of the row; stacked on a phone, the marks show and no
+line is drawn. A value printed twice joins the first. Driven: PO number,
+date, currency and total each drew a path, none at rest or after leaving;
+none at 390 with "MYR" marked. Driven at 1440 and 390 on a local rig with a generated copy of the
 AKSES NUSANTARA PO: Review focused Payment terms, Looks right cleared the
 count to 0, four lines decided and Confirm wrote PO-LHM-AND-018-26 (4 lines,
 70,680.00); no overflow at either width. 1927 tests, `tsc`, lint on the
