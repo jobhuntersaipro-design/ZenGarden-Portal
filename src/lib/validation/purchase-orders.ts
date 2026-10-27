@@ -100,6 +100,12 @@ const draftObject = z.object({
     tax: decimalString("Tax"),
     /** As printed on the document. Never recomputed — the gate compares to it. */
     total: decimalString("Total"),
+    /**
+     * Low-confidence fields the reviewer has vouched for on the review screen
+     * (2026-10-27), by "Looks right" or by editing them. Kept in the draft so a
+     * reload keeps them; nothing reads it at confirm.
+     */
+    checkedFields: z.array(z.string()).optional(),
   });
 
 export const PoDraftSchema = draftObject.refine(

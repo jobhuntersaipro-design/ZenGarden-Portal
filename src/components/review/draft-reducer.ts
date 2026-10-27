@@ -9,6 +9,7 @@ export type DraftAction =
   | { type: "field"; field: keyof PoDraft; value: string | null }
   | { type: "buyer"; buyerId: string | null; newBuyerName: string | null }
   | { type: "line"; index: number; field: keyof DraftLineItem; value: string | null }
+  | { type: "check"; key: string }
   | { type: "addLine" }
   | { type: "removeLine"; index: number }
   | {
@@ -33,6 +34,11 @@ export function draftReducer(state: PoDraft, action: DraftAction): PoDraft {
   switch (action.type) {
     case "field":
       return { ...state, [action.field]: action.value } as PoDraft;
+
+    case "check":
+      return state.checkedFields?.includes(action.key)
+        ? state
+        : { ...state, checkedFields: [...(state.checkedFields ?? []), action.key] };
 
     case "buyer":
       return {

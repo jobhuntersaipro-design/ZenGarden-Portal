@@ -27,6 +27,12 @@ const base: PoDraft = {
 };
 
 describe("draftReducer", () => {
+  it("records a checked field once, so a reload can bring it back", () => {
+    const once = draftReducer(base, { type: "check", key: "paymentTerms" });
+    expect(once.checkedFields).toEqual(["paymentTerms"]);
+    expect(draftReducer(once, { type: "check", key: "paymentTerms" })).toBe(once);
+  });
+
   it("recomputes the amount when quantity changes", () => {
     const next = draftReducer(base, {
       type: "line",

@@ -224,12 +224,11 @@ export function ReviewForm({
 
   /**
    * Low-confidence fields the reviewer has vouched for, by "Looks right" or by
-   * editing them. Kept on this screen only: it clears the prompt, it records
-   * nothing, and Confirm never waited on it.
+   * editing them. Saved with the draft, so a reload keeps them; Confirm never
+   * waits on them.
    */
-  const [checked, setChecked] = useState<ReadonlySet<string>>(new Set());
-  const check = (key: string) =>
-    setChecked((current) => (current.has(key) ? current : new Set(current).add(key)));
+  const checked = useMemo(() => new Set(draft.checkedFields ?? []), [draft.checkedFields]);
+  const check = (key: string) => dispatch({ type: "check", key });
   const edit = (
     field: "poNumber" | "poDate" | "currency" | "paymentTerms" | "subtotal" | "total",
     value: string | null,

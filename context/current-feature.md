@@ -198,8 +198,11 @@ need a check" with **Review** (focuses the first) or "Every field read
 clearly"; a failed read puts its reason and Try again there. **Line items**
 run full width under both, then a footer: confidence bars, "N% average",
 "N to check", Saved, Discard, Confirm & save, with the lock reason under it.
-"Looks right" is screen state only: it records nothing, a reload brings the
-flag back, and Confirm never waited on it. Not built from the block: the
+"Looks right" (and editing a flagged field) is saved with the draft as
+`checkedFields`, so a reload keeps it (same day, asked for); nothing reads it
+at confirm, and Confirm never waited on it. Driven: 2 to check, Looks right
+on Payment terms, 1 to check, reload, still 1, the row holding
+`["paymentTerms"]`. Not built from the block: the
 hover-to-source highlight (extraction keeps no positions) and the streaming
 fill-in. Driven at 1440 and 390 on a local rig with a generated copy of the
 AKSES NUSANTARA PO: Review focused Payment terms, Looks right cleared the
