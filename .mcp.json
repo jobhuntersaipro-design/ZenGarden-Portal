@@ -27,7 +27,7 @@
       "type": "http",
       "url": "https://uiarc.dev/api/mcp",
       "headers": {
-        "Authorization": "Bearer ${ARC_API_KEY}"
+        "Authorization": "Bearer ${ARC_PRO_TOKEN}"
       }
     }
   }
