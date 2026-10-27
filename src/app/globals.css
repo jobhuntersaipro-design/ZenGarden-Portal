@@ -243,6 +243,8 @@
      column is ~720px, which would leave the document narrower than the rail,
      so below `xl` the two stack with the document first. */
   --grid-template-columns-document: minmax(0, 1fr) 22rem;
+  /* A review field row (2026-10-27): label, value, confidence. */
+  --grid-template-columns-extract-row: 7.5rem minmax(0, 1fr) 3.5rem;
   --spacing-po-totals: 300px;
   /* The cart row's product thumbnail (Phase 17 §5.5) — 88px via ProductThumb,
      shared by CartLines, GuestCart's loading rows and the cart loading.tsx

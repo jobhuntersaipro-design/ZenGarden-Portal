@@ -25,9 +25,12 @@ const subscribe = (notify: () => void) => {
  */
 export function ReviewSplit({
   document,
+  documentSize = 62,
   children,
 }: {
   document: ReactNode;
+  /** The document's share of the width, in percent, from `xl`. */
+  documentSize?: number;
   children: ReactNode;
 }) {
   const wide = useSyncExternalStore(
@@ -47,10 +50,10 @@ export function ReviewSplit({
 
   return (
     <ResizablePanels label="Document and fields">
-      <ResizablePanel id="review-document" label="Document" defaultSize={62} minSize={360} collapsible>
+      <ResizablePanel id="review-document" label="Document" defaultSize={documentSize} minSize={360} collapsible>
         <div className="pr-lg">{document}</div>
       </ResizablePanel>
-      <ResizablePanel id="review-fields" label="Fields" defaultSize={38} minSize={320}>
+      <ResizablePanel id="review-fields" label="Fields" defaultSize={100 - documentSize} minSize={320}>
         <div className="pl-lg">{children}</div>
       </ResizablePanel>
     </ResizablePanels>

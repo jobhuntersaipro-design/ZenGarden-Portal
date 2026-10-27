@@ -30,6 +30,7 @@ export function DocumentPreview({
   urlEndpoint,
   download,
   file,
+  flush = false,
 }: {
   documentId: string;
   originalName: string;
@@ -45,7 +46,10 @@ export function DocumentPreview({
    * browser blob (2026-10-14) — so nothing is fetched.
    */
   file?: DocumentUrlResponse;
+  /** Drops the preview's own border, for a pane that is already a card (the review screen). */
+  flush?: boolean;
 }) {
+  const frame = flush ? "bg-surface" : "rounded-lg border border-hairline bg-surface";
   const [fetched, setSource] = useState<DocumentUrlResponse | null>(null);
   const source = file ?? fetched;
   const [error, setError] = useState<string | null>(null);
@@ -115,7 +119,7 @@ export function DocumentPreview({
       // see the file was a Download button in the page header, which is not
       // where anyone looks after reading an error (brief §4). Both recoveries
       // now sit with the thing that failed.
-      <div className="flex flex-col items-start gap-sm rounded-lg border border-hairline bg-surface p-lg">
+      <div className={`flex flex-col items-start gap-sm ${frame} p-lg`}>
         <p className="text-[length:var(--text-body-sm)] text-ink-secondary">
           {error}
           {download ? "" : " The extracted data is still shown beside it."}
@@ -152,7 +156,7 @@ export function DocumentPreview({
 
   if (source.mimeType !== "application/pdf") {
     return (
-      <div className="min-w-0 rounded-lg border border-hairline bg-surface p-sm">
+      <div className={`min-w-0 ${frame} p-sm`}>
         <div className="mb-sm flex justify-end">
           <ZoomControls scale={scale} onChange={setZoom} />
         </div>
@@ -179,7 +183,7 @@ export function DocumentPreview({
   }
 
   return (
-    <div className="min-w-0 rounded-lg border border-hairline bg-surface p-sm">
+    <div className={`min-w-0 ${frame} p-sm`}>
       <div className="mb-sm flex justify-end">
         <ZoomControls scale={scale} onChange={setZoom} />
       </div>

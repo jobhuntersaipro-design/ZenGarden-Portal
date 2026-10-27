@@ -168,6 +168,7 @@ async function ReviewPage({
         <ReviewForm
           document={
             <DocumentPreview
+              flush
               documentId={extraction.document.id}
               originalName={extraction.document.originalName}
             />

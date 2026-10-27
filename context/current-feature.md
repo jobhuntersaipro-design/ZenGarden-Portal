@@ -182,6 +182,31 @@ paged on the server; the buyer's Order activity is a heatmap, not a list.
 Driven at 1440 and 390: SHP-2610-0001 1–10 of 16 → 11–16; /stock 1–10 of 13 →
 11–13; Previous/Next 44px at 390; no overflow. Test stock rows removed.
 
+**2026-10-27: the review screen in the document-extract layout.** Asked
+for as "revamp to uiarc.dev/components/blocks/document-extract, just the
+fields, no JSON and Schema", and without the model, cost and time line.
+Built with our own parts, **no Pro source**: the block draws its own HTML
+copy of a sample document and read-only string fields, while `/review/[id]`
+needs the real PDF, the buyer and product pickers, line items and the totals
+gate, so nothing of it could be dropped in, and this repository is public.
+One white card: the document (`DocumentPreview flush`) beside the fields
+(52/48 from `xl`), grouped under dotted headings **Order** and **Totals**,
+label · value · confidence % per row (`ExtractField.tsx`, grid token
+`extract-row`); under LOW_CONFIDENCE a row takes an amber ring, "Check this
+against the document" and **Looks right**. A strip on top reads "N fields
+need a check" with **Review** (focuses the first) or "Every field read
+clearly"; a failed read puts its reason and Try again there. **Line items**
+run full width under both, then a footer: confidence bars, "N% average",
+"N to check", Saved, Discard, Confirm & save, with the lock reason under it.
+"Looks right" is screen state only: it records nothing, a reload brings the
+flag back, and Confirm never waited on it. Not built from the block: the
+hover-to-source highlight (extraction keeps no positions) and the streaming
+fill-in. Driven at 1440 and 390 on a local rig with a generated copy of the
+AKSES NUSANTARA PO: Review focused Payment terms, Looks right cleared the
+count to 0, four lines decided and Confirm wrote PO-LHM-AND-018-26 (4 lines,
+70,680.00); no overflow at either width. 1927 tests, `tsc`, lint on the
+touched files, build.
+
 ## Not verified
 
 Production behind sign-in (no staff login here; nothing written there).

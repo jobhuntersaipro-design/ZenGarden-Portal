@@ -27,7 +27,16 @@ import {
 } from "@/actions/purchase-orders";
 import { Combobox, type ComboboxOption } from "@/components/review/Combobox";
 import { draftReducer } from "@/components/review/draft-reducer";
-import { Field, FieldShell, ReadOnlyField } from "@/components/review/Field";
+import {
+  Confidence,
+  ConfidenceBars,
+  ExtractGroup,
+  ExtractRow,
+  isLow,
+} from "@/components/review/ExtractField";
+import { AlertTriangle, CheckCircle2 } from "lucide-react";
+import { Input } from "@/components/ui/input";
+import { DateInput } from "@/components/ui/date-input";
 import {
   LineItemsTable,
   LineItemSum,
@@ -213,6 +222,46 @@ export function ReviewForm({
     );
   }, [acknowledgedNow, draft, duplicateNow, extractionId, isRevision, queue, router]);
 
+  /**
+   * Low-confidence fields the reviewer has vouched for, by "Looks right" or by
+   * editing them. Kept on this screen only: it clears the prompt, it records
+   * nothing, and Confirm never waited on it.
+   */
+  const [checked, setChecked] = useState<ReadonlySet<string>>(new Set());
+  const check = (key: string) =>
+    setChecked((current) => (current.has(key) ? current : new Set(current).add(key)));
+  const edit = (
+    field: "poNumber" | "poDate" | "currency" | "paymentTerms" | "subtotal" | "total",
+    value: string | null,
+  ) => {
+    check(field);
+    dispatch({ type: "field", field, value });
+  };
+
+  // The order the fields read on screen, so Review walks them top to bottom.
+  const scored = ["buyerName", "poNumber", "poDate", "currency", "paymentTerms", "subtotal", "total", "lineItems"]
+    .filter((key) => typeof confidence[key] === "number")
+    .map((key) => ({ key, confidence: confidence[key] }));
+  const toCheck = scored.filter((field) => isLow(field.confidence) && !checked.has(field.key));
+  const average = scored.length
+    ? Math.round(scored.reduce((sum, field) => sum + field.confidence, 0) / scored.length)
+    : 0;
+  const focusField = (key: string) => {
+    const target = window.document.querySelector<HTMLElement>(
+      `[data-field="${key}"] :is(input, button), #${key}`,
+    );
+    target?.scrollIntoView({ block: "center", behavior: "smooth" });
+    target?.focus({ preventScroll: true });
+  };
+
+  const lock = blockedByTotals
+    ? "Locked — totals don’t match"
+    : blockedByDuplicate
+      ? "Locked — tick “This is a revised PO”"
+      : blockedByProducts
+        ? `Locked — ${undecided} ${undecided === 1 ? "line needs" : "lines need"} a product`
+        : null;
+
   const fieldError = (path: string) =>
     parsed.success
       ? undefined
@@ -225,31 +274,6 @@ export function ReviewForm({
         acknowledged={acknowledgedNow}
         onAcknowledge={(value) => setAcknowledgedFor(value ? mismatchKey : null)}
       />
-
-      {status === ExtractionStatus.FAILED ? (
-        <div className="mb-lg rounded-lg border border-hairline bg-surface-soft p-md">
-          <p className="text-[length:var(--text-body-sm)] text-accent-red">
-            {extractionError ?? "We couldn't read this document."}
-          </p>
-          <p className="mt-xxs text-[length:var(--text-caption)] text-ink-secondary">
-            You can fill it in by hand and confirm, or try reading it again.
-          </p>
-          <Button
-            variant="secondary"
-            className="mt-sm"
-            pending={retrying}
-            onClick={async () => {
-              setRetrying(true);
-              const result = await retryExtraction(extractionId);
-              setRetrying(false);
-              if (result.success) void refresh();
-              else toast.error(result.error);
-            }}
-          >
-            {retrying ? "Reading again…" : "Try again"}
-          </Button>
-        </div>
-      ) : null}
 
       {duplicateNow ? (
         <div className="mb-lg rounded-lg border border-hairline bg-surface-soft p-md">
@@ -285,193 +309,309 @@ export function ReviewForm({
         </div>
       ) : null}
 
-      {/* `min-w-0` on both this column and the line-items section below: a flex
-          item and a block inside a grid track both default to
-          `min-width: auto`, so without it the 840px line-items table hands its
-          own width back up the chain and the *page* scrolls sideways on a
-          phone instead of the table scrolling inside its own container. */}
-      <div className="flex min-w-0 flex-col gap-md">
-        {/* The document leads and the header fields sit in the rail beside it
-            from `xl`; below `xl` they stack, document first. The line items
-            need 952px, so they run full width underneath both. */}
-        <ReviewSplit document={document}>
-          <div className="@container flex min-w-0 flex-col gap-md">
-            {/* Buyer leads on its own full-width row so a long buyer name is never
-                the value that truncates (G4, design reference §3.4). */}
-            <FieldShell label="Buyer" confidence={confidence.buyerName}>
-              <div className="flex items-center gap-xs">
-                <div className="min-w-0 flex-1">
-                  <Combobox
-                    ariaLabel="Buyer"
-                    value={draft.buyerId ?? null}
-                    options={buyers}
-                    placeholder={draft.newBuyerName ?? "Choose a buyer"}
-                    createLabel={(query) => `Create “${query}”`}
-                    onSelect={(option) =>
-                      dispatch({ type: "buyer", buyerId: option.id, newBuyerName: null })
-                    }
-                    onCreate={(name) =>
-                      dispatch({ type: "buyer", buyerId: null, newBuyerName: name })
-                    }
-                  />
+      {/* One card, as in Arc's document-extract block (2026-10-27): the
+          document beside its fields, the line items under both, and a footer
+          that sums up how sure the read was. `min-w-0` down the chain keeps
+          the 952px line-items table scrolling inside its own container rather
+          than pushing the page sideways on a phone. */}
+      <div className="min-w-0 overflow-hidden rounded-xl border border-hairline bg-canvas">
+        <div className="min-w-0 p-sm sm:p-md">
+          <ReviewSplit document={document} documentSize={52}>
+            <div className="@container flex min-w-0 flex-col gap-lg">
+              {status === ExtractionStatus.FAILED ? (
+                <div className="flex flex-wrap items-center justify-between gap-sm border-b border-hairline pb-md">
+                  <div className="min-w-0">
+                    <p className="text-[length:var(--text-body-sm)] text-accent-red">
+                      {extractionError ?? "We couldn't read this document."}
+                    </p>
+                    <p className="mt-xxs text-[length:var(--text-caption)] text-ink-secondary">
+                      Fill it in by hand and confirm, or try reading it again.
+                    </p>
+                  </div>
+                  <Button
+                    variant="secondary"
+                    pending={retrying}
+                    onClick={async () => {
+                      setRetrying(true);
+                      const result = await retryExtraction(extractionId);
+                      setRetrying(false);
+                      if (result.success) void refresh();
+                      else toast.error(result.error);
+                    }}
+                  >
+                    {retrying ? "Reading again…" : "Try again"}
+                  </Button>
                 </div>
-                {draft.buyerId ? (
-                  <span className="shrink-0 rounded-full bg-surface-soft px-sm py-xxs text-[length:var(--text-caption)] text-accent-green">
-                    Known buyer
-                  </span>
+              ) : scored.length > 0 ? (
+                <div className="flex flex-wrap items-center justify-between gap-sm border-b border-hairline pb-md">
+                  <p className="flex items-center gap-xs text-[length:var(--text-body-sm)] text-ink">
+                    {toCheck.length > 0 ? (
+                      <>
+                        <AlertTriangle
+                          aria-hidden
+                          className="size-4 text-brand-amber-strong"
+                          strokeWidth={1.75}
+                        />
+                        {toCheck.length === 1
+                          ? "1 field needs a check"
+                          : `${toCheck.length} fields need a check`}
+                      </>
+                    ) : (
+                      <>
+                        <CheckCircle2
+                          aria-hidden
+                          className="size-4 text-accent-green"
+                          strokeWidth={1.75}
+                        />
+                        Every field read clearly
+                      </>
+                    )}
+                  </p>
+                  {toCheck.length > 0 ? (
+                    <Button variant="secondary" onClick={() => focusField(toCheck[0].key)}>
+                      Review
+                    </Button>
+                  ) : null}
+                </div>
+              ) : null}
+
+              <ExtractGroup label="Order" tone="purple">
+                <div data-field="buyerName">
+                  <ExtractRow
+                    label="Buyer"
+                    confidence={confidence.buyerName}
+                    checked={checked.has("buyerName")}
+                    onLooksRight={() => check("buyerName")}
+                    error={fieldError("buyerId")}
+                  >
+                    <Combobox
+                      ariaLabel="Buyer"
+                      value={draft.buyerId ?? null}
+                      options={buyers}
+                      placeholder={draft.newBuyerName ?? "Choose a buyer"}
+                      createLabel={(query) => `Create “${query}”`}
+                      onSelect={(option) => {
+                        check("buyerName");
+                        dispatch({ type: "buyer", buyerId: option.id, newBuyerName: null });
+                      }}
+                      onCreate={(name) => {
+                        check("buyerName");
+                        dispatch({ type: "buyer", buyerId: null, newBuyerName: name });
+                      }}
+                    />
+                  </ExtractRow>
+                </div>
+                <ExtractRow
+                  label="PO number"
+                  htmlFor="poNumber"
+                  confidence={confidence.poNumber}
+                  checked={checked.has("poNumber")}
+                  onLooksRight={() => check("poNumber")}
+                  error={fieldError("poNumber")}
+                >
+                  {locked.poNumber ? (
+                    <ReadOnlyValue id="poNumber" value={draft.poNumber} />
+                  ) : (
+                    <Input
+                      id="poNumber"
+                      value={draft.poNumber}
+                      title={draft.poNumber || undefined}
+                      onChange={(event) => edit("poNumber", event.target.value)}
+                    />
+                  )}
+                </ExtractRow>
+                <ExtractRow
+                  label="PO date"
+                  htmlFor="poDate"
+                  confidence={confidence.poDate}
+                  checked={checked.has("poDate")}
+                  onLooksRight={() => check("poDate")}
+                  error={fieldError("poDate")}
+                >
+                  {locked.poDate ? (
+                    <ReadOnlyValue
+                      id="poDate"
+                      value={draft.poDate ? formatDate(draft.poDate) : ""}
+                    />
+                  ) : (
+                    <DateInput
+                      id="poDate"
+                      value={draft.poDate}
+                      onChange={(value) => edit("poDate", value)}
+                    />
+                  )}
+                </ExtractRow>
+                <ExtractRow
+                  label="Currency"
+                  htmlFor="currency"
+                  confidence={confidence.currency}
+                  checked={checked.has("currency")}
+                  onLooksRight={() => check("currency")}
+                >
+                  <Input
+                    id="currency"
+                    value={draft.currency}
+                    onChange={(event) => edit("currency", event.target.value)}
+                  />
+                </ExtractRow>
+                {/* Days, not what the document printed. Claude reads the terms
+                    off the page and they arrive as anything — "Net 30", "COD" —
+                    so the number is parsed out where there is one and the
+                    reviewer states it where there is not (2026-09-22). */}
+                <ExtractRow
+                  label="Payment terms (days)"
+                  htmlFor="paymentTerms"
+                  confidence={confidence.paymentTerms}
+                  checked={checked.has("paymentTerms")}
+                  onLooksRight={() => check("paymentTerms")}
+                >
+                  <Input
+                    id="paymentTerms"
+                    type="number"
+                    min="0"
+                    value={paymentTermsDaysInput(draft.paymentTerms)}
+                    onChange={(event) => edit("paymentTerms", event.target.value || null)}
+                  />
+                </ExtractRow>
+              </ExtractGroup>
+
+              <ExtractGroup label="Totals" tone="amber">
+                <ExtractRow
+                  label="Subtotal"
+                  htmlFor="subtotal"
+                  confidence={confidence.subtotal}
+                  checked={checked.has("subtotal")}
+                  onLooksRight={() => check("subtotal")}
+                  error={fieldError("subtotal")}
+                >
+                  <Input
+                    id="subtotal"
+                    inputMode="decimal"
+                    className="tabular-nums"
+                    value={draft.subtotal}
+                    onChange={(event) => edit("subtotal", event.target.value)}
+                  />
+                </ExtractRow>
+                <ExtractRow
+                  label="Total"
+                  htmlFor="total"
+                  confidence={confidence.total}
+                  checked={checked.has("total")}
+                  onLooksRight={() => check("total")}
+                  error={fieldError("total")}
+                >
+                  <Input
+                    id="total"
+                    inputMode="decimal"
+                    className="tabular-nums"
+                    value={draft.total}
+                    onChange={(event) => edit("total", event.target.value)}
+                  />
+                </ExtractRow>
+                <div className="grid gap-x-md @sm:grid-cols-extract-row">
+                  <div className="@sm:col-start-2">
+                  <LineItemSum lineItems={draft.lineItems} />
+                  {totals.matches ? null : (
+                    <p className="mt-xxs text-[length:var(--text-caption)] text-accent-red">
+                      The totals don&rsquo;t match the document — see above
+                    </p>
+                  )}
+                  </div>
+                </div>
+              </ExtractGroup>
+            </div>
+          </ReviewSplit>
+        </div>
+
+        <div className="min-w-0 border-t border-hairline p-sm sm:p-md">
+          <ExtractGroup
+            label="Line items"
+            tone="green"
+            meta={
+              <>
+                {draft.lineItems.length === 1 ? "1 row" : `${draft.lineItems.length} rows`}
+                {typeof confidence.lineItems === "number" ? (
+                  <>
+                    {" · "}
+                    <Confidence
+                      value={confidence.lineItems}
+                      checked={checked.has("lineItems")}
+                    />
+                  </>
+                ) : null}
+              </>
+            }
+            action={
+              <div className="flex flex-wrap items-center gap-xs">
+                {isLow(confidence.lineItems) && !checked.has("lineItems") ? (
+                  <Button variant="secondary" onClick={() => check("lineItems")}>
+                    Looks right
+                  </Button>
+                ) : null}
+                {exactMatches.length > 0 ? (
+                  <Button
+                    variant="secondary"
+                    onClick={() => {
+                      // The gate stays literal — every line needs a decision —
+                      // while a twenty-line order whose codes all match is one
+                      // click rather than twenty.
+                      for (const match of exactMatches) {
+                        dispatch({
+                          type: "decision",
+                          index: match.index,
+                          decision: "linked",
+                          productId: match.productId,
+                        });
+                      }
+                    }}
+                  >
+                    {`Accept ${exactMatches.length} exact ${exactMatches.length === 1 ? "match" : "matches"}`}
+                  </Button>
                 ) : null}
               </div>
-              {fieldError("buyerId") ? (
-                <p className="text-[length:var(--text-caption)] text-accent-red">
-                  {fieldError("buyerId")}
-                </p>
-              ) : null}
-            </FieldShell>
-
-            <div className="grid gap-md @md:grid-cols-2">
-              {locked.poNumber ? (
-                <ReadOnlyField
-                  id="poNumber"
-                  label="PO number"
-                  value={draft.poNumber}
-                  confidence={confidence.poNumber}
-                />
-              ) : (
-                <Field
-                  id="poNumber"
-                  label="PO number"
-                  value={draft.poNumber}
-                  confidence={confidence.poNumber}
-                  error={fieldError("poNumber")}
-                  onChange={(value) => dispatch({ type: "field", field: "poNumber", value })}
-                />
-              )}
-              {locked.poDate ? (
-                <ReadOnlyField
-                  id="poDate"
-                  label="PO date"
-                  value={draft.poDate ? formatDate(draft.poDate) : ""}
-                  confidence={confidence.poDate}
-                />
-              ) : (
-                <Field
-                  id="poDate"
-                  label="PO date"
-                  type="date"
-                  value={draft.poDate}
-                  confidence={confidence.poDate}
-                  error={fieldError("poDate")}
-                  onChange={(value) => dispatch({ type: "field", field: "poDate", value })}
-                />
-              )}
-              <Field
-                id="currency"
-                label="Currency"
-                value={draft.currency}
-                confidence={confidence.currency}
-                onChange={(value) => dispatch({ type: "field", field: "currency", value })}
-              />
-              {/* Days, not what the document printed. Claude reads the terms
-                  off the page and they arrive as anything — "Net 30", "COD" —
-                  so the number is parsed out where there is one and the
-                  reviewer states it where there is not (2026-09-22). */}
-              <Field
-                id="paymentTerms"
-                label="Payment terms (days)"
-                type="number"
-                min="0"
-                value={paymentTermsDaysInput(draft.paymentTerms)}
-                confidence={confidence.paymentTerms}
-                onChange={(value) =>
-                  dispatch({ type: "field", field: "paymentTerms", value: value || null })
-                }
+            }
+          >
+            <div data-field="lineItems" className="min-w-0">
+              <LineItemsTable
+                lineItems={draft.lineItems}
+                catalogue={catalogue}
+                idf={idf}
+                dispatch={dispatch}
               />
             </div>
-          </div>
-        </ReviewSplit>
+          </ExtractGroup>
+        </div>
 
-        <section className="min-w-0">
-          <div className="flex items-baseline justify-between gap-sm">
-            <h2 className="font-mono text-[length:var(--text-eyebrow)] text-ink-tertiary">
-              Line items
-            </h2>
-            {typeof confidence.lineItems === "number" ? (
-              <span className="tabular-nums text-[length:var(--text-caption)] text-ink-tertiary">
-                {Math.round(confidence.lineItems)}
-              </span>
+        <div className="flex flex-wrap items-center justify-between gap-md border-t border-hairline px-sm py-sm sm:px-md">
+          <div className="flex min-w-0 flex-wrap items-center gap-x-md gap-y-xxs">
+            {scored.length > 0 ? (
+              <>
+                <ConfidenceBars
+                  fields={scored.map((field) => ({
+                    key: field.key,
+                    confidence: field.confidence,
+                    flagged: toCheck.some((flagged) => flagged.key === field.key),
+                  }))}
+                />
+                <span className="text-[length:var(--text-body-sm)] text-ink">
+                  <span className="font-medium tabular-nums">{average}%</span> average
+                </span>
+                {toCheck.length > 0 ? (
+                  <span className="inline-flex items-center gap-xxs text-[length:var(--text-body-sm)] text-ink-secondary">
+                    <AlertTriangle
+                      aria-hidden
+                      className="size-4 text-brand-amber-strong"
+                      strokeWidth={1.75}
+                    />
+                    {toCheck.length} to check
+                  </span>
+                ) : null}
+              </>
             ) : null}
+            <span className="text-[length:var(--text-caption)] text-ink-tertiary">
+              {saveState === "saving" ? "Saving…" : saveState === "saved" ? "Saved" : ""}
+            </span>
           </div>
-          {exactMatches.length > 0 ? (
-            <div className="mb-xs">
-              <Button
-                variant="secondary"
-                onClick={() => {
-                  // The gate stays literal — every line needs a decision —
-                  // while a twenty-line order whose codes all match is one
-                  // click rather than twenty.
-                  for (const match of exactMatches) {
-                    dispatch({
-                      type: "decision",
-                      index: match.index,
-                      decision: "linked",
-                      productId: match.productId,
-                    });
-                  }
-                }}
-              >
-                {`Accept ${exactMatches.length} exact ${exactMatches.length === 1 ? "match" : "matches"}`}
-              </Button>
-            </div>
-          ) : null}
-          <LineItemsTable
-            lineItems={draft.lineItems}
-            catalogue={catalogue}
-            idf={idf}
-            dispatch={dispatch}
-          />
-        </section>
-
-        <section
-          className={`grid gap-md rounded-lg border p-md sm:grid-cols-2 ${
-            totals.matches ? "border-hairline" : "border-accent-red"
-          }`}
-        >
-          <Field
-            id="subtotal"
-            label="Subtotal"
-            value={draft.subtotal}
-            confidence={confidence.subtotal}
-            error={fieldError("subtotal")}
-            onChange={(value) => dispatch({ type: "field", field: "subtotal", value })}
-          />
-          <Field
-            id="total"
-            label="Total on the document"
-            value={draft.total}
-            confidence={confidence.total}
-            error={fieldError("total")}
-            onChange={(value) => dispatch({ type: "field", field: "total", value })}
-          />
-          <div className="sm:col-span-2">
-            <LineItemSum lineItems={draft.lineItems} />
-            {totals.matches ? null : (
-              <p className="mt-xxs text-[length:var(--text-caption)] text-accent-red">
-                The totals don&rsquo;t match the document — see above
-              </p>
-            )}
-          </div>
-        </section>
-
-        {formError ? (
-          <p role="alert" className="text-[length:var(--text-body-sm)] text-accent-red">
-            {formError}
-          </p>
-        ) : null}
-
-        <div className="flex flex-wrap items-center justify-between gap-md">
-          <span className="text-[length:var(--text-caption)] text-ink-tertiary">
-            {saveState === "saving" ? "Saving…" : saveState === "saved" ? "Saved" : ""}
-          </span>
 
           <div className="flex items-center gap-md">
             {/* Arc's confirm morph: Discard asks "Discard this file?" in
@@ -501,30 +641,36 @@ export function ReviewForm({
                 router.push("/purchase-orders");
               }}
             />
-
-            <div className="text-right">
-              <Button disabled={!canConfirm} pending={confirming} onClick={onConfirm}>
-                {confirming ? "Saving…" : "Confirm & save"}
-              </Button>
-              {blockedByTotals ? (
-                <p className="mt-xxs text-[length:var(--text-caption)] text-ink-tertiary">
-                  Locked — totals don&rsquo;t match
-                </p>
-              ) : null}
-              {blockedByDuplicate ? (
-                <p className="mt-xxs text-[length:var(--text-caption)] text-ink-tertiary">
-                  Locked — tick “This is a revised PO”
-                </p>
-              ) : null}
-              {blockedByProducts ? (
-                <p className="mt-xxs text-[length:var(--text-caption)] text-ink-tertiary">
-                  {`Locked — ${undecided} ${undecided === 1 ? "line needs" : "lines need"} a product`}
-                </p>
-              ) : null}
-            </div>
+            <Button disabled={!canConfirm} pending={confirming} onClick={onConfirm}>
+              {confirming ? "Saving…" : "Confirm & save"}
+            </Button>
           </div>
         </div>
       </div>
+
+      {formError ? (
+        <p role="alert" className="mt-sm text-[length:var(--text-body-sm)] text-accent-red">
+          {formError}
+        </p>
+      ) : null}
+      {lock ? (
+        <p className="mt-xs text-right text-[length:var(--text-caption)] text-ink-tertiary">
+          {lock}
+        </p>
+      ) : null}
     </>
+  );
+}
+
+/** A value the reviewer checks but cannot change — PO number and PO date since 2026-09-17. */
+function ReadOnlyValue({ id, value }: { id: string; value: string }) {
+  return (
+    <p
+      id={id}
+      title={value}
+      className="flex h-control-md min-w-0 items-center rounded-sm bg-surface-soft px-2.5 text-[length:var(--text-body-md)] text-ink"
+    >
+      <span className="truncate">{value || "—"}</span>
+    </p>
   );
 }
