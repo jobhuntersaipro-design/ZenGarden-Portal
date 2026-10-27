@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useState, type ReactNode } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import { Document, Page, pdfjs } from "react-pdf";
 import "react-pdf/dist/Page/AnnotationLayer.css";
 import "react-pdf/dist/Page/TextLayer.css";
@@ -12,6 +12,11 @@ import {
   stepZoom,
 } from "@/components/review/ZoomControls";
 import { DownloadOriginal } from "@/components/purchase-orders/DownloadOriginal";
+import { useHighlightedSources } from "@/components/review/source-highlight";
+import { markSources } from "@/lib/extraction/source-match";
+
+/** A matched value on the page. The text layer's own glyphs are transparent, so the mark's are too. */
+const MARK = "rounded-xxs bg-brand-amber/40 text-transparent";
 
 // The worker ships with pdfjs-dist; resolving it through import.meta.url lets
 // the bundler fingerprint it instead of us pointing at a CDN.
@@ -49,6 +54,29 @@ export function DocumentPreview({
   /** Drops the preview's own border, for a pane that is already a card (the review screen). */
   flush?: boolean;
 }) {
+  const sources = useHighlightedSources();
+  const renderText = useMemo(
+    () =>
+      sources.length
+        ? ({ str }: { str: string }) => markSources(str, sources, MARK)
+        : undefined,
+    [sources],
+  );
+  const paneRef = useRef<HTMLDivElement | null>(null);
+  /** Brings the first mark into the document pane, scrolling only that pane. */
+  const revealMark = useCallback(() => {
+    const pane = paneRef.current;
+    const mark = pane?.querySelector("mark");
+    if (!pane || !mark) return;
+    const box = mark.getBoundingClientRect();
+    const view = pane.getBoundingClientRect();
+    if (box.top >= view.top && box.bottom <= view.bottom && box.left >= view.left && box.right <= view.right) return;
+    pane.scrollBy({
+      top: box.top - view.top - view.height / 3,
+      left: box.left < view.left || box.right > view.right ? box.left - view.left - 24 : 0,
+      behavior: "smooth",
+    });
+  }, []);
   const frame = flush ? "bg-surface" : "rounded-lg border border-hairline bg-surface";
   const [fetched, setSource] = useState<DocumentUrlResponse | null>(null);
   const source = file ?? fetched;
@@ -69,6 +97,7 @@ export function DocumentPreview({
    * leaves the page at the width it had in the other orientation.
    */
   const viewportRef = useCallback((node: HTMLDivElement | null) => {
+    paneRef.current = node;
     if (!node) return;
     const observer = new ResizeObserver(() => setWidth(node.clientWidth));
     observer.observe(node);
@@ -208,6 +237,8 @@ export function DocumentPreview({
           // react-pdf sizes by width, so scaling the width *is* the zoom.
           width={width ? width * scale : undefined}
           renderAnnotationLayer={false}
+          customTextRenderer={renderText}
+          onRenderTextLayerSuccess={revealMark}
         />
       </Document>
       </div>

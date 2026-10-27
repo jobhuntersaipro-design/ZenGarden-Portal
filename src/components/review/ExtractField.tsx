@@ -3,6 +3,8 @@
 import type { ReactNode } from "react";
 import { AlertTriangle, Check } from "lucide-react";
 import { LOW_CONFIDENCE } from "@/lib/extraction/schema";
+import type { Source } from "@/lib/extraction/source-match";
+import { useSourceTarget } from "@/components/review/source-highlight";
 
 /**
  * The review screen's field rows, laid out like Arc's document-extract block
@@ -75,10 +77,13 @@ export function ExtractRow({
   checked,
   onLooksRight,
   error,
+  source,
   children,
 }: {
   label: string;
   htmlFor?: string;
+  /** What to mark on the PDF while this row is hovered or focused. */
+  source?: Source[];
   confidence?: number;
   checked?: boolean;
   onLooksRight?: () => void;
@@ -86,9 +91,13 @@ export function ExtractRow({
   children: ReactNode;
 }) {
   const flagged = isLow(confidence) && !checked;
+  const target = useSourceTarget(source);
   return (
     // Label above the value on a narrow pane, beside it from @sm.
-    <div className="grid min-w-0 grid-cols-1 items-center gap-x-md gap-y-xxs @sm:grid-cols-extract-row">
+    <div
+      {...target}
+      className="grid min-w-0 grid-cols-1 items-center gap-x-md gap-y-xxs @sm:grid-cols-extract-row"
+    >
       <label
         htmlFor={htmlFor}
         className="flex items-center justify-between gap-sm text-[length:var(--text-body-sm)] text-ink-secondary"

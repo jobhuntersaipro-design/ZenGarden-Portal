@@ -203,8 +203,19 @@ run full width under both, then a footer: confidence bars, "N% average",
 at confirm, and Confirm never waited on it. Driven: 2 to check, Looks right
 on Payment terms, 1 to check, reload, still 1, the row holding
 `["paymentTerms"]`. Not built from the block: the
-hover-to-source highlight (extraction keeps no positions) and the streaming
-fill-in. Driven at 1440 and 390 on a local rig with a generated copy of the
+streaming fill-in. **Hover-to-source, added the same day:** hovering or
+focusing a field or a line row marks its value in amber on the PDF and
+scrolls the document pane to it. The extraction keeps no positions, so it is
+found in the page's text layer (`src/lib/extraction/source-match.ts`, pure,
+tested): money by its number whatever the separators, an ISO date in 17
+printed layouts ("02-Oct-26", "2 October 2026", "02/10/2026"…), codes and
+names as text, a name printed shorter than read marking the whole item. A
+line row marks its code, description and amount. A scan with no text layer
+marks nothing, and the same figure printed twice is marked twice. Driven on a
+generated copy of the PO: Buyer, PO number "PO-LHM-AND-018-26", date
+"02-Oct-26", "MYR", "30 days", subtotal and total "70,680.00" (both
+places), line 2's description, code and "16,740.00"; nothing after the
+pointer left; focus on Currency marked "MYR". Driven at 1440 and 390 on a local rig with a generated copy of the
 AKSES NUSANTARA PO: Review focused Payment terms, Looks right cleared the
 count to 0, four lines decided and Confirm wrote PO-LHM-AND-018-26 (4 lines,
 70,680.00); no overflow at either width. 1927 tests, `tsc`, lint on the

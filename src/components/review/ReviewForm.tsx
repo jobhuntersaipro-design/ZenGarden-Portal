@@ -35,6 +35,8 @@ import {
   isLow,
 } from "@/components/review/ExtractField";
 import { AlertTriangle, CheckCircle2 } from "lucide-react";
+import { SourceHighlightProvider } from "@/components/review/source-highlight";
+import type { Source } from "@/lib/extraction/source-match";
 import { Input } from "@/components/ui/input";
 import { DateInput } from "@/components/ui/date-input";
 import {
@@ -261,13 +263,27 @@ export function ReviewForm({
         ? `Locked — ${undecided} ${undecided === 1 ? "line needs" : "lines need"} a product`
         : null;
 
+  /** What each row points at on the PDF while hovered or focused. */
+  const buyerName =
+    buyers.find((buyer) => buyer.id === draft.buyerId)?.label ?? draft.newBuyerName ?? "";
+  const termsDays = paymentTermsDaysInput(draft.paymentTerms);
+  const source = {
+    buyerName: [{ kind: "text", value: buyerName }],
+    poNumber: [{ kind: "text", value: draft.poNumber }],
+    poDate: [{ kind: "date", value: draft.poDate }],
+    currency: [{ kind: "text", value: draft.currency }],
+    paymentTerms: termsDays ? [{ kind: "text", value: `${termsDays} days` }] : [],
+    subtotal: [{ kind: "money", value: draft.subtotal }],
+    total: [{ kind: "money", value: draft.total }],
+  } satisfies Record<string, Source[]>;
+
   const fieldError = (path: string) =>
     parsed.success
       ? undefined
       : parsed.error.issues.find((issue) => issue.path.join(".") === path)?.message;
 
   return (
-    <>
+    <SourceHighlightProvider>
       <TotalsBanner
         totals={totals}
         acknowledged={acknowledgedNow}
@@ -381,6 +397,7 @@ export function ReviewForm({
                     confidence={confidence.buyerName}
                     checked={checked.has("buyerName")}
                     onLooksRight={() => check("buyerName")}
+                    source={source.buyerName}
                     error={fieldError("buyerId")}
                   >
                     <Combobox
@@ -406,6 +423,7 @@ export function ReviewForm({
                   confidence={confidence.poNumber}
                   checked={checked.has("poNumber")}
                   onLooksRight={() => check("poNumber")}
+                  source={source.poNumber}
                   error={fieldError("poNumber")}
                 >
                   {locked.poNumber ? (
@@ -425,6 +443,7 @@ export function ReviewForm({
                   confidence={confidence.poDate}
                   checked={checked.has("poDate")}
                   onLooksRight={() => check("poDate")}
+                  source={source.poDate}
                   error={fieldError("poDate")}
                 >
                   {locked.poDate ? (
@@ -446,6 +465,7 @@ export function ReviewForm({
                   confidence={confidence.currency}
                   checked={checked.has("currency")}
                   onLooksRight={() => check("currency")}
+                  source={source.currency}
                 >
                   <Input
                     id="currency"
@@ -463,6 +483,7 @@ export function ReviewForm({
                   confidence={confidence.paymentTerms}
                   checked={checked.has("paymentTerms")}
                   onLooksRight={() => check("paymentTerms")}
+                  source={source.paymentTerms}
                 >
                   <Input
                     id="paymentTerms"
@@ -481,6 +502,7 @@ export function ReviewForm({
                   confidence={confidence.subtotal}
                   checked={checked.has("subtotal")}
                   onLooksRight={() => check("subtotal")}
+                  source={source.subtotal}
                   error={fieldError("subtotal")}
                 >
                   <Input
@@ -497,6 +519,7 @@ export function ReviewForm({
                   confidence={confidence.total}
                   checked={checked.has("total")}
                   onLooksRight={() => check("total")}
+                  source={source.total}
                   error={fieldError("total")}
                 >
                   <Input
@@ -657,7 +680,7 @@ export function ReviewForm({
           {lock}
         </p>
       ) : null}
-    </>
+    </SourceHighlightProvider>
   );
 }
 

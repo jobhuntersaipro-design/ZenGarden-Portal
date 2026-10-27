@@ -1,11 +1,13 @@
 "use client";
 
 import { Trash2 } from "lucide-react";
-import type { Dispatch } from "react";
+import type { Dispatch, ReactNode } from "react";
 import type { DraftAction } from "@/components/review/draft-reducer";
 import { ProductMatchPicker } from "@/components/review/ProductMatchPicker";
 import { Input } from "@/components/ui/input";
 import { ScrollArea } from "@/components/arc/scroll-area/scroll-area";
+import { useSourceTarget } from "@/components/review/source-highlight";
+import type { Source } from "@/lib/extraction/source-match";
 import type { CatalogueEntry, Idf } from "@/lib/extraction/match-products";
 import { formatMYR } from "@/lib/money";
 import type { DraftLineItem } from "@/lib/validation/purchase-orders";
@@ -74,7 +76,14 @@ export function LineItemsTable({
             </thead>
             <tbody>
               {lineItems.map((line, index) => (
-                <tr key={index} className="border-b border-hairline align-top">
+                <SourceRow
+                  key={index}
+                  sources={[
+                    { kind: "text", value: line.sku ?? "" },
+                    { kind: "text", value: line.description },
+                    { kind: "money", value: line.amount },
+                  ]}
+                >
                   {/* The code leads: since Phase 11 it *is* the line's
                       identity — an existing one links, an unknown one creates —
                       so it is read and corrected before anything else. */}
@@ -209,7 +218,7 @@ export function LineItemsTable({
                       />
                     </button>
                   </td>
-                </tr>
+                </SourceRow>
               ))}
             </tbody>
           </table>
@@ -225,6 +234,16 @@ export function LineItemsTable({
         + Add line
       </button>
     </div>
+  );
+}
+
+/** A line's row, marking its code, description and amount on the PDF while hovered or focused. */
+function SourceRow({ sources, children }: { sources: Source[]; children: ReactNode }) {
+  const target = useSourceTarget(sources);
+  return (
+    <tr {...target} className="border-b border-hairline align-top">
+      {children}
+    </tr>
   );
 }
 
