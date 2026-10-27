@@ -5,6 +5,12 @@
  *   npx tsx scripts/arc-import.ts            # fetch from GitHub at ARC_COMMIT
  *   npx tsx scripts/arc-import.ts --from dir # read registry JSON from dir/<name>.json
  *
+ * ARC_PRO_ITEMS come from the Pro registry (uiarc.dev/r/pro), with
+ * ARC_PRO_TOKEN from the shell or .env.local as the bearer token. That
+ * registry serves its latest version, not ARC_COMMIT, and its source is
+ * licensed, not MIT: this repository is public, so committing Pro output
+ * publishes it.
+ *
  * What it changes on the way in, and why:
  *
  * - Arc's foundation.css is NOT copied. It ends with
@@ -33,6 +39,7 @@ import path from "node:path";
 
 export const ARC_COMMIT = "cde1b4031f6e76f08f1e3da8510e6b952d087069";
 const RAW = `https://raw.githubusercontent.com/kuratlielia/arc-library/${ARC_COMMIT}`;
+const PRO = "https://uiarc.dev/r/pro";
 const OUT = path.join(process.cwd(), "src/components/arc");
 
 /**
@@ -65,6 +72,9 @@ export const ARC_ITEMS = [
   // blocks
   "command-palette",
 ] as const;
+
+/** Pro parts, fetched from the Pro registry. Their free dependencies belong in ARC_ITEMS. */
+export const ARC_PRO_ITEMS: readonly string[] = [];
 
 const RADIX: Record<string, string> = {
   accordion: "Accordion",
@@ -297,9 +307,13 @@ export function applyPatches(dest: string, source: string): string {
 type RegistryFile = { path: string; target?: string; content: string };
 type RegistryItem = { name: string; files: RegistryFile[]; registryDependencies?: string[] };
 
-async function load(name: string, from: string | null): Promise<RegistryItem> {
+async function load(name: string, from: string | null, pro = false): Promise<RegistryItem> {
   if (from) return JSON.parse(await readFile(path.join(from, `${name}.json`), "utf8"));
-  const res = await fetch(`${RAW}/public/r/${name}.json`);
+  const token = process.env.ARC_PRO_TOKEN;
+  if (pro && !token) throw new Error(`${name} is a Pro item: set ARC_PRO_TOKEN`);
+  const res = pro
+    ? await fetch(`${PRO}/${name}.json`, { headers: { Authorization: `Bearer ${token}` } })
+    : await fetch(`${RAW}/public/r/${name}.json`);
   if (!res.ok) throw new Error(`${name}: ${res.status}`);
   return (await res.json()) as RegistryItem;
 }
@@ -341,7 +355,7 @@ export function rewriteImports(source: string): string {
 
 /** Where a registry target lands under src/components/arc, or null to skip. */
 export function destination(target: string): string | null {
-  const t = target.replace(/^~\//, "");
+  const t = target.replace(/^~\//, "").replace(/^@components\/arc\//, "registry/components/");
   if (t === "registry/foundation.css") return null;
   if (t === "lib/motion-tokens.ts") return null; // re-export shim; the real file is registry/motion-tokens.ts
   if (t === "registry/motion-tokens.ts") return "lib/motion-tokens.ts";
@@ -353,6 +367,8 @@ export function destination(target: string): string | null {
 
 const HEADER_TS = `// Vendored from Arc (MIT, see ../LICENSE) at ${ARC_COMMIT.slice(0, 7)} by scripts/arc-import.ts. Do not edit; re-run the script.\n`;
 const HEADER_CSS = `/* Vendored from Arc (MIT) at ${ARC_COMMIT.slice(0, 7)} by scripts/arc-import.ts. Tokens renamed --x → --arc-x; see src/app/arc-tokens.css. */\n`;
+const HEADER_PRO_TS = `// Vendored from Arc Pro (licensed, not MIT) by scripts/arc-import.ts. Do not edit; re-run the script.\n`;
+const HEADER_PRO_CSS = `/* Vendored from Arc Pro (licensed, not MIT) by scripts/arc-import.ts. Tokens renamed --x → --arc-x; see src/app/arc-tokens.css. */\n`;
 
 /** The cascade order globals.css declares; repeated in each module so whichever file loads first sets the same order. */
 export const LAYER_ORDER = "@layer theme, base, arc, components, utilities;";
@@ -362,11 +378,12 @@ export function layerCss(content: string): string {
   return `${LAYER_ORDER}\n@layer arc {\n${content.replace(/\s+$/, "")}\n}\n`;
 }
 
-function withHeader(file: string, content: string): string {
-  if (file.endsWith(".css")) return HEADER_CSS + layerCss(content);
+function withHeader(file: string, content: string, pro: boolean): string {
+  if (file.endsWith(".css")) return (pro ? HEADER_PRO_CSS : HEADER_CSS) + layerCss(content);
+  const header = pro ? HEADER_PRO_TS : HEADER_TS;
   // "use client" must stay the first statement.
   const m = content.match(/^(["']use client["'];?\s*\n)/);
-  return m ? m[1] + HEADER_TS + content.slice(m[1].length) : HEADER_TS + content;
+  return m ? m[1] + header + content.slice(m[1].length) : header + content;
 }
 
 async function main() {
@@ -380,12 +397,16 @@ async function main() {
 
   await rm(OUT, { recursive: true, force: true });
   const written: string[] = [];
-  for (const name of ["arc-foundation", ...ARC_ITEMS]) {
-    const item = name === "arc-foundation" ? foundation : await load(name, from);
+  const items = [
+    ...["arc-foundation", ...ARC_ITEMS].map((name) => ({ name, pro: false })),
+    ...ARC_PRO_ITEMS.map((name) => ({ name, pro: true })),
+  ];
+  for (const { name, pro } of items) {
+    const item = name === "arc-foundation" ? foundation : await load(name, from, pro);
     for (const file of item.files) {
       const dest = destination(file.target ?? `~/${file.path}`);
       if (!dest) continue;
-      const out = withHeader(dest, applyPatches(dest, rewriteImports(renameTokens(file.content, tokens))));
+      const out = withHeader(dest, applyPatches(dest, rewriteImports(renameTokens(file.content, tokens))), pro);
       const abs = path.join(OUT, dest);
       await mkdir(path.dirname(abs), { recursive: true });
       await writeFile(abs, out);
@@ -400,7 +421,7 @@ async function main() {
     path.join(OUT, "tokens.json"),
     JSON.stringify({ commit: ARC_COMMIT, tokens: tokens.map((t) => `--arc-${t}`) }, null, 2) + "\n",
   );
-  console.log(`${written.length} files from ${ARC_ITEMS.length} items, ${tokens.length} tokens renamed.`);
+  console.log(`${written.length} files from ${items.length - 1} items, ${tokens.length} tokens renamed.`);
 }
 
 if (process.argv[1]?.endsWith("arc-import.ts")) {

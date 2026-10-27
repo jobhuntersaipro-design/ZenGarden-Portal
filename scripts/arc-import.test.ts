@@ -80,6 +80,11 @@ describe("destination", () => {
     expect(destination("~/lib/motion-tokens.ts")).toBeNull();
     expect(destination("~/lib/media.ts")).toBe("lib/media.ts");
   });
+
+  it("maps the Pro registry's @components/arc targets the same way", () => {
+    expect(destination("@components/arc/data-grid/data-grid.tsx")).toBe("data-grid/data-grid.tsx");
+    expect(destination("@components/arc/lib/clamp.ts")).toBe("lib/clamp.ts");
+  });
 });
 
 describe("applyPatches", () => {
