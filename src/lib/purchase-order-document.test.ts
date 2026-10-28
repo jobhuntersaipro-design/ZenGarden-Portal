@@ -179,6 +179,8 @@ describe("buildPoDocument", () => {
       "subtotal",
       "tax",
       "total",
+      "totalCbm",
+      "cbmMissing",
       "notes",
     ]);
   });
@@ -389,5 +391,52 @@ describe("documentParty (S-02)", () => {
     });
     expect(document.buyer.orderedBy).toBe("Siti Nurhaliza · siti@acme.test");
     expect(document.buyer.contact).toBe("Aisha Rahman · aisha@acme.test");
+  });
+});
+
+describe("total CBM", () => {
+  const line = (cartonCbm: number | null, quantity: string) => ({
+    position: 1,
+    sku: "A",
+    description: "A",
+    packSize: 6,
+    cartonsPerPallet: 60,
+    cartonCbm,
+    quantity,
+    unitPrice: "1.00",
+    amount: "1.00",
+  });
+  const order = (lines: ReturnType<typeof line>[]) =>
+    buildPoDocumentFromOrder({
+      order: {
+        orderId: "W-1",
+        poNumber: null,
+        currency: "MYR",
+        paymentTerms: null,
+        notes: null,
+        tax: null,
+        buyer: { name: "B", address: null, orderedBy: null, contact: null },
+        lines,
+      },
+      orderDate: "1 Oct 2026",
+      awaitingConfirmation: true,
+    });
+
+  it("multiplies each line's carton CBM by its cartons and sums them", () => {
+    const doc = order([line(0.0119, "5"), line(0.02, "3")]);
+    expect(doc.lines.map((l) => l.cbm)).toEqual([0.0595, 0.06]);
+    expect(doc.totalCbm).toBe(0.1195);
+    expect(doc.cbmMissing).toBe(0);
+  });
+
+  it("leaves a line with no carton size out of the total and counts it", () => {
+    const doc = order([line(0.0119, "5"), line(null, "3")]);
+    expect(doc.lines[1].cbm).toBeNull();
+    expect(doc.totalCbm).toBe(0.0595);
+    expect(doc.cbmMissing).toBe(1);
+  });
+
+  it("has no total when no line has a carton size", () => {
+    expect(order([line(null, "2")]).totalCbm).toBeNull();
   });
 });

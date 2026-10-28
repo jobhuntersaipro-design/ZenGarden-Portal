@@ -1,6 +1,8 @@
 import Link from "next/link";
 import type { ReactNode } from "react";
+import { formatCbm } from "@/lib/carton";
 import { formatMYR } from "@/lib/money";
+import { plural } from "@/lib/plural";
 import { shopHref } from "@/lib/shop-routes";
 
 /**
@@ -13,6 +15,7 @@ export function OrderSummary({
   productCount,
   cartonCount,
   subtotal,
+  cbm,
   cta,
 }: {
   /** Counts excluding unavailable lines — this row sits beside the subtotal,
@@ -20,6 +23,8 @@ export function OrderSummary({
   productCount: number;
   cartonCount: number;
   subtotal: string;
+  /** The order's total CBM; nothing is drawn while no line has a carton size. */
+  cbm?: { total: number | null; missing: number };
   cta: ReactNode;
 }) {
   return (
@@ -36,6 +41,22 @@ export function OrderSummary({
           {formatMYR(subtotal)}
         </span>
       </div>
+
+      {cbm && cbm.total !== null ? (
+        <div className="border-t border-hairline py-sm">
+          <div className="flex items-baseline justify-between gap-sm">
+            <span className="text-[length:var(--text-body-sm)] text-ink-secondary">Total CBM</span>
+            <span className="text-[length:var(--text-body-md)] font-semibold tabular-nums text-ink">
+              {formatCbm(cbm.total)}
+            </span>
+          </div>
+          {cbm.missing > 0 ? (
+            <p className="mt-xxs text-right text-[length:var(--text-caption)] text-ink-tertiary">
+              {`Not counted: ${plural(cbm.missing, "product")} with no carton size`}
+            </p>
+          ) : null}
+        </div>
+      ) : null}
 
       <div className="flex items-baseline justify-between gap-sm border-t border-hairline py-sm">
         <span className="text-[length:var(--text-body-sm)] text-ink-secondary">Delivery</span>

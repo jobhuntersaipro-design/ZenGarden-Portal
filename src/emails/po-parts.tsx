@@ -9,7 +9,9 @@ import {
   monoFont,
   white,
 } from "@/emails/parts";
+import { formatCbm } from "@/lib/carton";
 import { formatGrouped } from "@/lib/money";
+import { plural } from "@/lib/plural";
 import type { PoDocumentData } from "@/lib/purchase-order-document";
 
 /**
@@ -239,6 +241,16 @@ export function PoSummary({
               <Money bold>{formatGrouped(document.total)}</Money>
             </td>
           </tr>
+          {document.totalCbm !== null ? (
+            <tr>
+              <td style={{ ...cell, color: inkSecondary, padding: "10px 0 0" }}>
+                {document.cbmMissing > 0
+                  ? `Total CBM (${plural(document.cbmMissing, "line")} not counted)`
+                  : "Total CBM"}
+              </td>
+              <td style={{ ...numeric, padding: "10px 0 0" }}>{formatCbm(document.totalCbm)}</td>
+            </tr>
+          ) : null}
         </tbody>
       </table>
     </>

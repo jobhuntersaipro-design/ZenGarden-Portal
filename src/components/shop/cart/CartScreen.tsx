@@ -4,6 +4,7 @@ import { CartLines, cartCaptions, type SetCartonsResult } from "@/components/sho
 import { CheckoutSteps } from "@/components/shop/checkout/CheckoutSteps";
 import { OrderSummary } from "@/components/shop/cart/OrderSummary";
 import type { CartLine } from "@/lib/queries/cart";
+import { cartonCbm, lineCbm, totalCbm } from "@/lib/carton";
 import { shopHref } from "@/lib/shop-routes";
 
 /**
@@ -35,6 +36,12 @@ export function CartScreen({
   showSteps?: boolean;
 }) {
   const captions = cartCaptions(lines);
+  // The available lines only, like the subtotal beside it.
+  const cbm = totalCbm(
+    lines
+      .filter((line) => !line.unavailable)
+      .map((line) => ({ cbm: lineCbm(cartonCbm(line), line.cartons) })),
+  );
 
   return (
     <div className="pt-lg">
@@ -80,6 +87,7 @@ export function CartScreen({
               productCount={captions.availableCount}
               cartonCount={captions.availableCartons}
               subtotal={subtotal}
+              cbm={cbm}
               cta={cta}
             />
           </div>

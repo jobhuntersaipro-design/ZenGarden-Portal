@@ -18,7 +18,31 @@ export function cartonCbm(size: Pick<CartonSize, "cartonLengthCm" | "cartonWidth
 }
 
 /** 0.0119, 20, 23.5 — no trailing zeros, never "0". */
-const figure = (value: number) => String(Number(value.toFixed(4)));
+export const figure = (value: number) => String(Number(value.toFixed(4)));
+
+/** "0.0595m³". The one spelling of a CBM figure on every surface. */
+export const formatCbm = (value: number) => `${figure(value)}m³`;
+
+/**
+ * A line's CBM: the carton's (as the buyer reads it, four decimals) times the
+ * cartons ordered. Null where the product has no carton size yet.
+ */
+export const lineCbm = (perCarton: number | null, cartons: number): number | null =>
+  perCarton === null ? null : Math.round(perCarton * cartons * 10000) / 10000;
+
+/**
+ * An order's total CBM over its lines (2026-10-28). `missing` counts the lines
+ * with no carton size, so a total is never shown as complete when it is not;
+ * `total` is null when no line has one.
+ */
+export function totalCbm(lines: { cbm: number | null }[]): { total: number | null; missing: number } {
+  const known = lines.filter((line) => line.cbm !== null);
+  const sum = known.reduce((acc, line) => acc + (line.cbm ?? 0), 0);
+  return {
+    total: known.length ? Math.round(sum * 10000) / 10000 : null,
+    missing: lines.length - known.length,
+  };
+}
 
 /**
  * The lines a buyer reads, as [label, value]: each left out when its value
@@ -30,7 +54,7 @@ export function cartonSpecs(size: CartonSize): [string, string][] {
   const specs: [string, string][] = [];
   if (l && w && h) specs.push(["Carton measurements", `${figure(l)}cm x ${figure(w)}cm x ${figure(h)}cm`]);
   if (kg) specs.push(["Gross weight", `${figure(kg)}kg`]);
-  if (cbm) specs.push(["Cbm", `${figure(cbm)}m³`]);
+  if (cbm) specs.push(["Cbm", formatCbm(cbm)]);
   return specs;
 }
 

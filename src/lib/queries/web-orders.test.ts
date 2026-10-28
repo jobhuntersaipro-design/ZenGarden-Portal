@@ -125,9 +125,14 @@ describe("loadBuyerOrder", () => {
     ]);
     // The product is reached for its code, pack size, the variant and market
     // the document captions (Phase 42) and the cartons per pallet its pack
-    // line prints (Phase 44) — and nothing else.
+    // line prints (Phase 44), and its carton size for the CBM (2026-10-28) —
+    // and nothing else.
     expect(Object.keys(args.select.lineItems.select.product.select).sort()).toEqual([
+      "cartonHeightCm",
+      "cartonLengthCm",
+      "cartonWidthCm",
       "cartonsPerPallet",
+      "grossWeightKg",
       "market",
       "packSize",
       "sku",

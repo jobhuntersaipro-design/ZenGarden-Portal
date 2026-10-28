@@ -1,6 +1,8 @@
 import { DocumentFit } from "@/components/shop/checkout/DocumentFit";
 import { Wordmark } from "@/components/portal/Wordmark";
 import { formatGrouped } from "@/lib/money";
+import { figure, formatCbm } from "@/lib/carton";
+import { plural } from "@/lib/plural";
 import {
   AWAITING_CONFIRMATION_NOTE,
   DOCUMENT_COMPANY_NAME,
@@ -128,6 +130,9 @@ export function PurchaseOrderPreview({
               Total Pallets
             </span>
             <span className="text-right text-[length:var(--text-caption)] text-ink-tertiary">
+              Total CBM <wbr />(m³)
+            </span>
+            <span className="text-right text-[length:var(--text-caption)] text-ink-tertiary">
               Unit Price
             </span>
             <span className="text-right text-[length:var(--text-caption)] text-ink-tertiary">
@@ -165,6 +170,7 @@ export function PurchaseOrderPreview({
               <Quantity value={count(line.totalPieces)} />
               <Quantity value={formatGrouped(line.cartons, 0)} />
               <Quantity value={count(line.pallets)} />
+              <Quantity value={line.cbm === null ? "—" : figure(line.cbm)} />
               <span className="text-right text-[length:var(--text-body-sm)] tabular-nums text-ink">
                 {formatGrouped(line.unitPrice)}
               </span>
@@ -203,6 +209,21 @@ export function PurchaseOrderPreview({
                 {formatGrouped(document.total)}
               </span>
             </div>
+            {document.totalCbm !== null ? (
+              <div className="mt-xs flex justify-between py-xxs">
+                <span className="text-[length:var(--text-body-md)] text-ink-secondary">
+                  Total CBM
+                </span>
+                <span className="text-[length:var(--text-body-md)] font-medium tabular-nums text-ink">
+                  {formatCbm(document.totalCbm)}
+                </span>
+              </div>
+            ) : null}
+            {document.totalCbm !== null && document.cbmMissing > 0 ? (
+              <p className="text-right text-[length:var(--text-caption)] text-ink-tertiary">
+                {`Not counted: ${plural(document.cbmMissing, "line")} with no carton size`}
+              </p>
+            ) : null}
           </div>
         </div>
 
@@ -247,14 +268,14 @@ function Quantity({ value }: { value: string }) {
 }
 
 /**
- * The ten-column line grid, shared by the header and every row: #, code,
- * description, the five quantity columns at one width so their two-line
+ * The eleven-column line grid, shared by the header and every row: #, code,
+ * description, the six quantity columns at one width so their two-line
  * headers align, unit price and amount (Phase 45).
  */
 function Row({ children, className = "" }: { children: React.ReactNode; className?: string }) {
   return (
     <div
-      className={`grid grid-cols-[34px_120px_minmax(0,1fr)_68px_68px_68px_68px_68px_84px_108px] items-start gap-xs py-xs ${className}`}
+      className={`grid grid-cols-[34px_120px_minmax(0,1fr)_68px_68px_68px_68px_68px_68px_84px_108px] items-start gap-xs py-xs ${className}`}
     >
       {children}
     </div>

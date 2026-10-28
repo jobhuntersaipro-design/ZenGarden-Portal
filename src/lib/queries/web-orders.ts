@@ -1,3 +1,4 @@
+import { CARTON_SELECT, cartonCbm } from "@/lib/carton";
 import { PoEventKind, WebOrderStatus } from "@/generated/prisma/enums";
 import { matchesBuyerOrder, type BuyerOrderFilter } from "@/lib/buyer-order-filter";
 import { orderIdentity } from "@/lib/order-identity";
@@ -17,6 +18,8 @@ export type ClientOrderLine = {
   /** Pieces per carton and cartons per pallet, for the document's columns. */
   packSize: number | null;
   cartonsPerPallet: number | null;
+  /** The product's per-carton CBM, for the line's and the order's CBM. */
+  cartonCbm: number | null;
   quantity: string;
   unit: string | null;
   unitPrice: string;
@@ -398,6 +401,7 @@ export async function loadBuyerOrder(
               sku: true,
               packSize: true,
               cartonsPerPallet: true,
+              ...CARTON_SELECT,
               variant: true,
               market: true,
             },
@@ -456,6 +460,7 @@ export async function loadBuyerOrder(
         market: line.product?.market ?? null,
         packSize: line.product?.packSize ?? null,
         cartonsPerPallet: line.product?.cartonsPerPallet ?? null,
+        cartonCbm: line.product ? cartonCbm(line.product) : null,
         quantity: line.quantity.toFixed(0),
         unit: line.unit,
         unitPrice: line.unitPrice.toFixed(2),
@@ -503,6 +508,7 @@ export async function loadBuyerOrder(
               variant: true,
               market: true,
               cartonsPerPallet: true,
+              ...CARTON_SELECT,
             },
           },
         },
@@ -544,6 +550,7 @@ export async function loadBuyerOrder(
       // Not snapshotted like the pack size: a pallet figure is a shipping
       // fact about the product, not a term of the order.
       cartonsPerPallet: line.product.cartonsPerPallet,
+      cartonCbm: cartonCbm(line.product),
       quantity: String(line.cartons),
       unit: line.unit,
       unitPrice: line.unitPrice.toFixed(2),
@@ -597,6 +604,7 @@ export async function loadWebOrderDocumentSource(webOrderId: string) {
               variant: true,
               market: true,
               cartonsPerPallet: true,
+              ...CARTON_SELECT,
             },
           },
         },
@@ -638,6 +646,7 @@ export async function loadWebOrderDocumentSource(webOrderId: string) {
       // Not snapshotted like the pack size: a pallet figure is a shipping
       // fact about the product, not a term of the order.
       cartonsPerPallet: line.product.cartonsPerPallet,
+      cartonCbm: cartonCbm(line.product),
         quantity: String(line.cartons),
         unitPrice: line.unitPrice.toFixed(2),
         amount: line.amount.toFixed(2),

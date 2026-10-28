@@ -14,6 +14,8 @@ import {
   brandLogoPng,
 } from "@/lib/brand-logo";
 import { formatGrouped } from "@/lib/money";
+import { figure, formatCbm } from "@/lib/carton";
+import { plural } from "@/lib/plural";
 import {
   AWAITING_CONFIRMATION_NOTE,
   DOCUMENT_COMPANY_NAME,
@@ -257,6 +259,7 @@ export function PurchaseOrderPdf({
             <Text style={[styles.colQuantity, styles.caption]}>Total Pieces</Text>
             <Text style={[styles.colQuantity, styles.caption]}>Total Cartons</Text>
             <Text style={[styles.colQuantity, styles.caption]}>Total Pallets</Text>
+            <Text style={[styles.colQuantity, styles.caption]}>Total CBM (m³)</Text>
             <Text style={[styles.colUnit, styles.caption]}>Unit Price</Text>
             <Text style={[styles.colAmount, styles.caption]}>Amount</Text>
           </View>
@@ -288,6 +291,9 @@ export function PurchaseOrderPdf({
               <Text style={styles.colQuantity}>
                 {count(line.pallets)}
               </Text>
+              <Text style={styles.colQuantity}>
+                {line.cbm === null ? "—" : figure(line.cbm)}
+              </Text>
               <Text style={styles.colUnit}>{formatGrouped(line.unitPrice)}</Text>
               <Text style={[styles.colAmount, styles.description]}>
                 {formatGrouped(line.amount)}
@@ -312,6 +318,17 @@ export function PurchaseOrderPdf({
               <Text style={styles.grandLabel}>{`Total (${document.currency})`}</Text>
               <Text style={styles.grandValue}>{formatGrouped(document.total)}</Text>
             </View>
+            {document.totalCbm !== null ? (
+              <View style={[styles.totalsRow, { marginTop: 6 }]}>
+                <Text style={styles.totalsLabel}>Total CBM</Text>
+                <Text style={styles.totalsValue}>{formatCbm(document.totalCbm)}</Text>
+              </View>
+            ) : null}
+            {document.totalCbm !== null && document.cbmMissing > 0 ? (
+              <Text style={[styles.lineCaption, { textAlign: "right" }]}>
+                {`Not counted: ${plural(document.cbmMissing, "line")} with no carton size`}
+              </Text>
+            ) : null}
           </View>
         </View>
 

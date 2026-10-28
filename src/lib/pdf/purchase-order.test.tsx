@@ -34,6 +34,7 @@ const document: PoDocumentData = {
       totalPieces: 18,
       cartons: 3,
       pallets: 1,
+      cbm: null,
       unitPrice: "220.50",
       amount: "661.50",
     },
@@ -47,6 +48,7 @@ const document: PoDocumentData = {
       totalPieces: 24000,
       cartons: 1000,
       pallets: null,
+      cbm: null,
       unitPrice: "1420.00",
       amount: "1420000.00",
     },
@@ -54,6 +56,8 @@ const document: PoDocumentData = {
   subtotal: "1420661.50",
   tax: null,
   total: "1420661.50",
+  totalCbm: null,
+  cbmMissing: 0,
   notes: "Please deliver to the rear gate before noon.",
 };
 

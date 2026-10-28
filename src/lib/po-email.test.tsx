@@ -47,6 +47,7 @@ const document: PoDocumentData = {
       totalPieces: 7200,
       cartons: 1200,
       pallets: 24,
+      cbm: null,
       unitPrice: "220.50",
       amount: "264600.00",
     },
@@ -54,6 +55,8 @@ const document: PoDocumentData = {
   subtotal: "264600.00",
   tax: null,
   total: "264600.00",
+  totalCbm: null,
+  cbmMissing: 0,
   notes: null,
 };
 

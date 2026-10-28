@@ -5,6 +5,7 @@
 // Only `Decimal` is wanted here, and the browser entry carries it. The same
 // import is already used by the shop's product page.
 import { Prisma } from "@/generated/prisma/browser";
+import { cartonCbm, lineCbm, totalCbm } from "@/lib/carton";
 import { groupName } from "@/lib/product-groups";
 import type { CartLine } from "@/lib/queries/cart";
 import type { ReviewBuyer } from "@/lib/queries/shop-checkout";
@@ -63,6 +64,8 @@ export type PoDocumentLine = {
    * part-filled pallet is still a pallet (Phase 45, at the user's request).
    */
   pallets: number | null;
+  /** Cartons × the carton's CBM; null where the product has no carton size. */
+  cbm: number | null;
   unitPrice: string;
   amount: string;
 };
@@ -131,7 +134,19 @@ export type PoDocumentData = {
    */
   tax: string | null;
   total: string;
+  /**
+   * The order's total CBM, summed from the lines (2026-10-28). Null when no
+   * line has a carton size; `cbmMissing` lines are left out of it and the
+   * renderers say so, so a partial figure never reads as the whole order.
+   */
+  totalCbm: number | null;
+  cbmMissing: number;
   notes: string | null;
+};
+
+const cbmTotals = (lines: { cbm: number | null }[]) => {
+  const { total, missing } = totalCbm(lines);
+  return { totalCbm: total, cbmMissing: missing };
 };
 
 const joinContact = (...parts: (string | null | undefined)[]): string | null => {
@@ -184,11 +199,13 @@ export function documentQuantities(
   packSize: number | null,
   cartonsPerPallet: number | null,
   cartons: number,
+  cartonCbm: number | null = null,
 ): Pick<
   PoDocumentLine,
-  "piecesPerCarton" | "cartonsPerPallet" | "totalPieces" | "cartons" | "pallets"
+  "piecesPerCarton" | "cartonsPerPallet" | "totalPieces" | "cartons" | "pallets" | "cbm"
 > {
   return {
+    cbm: lineCbm(cartonCbm, cartons),
     piecesPerCarton: packSize,
     cartonsPerPallet,
     totalPieces: packSize === null ? null : packSize * cartons,
@@ -247,7 +264,7 @@ export function buildPoDocument(input: {
     position: index + 1,
     sku: line.sku,
     ...describeLine(line),
-    ...documentQuantities(line.packSize, line.cartonsPerPallet, line.cartons),
+    ...documentQuantities(line.packSize, line.cartonsPerPallet, line.cartons, cartonCbm(line)),
     unitPrice: line.unitPrice,
     amount: line.amount,
   }));
@@ -277,6 +294,7 @@ export function buildPoDocument(input: {
     // confirms, which the review screen says beside the button.
     tax: null,
     total: summed,
+    ...cbmTotals(lines),
     notes: input.notes?.trim() || null,
   };
 }
@@ -321,6 +339,8 @@ export function buildPoDocumentFromOrder(input: {
       /** From the linked product, or the line's own snapshot. */
       packSize: number | null;
       cartonsPerPallet: number | null;
+      /** The product's per-carton CBM; absent or null leaves the line out of the total. */
+      cartonCbm?: number | null;
       quantity: string;
       unitPrice: string;
       amount: string;
@@ -342,7 +362,12 @@ export function buildPoDocumentFromOrder(input: {
       variant: line.variant,
       market: line.market,
     }),
-    ...documentQuantities(line.packSize, line.cartonsPerPallet, Number(line.quantity)),
+    ...documentQuantities(
+      line.packSize,
+      line.cartonsPerPallet,
+      Number(line.quantity),
+      line.cartonCbm ?? null,
+    ),
     unitPrice: line.unitPrice,
     amount: line.amount,
   }));
@@ -369,6 +394,7 @@ export function buildPoDocumentFromOrder(input: {
     subtotal: summed.toFixed(2),
     tax: taxed?.toFixed(2) ?? null,
     total: summed.plus(taxed ?? 0).toFixed(2),
+    ...cbmTotals(lines),
     notes: order.notes?.trim() || null,
   };
 }

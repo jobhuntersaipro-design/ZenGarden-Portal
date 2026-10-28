@@ -23,6 +23,21 @@
 - Found while driving: the shop product breadcrumb never wrapped, so
   TST-002's long name pushed the page to 491px at 390; the last crumb wraps.
 
+**Same day: total CBM on the order.** Asked for through Arif as "while the
+customer added on the qty carton, can the total cbm add on automatically",
+shown on the PO. A line's CBM is the carton's (4 dp, as the buyer reads it)
+× cartons; the order's is the sum (`lineCbm`, `totalCbm` in
+`src/lib/carton.ts`). The PO (screen and PDF) gains a **Total CBM (m³)**
+column and a **Total CBM** row under the total; the cart summary and the
+order emails' totals carry it too. A line with no carton size reads "—" and
+is left out, with "Not counted: N lines with no carton size", so a partial
+total never reads as the whole order; with no line sized nothing is shown.
+No migration. Driven at 1440 and 390: TST-002 × 5 beside a product with no
+size read 0.0595 on its line, Total CBM 0.0595m³ and the not-counted line, in
+the cart and the checkout PO; a rendered PDF read the same, ³ included; no
+overflow. 1947 tests (3 new), `tsc`, lint unchanged, build. The email row was
+unit-tested, not opened in a mail client.
+
 ## Verified
 
 Local Postgres + seed, dev server, Chromium at 1440 and 390, as a super admin
