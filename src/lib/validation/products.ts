@@ -85,6 +85,24 @@ const wholeCount = (noun: string, { zero = false }: { zero?: boolean } = {}) => 
   });
 
 /**
+ * A carton measurement in cm or kg (2026-10-28): optional, and when given a
+ * plain decimal above zero. "1e3", "-2" and "abc" are refused; so is zero,
+ * since a carton with no height is a blank, not a figure.
+ */
+export const positiveDecimal = (noun: string) => z
+  .union([z.number(), z.string(), z.null()])
+  .transform((value, ctx) => {
+    if (value === null || value === "") return null;
+    const text = typeof value === "number" ? String(value) : value.trim();
+    const number = Number(text);
+    if (!/^\d+(\.\d+)?$/.test(text) || !(number > 0) || number > 100000) {
+      ctx.addIssue({ code: "custom", message: `${noun} must be a number above zero` });
+      return z.NEVER;
+    }
+    return number;
+  });
+
+/**
  * The shape without its cross-field rule, so a caller that needs a different
  * arrangement of the same fields can `omit` and `extend` it — Phase 39's batch
  * create keeps the shared half and moves `sku`, `listPrice` and `variant` into
@@ -122,6 +140,11 @@ export const productObject = z.object({
   /** "60CTNS/PALLET", as the customer's own labels and sheet print it. */
   cartonsPerPallet: wholeCount("Cartons per pallet"),
   stockCartons: stockCartonsSchema,
+  /** The carton's outside size and packed weight; CBM is derived, never stored. */
+  cartonLengthCm: positiveDecimal("Carton length"),
+  cartonWidthCm: positiveDecimal("Carton width"),
+  cartonHeightCm: positiveDecimal("Carton height"),
+  grossWeightKg: positiveDecimal("Gross weight"),
   /**
    * The market a formulation is made for — a country (Vietnam, India) or a
    * customer (Mydin, Hero Market), which is how the ops team's own sheet

@@ -38,6 +38,7 @@ import {
   type SearchParams,
 } from "@/lib/queries/pagination";
 import { prisma } from "@/lib/prisma";
+import { cartonCbm, pickCarton } from "@/lib/carton";
 import { can, requirePagePermission } from "@/lib/permissions/require";
 import { withLoadingFloor } from "@/lib/loading-floor";
 import { plural } from "@/lib/plural";
@@ -95,6 +96,8 @@ async function ProductPage({
   ]);
   const certs = (await loadProductCerts([id])).get(id);
   if (!data) notFound();
+  const carton = data.product;
+  const cbm = cartonCbm(carton);
 
   const isSuperAdmin = user?.role === Role.SUPER_ADMIN;
   const mode: TrendMode =
@@ -183,6 +186,7 @@ async function ProductPage({
                   variant: data.product.variant,
                   packSize: data.product.packSize,
                   cartonsPerPallet: data.product.cartonsPerPallet,
+                  ...pickCarton(data.product),
                   market: data.product.market,
                   listPrice: data.product.listPrice.toFixed(2),
                   stockCartons: data.product.stockCartons,
@@ -294,6 +298,14 @@ async function ProductPage({
                   ? plural(data.product.cartonsPerPallet, "carton")
                   : "—",
               ],
+              [
+                "Carton (L × W × H)",
+                carton.cartonLengthCm && carton.cartonWidthCm && carton.cartonHeightCm
+                  ? `${carton.cartonLengthCm} × ${carton.cartonWidthCm} × ${carton.cartonHeightCm} cm`
+                  : "—",
+              ],
+              ["Gross weight", carton.grossWeightKg ? `${carton.grossWeightKg} kg` : "—"],
+              ["CBM", cbm ? `${cbm} m³` : "—"],
               /**
                * Cartons, as counted. A dash is "nobody has counted", which is
                * why a zero prints as "0 cartons" rather than falling into the

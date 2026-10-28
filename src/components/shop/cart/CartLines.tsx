@@ -1,5 +1,6 @@
 "use client";
 
+import { CartonLines } from "@/components/shop/CartonLines";
 import Link from "next/link";
 import { useState } from "react";
 import { AlertCircle, Trash2 } from "lucide-react";
@@ -134,6 +135,7 @@ function CartRow({
           {line.name}
         </Link>
         <p className="mt-xxs text-[length:var(--text-caption)] text-ink-tertiary">{meta}</p>
+        <CartonLines size={line} className="mt-xxs" />
         {line.unavailable ? (
           <span className="mt-xxs inline-flex h-6 w-fit max-w-full items-center gap-xxs rounded-pill border border-accent-red px-sm text-[length:var(--text-caption)] font-medium text-accent-red">
             <AlertCircle className="size-3.5 shrink-0" aria-hidden />

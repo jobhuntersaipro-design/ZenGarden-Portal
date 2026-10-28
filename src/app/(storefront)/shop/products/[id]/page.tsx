@@ -82,14 +82,18 @@ async function ShopProductPage({
 
   return (
     <div className="pt-lg">
-      {/* Arc's breadcrumb (docs/specs/61-arc-preview-switch.md). */}
-      <Breadcrumb
-        items={[
-          { label: "Home", href: shopHref.home() },
-          { label: product.category, href: shopHref.catalogue({ category: product.category }) },
-          { label: product.name },
-        ]}
-      />
+      {/* Arc's breadcrumb (docs/specs/61-arc-preview-switch.md). Its crumbs
+          never wrap, so a long product name ran 101px past a 390 screen;
+          the last crumb, the name, wraps instead. */}
+      <div className="[&_li:last-child]:min-w-0 [&_li:last-child]:whitespace-normal">
+        <Breadcrumb
+          items={[
+            { label: "Home", href: shopHref.home() },
+            { label: product.category, href: shopHref.catalogue({ category: product.category }) },
+            { label: product.name },
+          ]}
+        />
+      </div>
 
       <div className="mt-md grid gap-sm sm:gap-xl lg:grid-cols-[5fr_7fr]">
         <div className="self-start">

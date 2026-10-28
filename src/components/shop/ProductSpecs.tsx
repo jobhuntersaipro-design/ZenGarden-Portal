@@ -1,3 +1,4 @@
+import { cartonSpecs } from "@/lib/carton";
 import type { ShopProductDetail } from "@/lib/queries/shop-catalogue";
 
 /**
@@ -13,6 +14,7 @@ export function ProductSpecs({ product }: { product: ShopProductDetail }) {
       "Cartons per pallet",
       product.cartonsPerPallet === null ? null : String(product.cartonsPerPallet),
     ],
+    ...cartonSpecs(product),
     ["Unit", product.unit.charAt(0).toUpperCase() + product.unit.slice(1)],
     ["Brand", product.brand],
     ["Variant", product.variant],

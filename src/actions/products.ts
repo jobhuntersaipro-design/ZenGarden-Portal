@@ -185,6 +185,10 @@ function productRowData(
     variant: row.variant,
     packSize: shared.packSize,
     cartonsPerPallet: shared.cartonsPerPallet,
+    cartonLengthCm: shared.cartonLengthCm,
+    cartonWidthCm: shared.cartonWidthCm,
+    cartonHeightCm: shared.cartonHeightCm,
+    grossWeightKg: shared.grossWeightKg,
     market: shared.market,
     listPrice: new Prisma.Decimal(row.listPrice),
     // Never a count at creation (Phase 55). A product arrives uncounted and is
@@ -674,6 +678,10 @@ export async function updateProduct(
           variant: data.variant,
           packSize: data.packSize,
           cartonsPerPallet: data.cartonsPerPallet,
+          cartonLengthCm: data.cartonLengthCm,
+          cartonWidthCm: data.cartonWidthCm,
+          cartonHeightCm: data.cartonHeightCm,
+          grossWeightKg: data.grossWeightKg,
           market: data.market,
           listPrice: nextPrice,
           // Stock is deliberately absent (Phase 55). It is a stocktake with an

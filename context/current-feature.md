@@ -1,3 +1,49 @@
+# Carton size, gross weight and CBM on products
+
+## Status
+
+**Built on `claude/gallant-ride-56cq1n`** (2026-10-28). ClickUp
+[z8v9xnjmjk](https://app.clickup.com/t/z8v9xnjmjk).
+
+- `Product.cartonLengthCm`, `cartonWidthCm`, `cartonHeightCm`,
+  `grossWeightKg` (nullable floats, migration
+  `20261028090000_product_carton_size`). **CBM has no column**: it is
+  L × W × H ÷ 1,000,000 to 4 decimals, derived on read (`src/lib/carton.ts`),
+  so a CBM sent in a payload has nowhere to go (Zod strips it).
+- Create page and edit drawer share `CartonFields`: four optional decimal
+  inputs with an inline error for a negative, zero or text value, and a
+  disabled CBM field that fills as the sides are typed.
+- Admin product page: Carton (L × W × H), Gross weight, CBM in the grid.
+- Shop product page specs, listing card, cart line and checkout review read
+  "Carton measurements: 23.5cm x 20cm x 25.4cm", "Gross weight: 14.16kg",
+  "Cbm: 0.0119m3"; a missing value drops its line.
+- The migration deletes every description line carrying "carton dimension",
+  "gross weight:" or "cbm:" (case-insensitive); an emptied description goes
+  NULL. **Values are not parsed out of it**: re-enter them in the fields.
+- Found while driving: the shop product breadcrumb never wrapped, so
+  TST-002's long name pushed the page to 491px at 390; the last crumb wraps.
+
+## Verified
+
+Local Postgres + seed, dev server, Chromium at 1440 and 390, as a super admin
+and a Malaysia buyer. A product renamed TST-002 with an old
+"Carton dimension…" line: the migration's UPDATE left "Rich shower cream.",
+a description of only that line went NULL, count of `ilike '%carton
+dimension%'` 2 → 0. Edit: -3 and "abc" showed inline errors; 23.5 / 20 / 25.4
+/ 14.16 gave CBM 0.0119 (disabled), saved, held after reload; the grid read
+"23.5 × 20 × 25.4 cm", "14.16 kg", "0.0119 m³". Shop: the three lines on the
+product page, card, cart and review at both widths; a product with no values
+shows none in its specs or cart line. Create at 390 stored 30/25/20/8.5 (CBM
+0.015). No overflow on any page driven. 1944 tests (5 new), `tsc`, lint
+unchanged, build.
+
+## Not verified
+
+Production (no staff or buyer login here). The real TST-002 and the real
+descriptions the cleanup touches — the query count is the proof to take there.
+
+## Before that
+
 # Order tweaks, QC hold, shipments, containers and tracking (specs 63, 64, 66, 67, 68)
 
 ## Status

@@ -1,5 +1,6 @@
 "use client";
 
+import { CartonLines } from "@/components/shop/CartonLines";
 import { useId, useState } from "react";
 import Link from "next/link";
 import { CertDots } from "@/components/certificates/CertDots";
@@ -116,6 +117,7 @@ export function ShopProductCard({
       <p className="mt-xxs text-[length:var(--text-caption)] text-ink-tertiary">
         {packCaption}
       </p>
+      <CartonLines size={selected} className="mt-xxs" />
 
       {hasChoice ? (
         <VariantChips

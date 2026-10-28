@@ -11,6 +11,10 @@ const valid = {
   variant: "Goat's Milk",
   packSize: 6,
   cartonsPerPallet: 60,
+  cartonLengthCm: null,
+  cartonWidthCm: null,
+  cartonHeightCm: null,
+  grossWeightKg: null,
   stockCartons: null,
   market: "Malaysia",
   description: "Flamed finish.",
@@ -182,6 +186,27 @@ describe("productSchema", () => {
     const blank = productSchema.safeParse({ ...valid, cartonsPerPallet: "" });
     expect(blank.success).toBe(true);
     if (blank.success) expect(blank.data.cartonsPerPallet).toBeNull();
+  });
+
+  it("takes carton sizes as decimals, refuses negatives and text, and drops a sent CBM", () => {
+    const parsed = productSchema.safeParse({
+      ...valid,
+      cartonLengthCm: "23.5",
+      cartonWidthCm: "20",
+      cartonHeightCm: "25.4",
+      grossWeightKg: "14.16",
+      cbm: "9.9",
+    });
+    expect(parsed.success).toBe(true);
+    if (parsed.success) {
+      expect(parsed.data.cartonLengthCm).toBe(23.5);
+      expect(parsed.data.grossWeightKg).toBe(14.16);
+      expect("cbm" in parsed.data).toBe(false);
+    }
+    for (const bad of ["-2", "abc", "0", "1e3"]) {
+      const result = productSchema.safeParse({ ...valid, cartonHeightCm: bad });
+      expect(result.success).toBe(false);
+    }
   });
 
   it("takes the pack size as typed, so a form field can feed it", () => {

@@ -12,6 +12,7 @@ import { StagedImages, type StagedImage } from "@/components/products/StagedImag
 import { VariantRows, type VariantRowState } from "@/components/products/VariantRows";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { CartonFields } from "@/components/products/CartonFields";
 import { Switch } from "@/components/ui/switch";
 import { Textarea } from "@/components/ui/textarea";
 import { useImageUploadQueue } from "@/hooks/useImageUploadQueue";
@@ -42,6 +43,10 @@ const BLANK: SharedInput = {
   brand: null,
   packSize: "",
   cartonsPerPallet: "",
+  cartonLengthCm: "",
+  cartonWidthCm: "",
+  cartonHeightCm: "",
+  grossWeightKg: "",
   market: "Malaysia",
   description: null,
   active: true,
@@ -787,6 +792,8 @@ export function ProductForm({
                 As printed on the label — 60CTNS/PALLET
               </p>
             </div>
+
+            <CartonFields values={form} onChange={set} />
 
             <div className="flex flex-col gap-xxs">
               <label htmlFor="product-unit" className={label}>

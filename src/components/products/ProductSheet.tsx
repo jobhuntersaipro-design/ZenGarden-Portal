@@ -11,6 +11,7 @@ import { ListingNotice } from "@/components/products/ListingNotice";
 import { ManageLabelsLink } from "@/components/products/ManageLabelsLink";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { CartonFields } from "@/components/products/CartonFields";
 import {
   Sheet,
   SheetContent,
@@ -372,6 +373,8 @@ export function ProductSheet({
                 As printed on the label — 60CTNS/PALLET
               </p>
             </div>
+
+            <CartonFields values={form} onChange={set} />
 
             {/* Stock is not a property of a product (Phase 55). It is a
                 stocktake somebody took on a day, with their name and a note on

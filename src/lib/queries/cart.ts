@@ -1,10 +1,11 @@
+import { CARTON_SELECT, pickCarton, type CartonSize } from "@/lib/carton";
 import { WebOrderStatus } from "@/generated/prisma/enums";
 import { lineTotal, piecesFor } from "@/lib/cartons";
 import { prisma } from "@/lib/prisma";
 import { Prisma } from "@/generated/prisma/client";
 import { thumbUrl } from "@/lib/queries/shop-catalogue";
 
-export type CartLine = {
+export type CartLine = CartonSize & {
   productId: string;
   sku: string;
   name: string;
@@ -83,6 +84,7 @@ const PRICED_PRODUCT_FIELDS = {
   market: true,
   packSize: true,
   cartonsPerPallet: true,
+  ...CARTON_SELECT,
   unit: true,
   listPrice: true,
   active: true,
@@ -153,6 +155,7 @@ function priceLine(
     market: product.market,
     packSize: product.packSize,
     cartonsPerPallet: product.cartonsPerPallet,
+    ...pickCarton(product),
     unit: product.unit,
     cartons,
     unitPrice: price,

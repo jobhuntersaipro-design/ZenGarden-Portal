@@ -1,5 +1,6 @@
 "use client";
 
+import { CartonLines } from "@/components/shop/CartonLines";
 import { useEffect, useRef, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { beginRouteProgress } from "@/lib/route-progress";
@@ -336,6 +337,7 @@ export function ReviewSendForm({
                 <p className="text-[length:var(--text-caption)] tabular-nums text-ink-tertiary">
                   {`${line.cartons} × ${formatMYR(line.unitPrice)}`}
                 </p>
+                <CartonLines size={line} />
               </div>
               <p className="shrink-0 text-[length:var(--text-body-sm)] tabular-nums text-ink">
                 {line.amount}

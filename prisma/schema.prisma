@@ -571,6 +571,11 @@ model Product {
   variant          String? // Goat's Milk, Lavender, Lemon…; free-growing list
   packSize         Int? // pieces per carton (6, 12, 24)
   cartonsPerPallet Int? // "60CTNS/PALLET" on the customer's own labels
+  // The carton's outside size and packed weight; CBM is derived (src/lib/carton.ts), never stored
+  cartonLengthCm   Float?
+  cartonWidthCm    Float?
+  cartonHeightCm   Float?
+  grossWeightKg    Float?
   category         String
   unit             String
   market           String? // country or customer the formulation is made for; free-growing list, see listMarkets()

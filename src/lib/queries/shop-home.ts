@@ -1,3 +1,4 @@
+import { CARTON_SELECT, pickCarton } from "@/lib/carton";
 import { Prisma } from "@/generated/prisma/client";
 import { twelveMonthWindow } from "@/lib/analytics/products";
 import { prisma } from "@/lib/prisma";
@@ -40,6 +41,7 @@ const HOME_PRODUCT_SELECT = {
   market: true,
   packSize: true,
   cartonsPerPallet: true,
+  ...CARTON_SELECT,
   unit: true,
   listPrice: true,
   images: {
@@ -64,6 +66,7 @@ async function toShopProduct(row: HomeProductRow): Promise<ShopProduct> {
     market: row.market,
     packSize: row.packSize,
     cartonsPerPallet: row.cartonsPerPallet,
+    ...pickCarton(row),
     unit: row.unit,
     listPrice: row.listPrice.toFixed(2),
     imageUrl: await thumbUrl(row.images),

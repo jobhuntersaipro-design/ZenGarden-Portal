@@ -1,3 +1,4 @@
+import { CARTON_SELECT, pickCarton, type CartonSize } from "@/lib/carton";
 import { Prisma } from "@/generated/prisma/client";
 import { prisma } from "@/lib/prisma";
 import { groupProducts, type ProductGroup } from "@/lib/product-groups";
@@ -27,7 +28,7 @@ import { shopVisible } from "@/lib/shop-market";
  */
 export { shopVisible };
 
-export type ShopProduct = {
+export type ShopProduct = CartonSize & {
   id: string;
   sku: string;
   name: string;
@@ -159,6 +160,7 @@ const SHOP_PRODUCT_SELECT = {
   market: true,
   packSize: true,
   cartonsPerPallet: true,
+  ...CARTON_SELECT,
   unit: true,
   listPrice: true,
   images: {
@@ -188,6 +190,7 @@ async function toShopProduct(row: ShopProductRow): Promise<ShopProduct> {
     market: row.market,
     packSize: row.packSize,
     cartonsPerPallet: row.cartonsPerPallet,
+    ...pickCarton(row),
     unit: row.unit,
     listPrice: row.listPrice.toFixed(2),
     imageUrl: await thumbUrl(row.images),
@@ -535,6 +538,7 @@ export async function loadShopProduct(
       market: true,
       packSize: true,
       cartonsPerPallet: true,
+      ...CARTON_SELECT,
       unit: true,
       listPrice: true,
       description: true,
@@ -561,6 +565,7 @@ export async function loadShopProduct(
     market: row.market,
     packSize: row.packSize,
     cartonsPerPallet: row.cartonsPerPallet,
+    ...pickCarton(row),
     unit: row.unit,
     listPrice: row.listPrice.toFixed(2),
     description: row.description,

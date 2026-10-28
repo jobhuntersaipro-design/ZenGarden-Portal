@@ -1,3 +1,4 @@
+import { CARTON_SELECT, pickCarton, type CartonSize } from "@/lib/carton";
 import { WebOrderStatus } from "@/generated/prisma/enums";
 import { dateColumnRange } from "@/lib/dates";
 import { ORDER_IDENTITY_SELECT, orderIdentity } from "@/lib/order-identity";
@@ -37,7 +38,7 @@ export type OrderHistoryRow = {
 };
 
 export type ProductDetail = {
-  product: {
+  product: CartonSize & {
     id: string;
     sku: string;
     name: string;
@@ -129,6 +130,7 @@ export async function loadProduct(
       variant: true,
       packSize: true,
       cartonsPerPallet: true,
+      ...CARTON_SELECT,
       market: true,
       listPrice: true,
       stockCartons: true,
@@ -320,6 +322,7 @@ export async function loadProduct(
       variant: product.variant,
       packSize: product.packSize,
       cartonsPerPallet: product.cartonsPerPallet,
+      ...pickCarton(product),
       stockCartons: product.stockCartons,
       market: product.market,
       listPrice,
