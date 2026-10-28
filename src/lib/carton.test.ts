@@ -14,7 +14,7 @@ describe("carton", () => {
     ).toEqual([
       "Carton measurements: 23.5cm x 20cm x 25.4cm",
       "Gross weight: 14.16kg",
-      "Cbm: 0.0119m3",
+      "Cbm: 0.0119m³",
     ]);
   });
 

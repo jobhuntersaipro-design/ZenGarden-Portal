@@ -30,7 +30,7 @@ export function cartonSpecs(size: CartonSize): [string, string][] {
   const specs: [string, string][] = [];
   if (l && w && h) specs.push(["Carton measurements", `${figure(l)}cm x ${figure(w)}cm x ${figure(h)}cm`]);
   if (kg) specs.push(["Gross weight", `${figure(kg)}kg`]);
-  if (cbm) specs.push(["Cbm", `${figure(cbm)}m3`]);
+  if (cbm) specs.push(["Cbm", `${figure(cbm)}m³`]);
   return specs;
 }
 
