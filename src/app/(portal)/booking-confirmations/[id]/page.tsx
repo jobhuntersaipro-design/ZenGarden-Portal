@@ -9,7 +9,7 @@ import { DocumentPreview } from "@/components/review/DocumentPreviewLoader";
 import { can, requirePagePermission } from "@/lib/permissions/require";
 import { formatDateTime } from "@/lib/dates";
 import { BookingShipmentLink } from "@/components/booking-confirmations/BookingShipmentLink";
-import { loadBooking } from "@/lib/queries/booking-confirmations";
+import { findDuplicateBookings, loadBooking } from "@/lib/queries/booking-confirmations";
 import { shipmentOptions } from "@/lib/queries/shipments";
 import { BOOKING_FIELDS } from "@/lib/validation/booking-confirmations";
 import { withLoadingFloor } from "@/lib/loading-floor";
@@ -38,7 +38,12 @@ async function BookingPage({ params }: { params: Promise<{ id: string }> }) {
     can("bc.upload"),
     can("shipment.manage"),
   ]);
-  const options = canReview ? await shipmentOptions() : [];
+  const [options, duplicates] = await Promise.all([
+    canReview ? shipmentOptions() : Promise.resolve([]),
+    findDuplicateBookings(booking.bookingNumber, booking.id),
+  ]);
+  // Deleting a reviewed booking is a reviewer's call, as in the list.
+  const canDiscard = booking.status === "REVIEWED" ? canReview : canRetry;
   const endpoint = `/api/booking-confirmations/${booking.id}/url`;
   // Strings for the form; a date column crosses as its calendar day.
   const initial = Object.fromEntries(
@@ -80,6 +85,8 @@ async function BookingPage({ params }: { params: Promise<{ id: string }> }) {
         initial={initial}
         canReview={canReview}
         canRetry={canRetry}
+        duplicates={duplicates}
+        canDiscard={canDiscard}
         linkedOrder={
           <BookingShipmentLink
             bookingId={booking.id}

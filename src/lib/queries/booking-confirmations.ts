@@ -171,3 +171,39 @@ export async function loadBooking(id: string) {
     },
   });
 }
+
+export type DuplicateBooking = {
+  id: string;
+  bookingNumber: string;
+  uploadedBy: string;
+  uploadedAt: string;
+};
+
+/**
+ * Other booking confirmations carrying this booking number, oldest first, so
+ * an upload can say it is not the first. Case is ignored; a blank number
+ * matches nothing, since an unread booking is not a copy of anything.
+ */
+export async function findDuplicateBookings(
+  bookingNumber: string | null | undefined,
+  excludeId: string,
+): Promise<DuplicateBooking[]> {
+  const number = bookingNumber?.trim();
+  if (!number) return [];
+  const rows = await prisma.bookingConfirmation.findMany({
+    where: {
+      id: { not: excludeId },
+      status: { not: BookingStatus.UPLOADING },
+      bookingNumber: { equals: number, mode: "insensitive" },
+    },
+    orderBy: { uploadedAt: "asc" },
+    take: 5,
+    select: { id: true, bookingNumber: true, uploadedAt: true, uploadedBy: { select: { name: true } } },
+  });
+  return rows.map((row) => ({
+    id: row.id,
+    bookingNumber: row.bookingNumber ?? number,
+    uploadedBy: row.uploadedBy.name,
+    uploadedAt: row.uploadedAt.toISOString(),
+  }));
+}

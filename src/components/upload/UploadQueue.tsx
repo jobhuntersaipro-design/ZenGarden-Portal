@@ -4,6 +4,7 @@ import { Progress } from "@/components/arc/progress/progress";
 import arcProgress from "@/components/arc/progress/progress.module.css";
 import { FileText, Image as ImageIcon, X } from "lucide-react";
 import type { UploadRow, UploadStatus } from "@/components/upload/queue-types";
+import { DuplicateNotice } from "@/components/booking-confirmations/DuplicateNotice";
 import { formatBytes } from "@/lib/validation/upload";
 
 /**
@@ -99,11 +100,16 @@ export function UploadQueue({
   rows,
   onRemove,
   onRetry,
+  onKeep,
+  onDiscard,
   noun = "PO",
 }: {
   rows: UploadRow[];
   onRemove: (id: string) => void;
   onRetry: (id: string) => void;
+  /** A booking whose number is already on file: keep it anyway, or throw it away. */
+  onKeep?: (id: string) => void;
+  onDiscard?: (id: string) => Promise<void>;
   /** What is being uploaded, short: "PO" or "BC". */
   noun?: string;
 }) {
@@ -182,6 +188,13 @@ export function UploadQueue({
               label={`${row.name}: ${LABEL[row.status]}`}
               indeterminate={row.status === "extracting"}
             />
+            {row.duplicates?.length ? (
+              <DuplicateNotice
+                duplicates={row.duplicates}
+                onKeep={onKeep ? () => onKeep(row.id) : undefined}
+                onDiscard={onDiscard ? () => onDiscard(row.id) : undefined}
+              />
+            ) : null}
           </li>
         );
       })}

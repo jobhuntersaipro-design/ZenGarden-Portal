@@ -9,8 +9,10 @@ import type { CompleteResponse } from "@/app/api/upload/complete/route";
 import { retryExtraction } from "@/actions/purchase-orders";
 import {
   cancelBookingUpload,
+  deleteBookingConfirmation,
   retryBookingConfirmation,
 } from "@/actions/booking-confirmations";
+import type { DuplicateBooking } from "@/lib/queries/booking-confirmations";
 import { expandZips } from "@/lib/upload/expand-zips";
 import { MAX_FILES_PER_CALL, rejectionReason } from "@/lib/validation/upload";
 import {
@@ -48,6 +50,8 @@ export type UploadTarget = {
     | { success: true; data: { status: string; error: string | null } }
     | { success: false; error: string }
   >;
+  /** Throw away an upload that turned out to be a copy. Booking confirmations only. */
+  discard?: (id: string) => Promise<{ success: true } | { success: false; error: string }>;
 };
 
 export const PO_UPLOAD: UploadTarget = {
@@ -62,6 +66,7 @@ export const BOOKING_UPLOAD: UploadTarget = {
   complete: "/api/booking-confirmations/complete",
   cancel: cancelBookingUpload,
   retry: retryBookingConfirmation,
+  discard: deleteBookingConfirmation,
 };
 
 export function useUploadQueue(hintBuyerId?: string, target: UploadTarget = PO_UPLOAD) {
@@ -183,7 +188,9 @@ export function useUploadQueue(hintBuyerId?: string, target: UploadTarget = PO_U
           fail(row.id, body?.error ?? "The upload didn't finish");
           return;
         }
-        const body = (await completeResponse.json()) as CompleteResponse;
+        const body = (await completeResponse.json()) as CompleteResponse & {
+          duplicates?: DuplicateBooking[];
+        };
         // The upload succeeded but the read may not have. A row that says
         // "Ready to review" when Claude could not read the document would put
         // it in the footer's count and promise a review that cannot happen.
@@ -202,6 +209,7 @@ export function useUploadQueue(hintBuyerId?: string, target: UploadTarget = PO_U
           status: "ready",
           progress: 100,
           extractionId: body.extractionId,
+          ...(body.duplicates?.length ? { duplicates: body.duplicates } : {}),
         });
       } catch (cause) {
         const message = cause instanceof Error ? cause.message : String(cause);
@@ -333,6 +341,28 @@ export function useUploadQueue(hintBuyerId?: string, target: UploadTarget = PO_U
     [fail, patch, pump, target],
   );
 
+  /** The uploader saw the booking number is already on file and kept this one. */
+  const keep = useCallback((id: string) => patch(id, { duplicates: undefined }), [patch]);
+
+  /** The copy goes: its row, its booking and its file. */
+  const discard = useCallback(
+    async (id: string) => {
+      const row = queue.current.find((candidate) => candidate.id === id);
+      if (!row?.extractionId || !target.discard) return;
+      try {
+        const result = await target.discard(row.extractionId);
+        if (!result.success) {
+          patch(id, { reason: result.error });
+          return;
+        }
+        commit((current) => current.filter((candidate) => candidate.id !== id));
+      } catch {
+        patch(id, { reason: "We couldn't reach the server. Try again." });
+      }
+    },
+    [commit, patch, target],
+  );
+
   const busy = rows.some(
     (row) => isActive(row.status) || row.status === "queued",
   );
@@ -345,5 +375,5 @@ export function useUploadQueue(hintBuyerId?: string, target: UploadTarget = PO_U
     return () => window.removeEventListener("beforeunload", warn);
   }, [busy]);
 
-  return { rows, add, remove, retry, busy };
+  return { rows, add, remove, retry, keep, discard, busy };
 }
