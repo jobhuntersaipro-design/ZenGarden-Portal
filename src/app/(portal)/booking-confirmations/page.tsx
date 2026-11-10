@@ -21,6 +21,7 @@ import {
   listBookings,
   type BookingChip,
 } from "@/lib/queries/booking-confirmations";
+import { shipmentPreview } from "@/lib/queries/shipments";
 import { withLoadingFloor } from "@/lib/loading-floor";
 
 export const metadata: Metadata = {
@@ -72,6 +73,7 @@ async function BookingConfirmationsPage({
     reviewedByName: row.reviewedBy?.name ?? null,
     reviewedByImage: row.reviewedBy?.image ?? null,
     reviewedAt: row.reviewedAt?.toISOString() ?? null,
+    shipment: row.shipment ? shipmentPreview(row.shipment, row.id) : null,
   }));
 
   return (

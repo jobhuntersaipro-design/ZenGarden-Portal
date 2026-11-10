@@ -57,6 +57,24 @@ unchanged, build.
 Production (no staff or buyer login here). The real TST-002 and the real
 descriptions the cleanup touches — the query count is the proof to take there.
 
+**2026-11-10: hover previews between bookings and shipments.** Asked for
+as "when hover to any Booking No. it should show a preview of which
+shipment … in shipment tab … a preview of Booking No when hover to shipment
+row". `DataTable` takes `preview` (and `previewOn: "title" | "row"`) and
+wraps the trigger in Arc's `HoverCard`; desktop table only, so a phone's
+card list taps through as before. Booking no. → the shipment it books space
+for (reference, status, buyer, POs, documents "x of y" with the dots and
+what is missing, Open shipment), "Not on a shipment yet" when unlinked, and
+"Replaced on this shipment by …" when a newer booking took its place. A
+shipment row → its current booking (carrier, route, ETD, ETA, vessel, Open
+booking confirmation), "Replaces N earlier booking(s)", or "No booking yet".
+A booking belongs to one shipment by schema, so there is no
+several-shipments case. Driven on local Postgres + seed with three
+shipments and four bookings at 1440: all five states read as above, the
+card's link opened the booking; no overflow at 1440 or 390. 1925 tests,
+`tsc`, eslint on touched files, build (xlsx stand-in, as before).
+Not verified: production.
+
 ## Before that
 
 # Order tweaks, QC hold, shipments, containers and tracking (specs 63, 64, 66, 67, 68)
