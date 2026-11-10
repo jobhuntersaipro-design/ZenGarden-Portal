@@ -15,7 +15,11 @@ describe("shipmentChecklist", () => {
     expect(empty.requiredDone).toBe(1);
     const noD = shipmentChecklist({ hasOrders: true, hasBooking: false, current: [], formDRequired: false });
     expect(noD.requiredTotal).toBe(5);
-    expect(states(noD).FORM_D).toBe("not_needed");
+    expect(states(noD).FORM_D).toBe("optional");
+    const noDUploaded = shipmentChecklist({ hasOrders: true, hasBooking: false, current: ["FORM_D"], formDRequired: false });
+    expect(states(noDUploaded).FORM_D).toBe("done");
+    expect(noDUploaded.requiredTotal).toBe(5);
+    expect(noDUploaded.requiredDone).toBe(noD.requiredDone);
   });
 
   it("never calls the invoice missing, and never counts it", () => {

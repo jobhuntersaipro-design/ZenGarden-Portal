@@ -4,11 +4,12 @@ import type { ShipmentDocType } from "@/generated/prisma/enums";
  * What a shipment still lacks (Phase 63, re-ordered 2026-10-17). Pure — no
  * Prisma — so the list, the shipment page and every PO's Shipping card read
  * one rule and cannot count differently. **No due dates** (asked for
- * 2026-10-17): a paper is uploaded, missing, optional or not needed.
+ * 2026-10-17): a paper is uploaded, missing or optional. Form D on a
+ * shipment that does not need it is optional, not hidden (2026-11-10).
  */
 
 export type SlotKey = "PURCHASE_ORDER" | "BOOKING" | ShipmentDocType;
-export type SlotState = "done" | "missing" | "optional" | "not_needed";
+export type SlotState = "done" | "missing" | "optional";
 
 /** The export flow's own order, as the customer runs it. */
 export const SLOT_ORDER: readonly SlotKey[] = [
@@ -73,16 +74,16 @@ export function shipmentChecklist(input: {
   formDRequired: boolean;
 }) {
   const current = new Set(input.current);
+  const counts = (key: SlotKey) => key !== "INVOICE" && (key !== "FORM_D" || input.formDRequired);
   const slots = SLOT_ORDER.map((key): ChecklistSlot => {
     const done =
       key === "PURCHASE_ORDER" ? input.hasOrders : key === "BOOKING" ? input.hasBooking : current.has(key);
     if (done) return { key, state: "done" };
-    if (key === "INVOICE") return { key, state: "optional" };
-    if (key === "FORM_D" && !input.formDRequired) return { key, state: "not_needed" };
+    if (!counts(key)) return { key, state: "optional" };
     return { key, state: "missing" };
   });
-  // The invoice is optional even once uploaded: it never counts.
-  const required = slots.filter((slot) => slot.key !== "INVOICE" && slot.state !== "not_needed");
+  // An optional paper never counts, even once uploaded.
+  const required = slots.filter((slot) => counts(slot.key));
   const missing = slots.filter((slot) => slot.state === "missing").map((slot) => slot.key);
   const requiredDone = required.filter((slot) => slot.state === "done").length;
   const status: ShipmentStatus = missing.length === 0 ? "complete" : !input.hasBooking ? "no_booking" : "in_progress";

@@ -42,7 +42,6 @@ const ACTION = "h-control-md min-w-11 gap-xxs px-sm text-[length:var(--text-capt
 /** What an empty slot says: who provides it. No due dates (2026-10-17). */
 function emptyNote(slot: ChecklistSlot): { text: string; tone: string } {
   if (slot.state === "optional") return { text: "Optional — for reference", tone: "text-ink-tertiary" };
-  if (slot.state === "not_needed") return { text: "Not needed for this shipment", tone: "text-ink-tertiary" };
   return { text: `Missing · ${SLOT_SOURCE[slot.key]}`, tone: "text-ink-secondary" };
 }
 
@@ -313,7 +312,7 @@ function SlotRow({
               </Button>
             </>
           ) : null}
-          {canManage && slot.state !== "not_needed" ? (
+          {canManage ? (
             <>
               <Button
                 type="button"

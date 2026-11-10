@@ -57,6 +57,18 @@ unchanged, build.
 Production (no staff or buyer login here). The real TST-002 and the real
 descriptions the cleanup touches — the query count is the proof to take there.
 
+**2026-11-10: Form D can be uploaded on every shipment.** Asked for as
+"user should be able to upload form D, and just mention it's optional". A
+shipment that does not need Form D read "Not needed for this shipment" with no
+Upload; it now reads "Optional — for reference" with Upload, and once a file
+is in, Preview, Download, Replace and Delete like any paper. It still never
+counts toward the "N of M" unless the shipment needs it (`counts` in
+`checklist.ts`); the `not_needed` state is gone. Driven at 1440 and 390 on
+local Postgres + moto: a PDF uploaded to Form D on a no-Form-D shipment, the
+progress strip read "Form D · Uploaded" and still "1 of 5 documents",
+preview opened, download 302; no overflow. 1925 tests (1 widened), `tsc`,
+lint, build (xlsx stand-in). Not verified: production.
+
 **2026-11-10: hover previews between bookings and shipments.** Asked for
 as "when hover to any Booking No. it should show a preview of which
 shipment … in shipment tab … a preview of Booking No when hover to shipment
