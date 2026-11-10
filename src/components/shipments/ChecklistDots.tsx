@@ -11,26 +11,23 @@ import {
   type SlotState,
 } from "@/lib/shipments/checklist";
 
-/** Green uploaded, hollow missing, dashed optional or not needed. No due dates (2026-10-17). */
+/** Green uploaded, hollow missing, dashed optional. No due dates (2026-10-17). */
 export const DOT: Record<SlotState, string> = {
   done: "bg-accent-green border-accent-green",
   missing: "border-ink-tertiary bg-transparent",
   optional: "border-hairline bg-transparent border-dashed",
-  not_needed: "border-hairline bg-transparent border-dashed",
 };
 
 const SEGMENT: Record<SlotState, string> = {
   done: "bg-accent-green",
   missing: "bg-hairline-strong",
   optional: "border border-dashed border-hairline",
-  not_needed: "border border-dashed border-hairline",
 };
 
 const SAYS: Record<SlotState, string> = {
   done: "Uploaded",
   missing: "Missing",
   optional: "Optional",
-  not_needed: "Not needed",
 };
 
 export const slotSentence = (slot: ChecklistSlot) => `${SLOT_LABEL[slot.key]}: ${SAYS[slot.state].toLowerCase()}`;
