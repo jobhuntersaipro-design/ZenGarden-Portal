@@ -1,3 +1,43 @@
+# A booking number already on file asks before it is kept
+
+## Status
+
+**Built on `claude/project-thread-lpm5qe`** (2026-11-10). Asked for as
+"prompt user that they're uploading same booking number pdf, prompt them to
+double confirm", against the list showing CNB0329873 twice.
+
+- The number is only known once the file is read, so the check runs then:
+  `findDuplicateBookings` (`src/lib/queries/booking-confirmations.ts`)
+  matches it ignoring case and surrounding spaces, never this booking or an
+  upload still in flight; a blank number matches nothing. No migration.
+- **Upload queue:** the row says "Booking … was also uploaded by … on …",
+  links the copy on file, and offers **Discard this one** (deletes the new
+  row and its file) or **Keep both**.
+- **The booking's page** shows the same notice, with Discard for whoever may
+  delete it. **Mark reviewed** is refused on the server while the number is
+  on file (`reviewBookingConfirmation` returns the duplicates); the dialog
+  names who uploaded it, links it, and **Save anyway** saves. Re-saving a
+  reviewed copy with the same number does not ask again.
+- Not built: a file-hash check. The same file reads to the same number, so
+  it is caught anyway.
+
+## Verified
+
+Local Postgres + seed, moto for R2, a stand-in for the Messages API reading
+every file as CNB0329873, Chromium at 1440 and 390. Two uploads: the second
+row showed the notice; Discard took the rows 2 → 1 and the queue row went;
+upload again, Keep both kept 2. The second booking's page showed the notice;
+Mark reviewed opened the dialog; Cancel left NEEDS_REVIEW; Save anyway wrote
+REVIEWED; editing the carrier on it then saved with no dialog. No overflow at
+either width; the notice's buttons 44px at 390. 1931 tests (6 new), `tsc`,
+lint unchanged (4 `ShopHeader` errors), build.
+
+## Not verified
+
+Production, and Claude on a real BC (the stand-in returned the number).
+
+## Before that
+
 # Carton size, gross weight and CBM on products
 
 ## Status

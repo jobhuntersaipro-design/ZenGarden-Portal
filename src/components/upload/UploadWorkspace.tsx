@@ -38,12 +38,19 @@ export function UploadWorkspace({
   kind?: keyof typeof KINDS;
 }) {
   const config = KINDS[kind];
-  const { rows, add, remove, retry } = useUploadQueue(hintBuyerId, config.target);
+  const { rows, add, remove, retry, keep, discard } = useUploadQueue(hintBuyerId, config.target);
 
   return (
     <>
       <Dropzone onFiles={add} label={config.label} />
-      <UploadQueue rows={rows} onRemove={remove} onRetry={retry} noun={config.noun} />
+      <UploadQueue
+        rows={rows}
+        onRemove={remove}
+        onRetry={retry}
+        onKeep={keep}
+        onDiscard={kind === "bc" ? discard : undefined}
+        noun={config.noun}
+      />
       <UploadFooter rows={rows} reviewHref={config.reviewHref} />
       {/* Back sits above the title (brief G2); Cancel stays here beside the
           footer, where someone who has decided to abandon a queue is already

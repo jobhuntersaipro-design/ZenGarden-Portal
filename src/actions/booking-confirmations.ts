@@ -10,6 +10,7 @@ import { deleteObject, getObjectBytes, isPendingKey } from "@/lib/r2";
 import { asDateColumn, runBookingExtraction } from "@/lib/extraction/extract-booking";
 import { bookingFieldsSchema, type BookingFieldsInput } from "@/lib/validation/booking-confirmations";
 import type { ActionResult } from "@/actions/purchase-orders";
+import { findDuplicateBookings, type DuplicateBooking } from "@/lib/queries/booking-confirmations";
 
 const LIST = "/booking-confirmations";
 
@@ -28,11 +29,17 @@ const guard = async (key: PermissionKey) => {
  * Saves the fields and marks the booking reviewed by whoever saved it. Saving
  * a reviewed one again is a correction, and the reviewer becomes the one who
  * made it — "Reviewed by" is the last person to vouch for these values.
+ *
+ * A booking number already on another booking is refused with `duplicates`
+ * until the reviewer says to save anyway, the first time it is reviewed or
+ * whenever the number changes. Re-saving a copy someone already kept does not
+ * ask again.
  */
 export async function reviewBookingConfirmation(
   id: string,
   input: BookingFieldsInput,
-): Promise<ActionResult> {
+  allowDuplicate = false,
+): Promise<ActionResult | { success: false; error: string; duplicates: DuplicateBooking[] }> {
   const { user, error } = await guard("bc.review");
   if (!user) return { success: false, error };
 
@@ -42,6 +49,19 @@ export async function reviewBookingConfirmation(
   }
   const fields = parsed.data;
   try {
+    if (!allowDuplicate) {
+      const current = await prisma.bookingConfirmation.findUnique({
+        where: { id },
+        select: { status: true, bookingNumber: true },
+      });
+      const same =
+        current?.status === BookingStatus.REVIEWED &&
+        current.bookingNumber?.trim().toLowerCase() === fields.bookingNumber?.trim().toLowerCase();
+      const duplicates = same ? [] : await findDuplicateBookings(fields.bookingNumber, id);
+      if (duplicates.length > 0) {
+        return { success: false, error: "That booking number is already uploaded.", duplicates };
+      }
+    }
     // Only once the read has settled: saving over a read still running would
     // be overwritten by it a moment later.
     const { count } = await prisma.bookingConfirmation.updateMany({

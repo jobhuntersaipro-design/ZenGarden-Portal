@@ -1,3 +1,5 @@
+import type { DuplicateBooking } from "@/lib/queries/booking-confirmations";
+
 /**
  * The queue's vocabulary, kept apart from `useUploadQueue` so that anything
  * reasoning about a row — the footer's summary, the row renderer, their tests —
@@ -25,6 +27,11 @@ export type UploadRow = {
   reason?: string;
   documentId?: string;
   extractionId?: string;
+  /**
+   * Booking confirmations already on file with the number this one read as.
+   * Set until the uploader keeps it or discards it.
+   */
+  duplicates?: DuplicateBooking[];
 };
 
 /**

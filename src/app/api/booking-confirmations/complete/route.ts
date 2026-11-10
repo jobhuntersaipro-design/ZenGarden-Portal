@@ -5,6 +5,7 @@ import { guardRoute } from "@/lib/api-guard";
 import { prisma } from "@/lib/prisma";
 import { deleteObject, getObjectBytes, headObject } from "@/lib/r2";
 import { runBookingExtraction } from "@/lib/extraction/extract-booking";
+import { findDuplicateBookings } from "@/lib/queries/booking-confirmations";
 import { completeRequestSchema } from "@/lib/validation/upload";
 
 /** Claude reads the file inside this request, as the PO intake does. */
@@ -58,5 +59,12 @@ export async function POST(request: Request) {
     getBytes: getObjectBytes,
   });
   revalidatePath("/booking-confirmations");
-  return NextResponse.json({ extractionId: booking.id, ...outcome });
+  // A booking number already on file is asked about in the queue, before
+  // anyone reviews a second copy of the same booking.
+  const read = await prisma.bookingConfirmation.findUnique({
+    where: { id: booking.id },
+    select: { bookingNumber: true },
+  });
+  const duplicates = await findDuplicateBookings(read?.bookingNumber, booking.id);
+  return NextResponse.json({ extractionId: booking.id, ...outcome, duplicates });
 }

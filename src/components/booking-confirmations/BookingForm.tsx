@@ -1,12 +1,24 @@
 "use client";
 
 import { useState, type ReactNode } from "react";
+import { useRouter } from "next/navigation";
 import { ExternalLink } from "lucide-react";
 import { toast } from "@/lib/toast";
 import {
+  deleteBookingConfirmation,
   retryBookingConfirmation,
   reviewBookingConfirmation,
 } from "@/actions/booking-confirmations";
+import { DuplicateNotice } from "@/components/booking-confirmations/DuplicateNotice";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
+import type { DuplicateBooking } from "@/lib/queries/booking-confirmations";
 import { Field, ReadOnlyField } from "@/components/review/Field";
 import { ReviewSplit } from "@/components/review/ReviewSplit";
 import { Button } from "@/components/ui/button";
@@ -39,6 +51,8 @@ export function BookingForm({
   canRetry,
   reviewedBy,
   linkedOrder,
+  duplicates,
+  canDiscard,
 }: {
   id: string;
   document: ReactNode;
@@ -50,18 +64,28 @@ export function BookingForm({
   reviewedBy: { name: string; image: string | null; at: string } | null;
   /** The purchase order this booking ships, or the picker that chooses it. */
   linkedOrder: ReactNode;
+  /** Other bookings carrying the stored booking number. */
+  duplicates: DuplicateBooking[];
+  /** May delete this one: `bc.upload` before review, `bc.review` after. */
+  canDiscard: boolean;
 }) {
+  const router = useRouter();
   const [values, setValues] = useState(initial);
   const [saving, setSaving] = useState(false);
+  /** Set when saving found the number already on file: asks before saving anyway. */
+  const [asking, setAsking] = useState<DuplicateBooking[] | null>(null);
   const [retrying, setRetrying] = useState(false);
   const reading = status === "EXTRACTING";
   const editable = canReview && !reading;
 
-  const onSave = async () => {
+  const onSave = async (allowDuplicate = false) => {
+    setAsking(null);
     setSaving(true);
     try {
-      const result = await reviewBookingConfirmation(id, values);
-      if (result.success) {
+      const result = await reviewBookingConfirmation(id, values, allowDuplicate);
+      if (!result.success && "duplicates" in result) {
+        setAsking(result.duplicates);
+      } else if (result.success) {
         toast.success(status === "REVIEWED" ? "Changes saved" : "Marked reviewed");
       } else {
         toast.error(result.error);
@@ -73,9 +97,28 @@ export function BookingForm({
     }
   };
 
+  const onDiscard = async () => {
+    try {
+      const result = await deleteBookingConfirmation(id);
+      if (!result.success) {
+        toast.error(result.error);
+        return;
+      }
+      toast.success("Discarded");
+      router.push("/booking-confirmations");
+    } catch {
+      toast.error("We couldn't reach the server. Try again.");
+    }
+  };
+
   return (
     <ReviewSplit document={document}>
       <div className="@container flex min-w-0 flex-col gap-md">
+        <DuplicateNotice
+          duplicates={duplicates}
+          onDiscard={canDiscard ? onDiscard : undefined}
+        />
+
         {reading ? (
           <p className="rounded-lg border border-hairline bg-surface-soft p-md text-[length:var(--text-body-sm)] text-ink-secondary">
             AI is still reading this booking confirmation. Refresh in a moment.
@@ -169,12 +212,45 @@ export function BookingForm({
             )}
           </div>
           {editable ? (
-            <Button pending={saving} onClick={onSave}>
+            <Button pending={saving} onClick={() => onSave()}>
               {saving ? "Saving…" : status === "REVIEWED" ? "Save changes" : "Mark reviewed"}
             </Button>
           ) : null}
         </div>
       </div>
+
+      <Dialog open={asking !== null} onOpenChange={(next) => (next ? null : setAsking(null))}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>
+              Booking {asking?.[0]?.bookingNumber ?? values.bookingNumber} is already uploaded
+            </DialogTitle>
+            <DialogDescription>
+              {asking?.[0]
+                ? `${asking[0].uploadedBy} uploaded it on ${formatDateTime(asking[0].uploadedAt)}. `
+                : ""}
+              Saving this one as well keeps two booking confirmations for the same booking.
+            </DialogDescription>
+          </DialogHeader>
+          {asking?.[0] ? (
+            <a
+              href={`/booking-confirmations/${asking[0].id}`}
+              target="_blank"
+              rel="noopener noreferrer"
+              className={TRACKING_LINK}
+            >
+              Open the one already uploaded
+              <ExternalLink className="size-3.5" aria-hidden />
+            </a>
+          ) : null}
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setAsking(null)}>
+              Cancel
+            </Button>
+            <Button onClick={() => onSave(true)}>Save anyway</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </ReviewSplit>
   );
 }
