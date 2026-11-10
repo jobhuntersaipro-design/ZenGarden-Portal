@@ -6,6 +6,7 @@ import {
   EXTRACTION_TIMEOUT_MS,
 } from "@/lib/extraction/expire";
 import type { SortDirection } from "@/lib/queries/pagination";
+import { SHIPMENT_PREVIEW_SELECT } from "@/lib/queries/shipments";
 
 /** The list's status chips. Must stay in step with the chips on the page. */
 export const BOOKING_CHIPS = ["all", "needs-review", "reviewed", "extracting", "failed"] as const;
@@ -142,6 +143,7 @@ export async function listBookings(
         uploadedBy: PERSON,
         reviewedAt: true,
         reviewedBy: PERSON,
+        shipment: { select: SHIPMENT_PREVIEW_SELECT },
       },
     }),
     prisma.bookingConfirmation.count({ where }),

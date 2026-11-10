@@ -1,7 +1,8 @@
 "use client";
 
 import { EmptyState } from "@/components/arc/empty-state/empty-state";
-import { Fragment, useState, type MouseEvent, type ReactNode } from "react";
+import { HoverCard } from "@/components/arc/hover-card/hover-card";
+import { Fragment, useState, type MouseEvent, type ReactElement, type ReactNode } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { beginRouteProgress } from "@/lib/route-progress";
@@ -87,6 +88,8 @@ export function DataTable<Row extends { id: string }>({
   onRowOpen,
   renderCard,
   entrance = false,
+  preview,
+  previewOn = "title",
 }: {
   columns: Column<Row>[];
   rows: Row[];
@@ -122,6 +125,12 @@ export function DataTable<Row extends { id: string }>({
    * row keyed by id re-runs it only when it mounts.
    */
   entrance?: boolean;
+  /**
+   * A read-only card shown on hover or keyboard focus, desktop table only:
+   * over the row's title link, or over the whole row.
+   */
+  preview?: (row: Row) => ReactNode;
+  previewOn?: "title" | "row";
 }) {
   const router = useRouter();
   const updating = useIsUpdating();
@@ -397,7 +406,8 @@ export function DataTable<Row extends { id: string }>({
               ) : (
                 rows.map((row, rowIndex) => {
                   const href = rowHref?.(row);
-                  return (
+                  const card = preview?.(row);
+                  const tr = (
                     <tr
                       key={row.id}
                       onClick={
@@ -426,19 +436,28 @@ export function DataTable<Row extends { id: string }>({
                           } ${stickyColumnClass(index, "body")} ${columnShowClass(column.showAt)}`}
                         >
                           {href && index === 0 ? (
-                            <Link
-                              href={href}
-                              onClick={() => onRowOpen?.(row)}
-                              className="block rounded-xxs focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-focus"
-                            >
-                              {column.cell(row)}
-                            </Link>
+                            <TitleLink card={previewOn === "title" ? card : undefined}>
+                              <Link
+                                href={href}
+                                onClick={() => onRowOpen?.(row)}
+                                className="block rounded-xxs focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-focus"
+                              >
+                                {column.cell(row)}
+                              </Link>
+                            </TitleLink>
                           ) : (
                             column.cell(row)
                           )}
                         </td>
                       ))}
                     </tr>
+                  );
+                  return card && previewOn === "row" ? (
+                    <HoverCard key={row.id} content={card}>
+                      {tr}
+                    </HoverCard>
+                  ) : (
+                    tr
                   );
                 })
               )}
@@ -466,4 +485,8 @@ export function DataTable<Row extends { id: string }>({
       </div>
     </div>
   );
+}
+
+function TitleLink({ card, children }: { card: ReactNode; children: ReactElement }) {
+  return card ? <HoverCard content={card}>{children}</HoverCard> : children;
 }

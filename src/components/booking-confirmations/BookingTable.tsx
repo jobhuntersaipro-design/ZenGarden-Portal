@@ -17,6 +17,8 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { PersonChip } from "@/components/ui/person";
+import { ShipmentPreview } from "@/components/shipments/ShippingPreviews";
+import type { ShipmentPreview as LinkedShipment } from "@/lib/queries/shipments";
 import { useTableSort } from "@/hooks/useTableSort";
 import { formatDate, formatDateTime } from "@/lib/dates";
 import { toast } from "@/lib/toast";
@@ -40,6 +42,7 @@ export type BookingRow = {
   reviewedByName: string | null;
   reviewedByImage: string | null;
   reviewedAt: string | null;
+  shipment: LinkedShipment | null;
 };
 
 const FILE_LABEL: Record<string, string> = {
@@ -263,6 +266,7 @@ export function BookingTable({
         emptyDescription="Clear the search or a filter, or upload one."
         rowHref={(row) => `/booking-confirmations/${row.id}`}
         renderCard={bookingCard}
+        preview={(row) => <ShipmentPreview shipment={row.shipment} />}
       />
       <TablePagination page={page} size={size} total={total} />
     </>

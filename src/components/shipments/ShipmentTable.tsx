@@ -3,6 +3,7 @@
 import { DataTable, type Column } from "@/components/portal/DataTable";
 import { TablePagination } from "@/components/portal/TablePagination";
 import { ChecklistDots, ShipmentStatusBadge } from "@/components/shipments/ChecklistDots";
+import { BookingPreview } from "@/components/shipments/ShippingPreviews";
 import { formatDate } from "@/lib/dates";
 import type { ShipmentListRow } from "@/lib/queries/shipments";
 
@@ -163,6 +164,8 @@ export function ShipmentTable({
         emptyDescription="Clear the search, or start one from a purchase order."
         rowHref={(row) => `/shipments/${row.id}`}
         renderCard={card}
+        preview={(row) => <BookingPreview booking={row.booking} earlier={row.earlierBookings} />}
+        previewOn="row"
       />
       <TablePagination page={page} size={size} total={total} />
     </>

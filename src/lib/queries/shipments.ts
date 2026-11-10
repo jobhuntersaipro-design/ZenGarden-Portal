@@ -54,6 +54,51 @@ const checklistOf = (s: {
     formDRequired: s.formDRequired,
   });
 
+/** What a booking's hover card shows of its shipment (BC list). */
+export const SHIPMENT_PREVIEW_SELECT = {
+  id: true,
+  reference: true,
+  formDRequired: true,
+  buyer: { select: { name: true } },
+  orders: { select: { purchaseOrder: { select: ORDER_IDENTITY_SELECT } } },
+  bookings: { ...bookingsOf, select: { id: true, bookingNumber: true, originalName: true } },
+  documents: currentDocs,
+} satisfies Prisma.ShipmentSelect;
+
+export function shipmentPreview(
+  s: Prisma.ShipmentGetPayload<{ select: typeof SHIPMENT_PREVIEW_SELECT }>,
+  bookingId: string,
+) {
+  const current = s.bookings[0];
+  return {
+    id: s.id,
+    reference: s.reference,
+    buyerName: s.buyer.name,
+    orders: s.orders.map((o) => orderLabel(orderIdentity(o.purchaseOrder))),
+    checklist: checklistOf(s),
+    /** Set when a newer booking has replaced this one on the shipment. */
+    replacedBy: current && current.id !== bookingId ? (current.bookingNumber ?? current.originalName) : null,
+  };
+}
+
+export type ShipmentPreview = ReturnType<typeof shipmentPreview>;
+
+/** A shipment row's hover card: its current booking, dates as calendar days. */
+const bookingPreview = (b: ShipmentBooking) => ({
+  id: b.id,
+  bookingNumber: b.bookingNumber,
+  originalName: b.originalName,
+  carrier: b.carrier,
+  portOfLoading: b.portOfLoading,
+  portOfDischarge: b.portOfDischarge,
+  etdPol: day(b.etdPol),
+  etaPod: day(b.etaPod),
+  feederVessel: b.feederVessel,
+  motherVessel: b.motherVessel,
+});
+
+export type BookingPreview = ReturnType<typeof bookingPreview>;
+
 export type ShipmentFilters = {
   q?: string;
   status?: ShipmentStatus;
@@ -143,6 +188,9 @@ export async function listShipments(filters: ShipmentFilters, page: number, size
       vessel: s.bookings[0]?.feederVessel ?? s.bookings[0]?.motherVessel ?? null,
       containers: s.containers,
       checklist,
+      // The current booking whole, for the row's hover card.
+      booking: s.bookings[0] ? bookingPreview(s.bookings[0]) : null,
+      earlierBookings: Math.max(0, s.bookings.length - 1),
     };
   });
   // Options are read off the rows, so a select never offers what nothing carries.
