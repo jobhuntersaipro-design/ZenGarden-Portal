@@ -25,7 +25,7 @@ export const isZip = (file: { name: string; type: string }) =>
 const basename = (path: string) => path.split("/").pop() ?? path;
 
 /** Folders, and what macOS and Windows tuck into a zip on their own. */
-const isJunk = (path: string) =>
+export const isJunk = (path: string) =>
   path.endsWith("/") || path.startsWith("__MACOSX/") || basename(path).startsWith(".");
 
 const refuse = (zip: File, reason: string): RefusedFile[] => [

@@ -4,7 +4,7 @@ import { z } from "zod";
 import { guardRoute } from "@/lib/api-guard";
 import { prisma } from "@/lib/prisma";
 import { deleteObject, getObjectPrefix, headObject } from "@/lib/r2";
-import { SLOT_LABEL } from "@/lib/shipments/checklist";
+import { CUSTOMS_LABELS, docPhrase } from "@/lib/shipments/checklist";
 import {
   MAX_PO_DOCUMENT_BYTES,
   PO_DOCUMENT_SIGNATURE_BYTES,
@@ -26,8 +26,12 @@ const bodySchema = z.object({
   type: z.string().max(200),
   size: z.number().int().positive().max(MAX_PO_DOCUMENT_BYTES),
   docType: docTypeSchema,
-  label: z.string().trim().max(20).nullable().optional(),
+  label: z.string().trim().max(80).nullable().optional(),
+  /** "Other" papers only: the current row this file replaces. */
+  replaces: z.string().min(1).max(40).optional(),
 });
+
+class NameTaken extends Error {}
 
 const CONTENTS = "That file isn't a PDF, JPG or PNG — the contents don't match the type";
 
@@ -44,7 +48,13 @@ export async function POST(request: Request, { params }: { params: Promise<{ id:
   if (!parsed.success) {
     return NextResponse.json({ error: parsed.error.issues[0]?.message ?? "Malformed request." }, { status: 400 });
   }
-  const { key, name, size, docType } = parsed.data;
+  const { key, name, size, docType, replaces } = parsed.data;
+  const other = docType === "OTHER";
+  const label = other ? parsed.data.label?.trim() || null : docType === "CUSTOMS_FORM" ? parsed.data.label || null : null;
+  if (other && !label) return NextResponse.json({ error: "Give the document a name." }, { status: 400 });
+  if (docType === "CUSTOMS_FORM" && label && !(CUSTOMS_LABELS as readonly string[]).includes(label)) {
+    return NextResponse.json({ error: "Choose K1 to K5." }, { status: 400 });
+  }
   const type = shipmentFileType(name, parsed.data.type);
   const reason = shipmentFileRejection({ name, type: parsed.data.type, size });
   if (!type || reason) return NextResponse.json({ error: reason ?? SHIPMENT_WRONG_TYPE }, { status: 400 });
@@ -70,15 +80,25 @@ export async function POST(request: Request, { params }: { params: Promise<{ id:
 
   try {
     const doc = await prisma.$transaction(async (tx) => {
+      // An "other" paper is replaced only by name (its own row); a slot replaces whatever is current.
+      if (other && !replaces) {
+        const clash = await tx.shipmentDocument.findFirst({
+          where: { shipmentId, type: "OTHER", label, supersededAt: null },
+          select: { id: true },
+        });
+        if (clash) throw new NameTaken();
+      }
       const replaced = await tx.shipmentDocument.updateMany({
-        where: { shipmentId, type: docType, supersededAt: null },
+        where: other
+          ? { id: replaces ?? "", shipmentId, type: "OTHER", supersededAt: null }
+          : { shipmentId, type: docType, supersededAt: null },
         data: { supersededAt: new Date() },
       });
       const created = await tx.shipmentDocument.create({
         data: {
           shipmentId,
           type: docType,
-          label: docType === "CUSTOMS_FORM" ? parsed.data.label || null : null,
+          label,
           r2Key: key,
           originalName: name,
           mimeType: type,
@@ -94,7 +114,7 @@ export async function POST(request: Request, { params }: { params: Promise<{ id:
           actorId: user.id,
           actorName: user.name,
           action: replaced.count ? "SHIPMENT_DOC_REPLACED" : "SHIPMENT_DOC_UPLOADED",
-          text: `${replaced.count ? "replaced" : "uploaded"} the ${SLOT_LABEL[docType].toLowerCase()} ${name}`,
+          text: `${replaced.count ? "replaced" : "uploaded"} the ${docPhrase({ type: docType, label })} ${name}`,
         },
       });
       return created;
@@ -103,6 +123,10 @@ export async function POST(request: Request, { params }: { params: Promise<{ id:
     revalidatePath("/shipments");
     return NextResponse.json({ id: doc.id });
   } catch (cause) {
+    if (cause instanceof NameTaken) {
+      await deleteObject(key).catch(() => {});
+      return NextResponse.json({ error: "Another document already has that name." }, { status: 409 });
+    }
     console.error("[shipments] complete", cause);
     return NextResponse.json({ error: "We couldn't save that file." }, { status: 500 });
   }

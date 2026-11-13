@@ -25,7 +25,10 @@ import {
   containerMediaMatches,
   containerMediaRejection,
   containerMediaType,
+  MAX_MEDIA_PER_CONTAINER,
 } from "@/lib/validation/container-files";
+import { isZip } from "@/lib/upload/expand-zips";
+import { unpackContainerZip } from "@/lib/upload/container-zip";
 import type { ContainerMediaKind } from "@/generated/prisma/enums";
 
 export type StaffContainer = {
@@ -133,24 +136,53 @@ function ContainerBlock({
   const [saving, setSaving] = useState(false);
   const [progress, setProgress] = useState<{ label: string; pct: number } | null>(null);
   const [errors, setErrors] = useState<string[]>([]);
+  const [summary, setSummary] = useState<string | null>(null);
   const [dragging, setDragging] = useState(false);
   const [confirm, setConfirm] = useState<{ kind: "media"; item: GalleryItem } | { kind: "container" } | null>(null);
   const [busy, setBusy] = useState(false);
   const input = useRef<HTMLInputElement>(null);
   const base = `/api/shipments/${shipmentId}/containers/${c.id}/media`;
 
-  const upload = async (files: File[]) => {
+  const upload = async (picked: File[]) => {
     const problems: string[] = [];
+    // A zip is opened here and only what is inside it is uploaded; its misses are listed by name.
+    const skipped: string[] = [];
+    const unzipped = new Set<File>();
+    const files: File[] = [];
+    setSummary(null);
+    for (const file of picked) {
+      if (!isZip(file)) {
+        files.push(file);
+        continue;
+      }
+      setProgress({ label: `Opening ${file.name}`, pct: 0 });
+      const out = await unpackContainerZip(file);
+      if ("error" in out) {
+        problems.push(out.error);
+        continue;
+      }
+      out.files.forEach((f) => unzipped.add(f));
+      files.push(...out.files);
+      skipped.push(...out.skipped);
+    }
+    const room = Math.max(0, MAX_MEDIA_PER_CONTAINER - c.media.length);
+    for (const extra of files.filter((f) => unzipped.has(f)).slice(room)) {
+      skipped.push(extra.name);
+      files.splice(files.indexOf(extra), 1);
+    }
+    const miss = (file: File, problem: string) =>
+      unzipped.has(file) ? skipped.push(file.name) : problems.push(problem);
     let saved = 0;
+    let savedFromZip = 0;
     for (const [index, file] of files.entries()) {
       const reason = containerMediaRejection(file);
       const type = containerMediaType(file.name, file.type);
       if (reason || !type) {
-        problems.push(reason ?? file.name);
+        miss(file, reason ?? file.name);
         continue;
       }
       if (!containerMediaMatches(type, new Uint8Array(await file.slice(0, CONTAINER_SIGNATURE_BYTES).arrayBuffer()))) {
-        problems.push(`${file.name} isn't the kind of file its name says.`);
+        miss(file, `${file.name} isn't the kind of file its name says.`);
         continue;
       }
       const of = files.length > 1 ? `${index + 1} of ${files.length} · ` : "";
@@ -164,11 +196,11 @@ function ContainerBlock({
         });
         const signed = (await presign.json().catch(() => ({}))) as { key: string; type: string; url: string; error?: string };
         if (!presign.ok) {
-          problems.push(signed.error ?? `${file.name}: we couldn't start that upload.`);
+          miss(file, signed.error ?? `${file.name}: we couldn't start that upload.`);
           continue;
         }
         if (!(await put(signed.url, file, signed.type, label))) {
-          problems.push(`${file.name}: the upload was interrupted.`);
+          miss(file, `${file.name}: the upload was interrupted.`);
           continue;
         }
         // The bytes are in; the server still checks them and draws a photo's thumbnail.
@@ -180,16 +212,21 @@ function ContainerBlock({
         });
         if (!done.ok) {
           const detail = (await done.json().catch(() => ({}))) as { error?: string };
-          problems.push(detail.error ?? `${file.name}: we couldn't save it.`);
+          miss(file, detail.error ?? `${file.name}: we couldn't save it.`);
           continue;
         }
         saved++;
+        if (unzipped.has(file)) savedFromZip++;
       } catch {
-        problems.push(`${file.name}: the upload was interrupted.`);
+        miss(file, `${file.name}: the upload was interrupted.`);
       }
     }
     setProgress(null);
     setErrors(problems);
+    if (unzipped.size || skipped.length) {
+      const files = (n: number) => `${n} ${n === 1 ? "file" : "files"}`;
+      setSummary(`Added ${files(savedFromZip)}.${skipped.length ? ` Skipped ${skipped.length}: ${skipped.join(", ")}` : ""}`);
+    }
     if (saved) {
       await onSaved();
       toast.success(`${saved} ${saved === 1 ? "file" : "files"} added`);
@@ -309,6 +346,11 @@ function ContainerBlock({
       {progress ? (
         <Progress value={progress.pct} label={progress.label} showValue className="min-w-0 break-words" />
       ) : null}
+      {summary ? (
+        <p role="status" className="break-words text-[length:var(--text-body-sm)] text-ink-secondary">
+          {summary}
+        </p>
+      ) : null}
       {errors.map((error) => (
         <p key={error} role="alert" className="text-[length:var(--text-body-sm)] text-accent-red">
           {error}
@@ -353,7 +395,7 @@ function ContainerBlock({
       )}
       {canManage ? (
         <p className="text-[length:var(--text-caption)] text-ink-tertiary">
-          JPG or PNG up to 15 MB; MP4, MOV or WebM up to 200 MB. If a video won&apos;t play on a phone, export it as MP4.
+          JPG or PNG up to 15 MB; MP4, MOV or WebM up to 200 MB; or a .zip of them up to 300 MB. If a video won&apos;t play on a phone, export it as MP4.
         </p>
       ) : null}
 

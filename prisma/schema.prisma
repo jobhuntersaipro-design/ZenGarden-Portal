@@ -450,6 +450,10 @@ enum ShipmentDocType {
   CUSTOMS_FORM
   BILL_OF_LADING
   FORM_D
+  COA
+  KSO
+  /// A paper with no slot of its own; its name is the label. Staff only.
+  OTHER
 }
 
 /// A shipping paper in R2. One current file per type per shipment (enforced
@@ -460,7 +464,7 @@ model ShipmentDocument {
   shipmentId     String
   shipment       Shipment        @relation(fields: [shipmentId], references: [id], onDelete: Cascade)
   type           ShipmentDocType
-  /// Customs only: K2, K3, K4 or what was typed.
+  /// Customs: K1–K5. Other: the name typed for it.
   label          String?
   r2Key          String          @unique // shipments/{shipmentId}/{uuid}.{ext}
   originalName   String

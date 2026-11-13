@@ -17,7 +17,7 @@ export const CONTAINER_MEDIA_TYPES = {
 
 export type ContainerMediaMime = keyof typeof CONTAINER_MEDIA_TYPES;
 
-export const CONTAINER_MEDIA_ACCEPT = ".jpg,.jpeg,.png,.mp4,.mov,.webm";
+export const CONTAINER_MEDIA_ACCEPT = ".jpg,.jpeg,.png,.mp4,.mov,.webm,.zip";
 export const MAX_MEDIA_PER_CONTAINER = 30;
 export const CONTAINER_SIGNATURE_BYTES = 16;
 export const CONTAINER_WRONG_TYPE = "Use a JPG or PNG photo, or an MP4, MOV or WebM video";

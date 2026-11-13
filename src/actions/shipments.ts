@@ -11,7 +11,7 @@ import { requirePermission } from "@/lib/permissions/require";
 import { prisma } from "@/lib/prisma";
 import { deleteObject } from "@/lib/r2";
 import { SHIPMENT_NOTE } from "@/lib/queries/shipments";
-import { SLOT_LABEL, shipmentReference } from "@/lib/shipments/checklist";
+import { CUSTOMS_LABELS, docPhrase, shipmentReference } from "@/lib/shipments/checklist";
 import { orderIdentity, orderLabel, ORDER_IDENTITY_SELECT } from "@/lib/order-identity";
 
 const LIST = "/shipments";
@@ -334,7 +334,7 @@ export async function deleteShipmentDocument(input: { id: string }): Promise<Act
   try {
     const doc = await prisma.shipmentDocument.findFirst({
       where: { id: parsed.data, supersededAt: null },
-      select: { r2Key: true, shipmentId: true, type: true, originalName: true },
+      select: { r2Key: true, shipmentId: true, type: true, label: true, originalName: true },
     });
     if (!doc) return { success: false, error: "Only the current file can be deleted." };
     await prisma.$transaction([
@@ -345,7 +345,7 @@ export async function deleteShipmentDocument(input: { id: string }): Promise<Act
           actorId: user.id,
           actorName: user.name,
           action: "SHIPMENT_DOC_DELETED",
-          text: `deleted the ${SLOT_LABEL[doc.type].toLowerCase()} ${doc.originalName}`,
+          text: `deleted the ${docPhrase(doc)} ${doc.originalName}`,
         },
       }),
     ]);
@@ -387,8 +387,8 @@ export async function deleteShipment(input: { id: string }): Promise<ActionResul
 export async function setCustomsLabel(input: { id: string; label: string | null }): Promise<ActionResult> {
   const { error } = await guard("shipment.manage");
   if (error) return { success: false, error };
-  const parsed = z.object({ id, label: text(20) }).safeParse(input);
-  if (!parsed.success) return { success: false, error: "That label is too long." };
+  const parsed = z.object({ id, label: z.enum(CUSTOMS_LABELS).nullable() }).safeParse(input);
+  if (!parsed.success) return { success: false, error: "Choose K1 to K5." };
   try {
     const doc = await prisma.shipmentDocument.updateManyAndReturn({
       where: { id: parsed.data.id, type: ShipmentDocType.CUSTOMS_FORM, supersededAt: null },
@@ -401,5 +401,49 @@ export async function setCustomsLabel(input: { id: string; label: string | null 
   } catch (cause) {
     console.error("[shipments] customs label", cause);
     return { success: false, error: "We couldn't save that label." };
+  }
+}
+
+/** Renames a paper filed under "Add another document". Staff only, like the papers. */
+export async function renameShipmentDocument(input: { id: string; label: string }): Promise<ActionResult> {
+  const { user, error } = await guard("shipment.manage");
+  if (!user) return { success: false, error };
+  const parsed = z
+    .object({ id, label: z.string().trim().min(1, "Give the document a name.").max(80, "80 characters at most.") })
+    .safeParse(input);
+  if (!parsed.success) return { success: false, error: parsed.error.issues[0]?.message ?? "Give the document a name." };
+  try {
+    const doc = await prisma.shipmentDocument.findFirst({
+      where: { id: parsed.data.id, type: ShipmentDocType.OTHER, supersededAt: null },
+      select: { shipmentId: true, label: true },
+    });
+    if (!doc) return { success: false, error: "That file is gone." };
+    if (doc.label === parsed.data.label) return { success: true, data: undefined };
+    const clash = await prisma.shipmentDocument.findFirst({
+      where: { shipmentId: doc.shipmentId, type: ShipmentDocType.OTHER, label: parsed.data.label, supersededAt: null },
+      select: { id: true },
+    });
+    if (clash) return { success: false, error: "Another document already has that name." };
+    // ponytail: an "other" paper's earlier versions are grouped by label, so they rename with it.
+    await prisma.$transaction([
+      prisma.shipmentDocument.updateMany({
+        where: { shipmentId: doc.shipmentId, type: ShipmentDocType.OTHER, label: doc.label },
+        data: { label: parsed.data.label },
+      }),
+      prisma.shipmentEvent.create({
+        data: {
+          shipmentId: doc.shipmentId,
+          actorId: user.id,
+          actorName: user.name,
+          action: "SHIPMENT_DOC_RENAMED",
+          text: `renamed the document "${doc.label ?? "Document"}" to "${parsed.data.label}"`,
+        },
+      }),
+    ]);
+    touch(doc.shipmentId);
+    return { success: true, data: undefined };
+  } catch (cause) {
+    console.error("[shipments] rename document", cause);
+    return { success: false, error: "We couldn't rename that document." };
   }
 }

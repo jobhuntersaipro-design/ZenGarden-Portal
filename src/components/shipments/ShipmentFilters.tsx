@@ -9,7 +9,7 @@ import { DateInput } from "@/components/ui/date-input";
 import { Input } from "@/components/ui/input";
 import { usePendingChoice } from "@/hooks/usePendingChoice";
 import { useUrlNavigation } from "@/hooks/useUrlNavigation";
-import { SLOT_LABEL, SLOT_ORDER, STATUS_LABEL, STATUS_ORDER, type ShipmentStatus } from "@/lib/shipments/checklist";
+import { OPTIONAL_SLOTS, SLOT_LABEL, SLOT_ORDER, STATUS_LABEL, STATUS_ORDER, type ShipmentStatus } from "@/lib/shipments/checklist";
 
 const SELECT =
   "h-control-md rounded-sm border border-hairline-strong bg-transparent px-xs text-[length:var(--text-body-md)] text-ink focus-visible:border-focus focus-visible:outline-2 focus-visible:outline-focus sm:h-control-sm sm:text-[length:var(--text-body-sm)]";
@@ -90,7 +90,7 @@ export function ShipmentFilters({
         </div>
         <select aria-label="Missing document" className={SELECT} value={resolved.missing ?? ""} onChange={(e) => set({ missing: e.target.value })}>
           <option value="">Any document</option>
-          {SLOT_ORDER.filter((k) => k !== "INVOICE" && k !== "PURCHASE_ORDER").map((key) => (
+          {SLOT_ORDER.filter((k) => !OPTIONAL_SLOTS.has(k) && k !== "PURCHASE_ORDER").map((key) => (
             <option key={key} value={key}>
               Missing {SLOT_LABEL[key].toLowerCase()}
             </option>

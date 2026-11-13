@@ -23,6 +23,7 @@ const BOOKING_SELECT = {
   feederVessel: true,
   motherVessel: true,
   uploadedAt: true,
+  uploadedBy: { select: { name: true } },
 } satisfies Prisma.BookingConfirmationSelect;
 
 export type ShipmentBooking = Prisma.BookingConfirmationGetPayload<{ select: typeof BOOKING_SELECT }>;

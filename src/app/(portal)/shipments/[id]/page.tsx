@@ -100,6 +100,17 @@ async function ShipmentPage({ params }: { params: Promise<{ id: string }> }) {
               uploadedAt: d.uploadedAt.toISOString(),
               supersededAt: iso(d.supersededAt),
             }))}
+            booking={
+              shipment.bookings[0]
+                ? {
+                    id: shipment.bookings[0].id,
+                    bookingNumber: shipment.bookings[0].bookingNumber,
+                    originalName: shipment.bookings[0].originalName,
+                    uploadedByName: shipment.bookings[0].uploadedBy.name,
+                    uploadedAt: shipment.bookings[0].uploadedAt.toISOString(),
+                  }
+                : null
+            }
             canManage={canManage}
           />
           <ContainersCard

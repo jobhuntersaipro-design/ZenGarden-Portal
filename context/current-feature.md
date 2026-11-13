@@ -1,3 +1,56 @@
+# Shipment papers: K1–K5, other documents, the export order, container zips
+
+## Status
+
+**Built 2026-11-13, pushed to `main`.** Four ClickUp tasks in Phase1:
+[z8v9xnkk3b](https://app.clickup.com/t/z8v9xnkk3b) (K1–K5),
+[z8v9xnkk3c](https://app.clickup.com/t/z8v9xnkk3c) (add another document),
+[z8v9xnkk3f](https://app.clickup.com/t/z8v9xnkk3f) (document order),
+[z8v9xnkk3a](https://app.clickup.com/t/z8v9xnkk3a) (container zip).
+
+- **Customs form** picks K1, K2, K3, K4 or K5 (`CUSTOMS_LABELS`,
+  `setCustomsLabel`).
+- **Order** is PO, Booking, Invoice, Packing list, Customs form, Bill of
+  lading (counted, "N of 6"), then Form D, COA, KSO (optional, never counted
+  even once uploaded). Asked and answered "follow the task": Invoice is
+  required now, and Form D is optional on every shipment (`formDRequired` is
+  kept on the row but counts nothing). The Booking row reads the shipment's
+  booking confirmation.
+- **Add another document** (`shipment.manage`): a typed name (required, 80
+  characters at most), then the file; Rename on the row
+  (`renameShipmentDocument`). `ShipmentDocType` gains `COA`, `KSO`, `OTHER`
+  (migration `20261113100000_shipment_doc_coa_kso_other`, three
+  `ADD VALUE`s). An OTHER paper has no slot and never counts.
+- **Container zip** to 300 MB: opened **in the browser** with fflate
+  (`src/lib/upload/container-zip.ts`), each JPG/PNG/MP4/MOV/WebM inside goes
+  up through the normal media path; anything else is named in the toast
+  ("Added 3 files. Skipped 1: notes.txt"); `__MACOSX` and dotfiles are
+  skipped silently. The task said to unpack on the server; the browser was
+  chosen because a 300 MB body cannot pass through a Vercel function, and
+  each file inside still meets the per-file limits. The 30-per-container cap
+  still applies.
+
+## Verified
+
+Local Postgres + moto, Chromium at 1440 and 390, as a super admin, on a
+shipment with a PO, a reviewed booking, a packing list and a K2. Before:
+Invoice "Optional — for reference", no Booking/COA/KSO rows, K2–K4 only.
+After: Booking row done, Invoice missing, Form D/COA/KSO optional, K1–K5,
+"4 of 6 documents". Add another: Cancel left nothing; an empty name read
+"Give the document a name."; "Telex release" uploaded, renamed "Telex
+release (original)", with Preview, Download, Rename, Replace, Delete. A zip
+of 3 media + notes.txt + `__MACOSX` + `.DS_Store` gave "Added 3 files.
+Skipped 1: notes.txt" at both widths, every row with a thumbnail. No
+overflow at either width. 1940 tests, `tsc`, eslint on touched files, build.
+
+## Not verified
+
+Production writes (none made there). A real 300 MB zip against real R2 (the
+browser holds the unpacked files in memory; a phone may struggle near the
+limit).
+
+## Before that
+
 # PO numbers on shipments, and confirm lands on a shipment
 
 ## Status

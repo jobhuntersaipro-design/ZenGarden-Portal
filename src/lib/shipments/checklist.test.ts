@@ -9,32 +9,34 @@ const states = (r: ReturnType<typeof shipmentChecklist>) =>
   Object.fromEntries(r.slots.map((s) => [s.key, s.state]));
 
 describe("shipmentChecklist", () => {
-  it("counts the PO, booking, packing list, customs form and BL, and Form D only when needed", () => {
+  it("counts six: PO, booking, invoice, packing list, customs form and BL", () => {
     const empty = shipmentChecklist({ hasOrders: true, hasBooking: false, current: [], formDRequired: true });
     expect(empty.requiredTotal).toBe(6);
     expect(empty.requiredDone).toBe(1);
-    const noD = shipmentChecklist({ hasOrders: true, hasBooking: false, current: [], formDRequired: false });
-    expect(noD.requiredTotal).toBe(5);
-    expect(states(noD).FORM_D).toBe("optional");
-    const noDUploaded = shipmentChecklist({ hasOrders: true, hasBooking: false, current: ["FORM_D"], formDRequired: false });
-    expect(states(noDUploaded).FORM_D).toBe("done");
-    expect(noDUploaded.requiredTotal).toBe(5);
-    expect(noDUploaded.requiredDone).toBe(noD.requiredDone);
+    expect(states(empty).INVOICE).toBe("missing");
   });
 
-  it("never calls the invoice missing, and never counts it", () => {
-    const r = shipmentChecklist({ hasOrders: true, hasBooking: true, current: ["PACKING_LIST"], formDRequired: false });
-    expect(states(r).INVOICE).toBe("optional");
-    const withInvoice = shipmentChecklist({ hasOrders: true, hasBooking: true, current: ["PACKING_LIST", "INVOICE"], formDRequired: false });
-    expect(states(withInvoice).INVOICE).toBe("done");
-    expect(withInvoice.requiredDone).toBe(r.requiredDone);
+  it("keeps Form D, COA and KSO optional whatever the market, and never counts them", () => {
+    const none = shipmentChecklist({ hasOrders: true, hasBooking: true, current: [], formDRequired: true });
+    expect(states(none).FORM_D).toBe("optional");
+    expect(states(none).COA).toBe("optional");
+    expect(states(none).KSO).toBe("optional");
+    const all = shipmentChecklist({ hasOrders: true, hasBooking: true, current: ["FORM_D", "COA", "KSO", "OTHER"], formDRequired: true });
+    expect(states(all).COA).toBe("done");
+    expect(all.requiredTotal).toBe(6);
+    expect(all.requiredDone).toBe(none.requiredDone);
+  });
+
+  it("reads the golden shipment as 4 of 6", () => {
+    const r = shipmentChecklist({ hasOrders: true, hasBooking: true, current: ["INVOICE", "PACKING_LIST"], formDRequired: false });
+    expect(`${r.requiredDone} of ${r.requiredTotal}`).toBe("4 of 6");
   });
 
   it("is complete with every required paper", () => {
     const r = shipmentChecklist({
       hasOrders: true,
       hasBooking: true,
-      current: ["PACKING_LIST", "CUSTOMS_FORM", "BILL_OF_LADING", "FORM_D"],
+      current: ["INVOICE", "PACKING_LIST", "CUSTOMS_FORM", "BILL_OF_LADING"],
       formDRequired: true,
     });
     expect(r.requiredDone).toBe(r.requiredTotal);
@@ -42,18 +44,18 @@ describe("shipmentChecklist", () => {
     expect(r.reason).toBeNull();
   });
 
-  it("walks the flow in the customer's order", () => {
+  it("walks the flow in the customer's order, with no slot for a typed-name paper", () => {
     const r = shipmentChecklist({ hasOrders: true, hasBooking: false, current: [], formDRequired: true });
     expect(r.slots.map((s) => s.key)).toEqual([
-      "PURCHASE_ORDER", "BOOKING", "INVOICE", "PACKING_LIST", "CUSTOMS_FORM", "BILL_OF_LADING", "FORM_D",
+      "PURCHASE_ORDER", "BOOKING", "INVOICE", "PACKING_LIST", "CUSTOMS_FORM", "BILL_OF_LADING", "FORM_D", "COA", "KSO",
     ]);
   });
 
   it("names what is missing, in order, and carries no dates", () => {
     const r = shipmentChecklist({ hasOrders: true, hasBooking: true, current: ["PACKING_LIST"], formDRequired: true });
     expect(r.status).toBe("in_progress");
-    expect(r.missing).toEqual(["CUSTOMS_FORM", "BILL_OF_LADING", "FORM_D"]);
-    expect(r.reason).toBe("Missing: Customs form, Bill of lading, Form D");
+    expect(r.missing).toEqual(["INVOICE", "CUSTOMS_FORM", "BILL_OF_LADING"]);
+    expect(r.reason).toBe("Missing: Invoice, Customs form, Bill of lading");
     expect(JSON.stringify(r)).not.toMatch(/due|late|\d{4}-\d{2}/i);
   });
 
