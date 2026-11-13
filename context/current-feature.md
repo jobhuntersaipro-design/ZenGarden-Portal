@@ -1,3 +1,52 @@
+# Certification: expiry edits, override history, and why an order was not auto-approved
+
+## Status
+
+**Built and pushed to `main`** (2026-11-13). This closes gaps 1 to 3 in the
+ClickUp certification tasks (z8v9xnhuf8, z8v9xnhuf9, z8v9xnhufa, z8v9xnhufb).
+The rest of those tasks was already built. kim chose "Close gaps 1 to 3". The
+auto-approve email (gap 4) was left as it is.
+
+- **Expiry edits are logged.** Saving a certificate whose expiry changed
+  writes `CERT_EXPIRY_CHANGED` to `AuditEvent` with
+  `{certificateId, from, to}`. The certificate's edit page shows an "Expiry
+  history" card that names who, when, and the old and new date.
+- **Override history is kept.** Setting an override writes
+  `CERT_OVERRIDE_SET`, with the product ids, the type and the reason.
+  Removing one writes `CERT_OVERRIDE_CLEARED`, and so does a new certificate
+  replacing an override. The override dialog lists every set and removal for
+  that listing and type, with the person, the time and the reason.
+- **The shop-order review says why.** If an order is not green, an amber note
+  sits under the header on `/web-orders/[id]`. It names each product and its
+  certificates, for example "Lemon: COA Renew". The text comes from
+  `certIssues` in `certification.ts`.
+- One migration, `20261113090000_cert_audit_actions`, adds the three
+  `AuditAction` values.
+
+## Verified
+
+Checked in Chromium at 1440 and 390, on local Postgres with the seed, signed
+in as a super admin.
+
+- An expiry edit from 30 Jun 2027 to 31 Dec 2027 read "Aisha Rahman changed
+  the expiry from 30 Jun 2027 to 31 Dec 2027".
+- The history showed two override approvals and one removal, each with its
+  reason.
+- A test shop order showed the note "H/WASH 500ML — Strawberry: NOT Not
+  uploaded, COA Not uploaded".
+- The audit rows were present in the database.
+- No overflow at either width.
+- 1934 tests passed (3 new). The xlsx stand-in file and the shop documents
+  env file still fail to import, as on HEAD.
+- `tsc` and build passed. Lint was unchanged (the 4 `ShopHeader` errors).
+
+## Not verified
+
+Production. Edits and overrides made before this deploy have no history,
+because nothing recorded them.
+
+## Before that
+
 # A booking number already on file asks before it is kept
 
 ## Status

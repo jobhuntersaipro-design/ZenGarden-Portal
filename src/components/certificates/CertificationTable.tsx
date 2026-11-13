@@ -26,7 +26,7 @@ import {
   type CertType,
 } from "@/lib/certification";
 import { OVERVIEW_SHOW, type OverviewShow } from "@/lib/certification-overview";
-import { formatDate } from "@/lib/dates";
+import { formatDate, formatDateTime } from "@/lib/dates";
 import { plural } from "@/lib/plural";
 import type { OverviewRow } from "@/lib/queries/certificates";
 import type { SortDirection } from "@/lib/queries/pagination";
@@ -182,6 +182,7 @@ function OverrideDialog({
   const [reason, setReason] = useState(override?.reason ?? "");
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
+  const history = row.history.filter((entry) => entry.type === type);
 
   const run = async (action: () => ReturnType<typeof setCertOverride>, done: string) => {
     setBusy(true);
@@ -234,6 +235,23 @@ function OverrideDialog({
           <p role="alert" className="text-[length:var(--text-body-sm)] text-accent-red">
             {error}
           </p>
+        ) : null}
+        {history.length > 0 ? (
+          <section aria-label="Override history">
+            <h3 className="text-[length:var(--text-body-sm)] font-medium text-ink">History</h3>
+            <ul className="mt-xxs max-h-40 space-y-xxs overflow-y-auto text-[length:var(--text-body-sm)] text-ink-secondary">
+              {history.map((entry) => (
+                <li key={entry.id}>
+                  <span className="text-ink">
+                    {entry.by ?? "Someone"} {entry.set ? "approved it" : "removed the override"}
+                  </span>
+                  {" · "}
+                  {formatDateTime(entry.at)}
+                  {entry.reason ? <span className="block">“{entry.reason}”</span> : null}
+                </li>
+              ))}
+            </ul>
+          </section>
         ) : null}
         <DialogFooter>
           <Button variant="outline" onClick={onClose} disabled={busy}>

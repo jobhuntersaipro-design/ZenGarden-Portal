@@ -5,6 +5,7 @@ import { PageHeader } from "@/components/portal/PageHeader";
 import { DocumentPreview } from "@/components/review/DocumentPreviewLoader";
 import { SubmittedOrderPane } from "@/components/web-orders/SubmittedOrderPane";
 import { WebOrderReviewForm } from "@/components/web-orders/WebOrderReviewForm";
+import { certIssues } from "@/lib/certification";
 import { can, requirePagePermission } from "@/lib/permissions/require";
 import { prisma } from "@/lib/prisma";
 import { loadProductCerts } from "@/lib/queries/certificates";
@@ -37,6 +38,7 @@ async function WebOrderReviewPage({
   const order = await loadWebOrderForReview(id);
   if (!order) notFound();
   const certs = await loadProductCerts(order.lines.map((line) => line.productId));
+  const issues = certIssues(order.lines, certs);
 
   // Already dealt with: send the reader to the order it became rather than to
   // a form that would refuse them.
@@ -56,6 +58,21 @@ async function WebOrderReviewPage({
     <>
       <BackLink fallbackHref="/purchase-orders?status=web" />
       <PageHeader eyebrow="From the shop · Order ID" title={order.reference} />
+      {order.status !== "DECLINED" && issues.length > 0 ? (
+        // Why this order waits for a person (ClickUp z8v9xnhufa, AC2). Read
+        // live, so a certificate renewed since the order came in drops off.
+        <div role="status" className="mt-lg rounded-sm border border-brand-amber bg-surface-warning p-md">
+          <p className="text-[length:var(--text-body-sm)] font-semibold text-ink">
+            Not auto-approved: {issues.length === 1 ? "a product is" : `${issues.length} products are`} not
+            fully certified
+          </p>
+          <ul className="mt-xxs list-disc pl-md text-[length:var(--text-body-sm)] text-ink">
+            {issues.map((issue) => (
+              <li key={issue}>{issue}</li>
+            ))}
+          </ul>
+        </div>
+      ) : null}
 
       {order.status === "DECLINED" ? (
         <p className="mt-lg rounded-lg border border-hairline bg-surface p-lg text-[length:var(--text-body-md)] text-ink">

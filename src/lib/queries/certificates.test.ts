@@ -1,7 +1,13 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 const findMany = vi.fn();
-vi.mock("@/lib/prisma", () => ({ prisma: { product: { findMany: (...a: unknown[]) => findMany(...a) } } }));
+const auditFindMany = vi.fn();
+vi.mock("@/lib/prisma", () => ({
+  prisma: {
+    product: { findMany: (...a: unknown[]) => findMany(...a) },
+    auditEvent: { findMany: (...a: unknown[]) => auditFindMany(...a) },
+  },
+}));
 vi.mock("@/lib/dates", () => ({ todayISO: () => "2026-10-15" }));
 
 import { loadCertificationOverview, loadProductCerts } from "@/lib/queries/certificates";
@@ -25,6 +31,15 @@ const halal = { type: "HL", expiresOn: new Date("2028-09-30") };
 
 describe("certification is per product, not per flavour", () => {
   beforeEach(() => {
+    auditFindMany.mockResolvedValue([
+      {
+        id: "e1",
+        action: "CERT_OVERRIDE_SET",
+        detail: { productIds: ["royal", "lavender"], type: "COA", reason: "Not required" },
+        at: new Date("2026-10-10"),
+        actor: { name: "Aisha Rahman" },
+      },
+    ]);
     findMany.mockResolvedValue([
       product("royal", "Royal Jelly", "Indonesia", [halal]),
       product("lavender", "Lavender", "Indonesia"),
@@ -49,5 +64,13 @@ describe("certification is per product, not per flavour", () => {
       ["Indonesia", 2, "approved"],
       ["Vietnam", 1, "missing"],
     ]);
+  });
+
+  it("a listing's override history is read from the audit log, once per event", async () => {
+    const rows = await loadCertificationOverview();
+    expect(rows[0].history).toEqual([
+      { id: "e1", type: "COA", set: true, reason: "Not required", by: "Aisha Rahman", at: new Date("2026-10-10") },
+    ]);
+    expect(rows[1].history).toEqual([]);
   });
 });

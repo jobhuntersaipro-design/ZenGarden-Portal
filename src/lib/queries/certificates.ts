@@ -1,3 +1,4 @@
+import { AuditAction } from "@/generated/prisma/enums";
 import { prisma } from "@/lib/prisma";
 import { todayISO } from "@/lib/dates";
 import { groupProducts } from "@/lib/product-groups";
@@ -106,11 +107,84 @@ export type OverviewRow = {
   market: string | null;
   certs: ProductCerts;
   overrides: Partial<Record<CertType, { reason: string; by: string | null; at: Date }>>;
+  /** Every override set or removed on this listing, newest first. */
+  history: OverrideHistoryEntry[];
 };
+
+export type OverrideHistoryEntry = {
+  id: string;
+  type: CertType;
+  set: boolean;
+  reason: string | null;
+  by: string | null;
+  at: Date;
+};
+
+export type ExpiryHistoryEntry = { id: string; from: string; to: string; by: string | null; at: Date };
+
+const str = (value: unknown) => (typeof value === "string" ? value : null);
+const detailOf = (value: unknown): Record<string, unknown> =>
+  value && typeof value === "object" && !Array.isArray(value) ? (value as Record<string, unknown>) : {};
+
+/**
+ * Override history keyed by product id. The audit row names every variant the
+ * override reached, so any variant of the listing finds it.
+ * ponytail: newest 2,000 rows; page it if overrides ever run past that.
+ */
+async function loadOverrideHistory(): Promise<Map<string, OverrideHistoryEntry[]>> {
+  const events = await prisma.auditEvent.findMany({
+    where: { action: { in: [AuditAction.CERT_OVERRIDE_SET, AuditAction.CERT_OVERRIDE_CLEARED] } },
+    orderBy: { at: "desc" },
+    take: 2000,
+    select: { id: true, action: true, detail: true, at: true, actor: { select: { name: true } } },
+  });
+  const byProduct = new Map<string, OverrideHistoryEntry[]>();
+  for (const event of events) {
+    const detail = detailOf(event.detail);
+    const type = str(detail.type);
+    if (type !== "NOT" && type !== "HL" && type !== "COA") continue;
+    const entry: OverrideHistoryEntry = {
+      id: event.id,
+      type,
+      set: event.action === AuditAction.CERT_OVERRIDE_SET,
+      reason: str(detail.reason),
+      by: event.actor?.name ?? null,
+      at: event.at,
+    };
+    const ids = Array.isArray(detail.productIds) ? detail.productIds : [];
+    for (const productId of ids) {
+      if (typeof productId !== "string") continue;
+      byProduct.set(productId, [...(byProduct.get(productId) ?? []), entry]);
+    }
+  }
+  return byProduct;
+}
+
+/** A certificate's expiry edits, newest first. */
+export async function loadExpiryHistory(certificateId: string): Promise<ExpiryHistoryEntry[]> {
+  const events = await prisma.auditEvent.findMany({
+    where: {
+      action: AuditAction.CERT_EXPIRY_CHANGED,
+      detail: { path: ["certificateId"], equals: certificateId },
+    },
+    orderBy: { at: "desc" },
+    select: { id: true, detail: true, at: true, actor: { select: { name: true } } },
+  });
+  return events.map((event) => {
+    const detail = detailOf(event.detail);
+    return {
+      id: event.id,
+      from: str(detail.from) ?? "",
+      to: str(detail.to) ?? "",
+      by: event.actor?.name ?? null,
+      at: event.at,
+    };
+  });
+}
 
 /** Every listing with an active variant, with its three statuses, for the admin overview. */
 export async function loadCertificationOverview(): Promise<OverviewRow[]> {
-  const listings = await loadListings();
+  const [listings, overrideHistory] = await Promise.all([loadListings(), loadOverrideHistory()]);
   return listings.flatMap((listing) => {
     const active = listing.variants.filter((variant) => variant.active);
     if (active.length === 0) return [];
@@ -134,6 +208,13 @@ export async function loadCertificationOverview(): Promise<OverviewRow[]> {
         market: listing.market,
         certs: listing.certs,
         overrides,
+        history: [
+          ...new Map(
+            listing.variants
+              .flatMap((variant) => overrideHistory.get(variant.id) ?? [])
+              .map((entry) => [entry.id, entry]),
+          ).values(),
+        ].sort((a, b) => b.at.getTime() - a.at.getTime()),
       },
     ];
   });

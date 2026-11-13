@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { allGreen, expiryStatus, productCerts, typeStatus } from "./certification";
+import { allGreen, certIssues, expiryStatus, productCerts, typeStatus } from "./certification";
 
 const TODAY = "2026-10-14";
 
@@ -38,5 +38,42 @@ describe("allGreen", () => {
     expect(allGreen(productCerts(certs, [], TODAY))).toBe(false);
     expect(allGreen(productCerts([...certs, { ...green, type: "COA" as const }], [], TODAY))).toBe(true);
     expect(allGreen(productCerts(certs, ["COA"], TODAY))).toBe(true);
+  });
+});
+
+describe("certIssues", () => {
+  const today = "2026-11-13";
+  const green = productCerts(
+    (["NOT", "HL", "COA"] as const).map((type) => ({ type, expiresOn: "2028-01-01" })),
+    [],
+    today,
+  );
+  const renewCoa = productCerts(
+    [
+      { type: "NOT", expiresOn: "2028-01-01" },
+      { type: "HL", expiresOn: "2028-01-01" },
+      { type: "COA", expiresOn: "2026-12-01" },
+    ],
+    [],
+    today,
+  );
+  it("names each non-green product once with the types that are not green", () => {
+    const certs = new Map([
+      ["a", green],
+      ["b", renewCoa],
+    ]);
+    const lines = [
+      { productId: "a", name: "Lime" },
+      { productId: "b", name: "Lemon" },
+      { productId: "b", name: "Lemon" },
+      { productId: "c", name: "Mint" },
+    ];
+    expect(certIssues(lines, certs)).toEqual([
+      "Lemon: COA Renew",
+      "Mint: NOT Not uploaded, HL Not uploaded, COA Not uploaded",
+    ]);
+  });
+  it("is empty when every product is green", () => {
+    expect(certIssues([{ productId: "a", name: "Lime" }], new Map([["a", green]]))).toEqual([]);
   });
 });

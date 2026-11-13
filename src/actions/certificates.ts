@@ -3,6 +3,8 @@
 import { revalidatePath } from "next/cache";
 import type { ActionResult } from "@/actions/auth";
 import { UnauthorizedError, requireSuperAdmin } from "@/lib/auth-guards";
+import { AuditAction } from "@/generated/prisma/enums";
+import { audit } from "@/lib/audit";
 import { prisma } from "@/lib/prisma";
 import { listingProductIds } from "@/lib/queries/certificates";
 import { deleteObject, headObject } from "@/lib/r2";
@@ -57,7 +59,7 @@ export async function saveCertificate(
     const previous = id
       ? await prisma.certificate.findUnique({
           where: { id },
-          select: { r2Key: true, products: { select: { id: true } } },
+          select: { r2Key: true, expiresOn: true, products: { select: { id: true } } },
         })
       : null;
     if (id && !previous) return { success: false, error: "That certificate is gone." };
@@ -85,12 +87,27 @@ export async function saveCertificate(
             },
             select: { id: true },
           });
+      const from = previous?.expiresOn.toISOString().slice(0, 10);
+      if (id && from !== expiresOn) {
+        await audit(tx, {
+          action: AuditAction.CERT_EXPIRY_CHANGED,
+          actorId: user.id,
+          detail: { certificateId: id, from: from ?? null, to: expiresOn },
+        });
+      }
       const before = new Set(previous?.products.map((product) => product.id));
       const added = productIds.filter((productId) => !before.has(productId));
       if (added.length) {
-        await tx.certificateOverride.deleteMany({
+        const cleared = await tx.certificateOverride.deleteMany({
           where: { type, productId: { in: added } },
         });
+        if (cleared.count > 0 && type !== "OTHER") {
+          await audit(tx, {
+            action: AuditAction.CERT_OVERRIDE_CLEARED,
+            actorId: user.id,
+            detail: { productIds: added, type, reason: "A new certificate was linked" },
+          });
+        }
       }
       return cert;
     });
@@ -137,6 +154,11 @@ export async function setCertOverride(input: {
     await prisma.$transaction([
       prisma.certificateOverride.deleteMany({ where: { productId: { in: ids }, type } }),
       prisma.certificateOverride.create({ data: { productId, type, reason, byId: user.id } }),
+      audit(prisma, {
+        action: AuditAction.CERT_OVERRIDE_SET,
+        actorId: user.id,
+        detail: { productIds: ids, type, reason },
+      }),
     ]);
     revalidate();
     return { success: true, data: undefined };
@@ -150,13 +172,20 @@ export async function clearCertOverride(input: {
   type: string;
 }): Promise<ActionResult> {
   try {
-    await requireSuperAdmin();
+    const user = await requireSuperAdmin();
     const parsed = overrideSchema.pick({ productId: true, type: true }).safeParse(input);
     if (!parsed.success) return { success: false, error: "Check the form." };
     const ids = await listingProductIds(parsed.data.productId);
-    await prisma.certificateOverride.deleteMany({
+    const { count } = await prisma.certificateOverride.deleteMany({
       where: { productId: { in: ids }, type: parsed.data.type },
     });
+    if (count > 0) {
+      await audit(prisma, {
+        action: AuditAction.CERT_OVERRIDE_CLEARED,
+        actorId: user.id,
+        detail: { productIds: ids, type: parsed.data.type },
+      });
+    }
     revalidate();
     return { success: true, data: undefined };
   } catch (cause) {

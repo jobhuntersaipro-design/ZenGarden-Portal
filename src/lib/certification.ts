@@ -91,3 +91,27 @@ export function productCerts(
 
 export const allGreen = (certs: ProductCerts) =>
   CERT_TYPES.every((type) => certs[type].status === "approved");
+
+/**
+ * Why a shop order was not auto-approved (ClickUp z8v9xnhufa, AC2): one line
+ * per product that is not green, naming the types that are not, e.g.
+ * "ZEN 1L — Lemon: COA Renew". A product listed twice is named once.
+ */
+export function certIssues(
+  lines: { productId: string; name: string }[],
+  certs: Map<string, ProductCerts>,
+): string[] {
+  const seen = new Set<string>();
+  return lines.flatMap((line) => {
+    if (seen.has(line.productId)) return [];
+    seen.add(line.productId);
+    const product = certs.get(line.productId);
+    const bad = CERT_TYPES.filter((type) => product?.[type].status !== "approved");
+    if (bad.length === 0) return [];
+    return [
+      `${line.name}: ${bad
+        .map((type) => `${type} ${product ? STATUS_LABEL[product[type].status] : "Not uploaded"}`)
+        .join(", ")}`,
+    ];
+  });
+}

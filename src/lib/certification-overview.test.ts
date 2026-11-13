@@ -11,6 +11,7 @@ const row = (name: string, market: string | null, expiresOn: string | null): Ove
   variants: 1,
   market,
   overrides: {},
+  history: [],
   certs: productCerts(
     expiresOn ? (["NOT", "HL", "COA"] as const).map((type) => ({ type, expiresOn })) : [],
     [],

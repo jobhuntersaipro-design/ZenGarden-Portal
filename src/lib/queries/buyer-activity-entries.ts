@@ -107,6 +107,13 @@ export function auditText(event: {
       // reaches a buyer's timeline. Named anyway: this switch is exhaustive on
       // purpose, and that exhaustiveness is what caught the new value.
       return `${actor} changed what a role may do`;
+    // Certification events are written with `buyerId: null` too.
+    case "CERT_EXPIRY_CHANGED":
+      return `${actor} changed a certificate's expiry date`;
+    case "CERT_OVERRIDE_SET":
+      return `${actor} approved a certificate by override`;
+    case "CERT_OVERRIDE_CLEARED":
+      return `${actor} removed a certificate override`;
   }
 }
 
