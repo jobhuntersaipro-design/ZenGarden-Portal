@@ -17,6 +17,7 @@ const tx = {
 };
 
 const webFindUniqueOuter = vi.fn();
+vi.mock("@/lib/confirm-destination", () => ({ confirmDestination: vi.fn(async () => null) }));
 vi.mock("@/lib/prisma", () => ({
   prisma: {
     $transaction: (fn: (client: typeof tx) => unknown) => fn(tx),
@@ -239,7 +240,7 @@ describe("confirmWebOrder", () => {
 
   it("links the web order to the purchase order it became", async () => {
     const result = await confirmWebOrder("wo1", draft(), OPTIONS);
-    expect(result).toEqual({ success: true, data: { poId: "po-new" } });
+    expect(result).toEqual({ success: true, data: { poId: "po-new", next: null } });
     const data = txWebUpdateMany.mock.calls[0][0].data;
     expect(data.status).toBe("CONFIRMED");
     expect(data.purchaseOrderId).toBe("po-new");
@@ -451,7 +452,7 @@ describe("confirmWebOrder", () => {
     sendEmail.mockRejectedValue(new Error("Resend is down"));
     const result = await confirmWebOrder("wo1", draft(), OPTIONS);
     await flushAfter().catch(() => {});
-    expect(result).toEqual({ success: true, data: { poId: "po-new" } });
+    expect(result).toEqual({ success: true, data: { poId: "po-new", next: null } });
   });
 
   it("refuses a client, because requireUser now means staff", async () => {

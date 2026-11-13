@@ -1,3 +1,43 @@
+# PO numbers on shipments, and confirm lands on a shipment
+
+## Status
+
+**Built and merged to `main`** (2026-11-13). Three ClickUp tasks:
+z8v9xnkk3e, z8v9xnkk3g and z8v9xnkk3h.
+
+- **Shipment header.** The eyebrow reads `PO number X`, or `PO numbers A,
+  B, C` in the Orders card's order. Each number links to its PO. A shipment
+  with no orders reads `No PO yet`. `PageHeader.eyebrow` now takes a node.
+- **Shipments list.** The Shipment cell shows the PO number(s), then the
+  shipment ID (mono, muted), then the buyer. The mobile card leads with the
+  PO line too. Destination shows a flag image (`country-flag-icons`, MIT, an
+  SVG data URL drawn on the server by `src/lib/flags.ts`). The flag comes
+  from the market, or else from the port's country, and is matched through
+  `Intl.DisplayNames`. If no country matches, no flag is shown.
+- **Confirm.** Confirming a scanned PO or a shop order opens the PO's shipment
+  if it already has one. Otherwise it opens `/shipments/new?po=<id>` with the
+  PO ticked (`confirmDestination`). Someone without `shipment.manage` stays
+  on the PO, and the toast offers "Go to Shipments". Confirm stays disabled
+  after success, so a double click writes one PO. When the review queue has a
+  next draft, confirm still moves on to that draft.
+
+## Verified
+
+Local Postgres + seed, Chromium at 1440 and 390, with three test shipments
+(one PO, three POs, none). The headers read as above. The list shows three
+lines and the Indonesia and Vietnam flags; the shipment with no destination
+has no flag. `?q=PO-2026-0082` finds 1 row. No overflow at 390, 1280 or
+1440. A filled draft confirmed with a double click landed on New shipment
+with TEST-CONFIRM-01 ticked, and exactly 1 PO row was written. 1936 tests
+(4 new), `tsc`, eslint on the touched files, build (xlsx stand-in).
+
+## Not verified
+
+Production. The "already on a shipment" and no-permission cases are covered
+by unit tests only. A shop-order confirm was not driven.
+
+## Before that
+
 # Certification: expiry edits, override history, and why an order was not auto-approved
 
 ## Status

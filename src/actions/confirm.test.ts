@@ -24,6 +24,7 @@ const tx = {
   extraction: { findUnique: extractionFindUnique, update: extractionUpdate },
 };
 
+vi.mock("@/lib/confirm-destination", () => ({ confirmDestination: vi.fn(async () => null) }));
 vi.mock("@/lib/prisma", () => ({
   prisma: {
     $transaction: (fn: (client: typeof tx) => unknown) => fn(tx),

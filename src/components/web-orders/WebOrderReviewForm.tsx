@@ -191,9 +191,18 @@ export function WebOrderReviewForm({ order }: { order: OpsWebOrder }) {
                 deliveryDate,
               });
               if (result.success) {
-                toast.success("Order confirmed.");
+                const { poId, next } = result.data;
+                toast.success("Order confirmed.", next ? undefined : {
+                  action: {
+                    label: "Go to Shipments",
+                    onClick: () => {
+                      beginRouteProgress();
+                      router.push("/shipments");
+                    },
+                  },
+                });
                 beginRouteProgress();
-                router.push(`/purchase-orders/${result.data.poId}`);
+                router.push(next ?? `/purchase-orders/${poId}`);
               } else {
                 toast.error(result.error);
               }

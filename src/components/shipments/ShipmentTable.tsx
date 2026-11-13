@@ -8,6 +8,8 @@ import { formatDate } from "@/lib/dates";
 import type { ShipmentListRow } from "@/lib/queries/shipments";
 
 const blank = <span className="text-ink-tertiary">—</span>;
+
+const poLine = (row: ShipmentListRow) => (row.poNumbers.length ? row.poNumbers.join(", ") : "No PO yet");
 const noSort = () => {};
 
 /** "TIIU6249628 · 40FT", then "+2" for the rest, as the sheet's one column. */
@@ -23,12 +25,13 @@ const COLUMNS: Column<ShipmentListRow>[] = [
     key: "reference",
     header: "Shipment",
     sortable: false,
+    // PO numbers lead (the reference a buyer quotes), then our shipment ID, then the buyer.
     cell: (row) => (
-      <span className="flex min-w-0 flex-col gap-xxs">
-        <span className="font-mono font-medium">{row.reference}</span>
-        <span className="block max-w-56 truncate text-[length:var(--text-caption)] text-ink-tertiary" title={row.buyer.name}>
+      <span className="flex min-w-0 max-w-64 flex-col gap-xxs">
+        <span className="font-medium whitespace-normal">{poLine(row)}</span>
+        <span className="font-mono text-[length:var(--text-caption)] text-ink-tertiary">{row.reference}</span>
+        <span className="block truncate text-[length:var(--text-caption)] text-ink-tertiary" title={row.buyer.name}>
           {row.buyer.name}
-          {row.market ? ` · ${row.market}` : ""}
         </span>
       </span>
     ),
@@ -41,7 +44,16 @@ const COLUMNS: Column<ShipmentListRow>[] = [
     // The port the booking names; the market until a booking does.
     cell: (row) => {
       const where = row.portOfDischarge ?? row.market;
-      return where ? <span className="block max-w-48 truncate" title={where}>{where}</span> : blank;
+      if (!where) return blank;
+      return (
+        <span className="flex max-w-48 items-center gap-xs" title={where}>
+          {row.flag ? (
+            // eslint-disable-next-line @next/next/no-img-element -- an inline SVG data URL; nothing to optimise
+            <img src={row.flag.src} alt="" className="h-3 w-auto shrink-0 rounded-xxs" />
+          ) : null}
+          <span className="truncate">{where}</span>
+        </span>
+      );
     },
   },
   {
@@ -114,7 +126,10 @@ function card(row: ShipmentListRow) {
   return (
     <div className="flex flex-col gap-xxs">
       <span className="flex items-start justify-between gap-sm">
-        <span className="font-mono text-[length:var(--text-body-md)] font-medium text-ink">{row.reference}</span>
+        <span className="flex min-w-0 flex-col">
+          <span className="text-[length:var(--text-body-md)] font-medium text-ink">{poLine(row)}</span>
+          <span className="font-mono text-[length:var(--text-caption)] text-ink-tertiary">{row.reference}</span>
+        </span>
         <ShipmentStatusBadge status={row.checklist.status} />
       </span>
       {row.checklist.reason ? (

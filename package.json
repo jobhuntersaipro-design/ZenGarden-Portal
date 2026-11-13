@@ -37,6 +37,7 @@
     "class-variance-authority": "^0.7.1",
     "clsx": "^2.1.1",
     "cn": "^0.2.5",
+    "country-flag-icons": "^1.6.20",
     "date-fns": "^4.4.0",
     "fflate": "^0.8.3",
     "lucide-react": "^1.41.0",

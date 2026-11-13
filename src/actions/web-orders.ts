@@ -8,6 +8,7 @@ import { confirmWebOrderAs, sendConfirmedEmail } from "@/lib/web-order-confirm";
 import { UnauthorizedError } from "@/lib/auth-guards";
 import type { PermissionKey } from "@/lib/permissions/actions";
 import { requirePermission } from "@/lib/permissions/require";
+import { confirmDestination } from "@/lib/confirm-destination";
 import { prisma } from "@/lib/prisma";
 import { deleteObject, isPendingKey } from "@/lib/r2";
 import { shopPath } from "@/lib/shop-routes";
@@ -67,7 +68,7 @@ export async function confirmWebOrder(
   webOrderId: string,
   draft: PoDraft,
   options: { totalsAcknowledged?: boolean; deliveryDate?: string | null },
-): Promise<ActionResult<{ poId: string }>> {
+): Promise<ActionResult<{ poId: string; next: string | null }>> {
   const { user, error } = await guardPermission("po.confirm");
   if (!user) return { success: false, error: error! };
 
@@ -160,7 +161,7 @@ export async function confirmWebOrder(
       }),
     );
 
-    return { success: true, data: { poId: confirmed.poId } };
+    return { success: true, data: { poId: confirmed.poId, next: await confirmDestination(confirmed.poId) } };
   } catch (cause) {
     if (
       cause instanceof Prisma.PrismaClientKnownRequestError &&

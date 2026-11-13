@@ -201,27 +201,31 @@ export function ReviewForm({
       },
       queue,
     );
-    setConfirming(false);
     if (!result.success) {
+      setConfirming(false);
       setFormError(result.error);
       toast.error(result.error);
       return;
     }
-    toast.success(`${draft.poNumber} saved`, {
-      action: {
-        label: "View",
-        onClick: () => {
-          beginRouteProgress();
-          router.push(`/purchase-orders/${result.data.poId}`);
-        },
-      },
+    // `confirming` stays on: the button holds disabled until the next screen
+    // replaces this one, so a second click cannot send a second confirm.
+    const { poId, nextExtractionId, next } = result.data;
+    const go = (href: string) => {
+      beginRouteProgress();
+      router.push(href);
+    };
+    if (nextExtractionId) {
+      toast.success(`${draft.poNumber} saved`, {
+        action: { label: "View", onClick: () => go(`/purchase-orders/${poId}`) },
+      });
+      go(`/review/${nextExtractionId}?queue=${encodeURIComponent(queue.join(","))}`);
+      return;
+    }
+    // The last in the queue lands on the PO's shipment, or the form that makes one.
+    toast.success(`${draft.poNumber} saved`, next ? undefined : {
+      action: { label: "Go to Shipments", onClick: () => go("/shipments") },
     });
-    beginRouteProgress();
-    router.push(
-      result.data.nextExtractionId
-        ? `/review/${result.data.nextExtractionId}?queue=${encodeURIComponent(queue.join(","))}`
-        : "/purchase-orders",
-    );
+    go(next ?? `/purchase-orders/${poId}`);
   }, [acknowledgedNow, draft, duplicateNow, extractionId, isRevision, queue, router]);
 
   /**

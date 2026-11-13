@@ -14,6 +14,7 @@ import { requirePermission } from "@/lib/permissions/require";
 import { extractPurchaseOrder } from "@/lib/extraction/extract-po";
 import { formatMYR } from "@/lib/money";
 import { ORDER_IDENTITY_SELECT, orderIdentity } from "@/lib/order-identity";
+import { confirmDestination } from "@/lib/confirm-destination";
 import { prisma } from "@/lib/prisma";
 import { createProductsForLines } from "@/lib/extraction/resolve-products";
 import { deleteObject, getObjectBytes, isPendingKey } from "@/lib/r2";
@@ -157,7 +158,8 @@ export async function checkDuplicate(
   }
 }
 
-export type ConfirmResult = { poId: string; nextExtractionId: string | null };
+/** `next` is where the screen goes once nothing is left in the queue; null keeps it on the PO. */
+export type ConfirmResult = { poId: string; nextExtractionId: string | null; next: string | null };
 
 /**
  * The next id in `?queue` after this one that is still worth opening — a
@@ -450,7 +452,11 @@ export async function confirmPurchaseOrder(
 
     return {
       success: true,
-      data: { poId, nextExtractionId: await nextInQueue(queue, extractionId) },
+      data: {
+        poId,
+        nextExtractionId: await nextInQueue(queue, extractionId),
+        next: await confirmDestination(poId),
+      },
     };
   } catch (cause) {
     if (

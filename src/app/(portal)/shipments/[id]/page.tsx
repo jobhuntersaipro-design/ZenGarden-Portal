@@ -39,7 +39,23 @@ async function ShipmentPage({ params }: { params: Promise<{ id: string }> }) {
     <>
       <BackLink fallbackHref="/shipments" />
       <PageHeader
-        eyebrow={`Shipment ${shipment.reference}`}
+        eyebrow={
+          shipment.orders.length ? (
+            <span className="break-words">
+              {shipment.orders.length === 1 ? "PO number " : "PO numbers "}
+              {shipment.orders.map((o, i) => (
+                <span key={o.id}>
+                  {i > 0 ? ", " : null}
+                  <Link href={`/purchase-orders/${o.id}`} className="text-ink-secondary underline-offset-2 hover:underline">
+                    {o.poNumber}
+                  </Link>
+                </span>
+              ))}
+            </span>
+          ) : (
+            "No PO yet"
+          )
+        }
         title={shipment.buyer.name}
         action={
           canManage ? (

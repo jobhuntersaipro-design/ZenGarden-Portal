@@ -2,6 +2,7 @@ import type { Prisma } from "@/generated/prisma/client";
 import { BookingStatus, PoStage, type ShipmentDocType } from "@/generated/prisma/enums";
 import { prisma } from "@/lib/prisma";
 import { formatDate } from "@/lib/dates";
+import { flagFor } from "@/lib/flags";
 import { ORDER_IDENTITY_SELECT, orderIdentity, orderLabel } from "@/lib/order-identity";
 import { STATUS_ORDER, shipmentChecklist, type ShipmentStatus, type SlotKey } from "@/lib/shipments/checklist";
 
@@ -37,6 +38,12 @@ const currentDocs = {
   where: { supersededAt: null },
   select: { type: true },
 } satisfies Prisma.Shipment$documentsArgs;
+
+/** The buyer's PO number bare, else our Order ID; the shipment header and list lead with it. */
+const poNumberOf = (po: Parameters<typeof orderIdentity>[0]) => {
+  const id = orderIdentity(po);
+  return id.poNumber ?? id.orderId ?? "Purchase order";
+};
 
 const day = (d: Date | null | undefined) => (d ? d.toISOString().slice(0, 10) : null);
 
@@ -165,7 +172,7 @@ export async function listShipments(filters: ShipmentFilters, page: number, size
       formDRequired: true,
       createdAt: true,
       buyer: { select: { id: true, name: true } },
-      orders: { select: { purchaseOrder: { select: ORDER_IDENTITY_SELECT } } },
+      orders: { orderBy: { addedAt: "asc" }, select: { purchaseOrder: { select: ORDER_IDENTITY_SELECT } } },
       bookings: bookingsOf,
       documents: currentDocs,
       containers: { orderBy: { createdAt: "asc" }, select: { containerNo: true, size: true } },
@@ -180,6 +187,8 @@ export async function listShipments(filters: ShipmentFilters, page: number, size
       buyer: s.buyer,
       createdAt: s.createdAt.toISOString(),
       orders: s.orders.map((o) => orderLabel(orderIdentity(o.purchaseOrder))),
+      poNumbers: s.orders.map((o) => poNumberOf(o.purchaseOrder)),
+      flag: flagFor(s.market, s.bookings[0]?.portOfDischarge),
       etd: day(s.bookings[0]?.etdPol),
       eta: day(s.bookings[0]?.etaPod),
       // The customer's sheet reads a shipment by these: where it goes, in
@@ -309,6 +318,7 @@ export async function loadShipment(id: string) {
     stage: po.stage,
     poDate: po.poDate.toISOString(),
     label: orderLabel(orderIdentity(po)),
+    poNumber: poNumberOf(po),
     cartons: cartonsOf(po.lineItems),
   }));
   return {
