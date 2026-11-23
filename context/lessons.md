@@ -295,6 +295,11 @@ be saved. The three purchase-order forms had read the field through
 the defect was recorded as "pre-existing, not fixed" a day before the user
 asked for the feature it was blocking.
 
+**It recurred on the review screen (2026-11-23).** Claude read payment terms
+as "14 DAYS"; the field showed "14" but the draft kept the words, so Confirm
+stayed off with no reason on screen. A gate that disables a button must say
+which rule failed — every branch, including "the draft does not parse".
+
 **What makes it worse.** It cannot be caught by a static render or by a schema
 test: the schema is right, the component is right at rest, and only *opening
 the sheet on a real row and pressing Save* fails. The guard that does catch it

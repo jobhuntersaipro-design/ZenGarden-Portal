@@ -90,9 +90,9 @@ const draftObject = z.object({
     poNumber: z.string().min(1, "PO number is required"),
 
     buyerId: z.string().nullable().optional(),
-    newBuyerName: z.string().min(1).nullable().optional(),
+    newBuyerName: z.string().min(1, "Name the new buyer").nullable().optional(),
     poDate: isoDate,
-    currency: z.string().min(1).default("MYR"),
+    currency: z.string().min(1, "Currency is required").default("MYR"),
     paymentTerms: paymentTermsSchema,
     notes: z.string().nullable().optional(),
     lineItems: z.array(DraftLineItemSchema).min(1, "Add at least one line"),
@@ -124,6 +124,24 @@ export const WebOrderDraftSchema = draftObject
   .refine(draftBuyerChosen.check, draftBuyerChosen.message);
 
 export type PoDraft = z.infer<typeof PoDraftSchema>;
+
+/**
+ * Why a draft cannot be confirmed, in words a reviewer can act on: which
+ * field or line, then what is wrong with it (2026-11-23). Confirm used to sit
+ * greyed out with no reason when the schema refused a field the screen does
+ * not flag, such as payment terms read as "14 DAYS".
+ */
+export function draftIssueMessage(issues: readonly z.core.$ZodIssue[]): string | null {
+  const [first] = issues;
+  if (!first) return null;
+  const [head, index] = first.path;
+  const where =
+    head === "lineItems" && typeof index === "number" ? `Line ${index + 1}: ` : "";
+  // An empty figure fails both "required" and "a number": one field, one count.
+  const others = new Set(issues.map((issue) => issue.path.join("."))).size - 1;
+  const more = others > 0 ? ` (and ${others} more)` : "";
+  return `${where}${first.message}${more}`;
+}
 export type DraftLineItem = z.infer<typeof DraftLineItemSchema>;
 
 export const confirmOptionsSchema = z.object({

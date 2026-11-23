@@ -54,6 +54,7 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { formatDate } from "@/lib/dates";
 import { PoDraftSchema, checkTotals, type PoDraft } from "@/lib/validation/purchase-orders";
 import { paymentTermsDaysInput } from "@/lib/payment-terms";
+import { draftIssueMessage } from "@/lib/validation/purchase-orders";
 
 const SAVE_DEBOUNCE_MS = 800;
 
@@ -93,7 +94,13 @@ export function ReviewForm({
 }) {
   const router = useRouter();
   const refresh = useAwaitableRefresh();
-  const [draft, dispatch] = useReducer(draftReducer, initialDraft);
+  // The terms field shows the days parsed out of what Claude read ("14 DAYS"
+  // shows 14), so the draft starts from that number too — otherwise the
+  // schema refuses a value the reviewer cannot see (lessons §10).
+  const [draft, dispatch] = useReducer(draftReducer, initialDraft, (start) => {
+    const days = paymentTermsDaysInput(start.paymentTerms);
+    return days ? { ...start, paymentTerms: days } : start;
+  });
   const [saveState, setSaveState] = useState<"idle" | "saving" | "saved">("idle");
   /**
    * The exact mismatch the reviewer accepted, as `computed:document`. Holding
@@ -259,13 +266,18 @@ export function ReviewForm({
     target?.focus({ preventScroll: true });
   };
 
-  const lock = blockedByTotals
-    ? "Locked — totals don’t match"
-    : blockedByDuplicate
-      ? "Locked — tick “This is a revised PO”"
-      : blockedByProducts
-        ? `Locked — ${undecided} ${undecided === 1 ? "line needs" : "lines need"} a product`
-        : null;
+  const lock =
+    status === ExtractionStatus.RUNNING
+      ? "The document is still being read. Wait for it to finish."
+      : !parsed.success
+        ? draftIssueMessage(parsed.error.issues)
+        : blockedByTotals
+          ? "The totals don’t match the document. Fix the figures, or tick “I checked the source” in the red box at the top."
+          : blockedByDuplicate
+            ? `PO number ${draft.poNumber} is already saved for this buyer. Tick “This is a revised PO” if this one replaces it.`
+            : blockedByProducts
+              ? `${undecided} ${undecided === 1 ? "line has" : "lines have"} no product chosen. Pick one in the box under each line’s product code.`
+              : null;
 
   /** What each row points at on the PDF while hovered or focused. */
   const buyerName =
@@ -471,6 +483,7 @@ export function ReviewForm({
                   checked={checked.has("currency")}
                   onLooksRight={() => check("currency")}
                   source={source.currency}
+                  error={fieldError("currency")}
                 >
                   <Input
                     id="currency"
@@ -489,6 +502,7 @@ export function ReviewForm({
                   checked={checked.has("paymentTerms")}
                   onLooksRight={() => check("paymentTerms")}
                   source={source.paymentTerms}
+                  error={fieldError("paymentTerms")}
                 >
                   <Input
                     id="paymentTerms"
@@ -680,9 +694,19 @@ export function ReviewForm({
           {formError}
         </p>
       ) : null}
-      {lock ? (
-        <p className="mt-xs text-right text-[length:var(--text-caption)] text-ink-tertiary">
-          {lock}
+      {lock && !confirming ? (
+        <p
+          role="status"
+          className="mt-xs flex items-start justify-end gap-xxs text-right text-[length:var(--text-body-sm)] text-ink"
+        >
+          <AlertTriangle
+            aria-hidden
+            className="mt-0.5 size-4 shrink-0 text-brand-amber-strong"
+            strokeWidth={1.75}
+          />
+          <span>
+            <span className="font-medium">Can’t confirm yet.</span> {lock}
+          </span>
         </p>
       ) : null}
     </SourceHighlightProvider>

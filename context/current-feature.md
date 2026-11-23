@@ -1,3 +1,40 @@
+# Confirm & save says why it is locked
+
+## Status
+
+**Built 2026-11-23, pushed to `main`.** Asked for by kim on PO2600500 (FAIN
+PTE LTD): "Why cant I click confirm and save? Please describe the error
+description properly in the portal".
+
+- **Cause.** Claude read the payment terms as "14 DAYS". The field showed
+  "14" (`paymentTermsDaysInput`), but the draft kept "14 DAYS", which
+  `paymentTermsSchema` refuses, so the draft never parsed and Confirm stayed
+  off. The lock line had no case for a parse failure, so nothing said why.
+  Lessons §10 again, on the review screen this time.
+- **Fix.** The review form cleans payment terms to their days on load.
+  Every reason Confirm is off is now written under the button as "Can't
+  confirm yet." plus the first problem, naming the line ("Line 4: Unit price
+  is required") and how many other fields are wrong (`draftIssueMessage`).
+  Currency and payment terms show their own field errors; an empty currency
+  and an empty new-buyer name have plain messages. The note is ink with an
+  amber icon, not a faint caption.
+
+## Verified
+
+The real `ReviewForm` on a temporary page (removed) with PO2600500's own
+draft, Chromium at 1440 and 390. Before: Confirm disabled, no reason shown.
+After: Confirm enabled. With line 4's unit price emptied: disabled, "Can't
+confirm yet. Line 4: Unit price is required". No overflow at either width.
+1951 tests (3 new), `tsc`, eslint on touched files, build (xlsx stand-in).
+
+## Not verified
+
+Production behind sign-in (no staff login here). The 5 product matches on
+PO2600500 look wrong (e.g. a Goat's Milk shower cream linked to a detergent
+test product); they do not block Confirm and were left for kim to check.
+
+## Before that
+
 # Shipment papers: K1–K5, other documents, the export order, container zips
 
 ## Status
