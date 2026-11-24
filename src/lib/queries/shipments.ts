@@ -1,5 +1,5 @@
 import type { Prisma } from "@/generated/prisma/client";
-import { BookingStatus, PoStage, type ShipmentDocType } from "@/generated/prisma/enums";
+import { BookingStatus, PoStage, type ShipmentDocType, type ShipmentMode } from "@/generated/prisma/enums";
 import { prisma } from "@/lib/prisma";
 import { formatDate } from "@/lib/dates";
 import { flagFor } from "@/lib/flags";
@@ -51,6 +51,7 @@ const day = (d: Date | null | undefined) => (d ? d.toISOString().slice(0, 10) : 
 /** The one reading of a shipment's papers every screen shares. A PO's own card passes `hasOrders` true. */
 const checklistOf = (s: {
   formDRequired: boolean;
+  mode: ShipmentMode;
   orders?: unknown[];
   bookings: unknown[];
   documents: { type: ShipmentDocType }[];
@@ -60,6 +61,7 @@ const checklistOf = (s: {
     hasBooking: s.bookings.length > 0,
     current: s.documents.map((d) => d.type),
     formDRequired: s.formDRequired,
+    mode: s.mode,
   });
 
 /** What a booking's hover card shows of its shipment (BC list). */
@@ -67,6 +69,7 @@ export const SHIPMENT_PREVIEW_SELECT = {
   id: true,
   reference: true,
   formDRequired: true,
+  mode: true,
   buyer: { select: { name: true } },
   orders: { select: { purchaseOrder: { select: ORDER_IDENTITY_SELECT } } },
   bookings: { ...bookingsOf, select: { id: true, bookingNumber: true, originalName: true } },
@@ -140,6 +143,9 @@ export function shipmentWhere(q?: string): Prisma.ShipmentWhereInput {
         },
       },
       { containers: { some: { containerNo: like } } },
+      { landVehiclePlate: like },
+      { landCompany: like },
+      { landDriverName: like },
       {
         orders: {
           some: {
@@ -171,6 +177,11 @@ export async function listShipments(filters: ShipmentFilters, page: number, size
       reference: true,
       market: true,
       formDRequired: true,
+      mode: true,
+      landVehiclePlate: true,
+      landCompany: true,
+      landPickupOn: true,
+      landEtaOn: true,
       createdAt: true,
       buyer: { select: { id: true, name: true } },
       orders: { orderBy: { addedAt: "asc" }, select: { purchaseOrder: { select: ORDER_IDENTITY_SELECT } } },
@@ -181,21 +192,26 @@ export async function listShipments(filters: ShipmentFilters, page: number, size
   });
   const all = shipments.map((s) => {
     const checklist = checklistOf(s);
+    const land = s.mode === "LAND";
     return {
       id: s.id,
       reference: s.reference,
+      mode: s.mode,
       market: s.market,
       buyer: s.buyer,
       createdAt: s.createdAt.toISOString(),
       orders: s.orders.map((o) => orderLabel(orderIdentity(o.purchaseOrder))),
       poNumbers: s.orders.map((o) => poNumberOf(o.purchaseOrder)),
       flag: flagFor(s.market, s.bookings[0]?.portOfDischarge),
-      etd: day(s.bookings[0]?.etdPol),
-      eta: day(s.bookings[0]?.etaPod),
+      // A land trip has no booking: its pickup and expected delivery stand in.
+      etd: land ? day(s.landPickupOn) : day(s.bookings[0]?.etdPol),
+      eta: land ? day(s.landEtaOn) : day(s.bookings[0]?.etaPod),
       // The customer's sheet reads a shipment by these: where it goes, in
       // which box, on which ship (2026-10-17).
       portOfDischarge: s.bookings[0]?.portOfDischarge ?? null,
-      vessel: s.bookings[0]?.feederVessel ?? s.bookings[0]?.motherVessel ?? null,
+      vessel: land
+        ? [s.landVehiclePlate, s.landCompany].filter(Boolean).join(" · ") || null
+        : (s.bookings[0]?.feederVessel ?? s.bookings[0]?.motherVessel ?? null),
       containers: s.containers,
       checklist,
       // The current booking whole, for the row's hover card.
@@ -343,6 +359,7 @@ export async function shipmentsForOrder(purchaseOrderId: string) {
       id: true,
       reference: true,
       formDRequired: true,
+      mode: true,
       createdAt: true,
       bookings: bookingsOf,
       documents: currentDocs,
@@ -351,6 +368,7 @@ export async function shipmentsForOrder(purchaseOrderId: string) {
   return shipments.map((s) => ({
     id: s.id,
     reference: s.reference,
+    mode: s.mode,
     booking: s.bookings[0] ?? null,
     checklist: checklistOf(s),
   }));
@@ -358,12 +376,15 @@ export async function shipmentsForOrder(purchaseOrderId: string) {
 
 export type OrderShipment = Awaited<ReturnType<typeof shipmentsForOrder>>[number];
 
-/** A buyer's shipments still waiting on their bill of lading, newest first. */
+/** A buyer's shipments still open — by sea no bill of lading yet, by land not delivered — newest first. */
 export function openShipmentsForBuyer(buyerId: string) {
   return prisma.shipment.findMany({
     where: {
       buyerId,
-      documents: { none: { type: "BILL_OF_LADING", supersededAt: null } },
+      OR: [
+        { mode: "SEA", documents: { none: { type: "BILL_OF_LADING", supersededAt: null } } },
+        { mode: "LAND", landDeliveredOn: null },
+      ],
     },
     orderBy: { createdAt: "desc" },
     take: 50,

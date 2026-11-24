@@ -415,6 +415,19 @@ model Shipment {
   /// Explicit, not derived from the market: a market can be a retailer
   /// ("Super Indo") rather than a country. Defaulted at create.
   formDRequired Boolean  @default(false)
+  /// Sea (booking, bill of lading) or land (a truck, typed in by hand).
+  /// One or the other, never both.
+  mode          ShipmentMode @default(SEA)
+  /// Land delivery, all typed by hand, all optional. Staff only: no shop
+  /// select reads these.
+  landCompany        String?
+  landVehiclePlate   String?
+  landDriverName     String?
+  landDriverPhone    String?
+  landPickupOn       DateTime? @db.Date
+  landEtaOn          DateTime? @db.Date
+  landDeliveredOn    DateTime? @db.Date
+  landBorderCrossing String?
   note          String?
   createdById   String
   createdBy     User     @relation("shipmentsCreated", fields: [createdById], references: [id])
@@ -444,6 +457,11 @@ model ShipmentOrder {
   @@index([purchaseOrderId])
 }
 
+enum ShipmentMode {
+  SEA
+  LAND
+}
+
 enum ShipmentDocType {
   INVOICE
   PACKING_LIST
@@ -452,6 +470,8 @@ enum ShipmentDocType {
   FORM_D
   COA
   KSO
+  /// Signed delivery order / proof of delivery. Land shipments only.
+  DELIVERY_ORDER
   /// A paper with no slot of its own; its name is the label. Staff only.
   OTHER
 }

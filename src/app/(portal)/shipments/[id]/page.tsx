@@ -6,6 +6,7 @@ import { PageHeader } from "@/components/portal/PageHeader";
 import { PagedList } from "@/components/portal/PagedList";
 import { ShipmentProgress, ShipmentStatusBadge } from "@/components/shipments/ChecklistDots";
 import { ContainersCard } from "@/components/shipments/ContainersCard";
+import { LandDeliveryCard } from "@/components/shipments/LandDeliveryCard";
 import { ShipmentBookingCard } from "@/components/shipments/ShipmentBookingCard";
 import { ShipmentDocumentsCard } from "@/components/shipments/ShipmentDocumentsCard";
 import { ShipmentNotesCard } from "@/components/shipments/ShipmentNotesCard";
@@ -25,6 +26,7 @@ export async function generateMetadata({ params }: { params: Promise<{ id: strin
 }
 
 const iso = (d: Date | null) => d?.toISOString() ?? null;
+const day = (d: Date | null) => d?.toISOString().slice(0, 10) ?? "";
 
 async function ShipmentPage({ params }: { params: Promise<{ id: string }> }) {
   const viewer = await requirePagePermission("shipment.view");
@@ -64,6 +66,7 @@ async function ShipmentPage({ params }: { params: Promise<{ id: string }> }) {
               id={shipment.id}
               market={shipment.market}
               formDRequired={shipment.formDRequired}
+              mode={shipment.mode}
               canDelete={shipment.documents.length === 0 && shipment.bookings.length === 0}
               markets={markets}
             />
@@ -149,13 +152,30 @@ async function ShipmentPage({ params }: { params: Promise<{ id: string }> }) {
             candidates={candidates}
             canManage={canManage}
           />
-          <ShipmentBookingCard
-            shipmentId={shipment.id}
-            bookings={shipment.bookings.map((b) => ({ ...b, etdPol: iso(b.etdPol), etaPod: iso(b.etaPod) }))}
-            options={bookingOptions}
-            canManage={canManage}
-            canUpload={canUpload}
-          />
+          {shipment.mode === "LAND" ? (
+            <LandDeliveryCard
+              shipmentId={shipment.id}
+              canManage={canManage}
+              delivery={{
+                landCompany: shipment.landCompany ?? "",
+                landVehiclePlate: shipment.landVehiclePlate ?? "",
+                landDriverName: shipment.landDriverName ?? "",
+                landDriverPhone: shipment.landDriverPhone ?? "",
+                landBorderCrossing: shipment.landBorderCrossing ?? "",
+                landPickupOn: day(shipment.landPickupOn),
+                landEtaOn: day(shipment.landEtaOn),
+                landDeliveredOn: day(shipment.landDeliveredOn),
+              }}
+            />
+          ) : (
+            <ShipmentBookingCard
+              shipmentId={shipment.id}
+              bookings={shipment.bookings.map((b) => ({ ...b, etdPol: iso(b.etdPol), etaPod: iso(b.etaPod) }))}
+              options={bookingOptions}
+              canManage={canManage}
+              canUpload={canUpload}
+            />
+          )}
         </div>
       </div>
       <section className="mt-lg min-w-0 rounded-lg border border-hairline bg-canvas p-lg">

@@ -1,4 +1,5 @@
 import { describe, expect, it } from "vitest";
+import type { ShipmentDocType } from "@/generated/prisma/enums";
 import {
   formDDefault,
   shipmentChecklist,
@@ -76,5 +77,32 @@ describe("formDDefault", () => {
 describe("shipmentReference", () => {
   it("is SHP-YYMM-NNNN", () => {
     expect(shipmentReference(7, new Date("2026-10-16T03:00:00Z"))).toBe("SHP-2610-0007");
+  });
+});
+
+describe("shipmentChecklist by land", () => {
+  const land = (current: ShipmentDocType[], hasOrders = true) =>
+    shipmentChecklist({ hasOrders, hasBooking: false, current, formDRequired: false, mode: "LAND" });
+
+  it("counts PO, invoice and packing list, never a booking or a bill of lading", () => {
+    const r = land([]);
+    expect(r.requiredTotal).toBe(3);
+    expect(r.slots.map((s) => s.key)).not.toContain("BOOKING");
+    expect(r.slots.map((s) => s.key)).not.toContain("BILL_OF_LADING");
+    expect(r.missing).toEqual(["INVOICE", "PACKING_LIST"]);
+    expect(r.status).toBe("in_progress");
+  });
+
+  it("is complete without the customs form or the DO", () => {
+    const r = land(["INVOICE", "PACKING_LIST"]);
+    expect(r.status).toBe("complete");
+    expect(r.slots.find((s) => s.key === "DELIVERY_ORDER")?.state).toBe("optional");
+    expect(r.slots.find((s) => s.key === "CUSTOMS_FORM")?.state).toBe("optional");
+  });
+
+  it("leaves the DO off a sea shipment", () => {
+    const r = shipmentChecklist({ hasOrders: true, hasBooking: true, current: ["DELIVERY_ORDER"], formDRequired: false });
+    expect(r.slots.map((s) => s.key)).not.toContain("DELIVERY_ORDER");
+    expect(r.requiredTotal).toBe(6);
   });
 });

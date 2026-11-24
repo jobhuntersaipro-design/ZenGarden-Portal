@@ -81,7 +81,9 @@ export function OrderShippingCard({
                     ) : null}
                   </>
                 ) : (
-                  <p className="text-[length:var(--text-body-sm)] text-ink-secondary">No booking yet</p>
+                  <p className="text-[length:var(--text-body-sm)] text-ink-secondary">
+                    {s.mode === "LAND" ? "By land" : "No booking yet"}
+                  </p>
                 )}
               </li>
             );

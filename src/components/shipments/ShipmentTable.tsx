@@ -12,6 +12,13 @@ const blank = <span className="text-ink-tertiary">—</span>;
 const poLine = (row: ShipmentListRow) => (row.poNumbers.length ? row.poNumbers.join(", ") : "No PO yet");
 const noSort = () => {};
 
+const landTag = (row: ShipmentListRow) =>
+  row.mode === "LAND" ? (
+    <span className="ml-xs rounded-pill border border-hairline-strong px-xs font-sans text-[length:var(--text-caption)] text-ink-secondary">
+      Land
+    </span>
+  ) : null;
+
 /** "TIIU6249628 · 40FT", then "+2" for the rest, as the sheet's one column. */
 function containerLine(row: ShipmentListRow): string | null {
   const [first, ...rest] = row.containers;
@@ -29,7 +36,10 @@ const COLUMNS: Column<ShipmentListRow>[] = [
     cell: (row) => (
       <span className="flex min-w-0 max-w-64 flex-col gap-xxs">
         <span className="font-medium whitespace-normal">{poLine(row)}</span>
-        <span className="font-mono text-[length:var(--text-caption)] text-ink-tertiary">{row.reference}</span>
+        <span className="font-mono text-[length:var(--text-caption)] text-ink-tertiary">
+          {row.reference}
+          {landTag(row)}
+        </span>
         <span className="block truncate text-[length:var(--text-caption)] text-ink-tertiary" title={row.buyer.name}>
           {row.buyer.name}
         </span>
@@ -128,7 +138,10 @@ function card(row: ShipmentListRow) {
       <span className="flex items-start justify-between gap-sm">
         <span className="flex min-w-0 flex-col">
           <span className="text-[length:var(--text-body-md)] font-medium text-ink">{poLine(row)}</span>
-          <span className="font-mono text-[length:var(--text-caption)] text-ink-tertiary">{row.reference}</span>
+          <span className="font-mono text-[length:var(--text-caption)] text-ink-tertiary">
+            {row.reference}
+            {landTag(row)}
+          </span>
         </span>
         <ShipmentStatusBadge status={row.checklist.status} />
       </span>
@@ -145,7 +158,7 @@ function card(row: ShipmentListRow) {
       ) : null}
       {row.etd || row.eta ? (
         <span className="text-[length:var(--text-body-sm)] text-ink-secondary">
-          ETD {row.etd ? formatDate(row.etd) : "—"} · ETA {row.eta ? formatDate(row.eta) : "—"}
+          {row.mode === "LAND" ? "Pickup" : "ETD"} {row.etd ? formatDate(row.etd) : "—"} · ETA {row.eta ? formatDate(row.eta) : "—"}
         </span>
       ) : null}
       <ChecklistDots slots={row.checklist.slots} />
@@ -179,7 +192,15 @@ export function ShipmentTable({
         emptyDescription="Clear the search, or start one from a purchase order."
         rowHref={(row) => `/shipments/${row.id}`}
         renderCard={card}
-        preview={(row) => <BookingPreview booking={row.booking} earlier={row.earlierBookings} />}
+        preview={(row) =>
+          row.mode === "LAND" ? (
+            <p className="max-w-72 text-[length:var(--text-body-sm)] text-ink">
+              By land{row.vessel ? ` · ${row.vessel}` : ""}
+            </p>
+          ) : (
+            <BookingPreview booking={row.booking} earlier={row.earlierBookings} />
+          )
+        }
         previewOn="row"
       />
       <TablePagination page={page} size={size} total={total} />

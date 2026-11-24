@@ -1,4 +1,4 @@
-import type { ShipmentDocType } from "@/generated/prisma/enums";
+import type { ShipmentDocType, ShipmentMode } from "@/generated/prisma/enums";
 
 /**
  * What a shipment still lacks (Phase 63, re-ordered 2026-10-17). Pure — no
@@ -26,6 +26,28 @@ export const SLOT_ORDER: readonly SlotKey[] = [
   "KSO",
 ];
 
+/**
+ * A land trip (2026-11-24): no booking and no bill of lading. PO, invoice and
+ * packing list count; the customs form and the signed DO / POD are optional,
+ * and border papers go in as "other" documents.
+ */
+export const LAND_SLOT_ORDER: readonly SlotKey[] = [
+  "PURCHASE_ORDER",
+  "INVOICE",
+  "PACKING_LIST",
+  "CUSTOMS_FORM",
+  "DELIVERY_ORDER",
+  "FORM_D",
+  "COA",
+  "KSO",
+];
+
+const LAND_OPTIONAL: ReadonlySet<SlotKey> = new Set(["CUSTOMS_FORM", "DELIVERY_ORDER", "FORM_D", "COA", "KSO"]);
+
+export const slotOrder = (mode: ShipmentMode = "SEA") => (mode === "LAND" ? LAND_SLOT_ORDER : SLOT_ORDER);
+export const isOptionalSlot = (key: SlotKey, mode: ShipmentMode = "SEA") =>
+  (mode === "LAND" ? LAND_OPTIONAL : OPTIONAL_SLOTS).has(key);
+
 /** For reference only (2026-11-13): shown, never counted toward "N of 6". */
 export const OPTIONAL_SLOTS: ReadonlySet<SlotKey> = new Set(["FORM_D", "COA", "KSO"]);
 
@@ -39,6 +61,7 @@ export const SLOT_LABEL: Record<SlotKey, string> = {
   FORM_D: "Form D",
   COA: "COA",
   KSO: "KSO Inspection Documents",
+  DELIVERY_ORDER: "Delivery order / POD",
 };
 
 /** Shorter, for a phone and a tight row. */
@@ -52,6 +75,7 @@ export const SLOT_SHORT: Record<SlotKey, string> = {
   FORM_D: "D",
   COA: "COA",
   KSO: "KSO",
+  DELIVERY_ORDER: "DO",
 };
 
 /** Who provides each paper, in the customer's words. */
@@ -65,6 +89,7 @@ export const SLOT_SOURCE: Record<SlotKey, string> = {
   FORM_D: "Optional · for reference",
   COA: "Optional · for reference",
   KSO: "Optional · for reference",
+  DELIVERY_ORDER: "Optional · signed by the receiver",
 };
 
 export type ShipmentStatus = "no_booking" | "in_progress" | "complete";
@@ -86,10 +111,12 @@ export function shipmentChecklist(input: {
   current: ReadonlySet<ShipmentDocType> | readonly ShipmentDocType[];
   /** Kept on the shipment; no longer makes Form D count (2026-11-13). */
   formDRequired: boolean;
+  mode?: ShipmentMode;
 }) {
+  const mode = input.mode ?? "SEA";
   const current = new Set<ShipmentDocType>(input.current);
-  const counts = (key: SlotKey) => !OPTIONAL_SLOTS.has(key);
-  const slots = SLOT_ORDER.map((key): ChecklistSlot => {
+  const counts = (key: SlotKey) => !isOptionalSlot(key, mode);
+  const slots = slotOrder(mode).map((key): ChecklistSlot => {
     const done =
       key === "PURCHASE_ORDER" ? input.hasOrders : key === "BOOKING" ? input.hasBooking : current.has(key);
     if (done) return { key, state: "done" };
@@ -100,7 +127,7 @@ export function shipmentChecklist(input: {
   const required = slots.filter((slot) => counts(slot.key));
   const missing = slots.filter((slot) => slot.state === "missing").map((slot) => slot.key);
   const requiredDone = required.filter((slot) => slot.state === "done").length;
-  const status: ShipmentStatus = missing.length === 0 ? "complete" : !input.hasBooking ? "no_booking" : "in_progress";
+  const status: ShipmentStatus = missing.length === 0 ? "complete" : mode === "SEA" && !input.hasBooking ? "no_booking" : "in_progress";
   return {
     slots,
     requiredDone,

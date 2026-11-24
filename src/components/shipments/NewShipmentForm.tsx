@@ -6,6 +6,8 @@ import { createShipment } from "@/actions/shipments";
 import { OrderPicker } from "@/components/shipments/OrderPicker";
 import { Button } from "@/components/ui/button";
 import { MarketSelect } from "@/components/shipments/MarketSelect";
+import { ModeChoice } from "@/components/shipments/ModeChoice";
+import type { ShipmentMode } from "@/generated/prisma/enums";
 import { Textarea } from "@/components/ui/textarea";
 import { useUrlNavigation } from "@/hooks/useUrlNavigation";
 import { formDDefault } from "@/lib/shipments/checklist";
@@ -46,6 +48,8 @@ export function NewShipmentForm({
   const [market, setMarket] = useState(buyer?.market && markets.includes(buyer.market) ? buyer.market : "");
   const [formD, setFormD] = useState(formDDefault(buyer?.market));
   const [note, setNote] = useState("");
+  // Opened from a booking, it is going by sea.
+  const [mode, setMode] = useState<ShipmentMode>("SEA");
   const [pending, setPending] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -72,7 +76,8 @@ export function NewShipmentForm({
             market,
             formDRequired: formD,
             note,
-            bookingId,
+            bookingId: mode === "SEA" ? bookingId : null,
+            mode,
           });
           if (!result.success) return void setError(result.error);
           toast.success("Shipment created");
@@ -107,9 +112,18 @@ export function NewShipmentForm({
       {buyer ? (
         <>
           <fieldset className="flex flex-col gap-xs">
-            <legend className={`${LABEL} mb-xs`}>Orders in this container</legend>
+            <legend className={`${LABEL} mb-xs`}>{mode === "LAND" ? "Orders on this truck" : "Orders in this container"}</legend>
             <OrderPicker orders={orders} selected={selected} onChange={setSelected} locked={locked} />
           </fieldset>
+
+          {bookingId ? null : (
+            <div className="flex flex-col gap-xs">
+              <span id="shipment-mode-label" className={LABEL}>
+                Delivery
+              </span>
+              <ModeChoice value={mode} onChange={setMode} labelledBy="shipment-mode-label" />
+            </div>
+          )}
 
           <div className="flex flex-col gap-xs">
             <label htmlFor="shipment-market" className={LABEL}>

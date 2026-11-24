@@ -1,3 +1,46 @@
+# Land delivery for shipments
+
+## Status
+
+**Built 2026-11-24, pushed to `main`.** Asked for by kim as "By sea and land,
+need to work on the land delivery. manually key in info", planned first and
+built from "Build plan v2".
+
+- **A shipment is by sea or by land**, never both (`Shipment.mode`, migration
+  `20261124090000_shipment_land_mode`: the enum, the column defaulting to SEA,
+  and eight nullable land columns). New shipment asks first; Edit can switch.
+- **Land delivery card** in the booking card's place: transport company,
+  vehicle plate, driver, driver phone, border crossing, pickup, expected
+  delivery, delivered. Every field optional, typed by hand
+  (`updateLandDelivery`, `shipment.manage`); refused on a sea shipment;
+  Activity names only the fields that changed. Buyers see none of it.
+- **Checklist on land** is PO, Invoice, Packing list ("N of 3"). Customs form
+  and Delivery order / POD are optional; no booking, no bill of lading. Border
+  papers go under Add another document. Containers stay optional.
+- **List** shows a Land tag, "plate · company", Pickup for ETD and the
+  expected delivery for ETA; the hover card shows the truck. A PO's Shipping
+  card reads "By land".
+
+## Verified
+
+Local Postgres + seed, production build, Chromium at 1440 and 390, as a super
+admin. From PO-2026-0088 with By land: SHP-2611-0001, "1 of 3 documents",
+Invoice and Packing list missing, Customs form and DO/POD optional. Filled the
+card (Kim Brothers Haulage, WXY 1234, Ahmad Faizal, Bukit Kayu Hitam, ETA
+28 Nov): "Delivery details saved", the row reads LAND / WXY 1234 / 2026-11-28,
+Activity lists the five fields. Edit shows By land chosen. The phone list card
+reads Land, "WXY 1234 · Kim Brothers Haulage Sdn Bhd", ETA 28 Nov. No overflow
+at either width. 1958 tests (new ones on the land checklist and the action),
+`tsc`, eslint on touched files, build.
+
+## Not verified
+
+Production (nothing written there). Switching a shipment between sea and land
+and saving; pickup and delivered dates; a sea shipment re-driven after the
+change (unit tests only); the buyer's view. Real border papers.
+
+## Before that
+
 # Link a booking: every word shows
 
 ## Status

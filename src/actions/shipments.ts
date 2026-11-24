@@ -3,7 +3,7 @@
 import { revalidatePath } from "next/cache";
 import { z } from "zod";
 import type { Prisma } from "@/generated/prisma/client";
-import { CatalogLabelKind, ShipmentDocType } from "@/generated/prisma/enums";
+import { CatalogLabelKind, ShipmentDocType, ShipmentMode } from "@/generated/prisma/enums";
 import type { ActionResult } from "@/actions/purchase-orders";
 import { UnauthorizedError, type SessionUser } from "@/lib/auth-guards";
 import type { PermissionKey } from "@/lib/permissions/actions";
@@ -11,6 +11,7 @@ import { requirePermission } from "@/lib/permissions/require";
 import { prisma } from "@/lib/prisma";
 import { deleteObject } from "@/lib/r2";
 import { SHIPMENT_NOTE } from "@/lib/queries/shipments";
+import { isoDate } from "@/lib/validation/purchase-orders";
 import { CUSTOMS_LABELS, docPhrase, shipmentReference } from "@/lib/shipments/checklist";
 import { orderIdentity, orderLabel, ORDER_IDENTITY_SELECT } from "@/lib/order-identity";
 
@@ -85,6 +86,7 @@ const createSchema = z.object({
   formDRequired: z.boolean(),
   note: text(2000),
   bookingId: id.nullable().optional(),
+  mode: z.enum(ShipmentMode).default("SEA"),
 });
 
 export async function createShipment(input: z.input<typeof createSchema>): Promise<ActionResult<{ id: string }>> {
@@ -104,6 +106,7 @@ export async function createShipment(input: z.input<typeof createSchema>): Promi
           buyerId: data.buyerId,
           market: data.market ?? null,
           formDRequired: data.formDRequired,
+          mode: data.mode,
           createdById: user.id,
           orders: { create: data.purchaseOrderIds.map((purchaseOrderId) => ({ purchaseOrderId })) },
         },
@@ -111,9 +114,11 @@ export async function createShipment(input: z.input<typeof createSchema>): Promi
       });
       const reference = shipmentReference(row.seq, row.createdAt);
       await tx.shipment.update({ where: { id: row.id }, data: { reference } });
-      await log(tx, row.id, user, "SHIPMENT_CREATED", `created ${reference} with ${labels.join(", ")}`);
+      const by = data.mode === "LAND" ? " by land" : "";
+      await log(tx, row.id, user, "SHIPMENT_CREATED", `created ${reference}${by} with ${labels.join(", ")}`);
       if (data.note) await log(tx, row.id, user, SHIPMENT_NOTE, data.note);
-      if (data.bookingId) {
+      // A land trip carries no booking.
+      if (data.bookingId && data.mode === "SEA") {
         const linked = await tx.bookingConfirmation.updateMany({
           where: { id: data.bookingId },
           data: { shipmentId: row.id },
@@ -124,7 +129,7 @@ export async function createShipment(input: z.input<typeof createSchema>): Promi
     });
     if (!created) return { success: false, error: SAME_BUYER };
     touch(created, data.purchaseOrderIds);
-    if (data.bookingId) revalidatePath(`/booking-confirmations/${data.bookingId}`);
+    if (data.bookingId && data.mode === "SEA") revalidatePath(`/booking-confirmations/${data.bookingId}`);
     return { success: true, data: { id: created } };
   } catch (cause) {
     console.error("[shipments] create", cause);
@@ -136,6 +141,7 @@ const updateSchema = z.object({
   id,
   market: text(80),
   formDRequired: z.boolean(),
+  mode: z.enum(ShipmentMode).optional(),
 });
 
 export async function updateShipment(input: z.input<typeof updateSchema>): Promise<ActionResult> {
@@ -148,14 +154,16 @@ export async function updateShipment(input: z.input<typeof updateSchema>): Promi
     const saved = await prisma.$transaction(async (tx) => {
       const before = await tx.shipment.findUniqueOrThrow({
         where: { id: shipmentId },
-        select: { market: true, formDRequired: true },
+        select: { market: true, formDRequired: true, mode: true },
       });
       if (!(await marketAllowed(tx, data.market, before.market))) return false;
+      const mode = data.mode ?? before.mode;
       await tx.shipment.update({
         where: { id: shipmentId },
-        data: { market: data.market ?? null, formDRequired: data.formDRequired },
+        data: { market: data.market ?? null, formDRequired: data.formDRequired, mode },
       });
       const changed = [
+        before.mode !== mode && `delivery (now by ${mode === "LAND" ? "land" : "sea"})`,
         before.market !== (data.market ?? null) && "market",
         before.formDRequired !== data.formDRequired && (data.formDRequired ? "Form D needed" : "Form D not needed"),
       ].filter(Boolean);
@@ -168,6 +176,70 @@ export async function updateShipment(input: z.input<typeof updateSchema>): Promi
   } catch (cause) {
     console.error("[shipments] update", cause);
     return { success: false, error: "We couldn't save that shipment." };
+  }
+}
+
+const day = z.union([isoDate, z.literal("")]).nullable().optional();
+
+const landSchema = z.object({
+  id,
+  landCompany: text(120),
+  landVehiclePlate: text(40),
+  landDriverName: text(120),
+  landDriverPhone: text(40),
+  landPickupOn: day,
+  landEtaOn: day,
+  landDeliveredOn: day,
+  landBorderCrossing: text(120),
+});
+
+const LAND_FIELD_LABEL = {
+  landCompany: "transport company",
+  landVehiclePlate: "vehicle plate",
+  landDriverName: "driver",
+  landDriverPhone: "driver's phone",
+  landPickupOn: "pickup date",
+  landEtaOn: "expected delivery",
+  landDeliveredOn: "delivered date",
+  landBorderCrossing: "border crossing",
+} as const;
+
+type LandKey = keyof typeof LAND_FIELD_LABEL;
+const LAND_KEYS = Object.keys(LAND_FIELD_LABEL) as LandKey[];
+/** A `@db.Date` from `yyyy-mm-dd` (UTC midnight is that day). Not imported from extract-booking, which loads the Claude client. */
+const asDateColumn = (value: string | null) => (value ? new Date(`${value}T00:00:00.000Z`) : null);
+const LAND_DATES = new Set<LandKey>(["landPickupOn", "landEtaOn", "landDeliveredOn"]);
+
+/** The truck, typed by hand (2026-11-24). Every field optional; Activity names what changed. */
+export async function updateLandDelivery(input: z.input<typeof landSchema>): Promise<ActionResult> {
+  const { user, error } = await guard("shipment.manage");
+  if (!user) return { success: false, error };
+  const parsed = landSchema.safeParse(input);
+  if (!parsed.success) return { success: false, error: parsed.error.issues[0]?.message ?? "Check the form." };
+  const { id: shipmentId, ...fields } = parsed.data;
+  const next = Object.fromEntries(
+    LAND_KEYS.map((key) => {
+      const value = fields[key] || null;
+      return [key, LAND_DATES.has(key) ? asDateColumn(value) : value];
+    }),
+  ) as Record<LandKey, string | Date | null>;
+  try {
+    const saved = await prisma.$transaction(async (tx) => {
+      const before = await tx.shipment.findUnique({ where: { id: shipmentId }, select: { mode: true, ...Object.fromEntries(LAND_KEYS.map((k) => [k, true])) } });
+      if (!before || before.mode !== "LAND") return false;
+      const same = (a: unknown, b: unknown) => (a instanceof Date ? a.getTime() : a) === (b instanceof Date ? b.getTime() : b);
+      const changed = LAND_KEYS.filter((key) => !same((before as Record<string, unknown>)[key] ?? null, next[key]));
+      if (!changed.length) return true;
+      await tx.shipment.update({ where: { id: shipmentId }, data: next as Prisma.ShipmentUpdateInput });
+      await log(tx, shipmentId, user, "SHIPMENT_LAND_UPDATED", `edited ${changed.map((k) => LAND_FIELD_LABEL[k]).join(", ")}`);
+      return true;
+    });
+    if (!saved) return { success: false, error: "This shipment isn't going by land." };
+    touch(shipmentId);
+    return { success: true, data: undefined };
+  } catch (cause) {
+    console.error("[shipments] land", cause);
+    return { success: false, error: "We couldn't save the delivery details." };
   }
 }
 

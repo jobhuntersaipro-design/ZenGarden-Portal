@@ -13,6 +13,8 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { MarketSelect } from "@/components/shipments/MarketSelect";
+import { ModeChoice } from "@/components/shipments/ModeChoice";
+import type { ShipmentMode } from "@/generated/prisma/enums";
 import { toast } from "@/lib/toast";
 import { formDDefault } from "@/lib/shipments/checklist";
 
@@ -21,18 +23,20 @@ export function ShipmentSettings({
   id,
   market,
   formDRequired,
+  mode,
   canDelete,
   markets,
 }: {
   id: string;
   market: string | null;
   formDRequired: boolean;
+  mode: ShipmentMode;
   canDelete: boolean;
   markets: string[];
 }) {
   const router = useRouter();
   const [open, setOpen] = useState<"edit" | "delete" | null>(null);
-  const [values, setValues] = useState({ market: market ?? "", formDRequired });
+  const [values, setValues] = useState({ market: market ?? "", formDRequired, mode });
   const [busy, setBusy] = useState(false);
 
   const run = async (work: () => Promise<{ success: boolean; error?: string }>, done: string, after?: () => void) => {
@@ -65,8 +69,14 @@ export function ShipmentSettings({
         <DialogContent>
           <DialogHeader>
             <DialogTitle>Edit shipment</DialogTitle>
-            <DialogDescription>Where it is going. Form D follows the market.</DialogDescription>
+            <DialogDescription>How and where it is going. Form D follows the market.</DialogDescription>
           </DialogHeader>
+          <div className="flex flex-col gap-xs">
+            <span id="shipment-edit-mode" className="font-mono text-[length:var(--text-eyebrow)] text-ink-tertiary">
+              Delivery
+            </span>
+            <ModeChoice value={values.mode} onChange={(m) => setValues({ ...values, mode: m })} labelledBy="shipment-edit-mode" />
+          </div>
           <div className="flex flex-col gap-xs">
             <label
               htmlFor="shipment-edit-market"

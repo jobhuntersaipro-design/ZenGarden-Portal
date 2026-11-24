@@ -19,7 +19,7 @@ const requirePermission = vi.fn();
 vi.mock("@/lib/auth-guards", () => ({ UnauthorizedError }));
 vi.mock("@/lib/permissions/require", () => ({ requirePermission: (key: string) => requirePermission(key) }));
 
-const { addOrdersToShipment, addShipmentNote, createShipment, deleteShipmentNote, editShipmentNote, linkBookingToShipment, removeOrderFromShipment, updateShipment } = await import(
+const { addOrdersToShipment, addShipmentNote, createShipment, deleteShipmentNote, editShipmentNote, linkBookingToShipment, removeOrderFromShipment, updateLandDelivery, updateShipment } = await import(
   "@/actions/shipments"
 );
 
@@ -183,5 +183,27 @@ describe("editing and deleting a note", () => {
     expect((await deleteShipmentNote({ id: "n1" })).success).toBe(false);
     expect(tx.shipmentEvent.update).not.toHaveBeenCalled();
     expect(tx.shipmentEvent.delete).not.toHaveBeenCalled();
+  });
+});
+
+describe("updateLandDelivery", () => {
+  const blank = { landCompany: null, landVehiclePlate: null, landDriverName: null, landDriverPhone: null, landBorderCrossing: null, landPickupOn: null, landEtaOn: null, landDeliveredOn: null };
+
+  it("refuses a sea shipment and writes nothing", async () => {
+    tx.shipment.findUnique.mockResolvedValue({ mode: "SEA", ...blank });
+    expect(await updateLandDelivery({ id: "s1", landVehiclePlate: "WXY 1234" })).toEqual({
+      success: false,
+      error: "This shipment isn't going by land.",
+    });
+    expect(tx.shipment.update).not.toHaveBeenCalled();
+  });
+
+  it("stores the date as that calendar day and logs only what changed", async () => {
+    tx.shipment.findUnique.mockResolvedValue({ mode: "LAND", ...blank });
+    expect(await updateLandDelivery({ id: "s1", landVehiclePlate: "WXY 1234", landEtaOn: "2026-12-02" })).toEqual({ success: true, data: undefined });
+    const data = tx.shipment.update.mock.calls[0][0].data;
+    expect(data.landVehiclePlate).toBe("WXY 1234");
+    expect(data.landEtaOn).toEqual(new Date("2026-12-02T00:00:00.000Z"));
+    expect(tx.shipmentEvent.create.mock.calls[0][0].data.text).toBe("edited vehicle plate, expected delivery");
   });
 });
