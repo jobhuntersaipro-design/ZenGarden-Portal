@@ -1,3 +1,34 @@
+# Link a booking: every word shows
+
+## Status
+
+**Built 2026-11-24, pushed to `main`.** Asked for by kim: "From link BC, the
+word is hard to see, make sure show every text".
+
+- **Cause.** In the shipment's "Link a booking" picker each option put its
+  hint beside the label as `shrink-0`. A hint with no ETD was the whole file
+  name, so it squeezed the booking number to "Booking CNB03…" or to nothing,
+  and itself ran off the popover's edge.
+- **Fix, in the shared `Combobox`.** Label and hint sit side by side when they
+  fit and wrap when they do not (`flex-wrap`, `wrap-anywhere`); nothing
+  truncates. The hint is ink-secondary, and so is the empty trigger's
+  placeholder. A booking with no number no longer repeats its file name as its
+  own hint (`unlinkedBookingOptions`).
+
+## Verified
+
+The real `ShipmentBookingCard` on a temporary page (removed), Chromium at 1440
+and 390, four bookings incl. a long file name. Before: 4 of 4 labels clipped
+at 1440, hints cut at the edge. After: 0 clipped, no overflow at either width.
+1951 tests, `tsc`, eslint on touched files, build (xlsx stand-in).
+
+## Not verified
+
+Production behind sign-in. The buyer, product and family pickers use the same
+`Combobox`; their rows now wrap too, not driven.
+
+## Before that
+
 # New shipment: the PO you came from stays ticked, Market is a list
 
 ## Status

@@ -396,7 +396,7 @@ export async function unlinkedBookingOptions() {
   return bookings.map((b) => ({
     id: b.id,
     label: b.bookingNumber ? `Booking ${b.bookingNumber}` : b.originalName,
-    hint: b.etdPol ? `ETD ${formatDate(b.etdPol)}` : b.originalName,
+    hint: b.etdPol ? `ETD ${formatDate(b.etdPol)}` : b.bookingNumber ? b.originalName : undefined,
   }));
 }
 

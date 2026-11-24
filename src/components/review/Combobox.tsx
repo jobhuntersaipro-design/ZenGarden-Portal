@@ -89,7 +89,7 @@ export function Combobox({
         {/* The full value is always recoverable, even when the trigger clips it. */}
         <span
           title={selected?.label ?? undefined}
-          className={`min-w-0 flex-1 truncate ${selected ? "text-ink" : "text-ink-tertiary"}`}
+          className={`min-w-0 flex-1 truncate ${selected ? "text-ink" : "text-ink-secondary"}`}
         >
           {selected?.label ?? placeholder}
         </span>
@@ -125,14 +125,13 @@ export function Combobox({
                   className={cn(arc.check, "size-4", option.id !== value && "text-transparent")}
                   aria-hidden
                 />
-                <span className="min-w-0 flex-1 truncate" title={option.label}>
-                  {option.label}
+                {/* Every word shows: label and hint sit side by side when they fit and wrap when they do not, rather than one squeezing the other out. */}
+                <span className="flex min-w-0 flex-1 flex-wrap items-baseline justify-between gap-x-sm py-xxs wrap-anywhere">
+                  <span>{option.label}</span>
+                  {option.hint ? (
+                    <span className="text-[length:var(--text-caption)] text-ink-secondary">{option.hint}</span>
+                  ) : null}
                 </span>
-                {option.hint ? (
-                  <span className="shrink-0 text-[length:var(--text-caption)] text-ink-tertiary">
-                    {option.hint}
-                  </span>
-                ) : null}
               </button>
             </li>
           ))}
