@@ -12,7 +12,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
-import { Input } from "@/components/ui/input";
+import { MarketSelect } from "@/components/shipments/MarketSelect";
 import { toast } from "@/lib/toast";
 import { formDDefault } from "@/lib/shipments/checklist";
 
@@ -22,11 +22,13 @@ export function ShipmentSettings({
   market,
   formDRequired,
   canDelete,
+  markets,
 }: {
   id: string;
   market: string | null;
   formDRequired: boolean;
   canDelete: boolean;
+  markets: string[];
 }) {
   const router = useRouter();
   const [open, setOpen] = useState<"edit" | "delete" | null>(null);
@@ -65,17 +67,21 @@ export function ShipmentSettings({
             <DialogTitle>Edit shipment</DialogTitle>
             <DialogDescription>Where it is going. Form D follows the market.</DialogDescription>
           </DialogHeader>
-          <label className="flex flex-col gap-xs">
-            <span className="font-mono text-[length:var(--text-eyebrow)] text-ink-tertiary">Market</span>
-            <Input
+          <div className="flex flex-col gap-xs">
+            <label
+              htmlFor="shipment-edit-market"
+              className="font-mono text-[length:var(--text-eyebrow)] text-ink-tertiary"
+            >
+              Market
+            </label>
+            <MarketSelect
+              id="shipment-edit-market"
               value={values.market}
-              maxLength={80}
-              className="h-control-md"
-              onChange={(e) =>
-                setValues({ ...values, market: e.target.value, formDRequired: formDDefault(e.target.value) })
-              }
+              options={markets}
+              className="h-control-md w-full rounded-sm border border-hairline-strong bg-transparent px-xs text-[length:var(--text-body-md)] text-ink focus-visible:border-focus focus-visible:outline-2 focus-visible:outline-focus sm:text-[length:var(--text-body-sm)]"
+              onChange={(m) => setValues({ ...values, market: m, formDRequired: formDDefault(m) })}
             />
-          </label>
+          </div>
           <DialogFooter>
             <Button variant="secondary" disabled={busy} onClick={() => setOpen(null)}>
               Cancel

@@ -4,6 +4,7 @@ import { PageHeader } from "@/components/portal/PageHeader";
 import { NewShipmentForm } from "@/components/shipments/NewShipmentForm";
 import { requirePagePermission } from "@/lib/permissions/require";
 import { prisma } from "@/lib/prisma";
+import { listLabels } from "@/lib/queries/products";
 import { firstParam, type SearchParams } from "@/lib/queries/pagination";
 import { shipmentBuyerOptions, shippableOrders } from "@/lib/queries/shipments";
 import { withLoadingFloor } from "@/lib/loading-floor";
@@ -21,10 +22,12 @@ async function NewShipmentPage({ searchParams }: { searchParams: Promise<SearchP
     ? await prisma.purchaseOrder.findUnique({ where: { id: poId }, select: { id: true, buyerId: true } })
     : null;
   const buyerId = firstParam(params, "buyer") ?? fromOrder?.buyerId ?? null;
-  const [buyers, orders] = await Promise.all([
+  const [buyers, orders, markets] = await Promise.all([
     shipmentBuyerOptions(),
     buyerId ? shippableOrders(buyerId) : Promise.resolve([]),
+    listLabels("market"),
   ]);
+  const locked = fromOrder && fromOrder.buyerId === buyerId ? fromOrder.id : null;
 
   return (
     <>
@@ -35,8 +38,10 @@ async function NewShipmentPage({ searchParams }: { searchParams: Promise<SearchP
         buyers={buyers}
         buyerId={buyers.some((b) => b.id === buyerId) ? buyerId : null}
         orders={orders}
-        preselected={fromOrder && fromOrder.buyerId === buyerId ? [fromOrder.id] : []}
+        preselected={locked ? [locked] : []}
+        locked={locked}
         bookingId={bookingId}
+        markets={markets}
       />
     </>
   );

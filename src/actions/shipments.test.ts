@@ -2,14 +2,15 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 
 const tx = {
   purchaseOrder: { findMany: vi.fn(), findUnique: vi.fn() },
-  shipment: { create: vi.fn(), update: vi.fn(), findUnique: vi.fn() },
+  shipment: { create: vi.fn(), update: vi.fn(), findUnique: vi.fn(), findUniqueOrThrow: vi.fn() },
   shipmentOrder: { createMany: vi.fn(), count: vi.fn(), deleteMany: vi.fn() },
   shipmentEvent: { create: vi.fn(), findUnique: vi.fn(), update: vi.fn(), delete: vi.fn() },
   bookingConfirmation: { updateMany: vi.fn() },
+  catalogLabel: { findFirst: vi.fn() },
 };
 
 vi.mock("@/lib/prisma", () => ({
-  prisma: { $transaction: (work: (t: typeof tx) => unknown) => work(tx), shipmentEvent: tx.shipmentEvent },
+  prisma: { $transaction: (work: (t: typeof tx) => unknown) => work(tx), shipmentEvent: tx.shipmentEvent, catalogLabel: tx.catalogLabel },
 }));
 vi.mock("@/lib/r2", () => ({ deleteObject: vi.fn() }));
 vi.mock("next/cache", () => ({ revalidatePath: vi.fn() }));
@@ -18,7 +19,7 @@ const requirePermission = vi.fn();
 vi.mock("@/lib/auth-guards", () => ({ UnauthorizedError }));
 vi.mock("@/lib/permissions/require", () => ({ requirePermission: (key: string) => requirePermission(key) }));
 
-const { addOrdersToShipment, addShipmentNote, createShipment, deleteShipmentNote, editShipmentNote, linkBookingToShipment, removeOrderFromShipment } = await import(
+const { addOrdersToShipment, addShipmentNote, createShipment, deleteShipmentNote, editShipmentNote, linkBookingToShipment, removeOrderFromShipment, updateShipment } = await import(
   "@/actions/shipments"
 );
 
@@ -28,6 +29,31 @@ beforeEach(() => {
   vi.resetAllMocks();
   requirePermission.mockResolvedValue({ id: "u1", name: "Rina", role: "WAREHOUSE" });
   tx.shipment.create.mockResolvedValue({ id: "s1", seq: 7, createdAt: new Date("2026-10-16T03:00:00Z") });
+  tx.catalogLabel.findFirst.mockResolvedValue({ id: "m1" });
+});
+
+describe("market comes from the super admin's list", () => {
+  const UNKNOWN = "Choose a market from the list. A super admin adds markets under Admin › Catalogue.";
+
+  it("refuses a market not on the list, and writes nothing", async () => {
+    tx.catalogLabel.findFirst.mockResolvedValue(null);
+    const result = await createShipment({ buyerId: "A", purchaseOrderIds: ["a1"], market: "Atlantis", formDRequired: false });
+    expect(result).toEqual({ success: false, error: UNKNOWN });
+    expect(tx.shipment.create).not.toHaveBeenCalled();
+  });
+
+  it("keeps a saved market that is no longer on the list", async () => {
+    tx.catalogLabel.findFirst.mockResolvedValue(null);
+    tx.shipment.findUniqueOrThrow.mockResolvedValue({ market: "Old market", formDRequired: false });
+    expect(await updateShipment({ id: "s1", market: "Old market", formDRequired: false })).toEqual({
+      success: true,
+      data: undefined,
+    });
+    expect(await updateShipment({ id: "s1", market: "Atlantis", formDRequired: false })).toEqual({
+      success: false,
+      error: UNKNOWN,
+    });
+  });
 });
 
 describe("createShipment", () => {

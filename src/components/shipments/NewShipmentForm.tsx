@@ -5,7 +5,7 @@ import { useRouter } from "next/navigation";
 import { createShipment } from "@/actions/shipments";
 import { OrderPicker } from "@/components/shipments/OrderPicker";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
+import { MarketSelect } from "@/components/shipments/MarketSelect";
 import { Textarea } from "@/components/ui/textarea";
 import { useUrlNavigation } from "@/hooks/useUrlNavigation";
 import { formDDefault } from "@/lib/shipments/checklist";
@@ -26,19 +26,24 @@ export function NewShipmentForm({
   buyerId,
   orders,
   preselected,
+  locked,
   bookingId,
+  markets,
 }: {
   buyers: { id: string; name: string; market: string | null }[];
   buyerId: string | null;
   orders: ShippableOrder[];
   preselected: string[];
+  /** The order the page was opened from: ticked and cannot be unticked, and its buyer is fixed. */
+  locked: string | null;
   bookingId: string | null;
+  markets: string[];
 }) {
   const router = useRouter();
   const { replace } = useUrlNavigation();
   const buyer = buyers.find((b) => b.id === buyerId) ?? null;
   const [selected, setSelected] = useState(preselected);
-  const [market, setMarket] = useState(buyer?.market ?? "");
+  const [market, setMarket] = useState(buyer?.market && markets.includes(buyer.market) ? buyer.market : "");
   const [formD, setFormD] = useState(formDDefault(buyer?.market));
   const [note, setNote] = useState("");
   const [pending, setPending] = useState(false);
@@ -87,6 +92,7 @@ export function NewShipmentForm({
           id="shipment-buyer"
           className={SELECT}
           value={buyerId ?? ""}
+          disabled={!!locked}
           onChange={(event) => chooseBuyer(event.target.value)}
         >
           <option value="">Choose a buyer</option>
@@ -102,21 +108,21 @@ export function NewShipmentForm({
         <>
           <fieldset className="flex flex-col gap-xs">
             <legend className={`${LABEL} mb-xs`}>Orders in this container</legend>
-            <OrderPicker orders={orders} selected={selected} onChange={setSelected} />
+            <OrderPicker orders={orders} selected={selected} onChange={setSelected} locked={locked} />
           </fieldset>
 
           <div className="flex flex-col gap-xs">
             <label htmlFor="shipment-market" className={LABEL}>
               Market
             </label>
-            <Input
+            <MarketSelect
               id="shipment-market"
               value={market}
-              maxLength={80}
-              className="h-control-md sm:w-80"
-              onChange={(event) => {
-                setMarket(event.target.value);
-                setFormD(formDDefault(event.target.value));
+              options={markets}
+              className={SELECT}
+              onChange={(value) => {
+                setMarket(value);
+                setFormD(formDDefault(value));
               }}
             />
           </div>

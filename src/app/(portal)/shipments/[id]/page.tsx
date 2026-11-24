@@ -10,6 +10,7 @@ import { ShipmentBookingCard } from "@/components/shipments/ShipmentBookingCard"
 import { ShipmentDocumentsCard } from "@/components/shipments/ShipmentDocumentsCard";
 import { ShipmentNotesCard } from "@/components/shipments/ShipmentNotesCard";
 import { ShipmentOrdersCard } from "@/components/shipments/ShipmentOrdersCard";
+import { listLabels } from "@/lib/queries/products";
 import { ShipmentSettings } from "@/components/shipments/ShipmentSettings";
 import { formatDateTime } from "@/lib/dates";
 import { can, requirePagePermission } from "@/lib/permissions/require";
@@ -30,9 +31,9 @@ async function ShipmentPage({ params }: { params: Promise<{ id: string }> }) {
   const shipment = await loadShipment((await params).id);
   if (!shipment) notFound();
   const [canManage, canUpload] = await Promise.all([can("shipment.manage"), can("bc.upload")]);
-  const [candidates, bookingOptions] = canManage
-    ? await Promise.all([shippableOrders(shipment.buyer.id), unlinkedBookingOptions()])
-    : [[], []];
+  const [candidates, bookingOptions, markets] = canManage
+    ? await Promise.all([shippableOrders(shipment.buyer.id), unlinkedBookingOptions(), listLabels("market")])
+    : [[], [], []];
   const { checklist } = shipment;
 
   return (
@@ -64,6 +65,7 @@ async function ShipmentPage({ params }: { params: Promise<{ id: string }> }) {
               market={shipment.market}
               formDRequired={shipment.formDRequired}
               canDelete={shipment.documents.length === 0 && shipment.bookings.length === 0}
+              markets={markets}
             />
           ) : null
         }

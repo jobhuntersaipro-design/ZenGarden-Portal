@@ -11,12 +11,15 @@ export function OrderPicker({
   selected,
   onChange,
   exclude = [],
+  locked = null,
 }: {
   orders: ShippableOrder[];
   selected: string[];
   onChange: (ids: string[]) => void;
   /** Orders already on this shipment: shown nowhere. */
   exclude?: string[];
+  /** The order the page was opened from: always ticked. */
+  locked?: string | null;
 }) {
   const shown = orders.filter((o) => !exclude.includes(o.id));
   if (!shown.length) {
@@ -29,12 +32,16 @@ export function OrderPicker({
   return (
     <ul className="flex flex-col divide-y divide-hairline rounded-md border border-hairline">
       {shown.map((o) => {
-        const checked = selected.includes(o.id);
+        const isLocked = o.id === locked;
+        const checked = isLocked || selected.includes(o.id);
         return (
           <li key={o.id}>
-            <label className="flex min-w-0 cursor-pointer items-start gap-sm px-sm py-xs">
+            <label
+              className={`flex min-w-0 items-start gap-sm px-sm py-xs ${isLocked ? "bg-surface-soft" : "cursor-pointer"}`}
+            >
               <Checkbox
                 checked={checked}
+                disabled={isLocked}
                 onCheckedChange={(value) =>
                   onChange(value ? [...selected, o.id] : selected.filter((id) => id !== o.id))
                 }
@@ -44,6 +51,11 @@ export function OrderPicker({
                 <span className="flex flex-wrap items-center gap-xs">
                   <span className="text-[length:var(--text-body-sm)] font-medium text-ink">{o.label}</span>
                   <StageBadge stage={o.stage} />
+                  {isLocked ? (
+                    <span className="text-[length:var(--text-caption)] text-ink-secondary">
+                      The order you came from
+                    </span>
+                  ) : null}
                 </span>
                 <span className="text-[length:var(--text-caption)] tabular-nums text-ink-tertiary">
                   PO date {formatDate(o.poDate)} · {o.cartons.toLocaleString("en-MY")} cartons

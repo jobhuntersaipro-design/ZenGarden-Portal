@@ -1,3 +1,41 @@
+# New shipment: the PO you came from stays ticked, Market is a list
+
+## Status
+
+**Built 2026-11-24, pushed to `main`.** Asked for by kim against the New
+shipment form: "From create shipment from PO, need to show current selected
+PO, cannot be unselected" and "Make the Market a dropdown list that is set up
+super admin". Points 3 (BC link contrast) and 4 (land delivery) are other
+threads.
+
+- **Locked PO.** `/shipments/new?po=<id>` ticks that PO, disables its box,
+  greys the row and captions it "The order you came from". Other POs stay
+  selectable. The buyer select is locked too, since changing the buyer
+  would drop the PO.
+- **Market** is a select (`MarketSelect`) on the new form and the Edit
+  dialog, fed by Admin › Catalogue › Markets (`listLabels("market")`), the
+  list buyers and products already use. It starts on the buyer's market when
+  that is on the list. A shipment whose saved market is not on the list
+  still shows it and can be saved unchanged; `createShipment` and
+  `updateShipment` refuse any other value not on the list.
+
+## Verified
+
+Local Postgres + seed, Chromium at 1440 and 390, as a super admin, from
+PO-2026-0085. Before: clicking its box unticked it; Market a text box.
+After: the box stays ticked; Market reads No market / Malaysia / Mydin /
+Vietnam, prefilled Malaysia. Created a shipment with PO-2026-0088 added and
+Vietnam: the row holds market Vietnam and both POs. An old market "Sabah
+(old)" showed in Edit and saved unchanged. No overflow at either width.
+1971 tests (2 new), `tsc`, eslint on touched files, build.
+
+## Not verified
+
+Production (no staff login here). How many production shipments carry a
+market not in the Markets list was not read; they keep it until edited.
+
+## Before that
+
 # Confirm & save says why it is locked
 
 ## Status

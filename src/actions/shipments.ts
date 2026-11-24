@@ -3,7 +3,7 @@
 import { revalidatePath } from "next/cache";
 import { z } from "zod";
 import type { Prisma } from "@/generated/prisma/client";
-import { ShipmentDocType } from "@/generated/prisma/enums";
+import { CatalogLabelKind, ShipmentDocType } from "@/generated/prisma/enums";
 import type { ActionResult } from "@/actions/purchase-orders";
 import { UnauthorizedError, type SessionUser } from "@/lib/auth-guards";
 import type { PermissionKey } from "@/lib/permissions/actions";
@@ -68,6 +68,14 @@ async function sameBuyerOrders(
   return orders.map((po) => orderLabel(orderIdentity(po)));
 }
 
+const UNKNOWN_MARKET = "Choose a market from the list. A super admin adds markets under Admin › Catalogue.";
+
+/** A market is blank, one on the super admin's list, or (when editing) the one already saved. */
+async function marketAllowed(tx: Pick<Prisma.TransactionClient, "catalogLabel">, market: string | undefined | null, keep?: string | null) {
+  if (!market || market === keep) return true;
+  return !!(await tx.catalogLabel.findFirst({ where: { kind: CatalogLabelKind.MARKET, value: market }, select: { id: true } }));
+}
+
 const SAME_BUYER = "Every order on a shipment must be the same buyer's.";
 
 const createSchema = z.object({
@@ -86,6 +94,7 @@ export async function createShipment(input: z.input<typeof createSchema>): Promi
   if (!parsed.success) return { success: false, error: parsed.error.issues[0]?.message ?? "Check the form." };
   const data = parsed.data;
   try {
+    if (!(await marketAllowed(prisma, data.market))) return { success: false, error: UNKNOWN_MARKET };
     const created = await prisma.$transaction(async (tx) => {
       const labels = await sameBuyerOrders(tx, data.buyerId, data.purchaseOrderIds);
       if (!labels) return null;
@@ -136,11 +145,12 @@ export async function updateShipment(input: z.input<typeof updateSchema>): Promi
   if (!parsed.success) return { success: false, error: parsed.error.issues[0]?.message ?? "Check the form." };
   const { id: shipmentId, ...data } = parsed.data;
   try {
-    await prisma.$transaction(async (tx) => {
+    const saved = await prisma.$transaction(async (tx) => {
       const before = await tx.shipment.findUniqueOrThrow({
         where: { id: shipmentId },
         select: { market: true, formDRequired: true },
       });
+      if (!(await marketAllowed(tx, data.market, before.market))) return false;
       await tx.shipment.update({
         where: { id: shipmentId },
         data: { market: data.market ?? null, formDRequired: data.formDRequired },
@@ -150,7 +160,9 @@ export async function updateShipment(input: z.input<typeof updateSchema>): Promi
         before.formDRequired !== data.formDRequired && (data.formDRequired ? "Form D needed" : "Form D not needed"),
       ].filter(Boolean);
       if (changed.length) await log(tx, shipmentId, user, "SHIPMENT_UPDATED", `edited ${changed.join(", ")}`);
+      return true;
     });
+    if (!saved) return { success: false, error: UNKNOWN_MARKET };
     touch(shipmentId);
     return { success: true, data: undefined };
   } catch (cause) {
