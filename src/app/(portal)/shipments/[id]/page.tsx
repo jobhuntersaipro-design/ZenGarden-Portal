@@ -123,10 +123,33 @@ async function ShipmentPage({ params }: { params: Promise<{ id: string }> }) {
             total={shipment.pallets}
             unpalletedLines={shipment.unpalletedLines}
             onTruck={shipment.landPallets}
-            delivered={shipment.landDeliveredOn !== null}
+            status={shipment.landStatus}
           />
         ) : null}
       </div>
+
+      {/* The truck sits under the orders and pallets it carries (2026-11-25). */}
+      {land ? (
+        <div className="mb-lg">
+          <LandDeliveryCard
+            shipmentId={shipment.id}
+            canManage={canManage}
+            delivery={{
+              landCompany: shipment.landCompany ?? "",
+              landVehiclePlate: shipment.landVehiclePlate ?? "",
+              landDriverName: shipment.landDriverName ?? "",
+              landDriverIc: shipment.landDriverIc ?? "",
+              landDriverPhone: shipment.landDriverPhone ?? "",
+              landBorderCrossing: shipment.landBorderCrossing ?? "",
+              landPickupOn: day(shipment.landPickupOn),
+              landEtaOn: day(shipment.landEtaOn),
+              landDeliveredOn: day(shipment.landDeliveredOn),
+              landPallets: shipment.landPallets?.toString() ?? "",
+              landStatus: shipment.landStatus,
+            }}
+          />
+        </div>
+      ) : null}
 
       <div className="grid grid-cols-1 gap-lg xl:grid-cols-document">
         <div className="flex min-w-0 flex-col gap-lg">
@@ -181,24 +204,7 @@ async function ShipmentPage({ params }: { params: Promise<{ id: string }> }) {
               canChange: canManage && (n.actorId === viewer.id || viewer.role === "SUPER_ADMIN"),
             }))}
           />
-          {land ? (
-            <LandDeliveryCard
-              shipmentId={shipment.id}
-              canManage={canManage}
-              delivery={{
-                landCompany: shipment.landCompany ?? "",
-                landVehiclePlate: shipment.landVehiclePlate ?? "",
-                landDriverName: shipment.landDriverName ?? "",
-                landDriverIc: shipment.landDriverIc ?? "",
-                landDriverPhone: shipment.landDriverPhone ?? "",
-                landBorderCrossing: shipment.landBorderCrossing ?? "",
-                landPickupOn: day(shipment.landPickupOn),
-                landEtaOn: day(shipment.landEtaOn),
-                landDeliveredOn: day(shipment.landDeliveredOn),
-                landPallets: shipment.landPallets?.toString() ?? "",
-              }}
-            />
-          ) : (
+          {land ? null : (
             <ShipmentBookingCard
               shipmentId={shipment.id}
               bookings={shipment.bookings.map((b) => ({ ...b, etdPol: iso(b.etdPol), etaPod: iso(b.etaPod) }))}

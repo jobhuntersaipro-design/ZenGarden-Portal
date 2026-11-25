@@ -3,7 +3,7 @@
 import { revalidatePath } from "next/cache";
 import { z } from "zod";
 import type { Prisma } from "@/generated/prisma/client";
-import { CatalogLabelKind, ShipmentDocType, ShipmentMode } from "@/generated/prisma/enums";
+import { CatalogLabelKind, LandStatus, ShipmentDocType, ShipmentMode } from "@/generated/prisma/enums";
 import type { ActionResult } from "@/actions/purchase-orders";
 import { UnauthorizedError, type SessionUser } from "@/lib/auth-guards";
 import type { PermissionKey } from "@/lib/permissions/actions";
@@ -184,9 +184,13 @@ const day = z.union([isoDate, z.literal("")]).nullable().optional();
 const landSchema = z.object({
   id,
   landCompany: text(120),
-  landVehiclePlate: text(40),
-  landDriverName: text(120),
-  landDriverIc: text(20),
+  landVehiclePlate: z.string().trim().min(1, "Enter the lorry number.").max(40),
+  landDriverName: z.string().trim().min(1, "Enter the driver's name.").max(120),
+  landDriverIc: z
+    .string()
+    .trim()
+    .regex(/^(\d{6}-\d{2}-\d{4})?$/, "Driver I/C number reads like 800101-14-5678.")
+    .default(""),
   landDriverPhone: text(40),
   landPickupOn: day,
   landEtaOn: day,
@@ -195,8 +199,9 @@ const landSchema = z.object({
   landPallets: z
     .string()
     .trim()
-    .regex(/^\d{0,5}$/, "Pallets are a whole number.")
-    .default(""),
+    .min(1, "Enter the pallets on this truck.")
+    .regex(/^\d{1,5}$/, "Pallets are a whole number."),
+  landStatus: z.enum(LandStatus).default("PENDING"),
 });
 
 const LAND_FIELD_LABEL = {
@@ -210,6 +215,7 @@ const LAND_FIELD_LABEL = {
   landDeliveredOn: "delivered date",
   landBorderCrossing: "border crossing",
   landPallets: "pallets on this truck",
+  landStatus: "status",
 } as const;
 
 type LandKey = keyof typeof LAND_FIELD_LABEL;
@@ -218,13 +224,15 @@ const LAND_KEYS = Object.keys(LAND_FIELD_LABEL) as LandKey[];
 const asDateColumn = (value: string | null) => (value ? new Date(`${value}T00:00:00.000Z`) : null);
 const LAND_DATES = new Set<LandKey>(["landPickupOn", "landEtaOn", "landDeliveredOn"]);
 
-/** The truck, typed by hand (2026-11-24). Every field optional; Activity names what changed. */
+/** The truck, typed by hand (2026-11-24). Lorry, driver and pallets required; Activity names what changed. */
 export async function updateLandDelivery(input: z.input<typeof landSchema>): Promise<ActionResult> {
   const { user, error } = await guard("shipment.manage");
   if (!user) return { success: false, error };
   const parsed = landSchema.safeParse(input);
   if (!parsed.success) return { success: false, error: parsed.error.issues[0]?.message ?? "Check the form." };
   const { id: shipmentId, ...fields } = parsed.data;
+  // A delivered date only means something once the truck has delivered.
+  if (fields.landStatus !== "DELIVERED") fields.landDeliveredOn = null;
   const next = Object.fromEntries(
     LAND_KEYS.map((key) => {
       const value = fields[key] || null;

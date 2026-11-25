@@ -1,3 +1,47 @@
+# Land delivery: a status, required fields, the I/C format
+
+## Status
+
+**Built 2026-11-25, pushed to `main`.** Asked for by kim: "Make IC format",
+"Make lorry number, Driver name, Pallets on this truck compulsary, with red
+*", "Create new column named status with Pending, Delivering and Delivered.
+If it's delivered, user can add delivery date, if not, disabled", "Move this
+section under Order and Pallet section", "when hover, cannot see the full
+text of pallet". Answers taken: the I/C is 6-2-4 (800101-14-5678); status
+shows in the list table and the phone card too.
+
+- **Driver I/C** takes digits only and dashes itself as 800101-14-5678;
+  anything else is refused on the form and the server.
+- **Lorry number, Driver name, Pallets on this truck** are required (red *,
+  inline message, focus on the first missing one; the action refuses too).
+- **Status** (`Shipment.landStatus`, enum `LandStatus`, migration
+  `20261125110000_shipment_land_status`, default PENDING; backfill DELIVERED
+  where a delivered date exists, DELIVERING where pallets were set). The
+  Delivered date is disabled unless the status is Delivered, and cleared
+  otherwise. A badge sits on the card, in a Status column on the shipments
+  list ("—" on sea) and on the phone card. A delivered land shipment no longer
+  counts as open for its buyer.
+- **Pallets card** reads the status: Pending puts nothing on the truck,
+  Delivering counts it on the truck, Delivered counts it delivered. Donut
+  labels are short (Delivered / On truck / To go), so the hover centre shows
+  them whole.
+- **Land delivery** sits under Orders and Pallets.
+
+## Verified
+
+Local Postgres + seed, Chromium at 1440 and 390, made-up truck details. I/C
+typed as 800101145678 read 800101-14-5678; a blank lorry number read "Enter
+the lorry number."; Delivered date disabled while Delivering, enabled on
+Delivered; donut 4 on truck / 2 to go, then 4 delivered / 2 to go; list and
+phone card show the badge. No overflow at either width. Screenshots in
+`land-status/`. Tests, `tsc`, eslint on touched files, build.
+
+## Not verified
+
+Production. The backfill on production rows.
+
+## Before that
+
 # Shipment page: by sea or land, pallets, and a proper activity feed
 
 ## Status

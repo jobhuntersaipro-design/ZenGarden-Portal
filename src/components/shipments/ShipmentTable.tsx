@@ -3,7 +3,7 @@
 import { Ship, Truck } from "lucide-react";
 import { DataTable, type Column } from "@/components/portal/DataTable";
 import { TablePagination } from "@/components/portal/TablePagination";
-import { ChecklistDots, ShipmentStatusBadge } from "@/components/shipments/ChecklistDots";
+import { ChecklistDots, LandStatusBadge, ShipmentStatusBadge } from "@/components/shipments/ChecklistDots";
 import { BookingPreview } from "@/components/shipments/ShippingPreviews";
 import { formatDate } from "@/lib/dates";
 import type { ShipmentListRow } from "@/lib/queries/shipments";
@@ -57,6 +57,13 @@ const COLUMNS: Column<ShipmentListRow>[] = [
     header: "Delivery type",
     sortable: false,
     cell: (row) => <ModeIcon mode={row.mode} />,
+  },
+  {
+    key: "landStatus",
+    header: "Status",
+    sortable: false,
+    // The truck's own status; a sea shipment has none.
+    cell: (row) => (row.landStatus ? <LandStatusBadge status={row.landStatus} /> : <span className="text-ink-tertiary">—</span>),
   },
   {
     key: "destination",
@@ -155,7 +162,10 @@ function card(row: ShipmentListRow) {
             {row.reference}
           </span>
         </span>
-        <ShipmentStatusBadge status={row.checklist.status} />
+        <span className="flex shrink-0 flex-col items-end gap-xxs">
+          <ShipmentStatusBadge status={row.checklist.status} />
+          {row.landStatus ? <LandStatusBadge status={row.landStatus} /> : null}
+        </span>
       </span>
       {row.checklist.reason ? (
         <span className="text-[length:var(--text-body-sm)] text-ink-secondary">{row.checklist.reason}</span>

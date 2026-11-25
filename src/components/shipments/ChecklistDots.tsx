@@ -109,3 +109,20 @@ export function ShipmentStatusBadge({ status }: { status: ShipmentStatus }) {
     </Badge>
   );
 }
+
+export type LandStatus = "PENDING" | "DELIVERING" | "DELIVERED";
+export const LAND_STATUS_LABEL: Record<LandStatus, string> = {
+  PENDING: "Pending",
+  DELIVERING: "Delivering",
+  DELIVERED: "Delivered",
+};
+const LAND_TONE: Record<LandStatus, BadgeTone> = { PENDING: "neutral", DELIVERING: "info", DELIVERED: "success" };
+
+/** Where a land shipment's truck is (2026-11-25): the list, its phone card and the Land delivery card. */
+export function LandStatusBadge({ status }: { status: LandStatus }) {
+  return (
+    <Badge tone={LAND_TONE[status]} size="sm" className="shrink-0">
+      {LAND_STATUS_LABEL[status]}
+    </Badge>
+  );
+}

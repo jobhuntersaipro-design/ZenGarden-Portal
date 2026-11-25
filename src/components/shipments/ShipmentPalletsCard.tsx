@@ -1,6 +1,7 @@
 "use client";
 
 import { DonutChart } from "@/components/arc/donut-chart/donut-chart";
+import type { LandStatus } from "@/components/shipments/ChecklistDots";
 import { palletSplit } from "@/lib/pallets";
 
 const count = (n: number) =>
@@ -16,18 +17,19 @@ export function ShipmentPalletsCard({
   total,
   unpalletedLines,
   onTruck,
-  delivered,
+  status,
 }: {
   total: number;
   unpalletedLines: number;
   onTruck: number | null;
-  delivered: boolean;
+  status: LandStatus;
 }) {
-  const split = palletSplit(total, onTruck, delivered);
+  const split = palletSplit(total, onTruck, status);
   const rows = [
     {
       key: "delivered",
       label: "Delivered",
+      short: "Delivered",
       value: split.delivered,
       color: "var(--color-accent-green)",
       dot: "bg-accent-green",
@@ -35,6 +37,7 @@ export function ShipmentPalletsCard({
     {
       key: "truck",
       label: "On the truck now",
+      short: "On truck",
       value: split.onTruck,
       color: "var(--color-mode-land)",
       dot: "bg-mode-land",
@@ -42,6 +45,7 @@ export function ShipmentPalletsCard({
     {
       key: "remaining",
       label: "Still to deliver",
+      short: "To go",
       value: split.remaining,
       color: "var(--color-hairline-strong)",
       dot: "bg-hairline-strong",
@@ -64,13 +68,13 @@ export function ShipmentPalletsCard({
             label="Pallets on this shipment"
             data={rows
               .filter((r) => r.value > 0)
-              .map(({ key, label, value, color }) => ({
+              .map(({ key, short, value, color }) => ({
                 key,
-                label,
+                label: short,
                 value,
                 color,
               }))}
-            totalLabel="To deliver"
+            totalLabel="Total"
             formatValue={count}
             formatCenter={(v) => v.toLocaleString("en-MY")}
             legend={false}
@@ -102,10 +106,10 @@ export function ShipmentPalletsCard({
           </dl>
         </div>
       )}
-      {onTruck === null && total > 0 ? (
+      {(onTruck === null || status === "PENDING") && total > 0 ? (
         <p className="mt-sm text-[length:var(--text-caption)] text-ink-tertiary">
-          Type the pallets on this truck under Land delivery to see what is on
-          the way.
+          Set the truck&apos;s status to Delivering under Land delivery to see
+          what is on the way.
         </p>
       ) : null}
       {unpalletedLines > 0 ? (

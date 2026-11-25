@@ -431,6 +431,8 @@ model Shipment {
   landPickupOn       DateTime? @db.Date
   landEtaOn          DateTime? @db.Date
   landDeliveredOn    DateTime? @db.Date
+  /// Where the truck is (2026-11-25). The delivered date is kept only once DELIVERED.
+  landStatus         LandStatus @default(PENDING)
   landBorderCrossing String?
   note          String?
   createdById   String
@@ -464,6 +466,12 @@ model ShipmentOrder {
 enum ShipmentMode {
   SEA
   LAND
+}
+
+enum LandStatus {
+  PENDING
+  DELIVERING
+  DELIVERED
 }
 
 enum ShipmentDocType {

@@ -15,16 +15,17 @@ export function palletsOf(lines: { quantity: { toString(): string } | number; pr
 }
 
 /**
- * Where a land shipment's pallets stand: the truck's typed count is "on the
- * truck" until the delivered date is set, then "delivered". What is left of
- * the orders' total is still to deliver. A truck count above the total is
- * capped, so the three never add up to more than the orders hold.
+ * Where a land shipment's pallets stand, read from its status: the truck's
+ * typed count is "on the truck" while Delivering and "delivered" once
+ * Delivered; while Pending nothing has left. What is left of the orders'
+ * total is still to deliver. A truck count above the total is capped, so the
+ * three never add up to more than the orders hold.
  */
-export function palletSplit(total: number, onTruck: number | null, delivered: boolean) {
-  const truck = Math.min(Math.max(onTruck ?? 0, 0), total);
+export function palletSplit(total: number, onTruck: number | null, status: "PENDING" | "DELIVERING" | "DELIVERED") {
+  const truck = status === "PENDING" ? 0 : Math.min(Math.max(onTruck ?? 0, 0), total);
   return {
-    delivered: delivered ? truck : 0,
-    onTruck: delivered ? 0 : truck,
+    delivered: status === "DELIVERED" ? truck : 0,
+    onTruck: status === "DELIVERING" ? truck : 0,
     remaining: total - truck,
   };
 }

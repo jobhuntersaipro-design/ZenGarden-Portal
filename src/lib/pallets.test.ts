@@ -16,11 +16,12 @@ describe("palletsOf", () => {
 
 describe("palletSplit", () => {
   it("counts the truck as on the way until delivered, then as delivered", () => {
-    expect(palletSplit(10, 4, false)).toEqual({ delivered: 0, onTruck: 4, remaining: 6 });
-    expect(palletSplit(10, 4, true)).toEqual({ delivered: 4, onTruck: 0, remaining: 6 });
+    expect(palletSplit(10, 4, "DELIVERING")).toEqual({ delivered: 0, onTruck: 4, remaining: 6 });
+    expect(palletSplit(10, 4, "PENDING")).toEqual({ delivered: 0, onTruck: 0, remaining: 10 });
+    expect(palletSplit(10, 4, "DELIVERED")).toEqual({ delivered: 4, onTruck: 0, remaining: 6 });
   });
   it("leaves everything to deliver when nobody typed a count, and caps an overcount", () => {
-    expect(palletSplit(10, null, false)).toEqual({ delivered: 0, onTruck: 0, remaining: 10 });
-    expect(palletSplit(10, 14, false)).toEqual({ delivered: 0, onTruck: 10, remaining: 0 });
+    expect(palletSplit(10, null, "DELIVERING")).toEqual({ delivered: 0, onTruck: 0, remaining: 10 });
+    expect(palletSplit(10, 14, "DELIVERING")).toEqual({ delivered: 0, onTruck: 10, remaining: 0 });
   });
 });
