@@ -1,5 +1,6 @@
 "use client";
 
+import { Ship, Truck } from "lucide-react";
 import { DataTable, type Column } from "@/components/portal/DataTable";
 import { TablePagination } from "@/components/portal/TablePagination";
 import { ChecklistDots, ShipmentStatusBadge } from "@/components/shipments/ChecklistDots";
@@ -12,12 +13,17 @@ const blank = <span className="text-ink-tertiary">—</span>;
 const poLine = (row: ShipmentListRow) => (row.poNumbers.length ? row.poNumbers.join(", ") : "No PO yet");
 const noSort = () => {};
 
-const landTag = (row: ShipmentListRow) =>
-  row.mode === "LAND" ? (
-    <span className="ml-xs rounded-pill border border-hairline-strong px-xs font-sans text-[length:var(--text-caption)] text-ink-secondary">
-      Land
+/** A ship or a truck, named for screen readers and on hover. */
+function ModeIcon({ mode, className = "" }: { mode: ShipmentListRow["mode"]; className?: string }) {
+  const land = mode === "LAND";
+  const Icon = land ? Truck : Ship;
+  const label = land ? "By land" : "By sea";
+  return (
+    <span role="img" aria-label={label} title={label} className={`inline-flex shrink-0 text-ink-secondary ${className}`}>
+      <Icon aria-hidden className="size-5" />
     </span>
-  ) : null;
+  );
+}
 
 /** "TIIU6249628 · 40FT", then "+2" for the rest, as the sheet's one column. */
 function containerLine(row: ShipmentListRow): string | null {
@@ -38,13 +44,18 @@ const COLUMNS: Column<ShipmentListRow>[] = [
         <span className="font-medium whitespace-normal">{poLine(row)}</span>
         <span className="font-mono text-[length:var(--text-caption)] text-ink-tertiary">
           {row.reference}
-          {landTag(row)}
         </span>
         <span className="block truncate text-[length:var(--text-caption)] text-ink-tertiary" title={row.buyer.name}>
           {row.buyer.name}
         </span>
       </span>
     ),
+  },
+  {
+    key: "mode",
+    header: "Delivery type",
+    sortable: false,
+    cell: (row) => <ModeIcon mode={row.mode} />,
   },
   {
     key: "destination",
@@ -138,9 +149,9 @@ function card(row: ShipmentListRow) {
       <span className="flex items-start justify-between gap-sm">
         <span className="flex min-w-0 flex-col">
           <span className="text-[length:var(--text-body-md)] font-medium text-ink">{poLine(row)}</span>
-          <span className="font-mono text-[length:var(--text-caption)] text-ink-tertiary">
+          <span className="flex items-center gap-xs font-mono text-[length:var(--text-caption)] text-ink-tertiary">
+            <ModeIcon mode={row.mode} />
             {row.reference}
-            {landTag(row)}
           </span>
         </span>
         <ShipmentStatusBadge status={row.checklist.status} />
