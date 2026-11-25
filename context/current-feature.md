@@ -1,3 +1,32 @@
+# Shipments list: a Delivery type column
+
+## Status
+
+**Built 2026-11-25, pushed to `main`.** Asked for by kim: "in the table,
+add a new column delivery type, by sea or land. Use logo".
+
+- **Delivery type** sits after Shipment: a ship (lucide `Ship`) for sea, a
+  truck (`Truck`) for land, named "By sea" / "By land" for screen readers
+  and on hover. Not sortable.
+- The **Land tag** in the Shipment cell is gone: the icon says the same
+  thing for every row, sea included. The phone card puts the icon before
+  the shipment reference.
+
+## Verified
+
+Local Postgres + seed, Chromium at 1440 and 390, as a super admin, with
+two sea shipments and one land shipment. Before: no mode column, a Land tag
+on the land row. After: headers Shipment · Delivery type · Destination …,
+icons By sea / By sea / By land at 20px; phone cards lead with the icon.
+No overflow at either width. 1958 tests, `tsc`, eslint on the touched file,
+build (xlsx stand-in).
+
+## Not verified
+
+Production.
+
+## Before that
+
 # Land delivery for shipments
 
 ## Status
