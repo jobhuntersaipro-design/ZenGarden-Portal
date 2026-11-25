@@ -9,22 +9,20 @@ const count = (n: number) =>
 
 /**
  * The pallets a land shipment has to move (2026-11-25): the orders' total,
- * what the truck carries now, what has arrived and what is still to go. The
+ * what the trucks carry now, what has arrived and what is still to go. The
  * total is worked out from cartons and each product's cartons per pallet;
- * the truck's figure is typed on the Land delivery card.
+ * each truck's figure is typed on the Land delivery card, and they add up.
  */
 export function ShipmentPalletsCard({
   total,
   unpalletedLines,
-  onTruck,
-  status,
+  trucks,
 }: {
   total: number;
   unpalletedLines: number;
-  onTruck: number | null;
-  status: LandStatus;
+  trucks: { pallets: number | null; status: LandStatus }[];
 }) {
-  const split = palletSplit(total, onTruck, status);
+  const split = palletSplit(total, trucks);
   const rows = [
     {
       key: "delivered",
@@ -36,7 +34,7 @@ export function ShipmentPalletsCard({
     },
     {
       key: "truck",
-      label: "On the truck now",
+      label: trucks.length > 1 ? "On the trucks now" : "On the truck now",
       short: "On truck",
       value: split.onTruck,
       color: "var(--color-mode-land)",
@@ -106,10 +104,17 @@ export function ShipmentPalletsCard({
           </dl>
         </div>
       )}
-      {(onTruck === null || status === "PENDING") && total > 0 ? (
+      {split.over > 0 ? (
+        <p className="mt-sm text-[length:var(--text-caption)] text-accent-red">
+          The trucks carry {count(split.over)} more than this shipment&apos;s
+          total. Check the pallets on each truck.
+        </p>
+      ) : null}
+      {split.onTruck + split.delivered === 0 && total > 0 ? (
         <p className="mt-sm text-[length:var(--text-caption)] text-ink-tertiary">
-          Set the truck&apos;s status to Delivering under Land delivery to see
-          what is on the way.
+          {trucks.length
+            ? "Set a truck's status to Delivering under Land delivery to see what is on the way."
+            : "Add a truck under Land delivery to see what is on the way."}
         </p>
       ) : null}
       {unpalletedLines > 0 ? (

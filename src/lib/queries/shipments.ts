@@ -1,4 +1,4 @@
-import { palletsOf } from "@/lib/pallets";
+import { landStatusOf, palletsOf } from "@/lib/pallets";
 import type { Prisma } from "@/generated/prisma/client";
 import { BookingStatus, PoStage, type ShipmentDocType, type ShipmentMode } from "@/generated/prisma/enums";
 import { prisma } from "@/lib/prisma";
@@ -144,9 +144,7 @@ export function shipmentWhere(q?: string): Prisma.ShipmentWhereInput {
         },
       },
       { containers: { some: { containerNo: like } } },
-      { landVehiclePlate: like },
-      { landCompany: like },
-      { landDriverName: like },
+      { trucks: { some: { OR: [{ landVehiclePlate: like }, { landCompany: like }, { landDriverName: like }] } } },
       {
         orders: {
           some: {
@@ -179,11 +177,7 @@ export async function listShipments(filters: ShipmentFilters, page: number, size
       market: true,
       formDRequired: true,
       mode: true,
-      landVehiclePlate: true,
-      landCompany: true,
-      landPickupOn: true,
-      landEtaOn: true,
-      landStatus: true,
+      trucks: { orderBy: { createdAt: "asc" }, select: { landVehiclePlate: true, landCompany: true, landPickupOn: true, landEtaOn: true, landStatus: true } },
       createdAt: true,
       buyer: { select: { id: true, name: true } },
       orders: { orderBy: { addedAt: "asc" }, select: { purchaseOrder: { select: ORDER_IDENTITY_SELECT } } },
@@ -195,11 +189,16 @@ export async function listShipments(filters: ShipmentFilters, page: number, size
   const all = shipments.map((s) => {
     const checklist = checklistOf(s);
     const land = s.mode === "LAND";
+    const truck = s.trucks[0];
+    // A land trip runs from its first pickup to its last expected delivery.
+    const pickups = s.trucks.map((t) => day(t.landPickupOn)).filter((d): d is string => Boolean(d)).sort();
+    const etas = s.trucks.map((t) => day(t.landEtaOn)).filter((d): d is string => Boolean(d)).sort();
+    const more = s.trucks.length > 1 ? `${s.trucks.length} trucks` : null;
     return {
       id: s.id,
       reference: s.reference,
       mode: s.mode,
-      landStatus: land ? s.landStatus : null,
+      landStatus: land ? landStatusOf(s.trucks.map((t) => ({ status: t.landStatus }))) : null,
       market: s.market,
       buyer: s.buyer,
       createdAt: s.createdAt.toISOString(),
@@ -207,13 +206,13 @@ export async function listShipments(filters: ShipmentFilters, page: number, size
       poNumbers: s.orders.map((o) => poNumberOf(o.purchaseOrder)),
       flag: flagFor(s.market, s.bookings[0]?.portOfDischarge),
       // A land trip has no booking: its pickup and expected delivery stand in.
-      etd: land ? day(s.landPickupOn) : day(s.bookings[0]?.etdPol),
-      eta: land ? day(s.landEtaOn) : day(s.bookings[0]?.etaPod),
+      etd: land ? (pickups[0] ?? null) : day(s.bookings[0]?.etdPol),
+      eta: land ? (etas.at(-1) ?? null) : day(s.bookings[0]?.etaPod),
       // The customer's sheet reads a shipment by these: where it goes, in
       // which box, on which ship (2026-10-17).
       portOfDischarge: s.bookings[0]?.portOfDischarge ?? null,
       vessel: land
-        ? [s.landVehiclePlate, s.landCompany].filter(Boolean).join(" · ") || null
+        ? [truck?.landVehiclePlate, more ?? truck?.landCompany].filter(Boolean).join(" · ") || null
         : (s.bookings[0]?.feederVessel ?? s.bookings[0]?.motherVessel ?? null),
       containers: s.containers,
       checklist,
@@ -290,6 +289,7 @@ export async function loadShipment(id: string) {
         },
       },
       bookings: bookingsOf,
+      trucks: { orderBy: { createdAt: "asc" } },
       documents: {
         orderBy: { uploadedAt: "desc" },
         select: {
@@ -394,7 +394,7 @@ export function openShipmentsForBuyer(buyerId: string) {
       buyerId,
       OR: [
         { mode: "SEA", documents: { none: { type: "BILL_OF_LADING", supersededAt: null } } },
-        { mode: "LAND", landStatus: { not: "DELIVERED" } },
+        { mode: "LAND", OR: [{ trucks: { none: {} } }, { trucks: { some: { landStatus: { not: "DELIVERED" } } } }] },
       ],
     },
     orderBy: { createdAt: "desc" },

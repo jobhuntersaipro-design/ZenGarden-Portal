@@ -182,7 +182,9 @@ export async function updateShipment(input: z.input<typeof updateSchema>): Promi
 const day = z.union([isoDate, z.literal("")]).nullable().optional();
 
 const landSchema = z.object({
-  id,
+  shipmentId: id,
+  /** Absent for a new truck. */
+  truckId: id.optional(),
   landCompany: text(120),
   landVehiclePlate: z.string().trim().min(1, "Enter the lorry number.").max(40),
   landDriverName: z.string().trim().min(1, "Enter the driver's name.").max(120),
@@ -224,13 +226,16 @@ const LAND_KEYS = Object.keys(LAND_FIELD_LABEL) as LandKey[];
 const asDateColumn = (value: string | null) => (value ? new Date(`${value}T00:00:00.000Z`) : null);
 const LAND_DATES = new Set<LandKey>(["landPickupOn", "landEtaOn", "landDeliveredOn"]);
 
-/** The truck, typed by hand (2026-11-24). Lorry, driver and pallets required; Activity names what changed. */
-export async function updateLandDelivery(input: z.input<typeof landSchema>): Promise<ActionResult> {
+/** The plate a truck is called by in Activity, or its place on the shipment. */
+const truckName = (plate: string | null) => (plate ? `truck ${plate}` : "a truck");
+
+/** Add or edit one truck (2026-11-25: a land shipment carries several). Lorry, driver and pallets required; Activity names what changed. */
+export async function saveTruck(input: z.input<typeof landSchema>): Promise<ActionResult> {
   const { user, error } = await guard("shipment.manage");
   if (!user) return { success: false, error };
   const parsed = landSchema.safeParse(input);
   if (!parsed.success) return { success: false, error: parsed.error.issues[0]?.message ?? "Check the form." };
-  const { id: shipmentId, ...fields } = parsed.data;
+  const { shipmentId, truckId, ...fields } = parsed.data;
   // A delivered date only means something once the truck has delivered.
   if (fields.landStatus !== "DELIVERED") fields.landDeliveredOn = null;
   const next = Object.fromEntries(
@@ -240,23 +245,54 @@ export async function updateLandDelivery(input: z.input<typeof landSchema>): Pro
       return [key, LAND_DATES.has(key) ? asDateColumn(value) : value];
     }),
   ) as Record<LandKey, string | number | Date | null>;
+  const plate = next.landVehiclePlate as string | null;
   try {
     const saved = await prisma.$transaction(async (tx) => {
-      const before = await tx.shipment.findUnique({ where: { id: shipmentId }, select: { mode: true, ...Object.fromEntries(LAND_KEYS.map((k) => [k, true])) } });
-      if (!before || before.mode !== "LAND") return false;
+      const shipment = await tx.shipment.findUnique({ where: { id: shipmentId }, select: { mode: true } });
+      if (!shipment || shipment.mode !== "LAND") return "not-land";
+      if (!truckId) {
+        await tx.shipmentTruck.create({ data: { shipmentId, ...next } as Prisma.ShipmentTruckUncheckedCreateInput });
+        await log(tx, shipmentId, user, "SHIPMENT_LAND_UPDATED", `added ${truckName(plate)}`);
+        return "ok";
+      }
+      const before = await tx.shipmentTruck.findFirst({ where: { id: truckId, shipmentId } });
+      if (!before) return "gone";
       const same = (a: unknown, b: unknown) => (a instanceof Date ? a.getTime() : a) === (b instanceof Date ? b.getTime() : b);
-      const changed = LAND_KEYS.filter((key) => !same((before as Record<string, unknown>)[key] ?? null, next[key]));
-      if (!changed.length) return true;
-      await tx.shipment.update({ where: { id: shipmentId }, data: next as Prisma.ShipmentUpdateInput });
-      await log(tx, shipmentId, user, "SHIPMENT_LAND_UPDATED", `edited ${changed.map((k) => LAND_FIELD_LABEL[k]).join(", ")}`);
-      return true;
+      const changed = LAND_KEYS.filter((key) => !same(before[key] ?? null, next[key]));
+      if (!changed.length) return "ok";
+      await tx.shipmentTruck.update({ where: { id: truckId }, data: next as Prisma.ShipmentTruckUpdateInput });
+      await log(tx, shipmentId, user, "SHIPMENT_LAND_UPDATED", `edited ${changed.map((k) => LAND_FIELD_LABEL[k]).join(", ")} on ${truckName(plate)}`);
+      return "ok";
     });
-    if (!saved) return { success: false, error: "This shipment isn't going by land." };
+    if (saved === "not-land") return { success: false, error: "This shipment isn't going by land." };
+    if (saved === "gone") return { success: false, error: "That truck was removed. Reload the page." };
     touch(shipmentId);
     return { success: true, data: undefined };
   } catch (cause) {
-    console.error("[shipments] land", cause);
-    return { success: false, error: "We couldn't save the delivery details." };
+    console.error("[shipments] truck", cause);
+    return { success: false, error: "We couldn't save the truck." };
+  }
+}
+
+export async function deleteTruck(input: { truckId: string }): Promise<ActionResult> {
+  const { user, error } = await guard("shipment.manage");
+  if (!user) return { success: false, error };
+  const parsed = z.object({ truckId: id }).safeParse(input);
+  if (!parsed.success) return { success: false, error: "That truck doesn't exist." };
+  try {
+    const truck = await prisma.$transaction(async (tx) => {
+      const found = await tx.shipmentTruck.findUnique({ where: { id: parsed.data.truckId }, select: { shipmentId: true, landVehiclePlate: true } });
+      if (!found) return null;
+      await tx.shipmentTruck.delete({ where: { id: parsed.data.truckId } });
+      await log(tx, found.shipmentId, user, "SHIPMENT_LAND_UPDATED", `removed ${truckName(found.landVehiclePlate)}`);
+      return found;
+    });
+    if (!truck) return { success: false, error: "That truck was already removed." };
+    touch(truck.shipmentId);
+    return { success: true, data: undefined };
+  } catch (cause) {
+    console.error("[shipments] truck delete", cause);
+    return { success: false, error: "We couldn't remove the truck." };
   }
 }
 

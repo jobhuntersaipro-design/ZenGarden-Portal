@@ -122,31 +122,31 @@ async function ShipmentPage({ params }: { params: Promise<{ id: string }> }) {
           <ShipmentPalletsCard
             total={shipment.pallets}
             unpalletedLines={shipment.unpalletedLines}
-            onTruck={shipment.landPallets}
-            status={shipment.landStatus}
+            trucks={shipment.trucks.map((t) => ({ pallets: t.landPallets, status: t.landStatus }))}
           />
         ) : null}
       </div>
 
-      {/* The truck sits under the orders and pallets it carries (2026-11-25). */}
+      {/* The trucks sit under the orders and pallets they carry (2026-11-25). */}
       {land ? (
         <div className="mb-lg">
           <LandDeliveryCard
             shipmentId={shipment.id}
             canManage={canManage}
-            delivery={{
-              landCompany: shipment.landCompany ?? "",
-              landVehiclePlate: shipment.landVehiclePlate ?? "",
-              landDriverName: shipment.landDriverName ?? "",
-              landDriverIc: shipment.landDriverIc ?? "",
-              landDriverPhone: shipment.landDriverPhone ?? "",
-              landBorderCrossing: shipment.landBorderCrossing ?? "",
-              landPickupOn: day(shipment.landPickupOn),
-              landEtaOn: day(shipment.landEtaOn),
-              landDeliveredOn: day(shipment.landDeliveredOn),
-              landPallets: shipment.landPallets?.toString() ?? "",
-              landStatus: shipment.landStatus,
-            }}
+            trucks={shipment.trucks.map((t) => ({
+              id: t.id,
+              landCompany: t.landCompany ?? "",
+              landVehiclePlate: t.landVehiclePlate ?? "",
+              landDriverName: t.landDriverName ?? "",
+              landDriverIc: t.landDriverIc ?? "",
+              landDriverPhone: t.landDriverPhone ?? "",
+              landBorderCrossing: t.landBorderCrossing ?? "",
+              landPickupOn: day(t.landPickupOn),
+              landEtaOn: day(t.landEtaOn),
+              landDeliveredOn: day(t.landDeliveredOn),
+              landPallets: t.landPallets?.toString() ?? "",
+              landStatus: t.landStatus,
+            }))}
           />
         </div>
       ) : null}

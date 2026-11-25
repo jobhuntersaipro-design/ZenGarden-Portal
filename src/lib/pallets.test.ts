@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { palletSplit, palletsOf } from "./pallets";
+import { landStatusOf, palletSplit, palletsOf } from "./pallets";
 
 describe("palletsOf", () => {
   it("rounds each line up and counts lines with no pallet size apart", () => {
@@ -15,13 +15,22 @@ describe("palletsOf", () => {
 });
 
 describe("palletSplit", () => {
-  it("counts the truck as on the way until delivered, then as delivered", () => {
-    expect(palletSplit(10, 4, "DELIVERING")).toEqual({ delivered: 0, onTruck: 4, remaining: 6 });
-    expect(palletSplit(10, 4, "PENDING")).toEqual({ delivered: 0, onTruck: 0, remaining: 10 });
-    expect(palletSplit(10, 4, "DELIVERED")).toEqual({ delivered: 4, onTruck: 0, remaining: 6 });
+  const t = (pallets: number | null, status: "PENDING" | "DELIVERING" | "DELIVERED") => ({ pallets, status });
+  it("adds up every truck by its status", () => {
+    expect(palletSplit(10, [t(4, "DELIVERING"), t(3, "DELIVERED"), t(2, "PENDING")])).toEqual({ delivered: 3, onTruck: 4, remaining: 3, over: 0 });
+    expect(palletSplit(10, [])).toEqual({ delivered: 0, onTruck: 0, remaining: 10, over: 0 });
+    expect(palletSplit(10, [t(null, "DELIVERING")])).toEqual({ delivered: 0, onTruck: 0, remaining: 10, over: 0 });
   });
-  it("leaves everything to deliver when nobody typed a count, and caps an overcount", () => {
-    expect(palletSplit(10, null, "DELIVERING")).toEqual({ delivered: 0, onTruck: 0, remaining: 10 });
-    expect(palletSplit(10, 14, "DELIVERING")).toEqual({ delivered: 0, onTruck: 10, remaining: 0 });
+  it("caps delivered, then on the way, at the total and flags the overcount", () => {
+    expect(palletSplit(10, [t(8, "DELIVERED"), t(6, "DELIVERING")])).toEqual({ delivered: 8, onTruck: 2, remaining: 0, over: 4 });
+  });
+});
+
+describe("landStatusOf", () => {
+  it("is delivered only when every truck is, and on the way once any has left", () => {
+    expect(landStatusOf([])).toBe("PENDING");
+    expect(landStatusOf([{ status: "PENDING" }, { status: "PENDING" }])).toBe("PENDING");
+    expect(landStatusOf([{ status: "DELIVERED" }, { status: "PENDING" }])).toBe("DELIVERING");
+    expect(landStatusOf([{ status: "DELIVERED" }, { status: "DELIVERED" }])).toBe("DELIVERED");
   });
 });

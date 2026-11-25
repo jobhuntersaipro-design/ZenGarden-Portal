@@ -7,6 +7,7 @@ const tx = {
   shipmentEvent: { create: vi.fn(), findUnique: vi.fn(), update: vi.fn(), delete: vi.fn() },
   bookingConfirmation: { updateMany: vi.fn() },
   catalogLabel: { findFirst: vi.fn() },
+  shipmentTruck: { create: vi.fn(), update: vi.fn(), delete: vi.fn(), findFirst: vi.fn(), findUnique: vi.fn() },
 };
 
 vi.mock("@/lib/prisma", () => ({
@@ -19,7 +20,7 @@ const requirePermission = vi.fn();
 vi.mock("@/lib/auth-guards", () => ({ UnauthorizedError }));
 vi.mock("@/lib/permissions/require", () => ({ requirePermission: (key: string) => requirePermission(key) }));
 
-const { addOrdersToShipment, addShipmentNote, createShipment, deleteShipmentNote, editShipmentNote, linkBookingToShipment, removeOrderFromShipment, updateLandDelivery, updateShipment } = await import(
+const { addOrdersToShipment, addShipmentNote, createShipment, deleteShipmentNote, editShipmentNote, linkBookingToShipment, removeOrderFromShipment, saveTruck, deleteTruck, updateShipment } = await import(
   "@/actions/shipments"
 );
 
@@ -186,46 +187,64 @@ describe("editing and deleting a note", () => {
   });
 });
 
-describe("updateLandDelivery", () => {
+describe("saveTruck", () => {
   const blank = { landCompany: null, landVehiclePlate: null, landDriverName: null, landDriverIc: null, landDriverPhone: null, landBorderCrossing: null, landPickupOn: null, landEtaOn: null, landDeliveredOn: null, landPallets: null, landStatus: "PENDING" };
-  const truck = { landVehiclePlate: "WXY 1234", landDriverName: "Test Driver", landPallets: "6" };
+  const truck = { shipmentId: "s1", landVehiclePlate: "WXY 1234", landDriverName: "Test Driver", landPallets: "6" };
+  const land = () => tx.shipment.findUnique.mockResolvedValue({ mode: "LAND" });
 
   it("refuses a sea shipment and writes nothing", async () => {
-    tx.shipment.findUnique.mockResolvedValue({ mode: "SEA", ...blank });
-    expect(await updateLandDelivery({ id: "s1", ...truck })).toEqual({
-      success: false,
-      error: "This shipment isn't going by land.",
-    });
-    expect(tx.shipment.update).not.toHaveBeenCalled();
+    tx.shipment.findUnique.mockResolvedValue({ mode: "SEA" });
+    expect(await saveTruck(truck)).toEqual({ success: false, error: "This shipment isn't going by land." });
+    expect(tx.shipmentTruck.create).not.toHaveBeenCalled();
   });
 
-  it("stores the date as that calendar day and logs only what changed", async () => {
-    tx.shipment.findUnique.mockResolvedValue({ mode: "LAND", ...blank });
-    expect(await updateLandDelivery({ id: "s1", ...truck, landEtaOn: "2026-12-02" })).toEqual({ success: true, data: undefined });
-    const data = tx.shipment.update.mock.calls[0][0].data;
-    expect(data.landVehiclePlate).toBe("WXY 1234");
+  it("adds a new truck when no truck is named", async () => {
+    land();
+    expect(await saveTruck({ ...truck, landEtaOn: "2026-12-02" })).toEqual({ success: true, data: undefined });
+    const data = tx.shipmentTruck.create.mock.calls[0][0].data;
+    expect(data.shipmentId).toBe("s1");
+    expect(data.landPallets).toBe(6);
     expect(data.landEtaOn).toEqual(new Date("2026-12-02T00:00:00.000Z"));
-    expect(tx.shipmentEvent.create.mock.calls[0][0].data.text).toBe("edited lorry number, driver name, expected delivery, pallets on this truck");
+    expect(tx.shipmentEvent.create.mock.calls[0][0].data.text).toBe("added truck WXY 1234");
+  });
+
+  it("edits only its own shipment's truck and logs what changed", async () => {
+    land();
+    tx.shipmentTruck.findFirst.mockResolvedValue({ ...blank, landVehiclePlate: "WXY 1234", landDriverName: "Test Driver", landPallets: 6 });
+    expect(await saveTruck({ ...truck, truckId: "t1", landEtaOn: "2026-12-02" })).toEqual({ success: true, data: undefined });
+    expect(tx.shipmentTruck.findFirst.mock.calls[0][0].where).toEqual({ id: "t1", shipmentId: "s1" });
+    expect(tx.shipmentEvent.create.mock.calls[0][0].data.text).toBe("edited expected delivery on truck WXY 1234");
+    tx.shipmentTruck.findFirst.mockResolvedValue(null);
+    expect((await saveTruck({ ...truck, truckId: "t9" })).success).toBe(false);
   });
 
   it("requires the lorry, the driver and the pallets", async () => {
-    expect(await updateLandDelivery({ id: "s1", ...truck, landVehiclePlate: " " })).toEqual({ success: false, error: "Enter the lorry number." });
-    expect(await updateLandDelivery({ id: "s1", ...truck, landDriverName: "" })).toEqual({ success: false, error: "Enter the driver's name." });
-    expect(await updateLandDelivery({ id: "s1", ...truck, landPallets: "" })).toEqual({ success: false, error: "Enter the pallets on this truck." });
-    expect(tx.shipment.update).not.toHaveBeenCalled();
+    expect(await saveTruck({ ...truck, landVehiclePlate: " " })).toEqual({ success: false, error: "Enter the lorry number." });
+    expect(await saveTruck({ ...truck, landDriverName: "" })).toEqual({ success: false, error: "Enter the driver's name." });
+    expect(await saveTruck({ ...truck, landPallets: "" })).toEqual({ success: false, error: "Enter the pallets on this truck." });
+    expect(tx.shipmentTruck.create).not.toHaveBeenCalled();
   });
 
   it("takes an I/C only as 6-2-4", async () => {
-    tx.shipment.findUnique.mockResolvedValue({ mode: "LAND", ...blank });
-    expect((await updateLandDelivery({ id: "s1", ...truck, landDriverIc: "8001011456" })).success).toBe(false);
-    expect((await updateLandDelivery({ id: "s1", ...truck, landDriverIc: "800101-14-5678" })).success).toBe(true);
+    land();
+    expect((await saveTruck({ ...truck, landDriverIc: "8001011456" })).success).toBe(false);
+    expect((await saveTruck({ ...truck, landDriverIc: "800101-14-5678" })).success).toBe(true);
   });
 
   it("keeps a delivered date only once the status is delivered", async () => {
-    tx.shipment.findUnique.mockResolvedValue({ mode: "LAND", ...blank });
-    await updateLandDelivery({ id: "s1", ...truck, landStatus: "DELIVERING", landDeliveredOn: "2026-12-02" });
-    expect(tx.shipment.update.mock.calls[0][0].data.landDeliveredOn).toBeNull();
-    await updateLandDelivery({ id: "s1", ...truck, landStatus: "DELIVERED", landDeliveredOn: "2026-12-02" });
-    expect(tx.shipment.update.mock.calls[1][0].data.landDeliveredOn).toEqual(new Date("2026-12-02T00:00:00.000Z"));
+    land();
+    await saveTruck({ ...truck, landStatus: "DELIVERING", landDeliveredOn: "2026-12-02" });
+    expect(tx.shipmentTruck.create.mock.calls[0][0].data.landDeliveredOn).toBeNull();
+    await saveTruck({ ...truck, landStatus: "DELIVERED", landDeliveredOn: "2026-12-02" });
+    expect(tx.shipmentTruck.create.mock.calls[1][0].data.landDeliveredOn).toEqual(new Date("2026-12-02T00:00:00.000Z"));
+  });
+});
+
+describe("deleteTruck", () => {
+  it("removes the truck and says so in Activity", async () => {
+    tx.shipmentTruck.findUnique.mockResolvedValue({ shipmentId: "s1", landVehiclePlate: "WXY 1234" });
+    expect(await deleteTruck({ truckId: "t1" })).toEqual({ success: true, data: undefined });
+    expect(tx.shipmentTruck.delete).toHaveBeenCalledWith({ where: { id: "t1" } });
+    expect(tx.shipmentEvent.create.mock.calls[0][0].data.text).toBe("removed truck WXY 1234");
   });
 });

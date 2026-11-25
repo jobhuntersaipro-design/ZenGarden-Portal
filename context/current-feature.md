@@ -1,3 +1,47 @@
+# Land delivery: several trucks per shipment
+
+## Status
+
+**Built 2026-11-25, pushed to `main`.** Asked for by kim: "Allow user to
+create multiple truck records". The defaults were posted first and kim
+answered "All looks good, can push to prod".
+
+- **`ShipmentTruck`** (migration `20261125120000_shipment_trucks`) holds every
+  land field the shipment held: status, company, lorry number, driver, I/C,
+  phone, border crossing, pickup, ETA, delivered and pallets. The eleven land
+  columns left `Shipment`. Each land shipment with any truck detail, or a
+  status other than Pending, becomes Truck 1 (id `trk` + shipment id).
+- **Land delivery card** lists Truck 1, Truck 2… with a status badge, Edit and
+  Delete. Add truck opens the same dialog, blank. Delete asks first ("Delete
+  this truck?"). `saveTruck` and `deleteTruck` (`shipment.manage`); Activity
+  reads "added truck X", "edited status on truck X", "removed truck X". The
+  required fields, the I/C format and the Delivered-date rule are unchanged.
+- **Pallets card** adds up every truck: Delivering counts on the trucks,
+  Delivered counts delivered. When the trucks carry more than the shipment's
+  total a red line says by how much.
+- **List and phone card** show one status: Delivered when every truck is,
+  Delivering when any truck has left, else Pending (`landStatusOf`). The truck
+  cell reads the first lorry number and "N trucks"; ETD is the earliest
+  pickup and ETA the latest delivery. Search matches every truck. A land
+  shipment is open for its buyer until every truck is delivered.
+
+## Verified
+
+Local Postgres + seed, Chromium at 1440 and 390, made-up truck details. The
+migration on a shipment with WXY 1234 / 4 pallets wrote one truck and left
+an empty land shipment with none. Truck 1 to Delivering, Truck 2 JKL 5678 /
+3 pallets Delivered: Delivered 3, On the trucks now 3, and "1 pallet more"
+(7 on 6). A 40-pallet truck read "41 pallets more"; Delete's Cancel kept 3,
+confirm left 2. List row "Delivering", "WXY 1234 · 2 trucks"; search JKL 1
+row. No overflow at either width, buttons 44px at 390. Screenshots in
+`land-trucks/`. 1968 tests, `tsc`, eslint on touched files, build.
+
+## Not verified
+
+Production writes (no test data there). The backfill on production rows.
+
+## Before that
+
 # Land delivery: a status, required fields, the I/C format
 
 ## Status

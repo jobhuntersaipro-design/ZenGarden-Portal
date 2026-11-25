@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { updateLandDelivery } from "@/actions/shipments";
+import { deleteTruck, saveTruck } from "@/actions/shipments";
 import { Button } from "@/components/ui/button";
 import { DateInput } from "@/components/ui/date-input";
 import {
@@ -69,23 +69,45 @@ const DATES: { key: TextKey; label: string }[] = [
 ];
 const LABEL = "font-mono text-[length:var(--text-eyebrow)] text-ink-tertiary";
 
-/** The truck, typed by hand, in the booking card's place on a land shipment. */
+const BLANK: LandDelivery = {
+  landStatus: "PENDING",
+  landCompany: "",
+  landVehiclePlate: "",
+  landDriverName: "",
+  landDriverIc: "",
+  landDriverPhone: "",
+  landBorderCrossing: "",
+  landPickupOn: "",
+  landEtaOn: "",
+  landDeliveredOn: "",
+  landPallets: "",
+};
+
+/** The trucks, typed by hand, in the booking card's place on a land shipment (several since 2026-11-25). */
 export function LandDeliveryCard({
   shipmentId,
-  delivery,
+  trucks,
   canManage,
 }: {
   shipmentId: string;
-  delivery: LandDelivery;
+  trucks: (LandDelivery & { id: string })[];
   canManage: boolean;
 }) {
   const refresh = useAwaitableRefresh();
   const [open, setOpen] = useState(false);
-  const [values, setValues] = useState(delivery);
+  const [editing, setEditing] = useState<string | null>(null);
+  const [values, setValues] = useState(BLANK);
   const [busy, setBusy] = useState(false);
   const [errors, setErrors] = useState<Partial<Record<TextKey, string>>>({});
-  const empty = TEXT.every(({ key }) => !delivery[key]) && DATES.every(({ key }) => !delivery[key]);
+  const [removing, setRemoving] = useState<(LandDelivery & { id: string }) | null>(null);
   const delivered = values.landStatus === "DELIVERED";
+
+  const edit = (truck: (LandDelivery & { id: string }) | null) => {
+    setEditing(truck?.id ?? null);
+    setValues(truck ?? BLANK);
+    setErrors({});
+    setOpen(true);
+  };
 
   const save = async () => {
     const found = problems(values);
@@ -94,11 +116,11 @@ export function LandDeliveryCard({
     if (first) return void document.getElementById(`land-${first.key}`)?.focus();
     setBusy(true);
     try {
-      const result = await updateLandDelivery({ id: shipmentId, ...values });
+      const result = await saveTruck({ shipmentId, ...(editing ? { truckId: editing } : {}), ...values });
       if (!result.success) return void toast.error(result.error);
       await refresh();
       setOpen(false);
-      toast.success("Delivery details saved");
+      toast.success(editing ? "Truck saved" : "Truck added");
     } catch {
       toast.error("We couldn't reach the server. Try again.");
     } finally {
@@ -106,50 +128,100 @@ export function LandDeliveryCard({
     }
   };
 
-  const rows = [
-    ...TEXT.map(({ key, label }) => [label, delivery[key]] as const),
-    ...DATES.map(({ key, label }) => [label, delivery[key] ? formatDate(delivery[key]) : ""] as const),
+  const remove = async () => {
+    if (!removing) return;
+    setBusy(true);
+    try {
+      const result = await deleteTruck({ truckId: removing.id });
+      if (!result.success) return void toast.error(result.error);
+      await refresh();
+      setRemoving(null);
+      toast.success("Truck removed");
+    } catch {
+      toast.error("We couldn't reach the server. Try again.");
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  const rowsOf = (t: LandDelivery) => [
+    ...TEXT.map(({ key, label }) => [label, t[key]] as const),
+    ...DATES.map(({ key, label }) => [label, t[key] ? formatDate(t[key]) : ""] as const),
   ];
 
   return (
     <section className="min-w-0 rounded-lg border border-hairline bg-canvas p-lg">
       <div className="mb-sm flex items-center justify-between gap-sm">
-        <div className="flex items-center gap-sm">
-          <h2 className={LABEL}>Land delivery</h2>
-          <LandStatusBadge status={delivery.landStatus} />
-        </div>
+        <h2 className={LABEL}>Land delivery</h2>
         {canManage ? (
-          <Button
-            variant="secondary"
-            onClick={() => {
-              setValues(delivery);
-              setErrors({});
-              setOpen(true);
-            }}
-          >
-            {empty ? "Add details" : "Edit"}
+          <Button variant="secondary" onClick={() => edit(null)}>
+            Add truck
           </Button>
         ) : null}
       </div>
-      {empty ? (
+      {trucks.length === 0 ? (
         <p className="text-[length:var(--text-body-sm)] text-ink-secondary">
-          No truck details yet. Border papers go under Documents › Add another document.
+          No trucks yet. Border papers go under Documents › Add another document.
         </p>
       ) : (
-        <dl className="grid grid-cols-1 gap-x-md gap-y-xs text-[length:var(--text-body-sm)] sm:grid-cols-2">
-          {rows.map(([label, value]) => (
-            <div key={label} className="min-w-0">
-              <dt className="text-ink-tertiary">{label}</dt>
-              <dd className="break-words text-ink">{value || "—"}</dd>
-            </div>
+        <ol className="flex flex-col gap-md">
+          {trucks.map((t, i) => (
+            <li key={t.id} className="min-w-0 border-t border-hairline pt-md first:border-0 first:pt-0">
+              <div className="mb-sm flex flex-wrap items-center justify-between gap-sm">
+                <div className="flex min-w-0 items-center gap-sm">
+                  <h3 className="break-words text-[length:var(--text-body-md)] font-medium text-ink">
+                    Truck {i + 1}
+                    {t.landVehiclePlate ? ` · ${t.landVehiclePlate}` : ""}
+                  </h3>
+                  <LandStatusBadge status={t.landStatus} />
+                </div>
+                {canManage ? (
+                  <div className="flex gap-xs">
+                    <Button variant="secondary" onClick={() => edit(t)}>
+                      Edit
+                    </Button>
+                    <Button variant="secondary" onClick={() => setRemoving(t)}>
+                      Delete
+                    </Button>
+                  </div>
+                ) : null}
+              </div>
+              <dl className="grid grid-cols-1 gap-x-md gap-y-xs text-[length:var(--text-body-sm)] sm:grid-cols-2">
+                {rowsOf(t).map(([label, value]) => (
+                  <div key={label} className="min-w-0">
+                    <dt className="text-ink-tertiary">{label}</dt>
+                    <dd className="break-words text-ink">{value || "—"}</dd>
+                  </div>
+                ))}
+              </dl>
+            </li>
           ))}
-        </dl>
+        </ol>
       )}
+
+      <Dialog open={removing !== null} onOpenChange={(o) => !busy && !o && setRemoving(null)}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Delete this truck?</DialogTitle>
+            <DialogDescription>
+              {`${removing?.landVehiclePlate ? `Truck ${removing.landVehiclePlate}` : "This truck"} and its details will be removed from the shipment. This can't be undone.`}
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter>
+            <Button variant="secondary" disabled={busy} onClick={() => setRemoving(null)}>
+              Cancel
+            </Button>
+            <Button variant="destructive" pending={busy} onClick={remove}>
+              Delete truck
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
 
       <Dialog open={open} onOpenChange={(o) => !busy && setOpen(o)}>
         <DialogContent>
           <DialogHeader>
-            <DialogTitle>Land delivery</DialogTitle>
+            <DialogTitle>{editing ? "Edit truck" : "Add a truck"}</DialogTitle>
             <DialogDescription>
               Fields marked <span className="text-accent-red">*</span>{" "}
               are required. Buyers don&apos;t see these.

@@ -418,8 +418,30 @@ model Shipment {
   /// Sea (booking, bill of lading) or land (a truck, typed in by hand).
   /// One or the other, never both.
   mode          ShipmentMode @default(SEA)
-  /// Land delivery, all typed by hand, all optional. Staff only: no shop
-  /// select reads these.
+  note          String?
+  createdById   String
+  createdBy     User     @relation("shipmentsCreated", fields: [createdById], references: [id])
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  orders     ShipmentOrder[]
+  bookings   BookingConfirmation[]
+  documents  ShipmentDocument[]
+  events     ShipmentEvent[]
+  containers Container[]
+  trucks     ShipmentTruck[]
+
+  @@index([buyerId])
+  @@index([createdAt])
+}
+
+/// One truck on a land shipment (2026-11-25): a shipment can need several.
+/// Columns keep their `land` prefix from when they sat on Shipment, so the
+/// form and the action read them unchanged. Staff only: no shop select reads these.
+model ShipmentTruck {
+  id         String   @id @default(cuid())
+  shipmentId String
+  shipment   Shipment @relation(fields: [shipmentId], references: [id], onDelete: Cascade)
   landCompany        String?
   landVehiclePlate   String?
   landDriverName     String?
@@ -434,20 +456,10 @@ model Shipment {
   /// Where the truck is (2026-11-25). The delivered date is kept only once DELIVERED.
   landStatus         LandStatus @default(PENDING)
   landBorderCrossing String?
-  note          String?
-  createdById   String
-  createdBy     User     @relation("shipmentsCreated", fields: [createdById], references: [id])
-  createdAt     DateTime @default(now())
-  updatedAt     DateTime @updatedAt
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
 
-  orders     ShipmentOrder[]
-  bookings   BookingConfirmation[]
-  documents  ShipmentDocument[]
-  events     ShipmentEvent[]
-  containers Container[]
-
-  @@index([buyerId])
-  @@index([createdAt])
+  @@index([shipmentId])
 }
 
 /// A join table, not a column on PurchaseOrder, so one PO split across two
