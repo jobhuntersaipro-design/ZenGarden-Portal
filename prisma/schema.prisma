@@ -424,6 +424,8 @@ model Shipment {
   landVehiclePlate   String?
   landDriverName     String?
   landDriverPhone    String?
+  /// The driver's I/C number. Personal data: staff only, never selected for a buyer.
+  landDriverIc       String?
   landPickupOn       DateTime? @db.Date
   landEtaOn          DateTime? @db.Date
   landDeliveredOn    DateTime? @db.Date

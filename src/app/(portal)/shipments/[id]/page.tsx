@@ -160,6 +160,7 @@ async function ShipmentPage({ params }: { params: Promise<{ id: string }> }) {
                 landCompany: shipment.landCompany ?? "",
                 landVehiclePlate: shipment.landVehiclePlate ?? "",
                 landDriverName: shipment.landDriverName ?? "",
+                landDriverIc: shipment.landDriverIc ?? "",
                 landDriverPhone: shipment.landDriverPhone ?? "",
                 landBorderCrossing: shipment.landBorderCrossing ?? "",
                 landPickupOn: day(shipment.landPickupOn),

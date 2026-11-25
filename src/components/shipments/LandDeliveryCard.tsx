@@ -22,6 +22,7 @@ export type LandDelivery = {
   landCompany: string;
   landVehiclePlate: string;
   landDriverName: string;
+  landDriverIc: string;
   landDriverPhone: string;
   landBorderCrossing: string;
   landPickupOn: string;
@@ -31,9 +32,10 @@ export type LandDelivery = {
 
 const TEXT: { key: keyof LandDelivery; label: string; placeholder?: string; max: number }[] = [
   { key: "landCompany", label: "Transport company", max: 120 },
-  { key: "landVehiclePlate", label: "Vehicle plate", placeholder: "e.g. WXY 1234", max: 40 },
-  { key: "landDriverName", label: "Driver", max: 120 },
-  { key: "landDriverPhone", label: "Driver phone", max: 40 },
+  { key: "landVehiclePlate", label: "Lorry number", placeholder: "e.g. WXY 1234", max: 40 },
+  { key: "landDriverName", label: "Driver name", max: 120 },
+  { key: "landDriverIc", label: "Driver I/C number", placeholder: "e.g. 800101-14-5678", max: 20 },
+  { key: "landDriverPhone", label: "Driver phone", placeholder: "e.g. 012-345 6789", max: 40 },
   { key: "landBorderCrossing", label: "Border crossing", placeholder: "e.g. Bukit Kayu Hitam", max: 120 },
 ];
 const DATES: { key: keyof LandDelivery; label: string }[] = [

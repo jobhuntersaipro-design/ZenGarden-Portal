@@ -186,6 +186,7 @@ const landSchema = z.object({
   landCompany: text(120),
   landVehiclePlate: text(40),
   landDriverName: text(120),
+  landDriverIc: text(20),
   landDriverPhone: text(40),
   landPickupOn: day,
   landEtaOn: day,
@@ -195,8 +196,9 @@ const landSchema = z.object({
 
 const LAND_FIELD_LABEL = {
   landCompany: "transport company",
-  landVehiclePlate: "vehicle plate",
-  landDriverName: "driver",
+  landVehiclePlate: "lorry number",
+  landDriverName: "driver name",
+  landDriverIc: "driver I/C number",
   landDriverPhone: "driver's phone",
   landPickupOn: "pickup date",
   landEtaOn: "expected delivery",

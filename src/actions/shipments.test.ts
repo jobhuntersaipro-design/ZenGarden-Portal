@@ -187,7 +187,7 @@ describe("editing and deleting a note", () => {
 });
 
 describe("updateLandDelivery", () => {
-  const blank = { landCompany: null, landVehiclePlate: null, landDriverName: null, landDriverPhone: null, landBorderCrossing: null, landPickupOn: null, landEtaOn: null, landDeliveredOn: null };
+  const blank = { landCompany: null, landVehiclePlate: null, landDriverName: null, landDriverIc: null, landDriverPhone: null, landBorderCrossing: null, landPickupOn: null, landEtaOn: null, landDeliveredOn: null };
 
   it("refuses a sea shipment and writes nothing", async () => {
     tx.shipment.findUnique.mockResolvedValue({ mode: "SEA", ...blank });
@@ -204,6 +204,6 @@ describe("updateLandDelivery", () => {
     const data = tx.shipment.update.mock.calls[0][0].data;
     expect(data.landVehiclePlate).toBe("WXY 1234");
     expect(data.landEtaOn).toEqual(new Date("2026-12-02T00:00:00.000Z"));
-    expect(tx.shipmentEvent.create.mock.calls[0][0].data.text).toBe("edited vehicle plate, expected delivery");
+    expect(tx.shipmentEvent.create.mock.calls[0][0].data.text).toBe("edited lorry number, expected delivery");
   });
 });

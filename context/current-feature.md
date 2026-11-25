@@ -21,6 +21,15 @@ built from "Build plan v2".
   expected delivery for ETA; the hover card shows the truck. A PO's Shipping
   card reads "By land".
 
+**2026-11-25: Driver I/C number.** Asked for by kim as "keep current one,
+then add lorry number, driver name, driver ic, driver phone number". Three of
+the four already existed, so the card gains **Driver I/C number**
+(`Shipment.landDriverIc`, migration `20261125090000_shipment_land_driver_ic`)
+and reads in kim's words: Lorry number, Driver name, Driver I/C number, Driver
+phone. Staff only like the rest of the card. Driven at 1440 and 390 on a local
+land shipment with made-up details: saved, Activity "edited driver I/C
+number", no overflow, field 44px at 390.
+
 ## Verified
 
 Local Postgres + seed, production build, Chromium at 1440 and 390, as a super
