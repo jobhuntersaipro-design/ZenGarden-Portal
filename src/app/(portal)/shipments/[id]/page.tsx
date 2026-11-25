@@ -1,3 +1,4 @@
+import { marketFlags } from "@/lib/flags";
 import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";
@@ -69,6 +70,7 @@ async function ShipmentPage({ params }: { params: Promise<{ id: string }> }) {
               mode={shipment.mode}
               canDelete={shipment.documents.length === 0 && shipment.bookings.length === 0}
               markets={markets}
+              flags={marketFlags(markets)}
             />
           ) : null
         }

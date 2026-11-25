@@ -31,6 +31,7 @@ export function NewShipmentForm({
   locked,
   bookingId,
   markets,
+  flags,
 }: {
   buyers: { id: string; name: string; market: string | null }[];
   buyerId: string | null;
@@ -40,6 +41,7 @@ export function NewShipmentForm({
   locked: string | null;
   bookingId: string | null;
   markets: string[];
+  flags: Record<string, string>;
 }) {
   const router = useRouter();
   const { replace } = useUrlNavigation();
@@ -133,6 +135,7 @@ export function NewShipmentForm({
               id="shipment-market"
               value={market}
               options={markets}
+              flags={flags}
               className={SELECT}
               onChange={(value) => {
                 setMarket(value);

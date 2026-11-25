@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { flagFor } from "./flags";
+import { flagFor, marketFlags } from "./flags";
 
 describe("flagFor", () => {
   it("reads the market, then the port's country", () => {
@@ -12,5 +12,13 @@ describe("flagFor", () => {
   it("guesses nothing for a retailer or no destination", () => {
     expect(flagFor("Super Indo", "KUCHING, SARAWAK")).toBeNull();
     expect(flagFor(null, null)).toBeNull();
+  });
+});
+
+describe("marketFlags", () => {
+  it("flags a country's name in any case, and nothing else", () => {
+    const flags = marketFlags(["INDIA", "Indonesia", "PHILIPPINES", "SINGAPORE", "Test Mydin", "Test Vietnam", "Testland"]);
+    expect(Object.keys(flags)).toEqual(["INDIA", "Indonesia", "PHILIPPINES", "SINGAPORE"]);
+    expect(flags.INDIA).toBe(flagFor("India")?.src);
   });
 });

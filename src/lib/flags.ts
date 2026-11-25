@@ -24,3 +24,15 @@ export function flagFor(market: string | null | undefined, port?: string | null)
   const svg = (FLAGS as Record<string, string>)[code];
   return svg ? { code, src: `data:image/svg+xml;utf8,${encodeURIComponent(svg)}` } : null;
 }
+
+/**
+ * Each market that is a country's name, matched ignoring case, to its flag.
+ * Drawn on the server so the browser never loads every flag. "Test Vietnam"
+ * or a retailer ("Mydin") is not a country's name and gets none.
+ */
+export function marketFlags(markets: string[]): Record<string, string> {
+  return Object.fromEntries(markets.flatMap((m) => {
+    const flag = flagFor(m);
+    return flag ? [[m, flag.src]] : [];
+  }));
+}

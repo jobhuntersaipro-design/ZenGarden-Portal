@@ -1,3 +1,36 @@
+# Market dropdowns show the country's flag
+
+## Status
+
+**Built 2026-11-25, pushed to `main`.** Asked for by kim: "from market
+dropdown, if possible, add country flag. for those that are not country,
+leave it blank".
+
+- The Market pickers on New shipment and the shipment's Edit dialog, and the
+  list's Market filter ("Every market"), are now the app's own select, not the
+  browser's: a native `<select>` cannot draw an image.
+- A market that names a country shows its flag, read by the same
+  `flagFor` the list's Destination column uses (case-insensitive, through
+  `Intl.DisplayNames`). Anything else ("Mydin", "Test Vietnam", "Testland")
+  shows no flag; its name lines up with the flagged ones.
+- The flags are worked out on the server (`marketFlags`) and passed down, so
+  the browser never loads the whole flag set.
+
+## Verified
+
+Local Postgres + seed, Chromium at 1440 and 390, as a super admin, markets
+INDIA, Indonesia, Malaysia, Mydin, PHILIPPINES, SINGAPORE, Test Mydin, Test
+Vietnam, Testland, Vietnam. New shipment: 6 flags (the six countries), none on
+the other five. List filter: 3 flags of 4 markets. Trigger 44px at 390; no
+overflow at either width. Screenshots in `market-flags/` in the project files.
+1963 tests (1 new), `tsc`, eslint on touched files, build (xlsx stand-in).
+
+## Not verified
+
+Production. The Edit dialog was not opened; it renders the same component.
+
+## Before that
+
 # Shipments list: a Delivery type column
 
 ## Status

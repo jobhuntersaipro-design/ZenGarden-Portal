@@ -1,3 +1,4 @@
+import { marketFlags } from "@/lib/flags";
 import type { Metadata } from "next";
 import Link from "next/link";
 import { PageHeader } from "@/components/portal/PageHeader";
@@ -78,6 +79,7 @@ async function ShipmentsPage({ searchParams }: { searchParams: Promise<SearchPar
         all={list.all}
         buyers={list.buyers}
         markets={list.markets}
+        flags={marketFlags(list.markets)}
         resolved={list.resolved}
       />
       <p className="mb-sm text-[length:var(--text-body-sm)] text-ink-secondary">

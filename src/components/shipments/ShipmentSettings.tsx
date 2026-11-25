@@ -26,6 +26,7 @@ export function ShipmentSettings({
   mode,
   canDelete,
   markets,
+  flags,
 }: {
   id: string;
   market: string | null;
@@ -33,6 +34,7 @@ export function ShipmentSettings({
   mode: ShipmentMode;
   canDelete: boolean;
   markets: string[];
+  flags: Record<string, string>;
 }) {
   const router = useRouter();
   const [open, setOpen] = useState<"edit" | "delete" | null>(null);
@@ -88,6 +90,7 @@ export function ShipmentSettings({
               id="shipment-edit-market"
               value={values.market}
               options={markets}
+              flags={flags}
               className="h-control-md w-full rounded-sm border border-hairline-strong bg-transparent px-xs text-[length:var(--text-body-md)] text-ink focus-visible:border-focus focus-visible:outline-2 focus-visible:outline-focus sm:text-[length:var(--text-body-sm)]"
               onChange={(m) => setValues({ ...values, market: m, formDRequired: formDDefault(m) })}
             />

@@ -5,6 +5,7 @@ import { usePathname, useSearchParams } from "next/navigation";
 import { Search, X } from "lucide-react";
 import { ChoiceButton } from "@/components/portal/ChoiceButton";
 import { DOT } from "@/components/shipments/ChecklistDots";
+import { MarketSelect } from "@/components/shipments/MarketSelect";
 import { DateInput } from "@/components/ui/date-input";
 import { Input } from "@/components/ui/input";
 import { usePendingChoice } from "@/hooks/usePendingChoice";
@@ -26,12 +27,14 @@ export function ShipmentFilters({
   all,
   buyers,
   markets,
+  flags,
   resolved,
 }: {
   counts: Record<ShipmentStatus, number>;
   all: number;
   buyers: { id: string; name: string }[];
   markets: string[];
+  flags: Record<string, string>;
   resolved: { status?: string; missing?: string; buyerId?: string; market?: string; etdFrom?: string; etdTo?: string; sort: string; dir: string };
 }) {
   const { replace } = useUrlNavigation();
@@ -104,14 +107,15 @@ export function ShipmentFilters({
             </option>
           ))}
         </select>
-        <select aria-label="Market" className={SELECT} value={resolved.market ?? ""} onChange={(e) => set({ market: e.target.value })}>
-          <option value="">Every market</option>
-          {markets.map((m) => (
-            <option key={m} value={m}>
-              {m}
-            </option>
-          ))}
-        </select>
+        <MarketSelect
+          label="Market"
+          blank="Every market"
+          value={resolved.market ?? ""}
+          options={markets}
+          flags={flags}
+          className={SELECT}
+          onChange={(market) => set({ market })}
+        />
         <div className="flex flex-wrap items-center gap-xs">
           <span className="text-[length:var(--text-body-sm)] text-ink-secondary">ETD</span>
           <DateInput aria-label="ETD from" value={resolved.etdFrom ?? ""} placeholder="From" onChange={(v) => set({ etd_from: v })} className="w-40" />

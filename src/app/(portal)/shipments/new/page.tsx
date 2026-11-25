@@ -1,3 +1,4 @@
+import { marketFlags } from "@/lib/flags";
 import type { Metadata } from "next";
 import { BackLink } from "@/components/portal/BackLink";
 import { PageHeader } from "@/components/portal/PageHeader";
@@ -42,6 +43,7 @@ async function NewShipmentPage({ searchParams }: { searchParams: Promise<SearchP
         locked={locked}
         bookingId={bookingId}
         markets={markets}
+        flags={marketFlags(markets)}
       />
     </>
   );
