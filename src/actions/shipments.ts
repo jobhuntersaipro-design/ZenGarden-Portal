@@ -192,6 +192,11 @@ const landSchema = z.object({
   landEtaOn: day,
   landDeliveredOn: day,
   landBorderCrossing: text(120),
+  landPallets: z
+    .string()
+    .trim()
+    .regex(/^\d{0,5}$/, "Pallets are a whole number.")
+    .default(""),
 });
 
 const LAND_FIELD_LABEL = {
@@ -204,6 +209,7 @@ const LAND_FIELD_LABEL = {
   landEtaOn: "expected delivery",
   landDeliveredOn: "delivered date",
   landBorderCrossing: "border crossing",
+  landPallets: "pallets on this truck",
 } as const;
 
 type LandKey = keyof typeof LAND_FIELD_LABEL;
@@ -222,9 +228,10 @@ export async function updateLandDelivery(input: z.input<typeof landSchema>): Pro
   const next = Object.fromEntries(
     LAND_KEYS.map((key) => {
       const value = fields[key] || null;
+      if (key === "landPallets") return [key, value === null ? null : Number(value)];
       return [key, LAND_DATES.has(key) ? asDateColumn(value) : value];
     }),
-  ) as Record<LandKey, string | Date | null>;
+  ) as Record<LandKey, string | number | Date | null>;
   try {
     const saved = await prisma.$transaction(async (tx) => {
       const before = await tx.shipment.findUnique({ where: { id: shipmentId }, select: { mode: true, ...Object.fromEntries(LAND_KEYS.map((k) => [k, true])) } });

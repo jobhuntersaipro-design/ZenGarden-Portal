@@ -20,16 +20,19 @@ import { useAwaitableRefresh } from "@/hooks/useAwaitableRefresh";
 import type { ShippableOrder } from "@/lib/queries/shipments";
 import { toast } from "@/lib/toast";
 
-type Order = { id: string; stage: PoStage; label: string; cartons: number };
+type Order = { id: string; stage: PoStage; label: string; cartons: number; pallets: number; unpalletedLines: number };
 
 export function ShipmentOrdersCard({
   shipmentId,
   orders,
   candidates,
   canManage,
+  pallets,
 }: {
   shipmentId: string;
   orders: Order[];
+  /** The orders' pallets, summed; shown beside the heading. */
+  pallets: number;
   candidates: ShippableOrder[];
   canManage: boolean;
 }) {
@@ -59,7 +62,12 @@ export function ShipmentOrdersCard({
   return (
     <section className="min-w-0 rounded-lg border border-hairline bg-canvas p-lg">
       <div className="flex items-center justify-between gap-sm">
-        <h2 className="font-mono text-[length:var(--text-eyebrow)] text-ink-tertiary">Orders</h2>
+        <div className="flex min-w-0 flex-wrap items-baseline gap-x-sm">
+          <h2 className="font-mono text-[length:var(--text-eyebrow)] text-ink-tertiary">Orders</h2>
+          <span className="text-[length:var(--text-body-sm)] tabular-nums text-ink-secondary">
+            {pallets.toLocaleString("en-MY")} {pallets === 1 ? "pallet" : "pallets"} in total
+          </span>
+        </div>
         {canManage ? (
           <Button variant="secondary" className="h-control-md sm:h-control-sm" onClick={() => setAdding(true)}>
             Add order
@@ -78,7 +86,9 @@ export function ShipmentOrdersCard({
               </Link>
               <span className="flex flex-wrap items-center gap-xs text-[length:var(--text-caption)] tabular-nums text-ink-tertiary">
                 <StageBadge stage={o.stage} />
-                {o.cartons.toLocaleString("en-MY")} cartons
+                {o.cartons.toLocaleString("en-MY")} cartons · {o.pallets.toLocaleString("en-MY")}{" "}
+                {o.pallets === 1 ? "pallet" : "pallets"}
+                {o.unpalletedLines ? ` (${o.unpalletedLines} not counted)` : ""}
               </span>
             </div>
             {canManage && orders.length > 1 ? (

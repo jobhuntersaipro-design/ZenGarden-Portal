@@ -426,6 +426,8 @@ model Shipment {
   landDriverPhone    String?
   /// The driver's I/C number. Personal data: staff only, never selected for a buyer.
   landDriverIc       String?
+  /// Pallets loaded on this truck, typed by hand (2026-11-25). Null = nobody has said.
+  landPallets        Int?
   landPickupOn       DateTime? @db.Date
   landEtaOn          DateTime? @db.Date
   landDeliveredOn    DateTime? @db.Date

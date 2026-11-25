@@ -1,3 +1,4 @@
+import { palletsOf } from "@/lib/pallets";
 import type { Prisma } from "@/generated/prisma/client";
 import { BookingStatus, PoStage, type ShipmentDocType, type ShipmentMode } from "@/generated/prisma/enums";
 import { prisma } from "@/lib/prisma";
@@ -281,7 +282,7 @@ export async function loadShipment(id: string) {
               stage: true,
               poDate: true,
               ...ORDER_IDENTITY_SELECT,
-              lineItems: { select: { quantity: true } },
+              lineItems: { select: { quantity: true, product: { select: { cartonsPerPallet: true } } } },
             },
           },
         },
@@ -303,7 +304,12 @@ export async function loadShipment(id: string) {
       },
       // Notes are read on their own below, so a busy feed never pushes one off.
       // ponytail: newest 500, paged in the browser; page the query if a shipment outgrows it.
-      events: { where: { action: { not: SHIPMENT_NOTE } }, orderBy: { at: "desc" }, take: 500 },
+      events: {
+        where: { action: { not: SHIPMENT_NOTE } },
+        orderBy: { at: "desc" },
+        take: 500,
+        include: { actor: { select: { image: true, role: true } } },
+      },
       containers: {
         orderBy: { createdAt: "asc" },
         select: {
@@ -337,12 +343,15 @@ export async function loadShipment(id: string) {
     label: orderLabel(orderIdentity(po)),
     poNumber: poNumberOf(po),
     cartons: cartonsOf(po.lineItems),
+    ...palletsOf(po.lineItems),
   }));
   return {
     ...s,
     notes,
     orders,
     cartons: orders.reduce((sum, o) => sum + o.cartons, 0),
+    pallets: orders.reduce((sum, o) => sum + o.pallets, 0),
+    unpalletedLines: orders.reduce((sum, o) => sum + o.unpalletedLines, 0),
     checklist: checklistOf({ ...s, documents: s.documents.filter((d) => !d.supersededAt) }),
   };
 }

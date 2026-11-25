@@ -1,3 +1,45 @@
+# Shipment page: by sea or land, pallets, and a proper activity feed
+
+## Status
+
+**Built 2026-11-25, pushed to `main`.** Asked for by kim: "Add by sea or by
+land in shipment details", "Remove Containers section if it's by land", "Move
+the order section up, and show how many pallets we need to deliver in total
+... for the truck, how many it's currently delivering and how many it still
+needs to deliver ... use UIARC components to have some chart", and "beautify
+activity, use the same one as order detail's".
+
+- The header's meta line starts with the ship or truck icon and "By sea" /
+  "By land". Containers is hidden on a land shipment.
+- **Orders** sits right under Progress, headed "N pallets in total"; each PO
+  reads "N cartons · N pallets". Pallets per line = cartons ÷ the product's
+  cartons per pallet, rounded up (`src/lib/pallets.ts`); a line whose product
+  has no pallet size is counted apart and named ("Not counted: …").
+- **Pallets** card (land only), beside Orders: Arc's donut plus Total to
+  deliver, Delivered, On the truck now, Still to deliver. The truck's figure
+  is a new field on Land delivery, **Pallets on this truck**
+  (`Shipment.landPallets`, migration `20261125100000_shipment_land_pallets`).
+  It counts as "on the truck" until the Delivered date is set, then as
+  "delivered"; the truck figure is capped at the total.
+- **Activity** reads like the PO page's: avatar, Activity pill, the sentence,
+  then name · role · time, paged ten at a time.
+
+## Verified
+
+Local Postgres + seed, Chromium at 1440 and 390, made-up truck details. Land
+shipment with 2 POs: 11 pallets (2 lines not counted), truck 6 → donut 6 on
+the truck / 5 to go; edited to 9 → 9 / 2, toast, Activity line. Sea
+shipment: "By sea", Containers kept, no Pallets card. No overflow at either
+width. Screenshots in `shipment-pallets/`. Tests, `tsc`, eslint on touched
+files, build.
+
+## Not verified
+
+Production. Pallets already carried by another shipment of the same POs are
+not subtracted. The Delivered state was unit-tested, not driven.
+
+## Before that
+
 # Market dropdowns show the country's flag
 
 ## Status

@@ -28,6 +28,8 @@ export type LandDelivery = {
   landPickupOn: string;
   landEtaOn: string;
   landDeliveredOn: string;
+  /** Whole number as typed; "" = nobody has said. */
+  landPallets: string;
 };
 
 const TEXT: { key: keyof LandDelivery; label: string; placeholder?: string; max: number }[] = [
@@ -37,6 +39,7 @@ const TEXT: { key: keyof LandDelivery; label: string; placeholder?: string; max:
   { key: "landDriverIc", label: "Driver I/C number", placeholder: "e.g. 800101-14-5678", max: 20 },
   { key: "landDriverPhone", label: "Driver phone", placeholder: "e.g. 012-345 6789", max: 40 },
   { key: "landBorderCrossing", label: "Border crossing", placeholder: "e.g. Bukit Kayu Hitam", max: 120 },
+  { key: "landPallets", label: "Pallets on this truck", placeholder: "e.g. 12", max: 5 },
 ];
 const DATES: { key: keyof LandDelivery; label: string }[] = [
   { key: "landPickupOn", label: "Pickup" },
@@ -129,6 +132,7 @@ export function LandDeliveryCard({
                   value={values[key]}
                   placeholder={placeholder}
                   maxLength={max}
+                  inputMode={key === "landPallets" ? "numeric" : undefined}
                   onChange={(e) => setValues({ ...values, [key]: e.target.value })}
                 />
               </div>

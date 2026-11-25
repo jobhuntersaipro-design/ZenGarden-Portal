@@ -1,6 +1,7 @@
 import { marketFlags } from "@/lib/flags";
 import type { Metadata } from "next";
 import Link from "next/link";
+import { Ship, Truck } from "lucide-react";
 import { notFound } from "next/navigation";
 import { BackLink } from "@/components/portal/BackLink";
 import { PageHeader } from "@/components/portal/PageHeader";
@@ -12,6 +13,9 @@ import { ShipmentBookingCard } from "@/components/shipments/ShipmentBookingCard"
 import { ShipmentDocumentsCard } from "@/components/shipments/ShipmentDocumentsCard";
 import { ShipmentNotesCard } from "@/components/shipments/ShipmentNotesCard";
 import { ShipmentOrdersCard } from "@/components/shipments/ShipmentOrdersCard";
+import { ShipmentPalletsCard } from "@/components/shipments/ShipmentPalletsCard";
+import { PersonAvatar } from "@/components/ui/person";
+import { roleLabel } from "@/lib/permissions/roles";
 import { listLabels } from "@/lib/queries/products";
 import { ShipmentSettings } from "@/components/shipments/ShipmentSettings";
 import { formatDateTime } from "@/lib/dates";
@@ -38,6 +42,8 @@ async function ShipmentPage({ params }: { params: Promise<{ id: string }> }) {
     ? await Promise.all([shippableOrders(shipment.buyer.id), unlinkedBookingOptions(), listLabels("market")])
     : [[], [], []];
   const { checklist } = shipment;
+  const land = shipment.mode === "LAND";
+  const ModeIcon = land ? Truck : Ship;
 
   return (
     <>
@@ -76,7 +82,12 @@ async function ShipmentPage({ params }: { params: Promise<{ id: string }> }) {
         }
       />
       <div className="mb-lg flex flex-col gap-xs text-[length:var(--text-body-sm)] text-ink-secondary">
-        <p>
+        <p className="flex flex-wrap items-center gap-x-xs">
+          <span className="inline-flex items-center gap-xxs text-ink">
+            <ModeIcon aria-hidden className={`size-4 ${land ? "text-mode-land" : "text-accent-blue"}`} />
+            {land ? "By land" : "By sea"}
+          </span>
+          <span aria-hidden>·</span>
           {shipment.market ?? "No market"} · {shipment.orders.length}{" "}
           {shipment.orders.length === 1 ? "order" : "orders"} · {shipment.cartons.toLocaleString("en-MY")} cartons
           {" · "}
@@ -96,6 +107,26 @@ async function ShipmentPage({ params }: { params: Promise<{ id: string }> }) {
         </div>
         <ShipmentProgress slots={checklist.slots} />
       </section>
+
+      {/* Orders first, with the pallets they make up (2026-11-25); on a land
+          shipment the truck's share sits beside them. */}
+      <div className={`mb-lg grid grid-cols-1 gap-lg ${land ? "lg:grid-cols-2" : ""}`}>
+        <ShipmentOrdersCard
+          shipmentId={shipment.id}
+          orders={shipment.orders}
+          pallets={shipment.pallets}
+          candidates={candidates}
+          canManage={canManage}
+        />
+        {land ? (
+          <ShipmentPalletsCard
+            total={shipment.pallets}
+            unpalletedLines={shipment.unpalletedLines}
+            onTruck={shipment.landPallets}
+            delivered={shipment.landDeliveredOn !== null}
+          />
+        ) : null}
+      </div>
 
       <div className="grid grid-cols-1 gap-lg xl:grid-cols-document">
         <div className="flex min-w-0 flex-col gap-lg">
@@ -120,7 +151,8 @@ async function ShipmentPage({ params }: { params: Promise<{ id: string }> }) {
             }
             canManage={canManage}
           />
-          <ContainersCard
+          {land ? null : (
+            <ContainersCard
             shipmentId={shipment.id}
             canManage={canManage}
             containers={shipment.containers.map((c) => ({
@@ -131,7 +163,8 @@ async function ShipmentPage({ params }: { params: Promise<{ id: string }> }) {
               updatedBy: c.updatedBy?.name ?? null,
               media: c.media.map((m) => ({ ...m, uploadedAt: m.uploadedAt.toISOString() })),
             }))}
-          />
+            />
+          )}
         </div>
         <div className="flex min-w-0 flex-col gap-lg">
           <ShipmentNotesCard
@@ -148,13 +181,7 @@ async function ShipmentPage({ params }: { params: Promise<{ id: string }> }) {
               canChange: canManage && (n.actorId === viewer.id || viewer.role === "SUPER_ADMIN"),
             }))}
           />
-          <ShipmentOrdersCard
-            shipmentId={shipment.id}
-            orders={shipment.orders}
-            candidates={candidates}
-            canManage={canManage}
-          />
-          {shipment.mode === "LAND" ? (
+          {land ? (
             <LandDeliveryCard
               shipmentId={shipment.id}
               canManage={canManage}
@@ -168,6 +195,7 @@ async function ShipmentPage({ params }: { params: Promise<{ id: string }> }) {
                 landPickupOn: day(shipment.landPickupOn),
                 landEtaOn: day(shipment.landEtaOn),
                 landDeliveredOn: day(shipment.landDeliveredOn),
+                landPallets: shipment.landPallets?.toString() ?? "",
               }}
             />
           ) : (
@@ -184,12 +212,22 @@ async function ShipmentPage({ params }: { params: Promise<{ id: string }> }) {
       <section className="mt-lg min-w-0 rounded-lg border border-hairline bg-canvas p-lg">
         <h2 className="mb-sm font-mono text-[length:var(--text-eyebrow)] text-ink-tertiary">Activity</h2>
         {shipment.events.length ? (
-          <PagedList className="flex flex-col gap-xs">
+          <PagedList as="ol" className="flex flex-col gap-sm">
+            {/* The purchase order's feed, row for row (2026-11-25). */}
             {shipment.events.map((e) => (
-              <li key={e.id} className="text-[length:var(--text-body-sm)] text-ink">
-                {e.actorName} {e.text}
-                <span className="block text-[length:var(--text-caption)] text-ink-tertiary">
-                  {formatDateTime(e.at)}
+              <li key={e.id} className="flex items-start gap-sm border-b border-hairline pb-sm last:border-0 last:pb-0">
+                <PersonAvatar name={e.actorName} image={e.actor?.image ?? null} className="mt-xxs" />
+                <span className="flex min-w-0 flex-col gap-xxs">
+                  <span className="self-start rounded-pill bg-surface-soft px-xs py-xxs font-mono text-[length:var(--text-caption)] text-ink-secondary">
+                    Activity
+                  </span>
+                  <span className="break-words text-[length:var(--text-body-sm)] leading-loose text-ink">
+                    {e.actorName} {e.text}
+                  </span>
+                  <span className="text-[length:var(--text-caption)] text-ink-tertiary">
+                    {e.actorName}
+                    {e.actor?.role ? ` · ${roleLabel(e.actor.role)}` : ""} · {formatDateTime(e.at)}
+                  </span>
                 </span>
               </li>
             ))}
