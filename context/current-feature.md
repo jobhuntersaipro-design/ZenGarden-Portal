@@ -45,6 +45,15 @@ add a new column delivery type, by sea or land. Use logo".
   thing for every row, sea included. The phone card puts the icon before
   the shipment reference.
 
+**Same day: coloured, with words.** Asked for by kim: "color the logo, sea is
+blue, land is brown. and add text like by sea or by land". The ship is
+`accent-blue`, the truck a new `--color-mode-land` brown (#8b5a2b), and the
+words "By sea" / "By land" sit beside the icon in ink (the blue measures
+under 4.5:1 for text, so only the icon carries the colour). Same in the
+phone card. Driven at 1440 and 390: icons read rgb(0,145,255) and
+rgb(139,90,43), no overflow at either width. Screenshots
+`delivery-type-column/colored-*.png`.
+
 ## Verified
 
 Local Postgres + seed, Chromium at 1440 and 390, as a super admin, with

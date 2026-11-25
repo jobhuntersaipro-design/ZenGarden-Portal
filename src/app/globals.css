@@ -55,6 +55,7 @@
      already reads `accent-blue` on `surface-soft`, a different background
      this fix does not touch. */
   --color-accent-blue-strong: #007bd9;
+  --color-mode-land: #8b5a2b;
   --color-accent-purple: #6647f0;
   --color-accent-magenta: #a43cb4;
   --color-accent-green: #078d3b;

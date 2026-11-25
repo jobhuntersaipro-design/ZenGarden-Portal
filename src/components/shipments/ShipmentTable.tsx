@@ -19,8 +19,9 @@ function ModeIcon({ mode, className = "" }: { mode: ShipmentListRow["mode"]; cla
   const Icon = land ? Truck : Ship;
   const label = land ? "By land" : "By sea";
   return (
-    <span role="img" aria-label={label} title={label} className={`inline-flex shrink-0 text-ink-secondary ${className}`}>
-      <Icon aria-hidden className="size-5" />
+    <span className={`inline-flex shrink-0 items-center gap-xxs whitespace-nowrap text-ink ${className}`}>
+      <Icon aria-hidden className={`size-5 ${land ? "text-mode-land" : "text-accent-blue"}`} />
+      {label}
     </span>
   );
 }
@@ -150,7 +151,7 @@ function card(row: ShipmentListRow) {
         <span className="flex min-w-0 flex-col">
           <span className="text-[length:var(--text-body-md)] font-medium text-ink">{poLine(row)}</span>
           <span className="flex items-center gap-xs font-mono text-[length:var(--text-caption)] text-ink-tertiary">
-            <ModeIcon mode={row.mode} />
+            <ModeIcon mode={row.mode} className="font-sans" />
             {row.reference}
           </span>
         </span>
