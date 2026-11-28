@@ -435,7 +435,7 @@ export function BuyerDocumentsCard({
               {uploading ? "Uploading…" : "Choose files"}
             </Button>
             <p className="text-[length:var(--text-caption)] text-ink-tertiary">
-              Select as many as you need — PDF, images, Word or Excel, up to 25 MB each.
+              Select as many as you need — PDF, images, Word, Excel or ZIP, up to 25 MB each.
             </p>
           </div>
         </div>

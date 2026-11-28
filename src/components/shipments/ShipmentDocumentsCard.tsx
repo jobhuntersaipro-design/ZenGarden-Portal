@@ -27,7 +27,13 @@ import { CUSTOMS_LABELS, SLOT_LABEL, SLOT_SOURCE, docTitle, type ChecklistSlot }
 import { toast } from "@/lib/toast";
 import { formatBytes } from "@/lib/validation/upload";
 import { PO_DOCUMENT_CONTENTS, PO_DOCUMENT_SIGNATURE_BYTES, poDocumentContentsReason } from "@/lib/validation/po-files";
-import { SHIPMENT_FILE_ACCEPT, shipmentFileRejection, shipmentFileType } from "@/lib/validation/shipment-files";
+import {
+  SHIPMENT_FILE_ACCEPT,
+  SHIPMENT_FILE_HINT,
+  isZipDocument,
+  shipmentFileRejection,
+  shipmentFileType,
+} from "@/lib/validation/shipment-files";
 
 export type ShipmentDoc = {
   id: string;
@@ -150,7 +156,7 @@ export function ShipmentDocumentsCard({
     <section className="min-w-0 rounded-lg border border-hairline bg-canvas p-lg">
       <h2 className="font-mono text-[length:var(--text-eyebrow)] text-ink-tertiary">Documents</h2>
       <p className="mt-xxs text-[length:var(--text-caption)] text-ink-tertiary">
-        Staff only — buyers never see these. PDF, JPG or PNG, up to 25 MB.
+        Staff only — buyers never see these. {SHIPMENT_FILE_HINT}.
       </p>
       <ul className="mt-sm flex min-w-0 flex-col">
         {slots
@@ -449,10 +455,13 @@ function UploadButton({
 function FileActions({ doc, url, onPreview }: { doc: ShipmentDoc; url: string; onPreview: (doc: ShipmentDoc) => void }) {
   return (
     <>
-      <Button type="button" variant="secondary" className={ACTION} onClick={() => onPreview(doc)} aria-label={`Preview ${doc.originalName}`}>
-        <Eye aria-hidden className="size-3.5" />
-        <span className="max-sm:sr-only">Preview</span>
-      </Button>
+      {/* A zip cannot be drawn in the previewer: Download only. */}
+      {isZipDocument(doc.mimeType) ? null : (
+        <Button type="button" variant="secondary" className={ACTION} onClick={() => onPreview(doc)} aria-label={`Preview ${doc.originalName}`}>
+          <Eye aria-hidden className="size-3.5" />
+          <span className="max-sm:sr-only">Preview</span>
+        </Button>
+      )}
       <Button variant="secondary" className={ACTION} asChild>
         <a href={`${url}?download=1`} aria-label={`Download ${doc.originalName}`}>
           <Download aria-hidden className="size-3.5" />
@@ -787,7 +796,7 @@ function DraftRow({
       }
       body={
         <p className="mt-xxs text-[length:var(--text-caption)] text-ink-tertiary">
-          {name.length}/{NAME_MAX} · PDF, JPG or PNG, up to 25 MB
+          {name.length}/{NAME_MAX} · {SHIPMENT_FILE_HINT}
         </p>
       }
       error={error}

@@ -7,6 +7,7 @@ import { deleteObject, getObjectPrefix, headObject } from "@/lib/r2";
 import { CUSTOMS_LABELS, docPhrase } from "@/lib/shipments/checklist";
 import {
   MAX_PO_DOCUMENT_BYTES,
+  PO_DOCUMENT_CONTENTS,
   PO_DOCUMENT_SIGNATURE_BYTES,
   poDocumentContentsReason,
 } from "@/lib/validation/po-files";
@@ -32,8 +33,6 @@ const bodySchema = z.object({
 });
 
 class NameTaken extends Error {}
-
-const CONTENTS = "That file isn't a PDF, JPG or PNG — the contents don't match the type";
 
 /**
  * Files a paper once its bytes are in R2, into its slot. A slot that already
@@ -72,7 +71,7 @@ export async function POST(request: Request, { params }: { params: Promise<{ id:
     const prefix = await getObjectPrefix(key, PO_DOCUMENT_SIGNATURE_BYTES);
     if (poDocumentContentsReason(type, prefix)) {
       await deleteObject(key).catch(() => {});
-      return NextResponse.json({ error: CONTENTS }, { status: 400 });
+      return NextResponse.json({ error: PO_DOCUMENT_CONTENTS }, { status: 400 });
     }
   } catch {
     return NextResponse.json({ error: "The upload didn't arrive — try again." }, { status: 400 });

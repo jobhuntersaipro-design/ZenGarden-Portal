@@ -1,31 +1,27 @@
 import { z } from "zod";
 import { ShipmentDocType } from "@/generated/prisma/enums";
 import {
+  PO_DOCUMENT_ACCEPT,
   PO_DOCUMENT_TYPES,
+  PO_DOCUMENT_WRONG_TYPE,
   poDocumentRejectionReason,
   resolvePoDocumentType,
   type PoDocumentMimeType,
 } from "@/lib/validation/po-files";
 
 /**
- * Shipping papers (Phase 63): the order documents' rule — PDF, JPG or PNG,
- * 25 MB, checked from the leading bytes — less ZIP, which can be neither
- * previewed nor read.
+ * Shipping papers (Phase 63): the order documents' rule — PDF, JPG, PNG or
+ * ZIP, 25 MB, checked from the leading bytes. A zip is kept as one opaque
+ * file: it downloads, it is never previewed or read.
  */
-export const SHIPMENT_FILE_ACCEPT = ".pdf,.png,.jpg,.jpeg";
-export const SHIPMENT_WRONG_TYPE = "That file type isn't supported — use PDF, JPG or PNG";
+export const SHIPMENT_FILE_ACCEPT = PO_DOCUMENT_ACCEPT;
+export const SHIPMENT_WRONG_TYPE = PO_DOCUMENT_WRONG_TYPE;
+export const SHIPMENT_FILE_HINT = "PDF, JPG, PNG or ZIP, up to 25 MB";
 
-export function shipmentFileType(name: string, type: string): Exclude<PoDocumentMimeType, "application/zip"> | null {
-  const resolved = resolvePoDocumentType(name, type);
-  return resolved && resolved !== "application/zip" ? resolved : null;
-}
-
-export function shipmentFileRejection(file: { name: string; type: string; size: number }): string | null {
-  if (!shipmentFileType(file.name, file.type)) return SHIPMENT_WRONG_TYPE;
-  return poDocumentRejectionReason(file);
-}
-
-export const shipmentFileExt = (type: Exclude<PoDocumentMimeType, "application/zip">) => PO_DOCUMENT_TYPES[type].ext;
+export const shipmentFileType = resolvePoDocumentType;
+export const shipmentFileRejection = poDocumentRejectionReason;
+export const shipmentFileExt = (type: PoDocumentMimeType) => PO_DOCUMENT_TYPES[type].ext;
+export const isZipDocument = (mimeType: string) => mimeType === "application/zip";
 
 export const docTypeSchema = z.enum(ShipmentDocType);
 

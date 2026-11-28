@@ -1,3 +1,37 @@
+# Zip files on every document upload
+
+## Status
+
+**Built 2026-11-28, pushed to `main`.** Asked for by kim after Arif could
+not upload a .zip on a shipment's COA row: "make it available to upload zip
+files in all upload function". Certificates were asked about and kept as
+PDF, JPG or PNG (kim: "Leave certificates as they are").
+
+- **Shipment documents** (every slot, Add another document, Replace) take
+  `.zip` with the PO documents' own rule (`shipment-files.ts` now reuses
+  `po-files.ts`): leading bytes `PK\x03\x04`, Windows' zip types read as
+  `application/zip`, 25 MB. A zip row has Download, Replace and Delete, no
+  Preview. Help text: "PDF, JPG, PNG or ZIP, up to 25 MB".
+- **Buyer documents** take `.zip` too, shown as "ZIP", download only.
+- Already took zip: PO intake, BC upload, the PO's Documents card, container
+  media. Left image only on purpose: product images, avatar, buyer logo.
+  Certificates unchanged.
+
+## Verified
+
+Local Postgres + moto, Chromium at 1440 and 390. Before: the COA row's
+input accepted `.pdf,.png,.jpg,.jpeg` and a zip read "That file type isn't
+supported — use PDF, JPG or PNG". After: "COA papers.zip" uploaded on the
+COA row and into a buyer folder at both widths, no Preview, no overflow.
+Screenshots in `zip-uploads/`. Validation tests (1 new), `tsc`, eslint on
+touched files, build.
+
+## Not verified
+
+Production writes (no test data there). A real R2 upload.
+
+## Before that
+
 # Land delivery: several trucks per shipment
 
 ## Status

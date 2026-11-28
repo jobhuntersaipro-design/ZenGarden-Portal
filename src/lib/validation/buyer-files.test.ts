@@ -30,11 +30,18 @@ describe("resolveDocumentType", () => {
     );
     expect(resolveDocumentType("run.exe", "")).toBeNull();
   });
+
+  it("takes a zip under every name a browser gives it, and never previews it", () => {
+    expect(resolveDocumentType("papers.zip", "application/zip")).toBe("application/zip");
+    expect(resolveDocumentType("papers.zip", "application/x-zip-compressed")).toBe("application/zip");
+    expect(resolveDocumentType("papers.ZIP", "")).toBe("application/zip");
+    expect(previewKind("application/zip")).toBeNull();
+  });
 });
 
 describe("documentRejectionReason", () => {
   it("refuses a wrong type, an empty file and one over 25 MB", () => {
-    expect(documentRejectionReason({ name: "a.zip", type: "application/zip", size: 10 })).toMatch(
+    expect(documentRejectionReason({ name: "a.exe", type: "application/x-msdownload", size: 10 })).toMatch(
       /isn't supported/,
     );
     expect(documentRejectionReason({ name: "a.pdf", type: "application/pdf", size: 0 })).toBe(

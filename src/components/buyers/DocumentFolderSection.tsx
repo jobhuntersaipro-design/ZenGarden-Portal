@@ -5,6 +5,7 @@ import {
   ChevronRight,
   Download,
   Eye,
+  FileArchive,
   FileSpreadsheet,
   FileText,
   Folder,
@@ -38,6 +39,7 @@ export const downloadHref = (id: string) => `/api/buyer-documents/${id}/url?down
 export function kindOf(mimeType: string): { name: string; Icon: typeof FileText } {
   if (mimeType === "application/pdf") return { name: "PDF", Icon: FileText };
   if (mimeType.startsWith("image/")) return { name: "Image", Icon: ImageIcon };
+  if (mimeType === "application/zip") return { name: "ZIP", Icon: FileArchive };
   if (mimeType.includes("spreadsheet") || mimeType.includes("excel")) {
     return { name: "Excel", Icon: FileSpreadsheet };
   }

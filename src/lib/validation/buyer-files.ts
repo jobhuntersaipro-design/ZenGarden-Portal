@@ -30,7 +30,7 @@ export function logoRejectionReason(file: { type: string; size: number }): strin
 // ---- Documents ------------------------------------------------------------
 
 /**
- * PDF and pictures preview in the page; Word and Excel download only, since a
+ * PDF and pictures preview in the page; Word, Excel and ZIP download only, since a
  * browser cannot draw them. The extension is decided here, never taken from
  * the uploaded name, so a key can never carry `.html` or `.exe`.
  */
@@ -49,13 +49,14 @@ export const BUYER_DOCUMENT_TYPES = {
     ext: "xlsx",
     preview: null,
   },
+  "application/zip": { ext: "zip", preview: null },
 } as const;
 
 export type BuyerDocumentMimeType = keyof typeof BUYER_DOCUMENT_TYPES;
 export type DocumentPreviewKind = "pdf" | "image" | null;
 
 export const BUYER_DOCUMENT_ACCEPT =
-  ".pdf,.png,.jpg,.jpeg,.webp,.doc,.docx,.xls,.xlsx";
+  ".pdf,.png,.jpg,.jpeg,.webp,.doc,.docx,.xls,.xlsx,.zip";
 
 export const MAX_BUYER_DOCUMENT_BYTES = 25 * 1024 * 1024;
 export const MAX_BUYER_DOCUMENTS_PER_CALL = 10;
@@ -84,9 +85,14 @@ const BY_EXTENSION: Record<string, BuyerDocumentMimeType> = {
   docx: "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
   xls: "application/vnd.ms-excel",
   xlsx: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+  zip: "application/zip",
 };
 
+/** Windows names a zip `application/x-zip-compressed`; some browsers `x-zip`. */
+const ZIP_ALIASES = new Set(["application/x-zip-compressed", "application/x-zip"]);
+
 export function resolveDocumentType(name: string, type: string): BuyerDocumentMimeType | null {
+  if (ZIP_ALIASES.has(type)) return "application/zip";
   if (type && type !== "application/octet-stream") {
     return isBuyerDocumentMimeType(type) ? type : null;
   }
@@ -95,7 +101,7 @@ export function resolveDocumentType(name: string, type: string): BuyerDocumentMi
 }
 
 export const DOCUMENT_WRONG_TYPE =
-  "That file type isn't supported — use PDF, an image, Word or Excel";
+  "That file type isn't supported — use PDF, an image, Word, Excel or ZIP";
 export const DOCUMENT_TOO_LARGE = (bytes: number) =>
   `That file is ${formatBytes(bytes)} — the limit is ${formatBytes(MAX_BUYER_DOCUMENT_BYTES)}`;
 export const DOCUMENT_EMPTY = "That file is empty";
